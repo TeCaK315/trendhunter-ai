@@ -1,0 +1,3068 @@
+{
+  "analyses": {
+    "unknown-1768517399648": {
+      "trend_id": "unknown-1768517399648",
+      "trend_title": "AI Automation",
+      "main_pain": "Недостаток знаний о внедрении AI автоматизации в бизнес-процессы.",
+      "key_pain_points": [
+        "Сложности с пониманием, как AI автоматизация может увеличить прибыль.",
+        "Неясность в выборе правильных инструментов для автоматизации.",
+        "Отсутствие практических примеров успешного применения AI в малом бизнесе."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые предприниматели",
+            "size": "30 млн в США",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/smallbusiness, r/startups"
+          },
+          {
+            "name": "Фрилансеры в сфере технологий",
+            "size": "10 млн в мире",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/freelance, r/technology"
+          },
+          {
+            "name": "Студенты IT специальностей",
+            "size": "5 млн в США",
+            "willingness_to_pay": "low",
+            "where_to_find": "r/learnprogramming, r/ArtificialIntelligence"
+          },
+          {
+            "name": "Специалисты по маркетингу",
+            "size": "15 млн в мире",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/marketing, r/SEO"
+          },
+          {
+            "name": "Блогеры и контент-креаторы",
+            "size": "3 млн в мире",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/content_creation, r/socialmedia"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "внедрение AI в малый бизнес",
+            "выбор инструментов для автоматизации"
+          ],
+          "top_subreddits": [
+            "r/smallbusiness",
+            "r/technology"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials",
+          "top_channels": [
+            "The AI Advantage",
+            "Dan Martell",
+            "Adam Erhart"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": [
+            "AI tools",
+            "business automation"
+          ]
+        }
+      },
+      "sentiment_score": 0.6,
+      "market_signals": [
+        "увеличение интереса к обучающим материалам по AI автоматизации",
+        "рост числа запросов на инструменты автоматизации"
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [],
+          "communities": [],
+          "engagement": 0
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "AI Automation: Complete Beginners Guide",
+              "channel": "The AI Advantage",
+              "description": "Subscribe to the channel for more up-to-date beginner content! In this video tutorial, I will show you how to run any ChatGPT ...",
+              "videoId": "KSOxkhWs2Ic",
+              "url": "https://youtube.com/watch?v=KSOxkhWs2Ic",
+              "publishedAt": "2023-08-23T19:42:03Z",
+              "thumbnail": "https://i.ytimg.com/vi/KSOxkhWs2Ic/mqdefault.jpg"
+            },
+            {
+              "title": "These 4 AI Automations Will Make You $1M (With Zero Employees)",
+              "channel": "Dan Martell",
+              "description": "Get your FREE Sell by Chat Playbook here: https://go.danmartell.com/48pqVxy Are you building an AI software company?",
+              "videoId": "sDZmLFZ8BkM",
+              "url": "https://youtube.com/watch?v=sDZmLFZ8BkM",
+              "publishedAt": "2025-11-29T15:01:45Z",
+              "thumbnail": "https://i.ytimg.com/vi/sDZmLFZ8BkM/mqdefault.jpg"
+            },
+            {
+              "title": "AI Automation: The Best Skill to Learn in 2026 💰",
+              "channel": "Adam Erhart",
+              "description": "Free Course: Start & Scale a Simple AI-Powered Agency (Get Paying Clients with HighLevel + Bonuses): ...",
+              "videoId": "FzsloY_byTQ",
+              "url": "https://youtube.com/watch?v=FzsloY_byTQ",
+              "publishedAt": "2025-01-09T14:00:17Z",
+              "thumbnail": "https://i.ytimg.com/vi/FzsloY_byTQ/mqdefault.jpg"
+            },
+            {
+              "title": "I Ranked the Best AI Tools to Make Money in 2026",
+              "channel": "Dan Martell",
+              "description": "Get Your FREE AI Company Operating System here: https://go.danmartell.com/44Z7YRm Are you building an AI software ...",
+              "videoId": "xXxrvra9DQg",
+              "url": "https://youtube.com/watch?v=xXxrvra9DQg",
+              "publishedAt": "2026-01-09T14:01:42Z",
+              "thumbnail": "https://i.ytimg.com/vi/xXxrvra9DQg/mqdefault.jpg"
+            },
+            {
+              "title": "How to Build &amp; Sell AI Automations: Ultimate Beginner’s Guide",
+              "channel": "Liam Ottley",
+              "description": "Access all of the automation blueprints and prompts for FREE in my Skool Community: https://bit.ly/AI-Automations-Course-Skool ...",
+              "videoId": "5TxSqvPbnWw",
+              "url": "https://youtube.com/watch?v=5TxSqvPbnWw",
+              "publishedAt": "2025-06-30T23:27:23Z",
+              "thumbnail": "https://i.ytimg.com/vi/5TxSqvPbnWw/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "The AI Advantage",
+            "Dan Martell",
+            "Adam Erhart",
+            "Liam Ottley",
+            "AI Guy",
+            "Brock Mesarich | AI for Non Techies",
+            "Sabrina Ramonov 🍄",
+            "Michele Torti",
+            "Ed Hill | AI Automation",
+            "Nate Herk | AI Automation",
+            "Zubair Trabzada | AI Workshop",
+            "Brightpick",
+            "Anything Data",
+            "Builders Central",
+            "Pynade Devs",
+            "freeCodeCamp.org",
+            "Nick Automates",
+            "IBM Technology",
+            "Jono Catliff",
+            "Serge Gatari",
+            "Freedom With AI"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-15T22:50:12.641Z"
+    },
+    "crypto-trading-bots": {
+      "trend_id": "crypto-trading-bots",
+      "trend_title": "Crypto Trading Bots",
+      "main_pain": "Недостаток надежной информации о производительности и надежности крипто-торговых ботов.",
+      "key_pain_points": [
+        "Проблемы с выбором подходящего торгового бота и его настройкой.",
+        "Неясность в отношении рисков и потенциальных потерь при использовании торговых ботов.",
+        "Отсутствие прозрачности в алгоритмах и методах торговли, используемых ботами."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Начинающие трейдеры",
+            "size": "500,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/CryptoCurrency, r/CryptoMarkets"
+          },
+          {
+            "name": "Опытные трейдеры",
+            "size": "300,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/CryptoCurrency, r/CryptoTrading"
+          },
+          {
+            "name": "Инвесторы в криптовалюту",
+            "size": "1,000,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/investing, r/CryptoCurrency"
+          },
+          {
+            "name": "Технические аналитики",
+            "size": "150,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/TechnicalAnalysis"
+          },
+          {
+            "name": "Разработчики программного обеспечения для торговли",
+            "size": "50,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/algorithms, r/CryptoDev"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Обсуждение эффективности различных торговых ботов.",
+            "Опыт пользователей с использованием ботов."
+          ],
+          "top_subreddits": [
+            "r/CryptoCurrency",
+            "r/CryptoTrading"
+          ]
+        },
+        "youtube": {
+          "content_type": "reviews",
+          "top_channels": [
+            "SMOKLM",
+            "Coin Bureau",
+            "Digibase Media",
+            "VirtualBacon",
+            "Krown"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": []
+        }
+      },
+      "sentiment_score": 0.5,
+      "market_signals": [
+        "Увеличение количества видео на YouTube о торговых ботах.",
+        "Постоянный интерес к обсуждениям на Reddit, несмотря на отсутствие роста."
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [],
+          "communities": [],
+          "engagement": 0
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "I Tried Crypto Trading Bots With $1,000 | PIONEX Results &amp; Review",
+              "channel": "SMOKLM",
+              "description": "Signup to Pionex US: https://bit.ly/3WZfE21 Signup to Pionex World: https://bit.ly/4jAelzt I gave $1000 to 3 different crypto trading ...",
+              "videoId": "_5qd9RZCJSE",
+              "url": "https://youtube.com/watch?v=_5qd9RZCJSE",
+              "publishedAt": "2025-04-16T13:51:27Z",
+              "thumbnail": "https://i.ytimg.com/vi/_5qd9RZCJSE/mqdefault.jpg"
+            },
+            {
+              "title": "AI Crypto Trading Bots: Which One Is Best?",
+              "channel": "Coin Bureau",
+              "description": "AI is likely to change every aspect of our lives, and crypto trading is no exception to that trend. In this video, we look at what AI ...",
+              "videoId": "wYbf5XwdcPI",
+              "url": "https://youtube.com/watch?v=wYbf5XwdcPI",
+              "publishedAt": "2025-10-22T14:03:00Z",
+              "thumbnail": "https://i.ytimg.com/vi/wYbf5XwdcPI/mqdefault.jpg"
+            },
+            {
+              "title": "3Commas Vs Pionex: Which is The Best Crypto Trading Bot?",
+              "channel": "Digibase Media",
+              "description": "Debating between 3Commas and Pionex as your crypto trading bot in 2025? This in-depth comparison explores each platform's ...",
+              "videoId": "3SKYk65fUKM",
+              "url": "https://youtube.com/watch?v=3SKYk65fUKM",
+              "publishedAt": "2025-07-17T19:00:04Z",
+              "thumbnail": "https://i.ytimg.com/vi/3SKYk65fUKM/mqdefault.jpg"
+            },
+            {
+              "title": "How to use Crypto Trading Bots to Enter and Exit the Bull Market",
+              "channel": "VirtualBacon",
+              "description": "This is the start of my $50000 Crypto Trading Bot Challenge. My goal is to turn $10000 into $50000 over the next 6 months using ...",
+              "videoId": "AiFEaku6-Ec",
+              "url": "https://youtube.com/watch?v=AiFEaku6-Ec",
+              "publishedAt": "2025-07-08T21:52:29Z",
+              "thumbnail": "https://i.ytimg.com/vi/AiFEaku6-Ec/mqdefault.jpg"
+            },
+            {
+              "title": "Pros &amp; Cons Of Trading Bots",
+              "channel": "Krown",
+              "description": "All Educational Products & Indicators https://krown-trading.teachable.com/ ⚡️ META SIGNALS  https://metasignals.io/nft ...",
+              "videoId": "JQP85fUQmK0",
+              "url": "https://youtube.com/watch?v=JQP85fUQmK0",
+              "publishedAt": "2023-04-03T13:30:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/JQP85fUQmK0/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "SMOKLM",
+            "Coin Bureau",
+            "Digibase Media",
+            "VirtualBacon",
+            "Krown",
+            "Koinly",
+            "Crypto Banter",
+            "MoneyZG",
+            "Savo Trader",
+            "Coinsider"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-15T22:52:08.372Z"
+    },
+    "trend-1768495968782-0": {
+      "trend_id": "trend-1768495968782-0",
+      "trend_title": "AI Automation for SMB",
+      "main_pain": "Недостаток понимания и навыков для внедрения AI автоматизации в малом бизнесе.",
+      "key_pain_points": [
+        "Сложности в понимании, как AI может помочь в автоматизации процессов.",
+        "Неясность в том, какие инструменты AI наиболее эффективны для малого бизнеса.",
+        "Отсутствие ресурсов и знаний для внедрения AI решений."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые бизнесмены",
+            "size": "30 млн в США",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/smallbusiness, r/Entrepreneur"
+          },
+          {
+            "name": "Стартапы",
+            "size": "10 млн в США",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/startups"
+          },
+          {
+            "name": "Фрилансеры",
+            "size": "57 млн в США",
+            "willingness_to_pay": "low",
+            "where_to_find": "r/freelance"
+          },
+          {
+            "name": "Маркетологи",
+            "size": "1.5 млн в США",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/marketing"
+          },
+          {
+            "name": "Владельцы интернет-магазинов",
+            "size": "1.8 млн в США",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/ecommerce"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Как использовать AI для автоматизации",
+            "Проблемы с внедрением AI"
+          ],
+          "top_subreddits": [
+            "r/smallbusiness",
+            "r/Entrepreneur"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials",
+          "top_channels": [
+            "Dan Martell",
+            "Zubair Trabzada | AI Workshop",
+            "Liam Ottley"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": [
+            "AI tools for business",
+            "Automation in SMBs"
+          ]
+        }
+      },
+      "sentiment_score": 0.5,
+      "market_signals": [
+        "Увеличение интереса к AI автоматизации в малом бизнесе",
+        "Рост числа обучающих материалов и видео по AI"
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [],
+          "communities": [],
+          "engagement": 0
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "These 4 AI Automations Will Make You $1M (With Zero Employees)",
+              "channel": "Dan Martell",
+              "description": "Get your FREE Sell by Chat Playbook here: https://go.danmartell.com/48pqVxy Are you building an AI software company?",
+              "videoId": "sDZmLFZ8BkM",
+              "url": "https://youtube.com/watch?v=sDZmLFZ8BkM",
+              "publishedAt": "2025-11-29T15:01:45Z",
+              "thumbnail": "https://i.ytimg.com/vi/sDZmLFZ8BkM/mqdefault.jpg"
+            },
+            {
+              "title": "The TRUTH About Selling AI Automations to Businesses",
+              "channel": "Zubair Trabzada | AI Workshop",
+              "description": "Learn How to Make Money With AI https://bit.ly/4g6Uo2L The TRUTH About Selling AI Automations to Businesses Sign up for a ...",
+              "videoId": "XUYvDbAv1IA",
+              "url": "https://youtube.com/watch?v=XUYvDbAv1IA",
+              "publishedAt": "2025-06-18T13:00:57Z",
+              "thumbnail": "https://i.ytimg.com/vi/XUYvDbAv1IA/mqdefault.jpg"
+            },
+            {
+              "title": "How to Automate Any Business With AI in 3 Steps (Beginner&#39;s Guide)",
+              "channel": "Liam Ottley",
+              "description": "Get the free AI Audit Guide https://bit.ly/10k-AI-Audit-Guide Join the #1 community for AI entrepreneurs and connect with ...",
+              "videoId": "kQFW3bUrOu4",
+              "url": "https://youtube.com/watch?v=kQFW3bUrOu4",
+              "publishedAt": "2025-09-07T06:44:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/kQFW3bUrOu4/mqdefault.jpg"
+            },
+            {
+              "title": "The TRUTH About Selling AI Automations to Businesses",
+              "channel": "Nate Herk | AI Automation",
+              "description": "Full courses + unlimited support: https://www.skool.com/ai-automation-society-plus/about All my FREE resources: ...",
+              "videoId": "SAerRtQLD0I",
+              "url": "https://youtube.com/watch?v=SAerRtQLD0I",
+              "publishedAt": "2025-09-14T14:00:42Z",
+              "thumbnail": "https://i.ytimg.com/vi/SAerRtQLD0I/mqdefault.jpg"
+            },
+            {
+              "title": "I Tested 500+ AI Tools, These 12 Will Blow Up Your Business",
+              "channel": "Dan Martell",
+              "description": "Get access to my Executive Assistant Playbook: https://go.danmartell.com/47iE3VW Are you building an AI software company?",
+              "videoId": "LSKZrtFl47c",
+              "url": "https://youtube.com/watch?v=LSKZrtFl47c",
+              "publishedAt": "2025-10-31T13:00:47Z",
+              "thumbnail": "https://i.ytimg.com/vi/LSKZrtFl47c/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Dan Martell",
+            "Zubair Trabzada | AI Workshop",
+            "Liam Ottley",
+            "Nate Herk | AI Automation",
+            "Philip VanDusen",
+            "Brock Mesarich | AI for Non Techies",
+            "Nick Saraev"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-15T22:53:16.522Z"
+    },
+    "trend-1768513089023-3": {
+      "trend_id": "trend-1768513089023-3",
+      "trend_title": "AI customer service bots",
+      "main_pain": "Недостаточная эффективность и качество обслуживания клиентов при использовании AI-ботов.",
+      "key_pain_points": [
+        "Проблемы с пониманием запросов клиентов и предоставлением адекватных ответов.",
+        "Сложности в интеграции AI-ботов с существующими системами управления клиентами.",
+        "Неудовлетворенность клиентов из-за отсутствия человеческого взаимодействия."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые и средние предприятия",
+            "size": "500,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/smallbusiness, r/startups"
+          },
+          {
+            "name": "Крупные корпорации",
+            "size": "10,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/technology, r/business"
+          },
+          {
+            "name": "Разработчики программного обеспечения",
+            "size": "200,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/programming, r/webdev"
+          },
+          {
+            "name": "Специалисты по обслуживанию клиентов",
+            "size": "300,000",
+            "willingness_to_pay": "low",
+            "where_to_find": "r/customerservice, r/careeradvice"
+          },
+          {
+            "name": "Предприниматели в сфере e-commerce",
+            "size": "150,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/ecommerce, r/entrepreneur"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Эффективность AI-ботов",
+            "Сравнение AI и человеческого обслуживания"
+          ],
+          "top_subreddits": [
+            "r/technology",
+            "r/customerservice"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials",
+          "top_channels": [
+            "Botpress",
+            "Liam Ottley",
+            "Brock Mesarich | AI for Non Techies"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": [
+            "AI chatbots",
+            "customer service automation"
+          ]
+        }
+      },
+      "sentiment_score": 0.4,
+      "market_signals": [
+        "Увеличение интереса к AI-ботам в сфере обслуживания клиентов.",
+        "Потребность в улучшении качества взаимодействия с клиентами."
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [],
+          "communities": [],
+          "engagement": 0
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Build a Customer Support Chatbot in 5 Minutes (No Code)",
+              "channel": "Botpress",
+              "description": "Try Botpress for free → https://www.botpress.com/ Join our bot building community on Discord ...",
+              "videoId": "dn27M2vAc1Y",
+              "url": "https://youtube.com/watch?v=dn27M2vAc1Y",
+              "publishedAt": "2025-10-29T17:30:11Z",
+              "thumbnail": "https://i.ytimg.com/vi/dn27M2vAc1Y/mqdefault.jpg"
+            },
+            {
+              "title": "How to Make an AI Customer Support Phone Line in 3 Minutes (w/ Knowledge Base)",
+              "channel": "Liam Ottley",
+              "description": "Join the #1 community for AI entrepreneurs and connect with 200000+ members: https://bit.ly/skool-ov We help industry experts ...",
+              "videoId": "8K1z-5-74w8",
+              "url": "https://youtube.com/watch?v=8K1z-5-74w8",
+              "publishedAt": "2024-03-30T16:45:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/8K1z-5-74w8/mqdefault.jpg"
+            },
+            {
+              "title": "Don’t Sell AI Chatbots…",
+              "channel": "Brock Mesarich | AI for Non Techies",
+              "description": "aiautomationagency #aichatbot #aiautomation #ai #agency #chatbot #chatgpt #openai.",
+              "videoId": "UVV_P3vIZBI",
+              "url": "https://youtube.com/watch?v=UVV_P3vIZBI",
+              "publishedAt": "2023-08-17T17:23:10Z",
+              "thumbnail": "https://i.ytimg.com/vi/UVV_P3vIZBI/mqdefault.jpg"
+            },
+            {
+              "title": "How to Build an AI Customer Support Chat Bot - Full Tutorial",
+              "channel": "Botpress",
+              "description": "Try Botpress for free → https://www.botpress.com/ Join our bot building community on Discord ...",
+              "videoId": "p6uPjFrjCqo",
+              "url": "https://youtube.com/watch?v=p6uPjFrjCqo",
+              "publishedAt": "2025-12-01T16:15:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/p6uPjFrjCqo/mqdefault.jpg"
+            },
+            {
+              "title": "The Future of Customer Service With AI Chatbots!",
+              "channel": "orimon ai",
+              "description": "Build Your Own AI Chatbot ...",
+              "videoId": "E2_WeNjXScQ",
+              "url": "https://youtube.com/watch?v=E2_WeNjXScQ",
+              "publishedAt": "2024-02-13T04:30:03Z",
+              "thumbnail": "https://i.ytimg.com/vi/E2_WeNjXScQ/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Botpress",
+            "Liam Ottley",
+            "Brock Mesarich | AI for Non Techies",
+            "orimon ai",
+            "My Call Cloud",
+            "Setter AI",
+            "Jason West",
+            "CNET",
+            "Masters of AI & Automation"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-15T22:54:25.925Z"
+    },
+    "trend-1768517772158-0": {
+      "trend_id": "trend-1768517772158-0",
+      "trend_title": "AI Automation for SMB",
+      "main_pain": "Недостаток понимания и навыков для внедрения AI автоматизации в малом бизнесе.",
+      "key_pain_points": [
+        "Сложности в выборе подходящих AI инструментов для автоматизации бизнес-процессов.",
+        "Недостаток информации о ROI и реальных примерах успешного использования AI автоматизации.",
+        "Страх перед высокими затратами на внедрение AI решений без гарантии успеха."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые бизнесы",
+            "size": "30 миллионов в США",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/smallbusiness, r/Entrepreneur"
+          },
+          {
+            "name": "Предприниматели в сфере услуг",
+            "size": "15 миллионов в США",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/Entrepreneur, r/startups"
+          },
+          {
+            "name": "Консультанты по бизнесу",
+            "size": "1 миллион в США",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/business, r/consulting"
+          },
+          {
+            "name": "Маркетологи",
+            "size": "10 миллионов в США",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/marketing, r/digital_marketing"
+          },
+          {
+            "name": "Технические специалисты",
+            "size": "5 миллионов в США",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/technology, r/sysadmin"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Обсуждение сложностей внедрения AI в малый бизнес.",
+            "Опыт использования AI инструментов и их влияние на бизнес."
+          ],
+          "top_subreddits": [
+            "r/smallbusiness",
+            "r/Entrepreneur"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials/reviews/news",
+          "top_channels": [
+            "Dan Martell",
+            "Zubair Trabzada | AI Workshop",
+            "Liam Ottley"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": []
+        }
+      },
+      "sentiment_score": 0.5,
+      "market_signals": [
+        "Увеличение интереса к AI автоматизации в малом бизнесе.",
+        "Потребность в обучающих материалах по внедрению AI решений."
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [],
+          "communities": [],
+          "engagement": 0
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "These 4 AI Automations Will Make You $1M (With Zero Employees)",
+              "channel": "Dan Martell",
+              "description": "Get your FREE Sell by Chat Playbook here: https://go.danmartell.com/48pqVxy Are you building an AI software company?",
+              "videoId": "sDZmLFZ8BkM",
+              "url": "https://youtube.com/watch?v=sDZmLFZ8BkM",
+              "publishedAt": "2025-11-29T15:01:45Z",
+              "thumbnail": "https://i.ytimg.com/vi/sDZmLFZ8BkM/mqdefault.jpg"
+            },
+            {
+              "title": "The TRUTH About Selling AI Automations to Businesses",
+              "channel": "Zubair Trabzada | AI Workshop",
+              "description": "Learn How to Make Money With AI https://bit.ly/4g6Uo2L The TRUTH About Selling AI Automations to Businesses Sign up for a ...",
+              "videoId": "XUYvDbAv1IA",
+              "url": "https://youtube.com/watch?v=XUYvDbAv1IA",
+              "publishedAt": "2025-06-18T13:00:57Z",
+              "thumbnail": "https://i.ytimg.com/vi/XUYvDbAv1IA/mqdefault.jpg"
+            },
+            {
+              "title": "How to Automate Any Business With AI in 3 Steps (Beginner&#39;s Guide)",
+              "channel": "Liam Ottley",
+              "description": "Get the free AI Audit Guide https://bit.ly/10k-AI-Audit-Guide Join the #1 community for AI entrepreneurs and connect with ...",
+              "videoId": "kQFW3bUrOu4",
+              "url": "https://youtube.com/watch?v=kQFW3bUrOu4",
+              "publishedAt": "2025-09-07T06:44:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/kQFW3bUrOu4/mqdefault.jpg"
+            },
+            {
+              "title": "The TRUTH About Selling AI Automations to Businesses",
+              "channel": "Nate Herk | AI Automation",
+              "description": "Full courses + unlimited support: https://www.skool.com/ai-automation-society-plus/about All my FREE resources: ...",
+              "videoId": "SAerRtQLD0I",
+              "url": "https://youtube.com/watch?v=SAerRtQLD0I",
+              "publishedAt": "2025-09-14T14:00:42Z",
+              "thumbnail": "https://i.ytimg.com/vi/SAerRtQLD0I/mqdefault.jpg"
+            },
+            {
+              "title": "I Tested 500+ AI Tools, These 12 Will Blow Up Your Business",
+              "channel": "Dan Martell",
+              "description": "Get access to my Executive Assistant Playbook: https://go.danmartell.com/47iE3VW Are you building an AI software company?",
+              "videoId": "LSKZrtFl47c",
+              "url": "https://youtube.com/watch?v=LSKZrtFl47c",
+              "publishedAt": "2025-10-31T13:00:47Z",
+              "thumbnail": "https://i.ytimg.com/vi/LSKZrtFl47c/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Dan Martell",
+            "Zubair Trabzada | AI Workshop",
+            "Liam Ottley",
+            "Nate Herk | AI Automation",
+            "Philip VanDusen",
+            "Brock Mesarich | AI for Non Techies",
+            "theMITmonk"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-15T23:39:14.437Z"
+    },
+    "trend-1768522272687-0": {
+      "trend_id": "trend-1768522272687-0",
+      "trend_title": "AI Price Tracker for E-commerce",
+      "main_pain": "Недостаток надежных и эффективных инструментов для отслеживания цен на товары в e-commerce.",
+      "key_pain_points": [
+        "Проблема с отсутствием качественных AI решений для отслеживания цен, обсуждаемая в постах на Reddit.",
+        "Недостаток информации о реальных возможностях AI Price Tracker, упомянутых в комментариях к видео на YouTube.",
+        "Сложности с использованием существующих приложений для отслеживания цен, о которых говорят пользователи в сообществах."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые предприниматели",
+            "size": "500,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/Entrepreneurs"
+          },
+          {
+            "name": "Пользователи e-commerce",
+            "size": "2,000,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/ProductivityApps"
+          },
+          {
+            "name": "Инвесторы в стартапы",
+            "size": "300,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/smallstreetbets"
+          },
+          {
+            "name": "Техно-энтузиасты",
+            "size": "1,000,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "YouTube каналы о технологиях"
+          },
+          {
+            "name": "Студенты и молодые специалисты",
+            "size": "1,500,000",
+            "willingness_to_pay": "low",
+            "where_to_find": "r/IndiaReferral"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "эффективность AI в отслеживании цен",
+            "пользовательский опыт с существующими приложениями"
+          ],
+          "top_subreddits": [
+            "r/collapse",
+            "r/Entrepreneurs",
+            "r/ProductivityApps"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials",
+          "top_channels": [
+            "Jaspreet Singh – AI",
+            "Pavan Belagatti",
+            "Retailgentic"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "declining",
+          "related_topics": [
+            "AI Price Tracker",
+            "e-commerce price tracking"
+          ]
+        }
+      },
+      "sentiment_score": 0.4,
+      "market_signals": [
+        "Снижение интереса к AI Price Tracker на 97% за последние 3 месяца.",
+        "Обсуждения о недостатках существующих решений в Reddit и YouTube."
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Last Week in Collapse: December 21-27, 2025",
+              "subreddit": "collapse",
+              "score": 177,
+              "num_comments": 22,
+              "url": "https://reddit.com/r/collapse/comments/1pxpf3a/last_week_in_collapse_december_2127_2025/",
+              "created": "2025-12-28T11:41:23.000Z",
+              "selftext": "The warmest U.S. Christmas, Long COVID triggering latent infections, [Russian attacks](https://www.dw.com/en/ukraine-updates-russia-pummels-kyiv-zelenskyy-heads-to-us/live-75308039), Colorado River negotiation standstill, PFAS in the food chain, and record high gold prices with record low U.S. consumer sentiment. \n\n**Last Week in Collapse: December 21-27, 2025**\n\nThis is *Last Week in Collapse*, a weekly newsletter compiling some of the most important, timely, soul-crushing, ironic, amazing, or "
+            },
+            {
+              "title": "PREMARKET NEWS REPORT Jan 09, 2026",
+              "subreddit": "smallstreetbets",
+              "score": 41,
+              "num_comments": 4,
+              "url": "https://reddit.com/r/smallstreetbets/comments/1q82lbu/premarket_news_report_jan_09_2026/",
+              "created": "2026-01-09T08:09:26.000Z",
+              "selftext": "**1. MAJOR NEWS**\n\n* US — Equity markets are set to start with a cautious tone as traders brace for today’s December nonfarm payrolls report and a possible Supreme Court ruling on President Trump’s tariff framework, a combination viewed as the first real test of 2026’s rally (CNBC, Reuters, Yahoo Finance).\n* US — Sector rotation continues with the Dow outperforming a weaker Nasdaq as investors shift from 2025’s AI winners into defensives and value, while strategists still flag room for a **15%–2"
+            },
+            {
+              "title": "Free ideas",
+              "subreddit": "Entrepreneurs",
+              "score": 4,
+              "num_comments": 3,
+              "url": "https://reddit.com/r/Entrepreneurs/comments/1q496rj/free_ideas/",
+              "created": "2026-01-05T02:19:23.000Z",
+              "selftext": "I’m always brainstorming at night, with AI. I have a lot of ideas but there’s no way I can do all these ideas\n\nSo here’s a list of eight things I thought of and then I made a list so if anybody wants these ideas, please feel free.\n\nI come up with hundreds of ideas a year so instead of just ignoring them, I’ll start pasting them with people like them. I don’t know if it will help anybody but I hope it does.\n\n1. AI Compliance Monitor for SMBs (HIPAA / ADA / PCI)\n\nWho pays: Medical offices, dentist"
+            },
+            {
+              "title": "One app for your online products. Save items from stores. No AI, no BS. Everything happens on your device.",
+              "subreddit": "ProductivityApps",
+              "score": 3,
+              "num_comments": 4,
+              "url": "https://reddit.com/r/ProductivityApps/comments/1pw1q89/one_app_for_your_online_products_save_items_from/",
+              "created": "2025-12-26T11:00:05.000Z",
+              "selftext": "\n\nHello, Indie developer here.\n\nIf you have a lot of shopping carts laying around in different shopping sites like Amazon, Etsy, etc. you have to see this. Curato makes it easy to organize them at one place.\n\nNo more 50 tabs open in the browser, screenshots lost in the camera roll, and bookmarks we never look at again. I realized I was losing links and missing price changes because my \"wishlist\" was a mess.\n\nSo, I built Curato. It’s the universal product/item wishlist. Curato lets you save every"
+            },
+            {
+              "title": "Genuine Safe Helpful Referral Program | LetsUpgrade",
+              "subreddit": "IndiaReferral",
+              "score": 1,
+              "num_comments": 1,
+              "url": "https://reddit.com/r/IndiaReferral/comments/1q91a8o/genuine_safe_helpful_referral_program_letsupgrade/",
+              "created": "2026-01-10T10:57:21.000Z",
+              "selftext": "[and many more prices](https://preview.redd.it/z2eyol4m3icg1.png?width=897&amp;format=png&amp;auto=webp&amp;s=cac557d506ac43c1d3c372a58880c30daea7eaa4)\n\n# About LetsUpgrade\n\nLetsUpgrade is India's largest higher education learning community for students enrolled in Indian degree programs. With 1.5 million students and a 45% market share among BTech / BE students in India, LetsUpgrade EdTech offers many upskilling courses in Tech, Design, Management, Business, and Data.\n\n# About Referral Program\n"
+            }
+          ],
+          "communities": [
+            "collapse",
+            "smallstreetbets",
+            "Entrepreneurs",
+            "ProductivityApps",
+            "IndiaReferral"
+          ],
+          "engagement": 1885
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "DAY 16 AI PRICE TRACKER",
+              "channel": "Jaspreet Singh – AI",
+              "description": "Pricing mistakes usually happen quietly. This video explains how an AI workflow can scrape competitor product pages, extract ...",
+              "videoId": "3X8Q_DZ8bo8",
+              "url": "https://youtube.com/watch?v=3X8Q_DZ8bo8",
+              "publishedAt": "2025-12-23T12:56:03Z",
+              "thumbnail": "https://i.ytimg.com/vi/3X8Q_DZ8bo8/mqdefault.jpg"
+            },
+            {
+              "title": "AI Application: Real-Time Travel Price Tracker!",
+              "channel": "Pavan Belagatti",
+              "description": "In this video, we build a Real-Time Travel Price Tracker from scratch using Python, Thordata residential proxies, SingleStore, and ...",
+              "videoId": "7OgYWDw_8kA",
+              "url": "https://youtube.com/watch?v=7OgYWDw_8kA",
+              "publishedAt": "2025-12-12T07:31:13Z",
+              "thumbnail": "https://i.ytimg.com/vi/7OgYWDw_8kA/mqdefault.jpg"
+            },
+            {
+              "title": "Amazon Rufus Demo: Price Tracking and &quot;Auto Buy&quot; demo",
+              "channel": "Retailgentic",
+              "description": "Amazon's Rufus on-site AI agent continues to up Amazon's game on agentic commerce. Now you can track the price of any ...",
+              "videoId": "MkS8qilM_jA",
+              "url": "https://youtube.com/watch?v=MkS8qilM_jA",
+              "publishedAt": "2025-11-20T14:28:57Z",
+              "thumbnail": "https://i.ytimg.com/vi/MkS8qilM_jA/mqdefault.jpg"
+            },
+            {
+              "title": "Online Shopping Hack You Didn’t Know 😳 | Stop Overpaying Online! Use This Extension 🔥",
+              "channel": "Mr 3X Engineer ",
+              "description": "If you shop online — this Chrome extension is a game-changer! The BuyHatke Extension helps you compare prices across all ...",
+              "videoId": "ZVeO_unKOTo",
+              "url": "https://youtube.com/watch?v=ZVeO_unKOTo",
+              "publishedAt": "2025-10-19T15:45:27Z",
+              "thumbnail": "https://i.ytimg.com/vi/ZVeO_unKOTo/mqdefault.jpg"
+            },
+            {
+              "title": "Smart Retailers Use AI to Raise Profits—Do You?",
+              "channel": "AIS Hub",
+              "description": "If your prices aren't smart, your margins aren't either. AIS Hub's AI pricing tools help Perth retailers: Track competitors Adjust ...",
+              "videoId": "hJgv4Z0oUzs",
+              "url": "https://youtube.com/watch?v=hJgv4Z0oUzs",
+              "publishedAt": "2025-10-18T10:26:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/hJgv4Z0oUzs/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Jaspreet Singh – AI",
+            "Pavan Belagatti",
+            "Retailgentic",
+            "Mr 3X Engineer ",
+            "AIS Hub",
+            "Dhruv Rathee",
+            "Hansraj Talks",
+            "Alex Followell | AI Automation",
+            "Pop Culture Files",
+            "Aravind Suriya | Tamil Finance"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -97,
+          "related_queries": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-16T01:08:33.078Z"
+    },
+    "trend-1768521505912-0": {
+      "trend_id": "trend-1768521505912-0",
+      "trend_title": "AI-driven Marketing Automation",
+      "main_pain": "Неопределенность в выборе подходящих инструментов и стратегий для AI-driven маркетинга.",
+      "key_pain_points": [
+        "Сложности в выборе CRM для агентств, использующих AI-автоматизацию.",
+        "Опасения по поводу влияния AI на традиционные маркетинговые стратегии.",
+        "Недостаток информации о лучших академиях и курсах по обучению AI-инструментам."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Маркетологи в малом бизнесе",
+            "size": "500,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/AskMarketing"
+          },
+          {
+            "name": "Собственники стартапов",
+            "size": "300,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/WhatIfThinking"
+          },
+          {
+            "name": "Специалисты по цифровому маркетингу",
+            "size": "700,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/DigitalsMarket"
+          },
+          {
+            "name": "Студенты маркетинговых академий",
+            "size": "200,000",
+            "willingness_to_pay": "low",
+            "where_to_find": "YouTube каналы"
+          },
+          {
+            "name": "Инвесторы в AI-технологии",
+            "size": "150,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/AI_Agents"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Влияние AI на рынок труда и маркетинг.",
+            "Выбор CRM для AI-агентств."
+          ],
+          "top_subreddits": [
+            "r/AskMarketing",
+            "r/DigitalsMarket"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials/reviews",
+          "top_channels": [
+            "Xperience Ai Marketing Solutions",
+            "TechDogs",
+            "Top 3s A-Z"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": []
+        }
+      },
+      "sentiment_score": 0.5,
+      "market_signals": [
+        "Рост интереса к AI-инструментам в маркетинге.",
+        "Необходимость в обучении и адаптации к новым технологиям."
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "The ‘occupations most exposed to AI automation’ actually outperform the rest of the job market, new research reveals | Fortune",
+              "subreddit": "BetterOffline",
+              "score": 69,
+              "num_comments": 17,
+              "url": "https://reddit.com/r/BetterOffline/comments/1px9rm6/the_occupations_most_exposed_to_ai_automation/",
+              "created": "2025-12-27T21:56:38.000Z",
+              "selftext": "They think the increase in demand + pay is due to more productivity from AI since workers shift to higher value tasks (questionable). But they are bullish on AI disrupting the job market eventually as \"less workers\" are needed.\n\n&gt;\"The approximately 100 occupations most exposed to AI automation are actually outperforming the rest of the labor market in terms of job growth and real wage increases,” the Vanguard report revealed. “This suggests that current AI systems are generally enhancing work"
+            },
+            {
+              "title": "What CRM actually works best for an AI-driven automation agency? (sales flow, marketing)",
+              "subreddit": "AI_Agents",
+              "score": 4,
+              "num_comments": 10,
+              "url": "https://reddit.com/r/AI_Agents/comments/1pvetqq/what_crm_actually_works_best_for_an_aidriven/",
+              "created": "2025-12-25T14:46:45.000Z",
+              "selftext": "I’m building an agency that designs and implements **AI- and automation-based systems** for businesses. \n\nOur systems handle things like:\n\n* inbound leads\n* qualification\n* follow-ups\n* booking meetings / site visits\n* handoff to humans at defined points\n\nMost of the logic lives outside the CRM (AI, workflows, no-code tools). The CRM is mainly used as:\n\n* a structured database\n* pipeline / status tracking\n* trigger source for automations\n* Workflows etc\n\nWhat I care about in a CRM:\n\n* solid deal"
+            },
+            {
+              "title": "What if widespread AI-driven automation changes the foundations of stock market growth?",
+              "subreddit": "WhatIfThinking",
+              "score": 5,
+              "num_comments": 7,
+              "url": "https://reddit.com/r/WhatIfThinking/comments/1pyqpdk/what_if_widespread_aidriven_automation_changes/",
+              "created": "2025-12-29T16:28:36.000Z",
+              "selftext": "With the US stock market frequently reaching new highs, I’ve been thinking about a longer-term structural question.\n\nWhat if AI becomes extremely effective at what many businesses expect it to do, significantly reducing the need for large numbers of well-paid white-collar workers?\n\nAssuming that happens, how would stock market growth function over the next 5 to 10 years? Many publicly traded companies depend not only on cost efficiency, but also on large populations of consumers and investors. I"
+            },
+            {
+              "title": "How relevant is digital marketing in 2026 in the context of AI-driven consumer behavior and evolving digital platforms?",
+              "subreddit": "AskMarketing",
+              "score": 1,
+              "num_comments": 3,
+              "url": "https://reddit.com/r/AskMarketing/comments/1qed4ts/how_relevant_is_digital_marketing_in_2026_in_the/",
+              "created": "2026-01-16T11:05:02.000Z",
+              "selftext": "Digital marketing remains **highly relevant in 2026**, largely because AI-driven consumer behavior and rapidly evolving digital platforms have **strengthened**, not replaced, its importance.\n\nAI has transformed how consumers discover, evaluate, and purchase products. Personalized recommendations, predictive search, voice assistants, and conversational AI mean that consumers now expect **real-time, hyper-personalized experiences**. Digital marketing enables brands to meet these expectations by le"
+            },
+            {
+              "title": "Best Digital Marketing Academies Teaching AI Tools and Automation",
+              "subreddit": "DigitalsMarket",
+              "score": 4,
+              "num_comments": 2,
+              "url": "https://reddit.com/r/DigitalsMarket/comments/1q1w9q4/best_digital_marketing_academies_teaching_ai/",
+              "created": "2026-01-02T11:27:27.000Z",
+              "selftext": "# How AI and Automation Are Changing Digital Marketing Education\n\nDigital marketing today looks very different from what it was even five years ago. Automation platforms, AI driven analytics, predictive tools, and workflow automation are now part of everyday marketing operations. As a result, students searching for digital marketing academies are no longer asking only about SEO or ads. They are asking whether institutes teach AI tools, automation frameworks, and modern workflows.\n\nThis shift has"
+            }
+          ],
+          "communities": [
+            "BetterOffline",
+            "AI_Agents",
+            "WhatIfThinking",
+            "AskMarketing",
+            "DigitalsMarket"
+          ],
+          "engagement": 1602
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Every city has a hero… and every business has a marketing problem.",
+              "channel": "Xperience Ai Marketing Solutions",
+              "description": "When Google Ads aren't converting and LSA leads slow to a crawl, even the chief starts to worry. Budgets are burning.",
+              "videoId": "oUdE8FwBqmo",
+              "url": "https://youtube.com/watch?v=oUdE8FwBqmo",
+              "publishedAt": "2026-01-16T14:20:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/oUdE8FwBqmo/mqdefault.jpg"
+            },
+            {
+              "title": "Elizabeth Maxson-Martinet, CMO At Contentful, On AI-Driven Personalization In Marketing",
+              "channel": "TechDogs",
+              "description": "Personalization sounds simple but scaling it is where most marketing teams struggle. On this episode of TechDogs' Marketing ...",
+              "videoId": "HcQNkan59is",
+              "url": "https://youtube.com/watch?v=HcQNkan59is",
+              "publishedAt": "2026-01-16T11:59:55Z",
+              "thumbnail": "https://i.ytimg.com/vi/HcQNkan59is/mqdefault.jpg"
+            },
+            {
+              "title": "3 AI Tools That Build a $5k/mo Business (2026 Strategy)",
+              "channel": "Top 3s A-Z",
+              "description": "Stop trading time for money. ⌛ These are the Top 3 AI tools to automate your income and scale a \"one-man agency\" in 2026.",
+              "videoId": "KRO_3GmW-HE",
+              "url": "https://youtube.com/watch?v=KRO_3GmW-HE",
+              "publishedAt": "2026-01-16T11:00:38Z",
+              "thumbnail": "https://i.ytimg.com/vi/KRO_3GmW-HE/mqdefault.jpg"
+            },
+            {
+              "title": "Artificial Intelligence: The New Force Reshaping Our World!",
+              "channel": "Vlad Sapozhnykov – Global Growth Marketing",
+              "description": "Artificial Intelligence Please help me reach my first 1000 subscribers on my channel! @sapozhnykov_en - subscribe now!",
+              "videoId": "35MjvwIm1nA",
+              "url": "https://youtube.com/watch?v=35MjvwIm1nA",
+              "publishedAt": "2026-01-16T05:00:06Z",
+              "thumbnail": "https://i.ytimg.com/vi/35MjvwIm1nA/mqdefault.jpg"
+            },
+            {
+              "title": "Unlock Sales: AI-Powered Triggers That 10X Your Marketing ROI #shorts",
+              "channel": "NextSkill Lab",
+              "description": "Discover how AI identifies key behavioral triggers to nurture potential customers. Optimize ad spend and boost conversions with ...",
+              "videoId": "fYJ_H7Wj4Tg",
+              "url": "https://youtube.com/watch?v=fYJ_H7Wj4Tg",
+              "publishedAt": "2026-01-16T02:56:31Z",
+              "thumbnail": "https://i.ytimg.com/vi/fYJ_H7Wj4Tg/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Xperience Ai Marketing Solutions",
+            "TechDogs",
+            "Top 3s A-Z",
+            "Vlad Sapozhnykov – Global Growth Marketing",
+            "NextSkill Lab",
+            "Jason Hunt",
+            "Usman Saeed",
+            "Nazmul Islam",
+            "LamaxAI",
+            "Wild Grace Studios"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": [],
+          "interest_timeline": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-16T15:15:07.926Z"
+    },
+    "trend-1768522272687-1": {
+      "trend_id": "trend-1768522272687-1",
+      "trend_title": "AI-Driven Budgeting Assistant for Freelancers",
+      "main_pain": "Недостаток доступных и эффективных инструментов для управления бюджетом среди фрилансеров.",
+      "key_pain_points": [
+        "Высокая стоимость существующих решений для бюджетирования.",
+        "Отсутствие специализированных инструментов для фрилансеров.",
+        "Нехватка информации о том, как правильно управлять финансами в условиях фриланса."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Фрилансеры в IT",
+            "size": "1.5 миллиона",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/DeveloperJobs, r/hiring"
+          },
+          {
+            "name": "Фрилансеры в дизайне",
+            "size": "1 миллион",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/VirtualAssistant4Hire"
+          },
+          {
+            "name": "Фрилансеры в маркетинге",
+            "size": "800 тысяч",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/Jobs4Bitcoins"
+          },
+          {
+            "name": "Студенты-фрилансеры",
+            "size": "500 тысяч",
+            "willingness_to_pay": "low",
+            "where_to_find": "r/AugmentCodeAI"
+          },
+          {
+            "name": "Малые предприниматели",
+            "size": "2 миллиона",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/hiring"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "обсуждение цен на инструменты",
+            "поиск фрилансеров для проектов"
+          ],
+          "top_subreddits": [
+            "r/DeveloperJobs",
+            "r/hiring",
+            "r/VirtualAssistant4Hire"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials",
+          "top_channels": []
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": []
+        }
+      },
+      "sentiment_score": 0.4,
+      "market_signals": [
+        "потребность в более доступных инструментах для управления финансами",
+        "рост интереса к фрилансу"
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "EACH UPVOTE COUNTS AS PETITION FOR PRICING REVIEW",
+              "subreddit": "AugmentCodeAI",
+              "score": 163,
+              "num_comments": 64,
+              "url": "https://reddit.com/r/AugmentCodeAI/comments/1pqtenx/each_upvote_counts_as_petition_for_pricing_review/",
+              "created": "2025-12-19T19:04:17.000Z",
+              "selftext": "( I NOTICED THERE IS ACTUALLY NO RUNNING AWAY FROM AUGMENT CODE DONT CRUCIFY ME)\n\nI’m posting this as a **community petition** to Augment Code 👇  \nIf you’ve used Augment, you already know it’s powerful but pricing is quickly becoming the blocker for wider adoption, especially for **indie devs, startups, and builders outside Big Tech budgets**.\n\n# 🚀 Proposed Community-Driven Pricing Model\n\nThis is a **balanced, sustainable, and competitive** structure that benefits both users *and* Augment:\n\n**"
+            },
+            {
+              "title": "[for hire] Build your desired website/app with me. Front-End/Back-End/FullStack Dev available For Hire. End to End, Secure, Custom Solutions",
+              "subreddit": "hiring",
+              "score": 2,
+              "num_comments": 3,
+              "url": "https://reddit.com/r/hiring/comments/1qbr101/for_hire_build_your_desired_websiteapp_with_me/",
+              "created": "2026-01-13T13:16:24.000Z",
+              "selftext": "^(Intentionally long.)\n\nFull-Stack Developer (Design and Code) with End-to-End expertise &amp; services, fully functional, scalable, custom solutions.\nRemote Services Provider. (15+ Years Freelance Experience, 5 Years in /r). Custom solutions for Websites, Shopping Carts, Web/Mobile Apps (IOS/Android), Desktop Apps, Web3, Web APIs, AI, Automations, Software/Power Tools. I've been hands-on since Web 1.5, I combine OG disciplines with modern software engineering to deliver solutions that bring the"
+            },
+            {
+              "title": "[for hire] 2026 Q1 Active and available For Hire! Front-End/Back-End Development/FullStackEng (Website/Shop/Mobile App/Custom Secure Software Solutions)",
+              "subreddit": "DeveloperJobs",
+              "score": 2,
+              "num_comments": 2,
+              "url": "https://reddit.com/r/DeveloperJobs/comments/1q8a8jt/for_hire_2026_q1_active_and_available_for_hire/",
+              "created": "2026-01-09T14:50:22.000Z",
+              "selftext": "^(Intentionally long.)\n\nFull-Stack Developer (Design and Code) with End-to-End expertise &amp; services, fully functional, scalable, custom solutions.\nRemote Services Provider. (15+ Years Freelance Experience, 5 Years in /r). Custom solutions for Websites, Shopping Carts, Web/Mobile Apps (IOS/Android), Desktop Apps, Web3, Web APIs, AI, Automations, Software/Power Tools. I've been hands-on since Web 1.5, I combine OG disciplines with modern software engineering to deliver solutions that bring the"
+            },
+            {
+              "title": "[for hire] 2026 Q1 Active and available For Hire! Front-End/Back-End Development/FullStackEng (Website/Shop/Mobile App/Custom Secure Software Solutions)",
+              "subreddit": "Jobs4Bitcoins",
+              "score": 1,
+              "num_comments": 3,
+              "url": "https://reddit.com/r/Jobs4Bitcoins/comments/1q1xviy/for_hire_2026_q1_active_and_available_for_hire/",
+              "created": "2026-01-02T12:54:07.000Z",
+              "selftext": "^(Intentionally long.)\n\nFull-Stack Developer with End-to-End Expertise/Scalable/Custom Solutions Remote Services (15+ Years Freelance Experience, 5 Years in /R)\n\nCustom solutions for Websites, Shopping Carts, Web/Mobile Apps (IOS/Android), Desktop Apps, Web3, APIs, AI, Automations, Software/Power Tools\n\nI've been hands-on, adopting since the Web 1.5, I combine og disciplines with modern software engineering to deliver solutions that bring the best of both worlds.\n\nBlatant scraping, copying, spam"
+            },
+            {
+              "title": "[For Hire] Virtual Assistant/Technical Build your desired website/app with me. For Hire Front-End/Back-End/FullStack Dev. Design, Code, Deploy. Custom, Secure, End to End Solutions. (Remote/Flexible TimeZone)",
+              "subreddit": "VirtualAssistant4Hire",
+              "score": 1,
+              "num_comments": 1,
+              "url": "https://reddit.com/r/VirtualAssistant4Hire/comments/1qcn7za/for_hire_virtual_assistanttechnical_build_your/",
+              "created": "2026-01-14T13:26:45.000Z",
+              "selftext": "^(Intentionally long.)\n\nFull-Stack Developer with End-to-End Expertise/Scalable/Custom Solutions Remote Services (15+ Years Freelance Experience, 5 Years in /R)\n\nCustom solutions for Websites, Shopping Carts, Web/Mobile Apps (IOS/Android), Desktop Apps, Web3, APIs, AI, Automations, Software/Power Tools\n\nI've been hands-on, adopting since the Web 1.5, I combine og disciplines with modern software engineering to deliver solutions that bring the best of both worlds.\n\nBlatant scraping, copying, spam"
+            }
+          ],
+          "communities": [
+            "AugmentCodeAI",
+            "hiring",
+            "DeveloperJobs",
+            "Jobs4Bitcoins",
+            "VirtualAssistant4Hire"
+          ],
+          "engagement": 292
+        },
+        "youtube": {
+          "videos": [],
+          "channels": []
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": []
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-16T01:09:43.537Z"
+    },
+    "trend-1768522272687-3": {
+      "trend_id": "trend-1768522272687-3",
+      "trend_title": "AI Content Optimization Tool for Bloggers",
+      "main_pain": "Недостаток качественных инструментов для оптимизации контента, которые действительно работают и приносят результаты.",
+      "key_pain_points": [
+        "Проблемы с поиском надежных AI инструментов для создания контента, которые соответствуют SEO требованиям.",
+        "Сложности в понимании, какие инструменты действительно эффективны для блогеров.",
+        "Недостаток информации о реальных результатах использования AI инструментов для контент-маркетинга."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Блогеры-начинающие",
+            "size": "500,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/startupcontentlab, r/howtoblog"
+          },
+          {
+            "name": "SEO-специалисты",
+            "size": "300,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/SaaS, r/SEO"
+          },
+          {
+            "name": "Маркетологи",
+            "size": "400,000",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/startup"
+          },
+          {
+            "name": "Предприниматели в сфере стартапов",
+            "size": "200,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/nairobitechies"
+          },
+          {
+            "name": "Контент-менеджеры",
+            "size": "250,000",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/macapps"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Поиск партнеров для разработки AI инструментов",
+            "Состояние AI контент-маркетинга в 2026 году"
+          ],
+          "top_subreddits": [
+            "r/nairobitechies",
+            "r/startupcontentlab"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials",
+          "top_channels": [
+            "ShubOps",
+            "HackzWithAI",
+            "nvaramedia"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "declining",
+          "related_topics": [
+            "AI content tools",
+            "SEO optimization"
+          ]
+        }
+      },
+      "sentiment_score": 0.4,
+      "market_signals": [
+        "Снижение интереса к AI инструментам для контента по данным Google Trends.",
+        "Активные обсуждения на Reddit о недостатках существующих решений."
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Looking for Dev Partners to Build an AI Content Generator SaaS with SEO Tools!",
+              "subreddit": "nairobitechies",
+              "score": 9,
+              "num_comments": 10,
+              "url": "https://reddit.com/r/nairobitechies/comments/1pri42n/looking_for_dev_partners_to_build_an_ai_content/",
+              "created": "2025-12-20T16:19:16.000Z",
+              "selftext": "Just realized many websites have dormant blogs or non at all and some rarely post on socials. Coz of This;\n\nI'm in the early stages of developing a powerful SaaS platform that leverages AI (like GPT-4o, Claude, Gemini) to generate high-quality articles, blogs, images, videos, and more – all with built-in SEO optimization, WordPress integration, and multi-language support. \n\nThink seamless content creation for marketers, bloggers, and agencies, complete with payment gateways, admin dashboards, an"
+            },
+            {
+              "title": "The State of AI Content Marketing in 2026: What's Actually Working for Startups (and What's Just BS)",
+              "subreddit": "startupcontentlab",
+              "score": 1,
+              "num_comments": 2,
+              "url": "https://reddit.com/r/startupcontentlab/comments/1q4vww2/the_state_of_ai_content_marketing_in_2026_whats/",
+              "created": "2026-01-05T19:47:00.000Z",
+              "selftext": "Welcome to r/startupcontentlab 👋. Figured I'd kick things off with a data dump on what's actually happening in AI-powered content marketing right now — and what founders should be paying attention to.\n\nI've spent the last year obsessively tracking this stuff while building our own content engine. We went from \\~1,000 Google impressions/month to 40,000+/day. \n\nA lot of what I thought I knew was wrong. Here's what I've learned.\n\n\n\n**Why content marketing still matters more than most founders thin"
+            },
+            {
+              "title": "I'm on the NeoWriting.ai team – We built an AI that pumps out full SEO-optimized blog posts (with smart backlinks) in under 3 minutes... and it's crushing our content game",
+              "subreddit": "SaaS",
+              "score": 1,
+              "num_comments": 4,
+              "url": "https://reddit.com/r/SaaS/comments/1pozyfv/im_on_the_neowritingai_team_we_built_an_ai_that/",
+              "created": "2025-12-17T15:50:21.000Z",
+              "selftext": "Hey r/SaaS,\n\nI'm part of the small team behind [NeoWriting.ai](http://NeoWriting.ai), an AI-powered blogging tool we've been quietly building and using ourselves to scale content across multiple sites.\n\nThe problem we were solving: Creating high-quality, Google-friendly blog posts at scale is a massive time sink for bloggers, affiliates, and agencies. Hiring writers costs a fortune, and most AI tools spit out short, generic fluff that needs heavy editing – or worse, gets penalized.\n\nSo we focuse"
+            },
+            {
+              "title": "How to start a blog",
+              "subreddit": "startup",
+              "score": 44,
+              "num_comments": 55,
+              "url": "https://reddit.com/r/startup/comments/1pyg6z8/how_to_start_a_blog/",
+              "created": "2025-12-29T07:42:09.000Z",
+              "selftext": "Blogging has changed a lot in the last decade, but the core idea remains the same. You publish helpful content that solves real problems and build trust with readers over time. What has changed is how blogs are created, optimized, and grown.\n\nThis guide keeps modern blogging realities in mind and walks you through starting a blog the right way.\n\nFor anyone starting a blog, the most affordable and beginner friendly hosting option I came across was Hostinger. I am sharing a discount link that offe"
+            },
+            {
+              "title": "Image Workflow with Cleanshot X, Clop, Clotski, NameQuick and Hazel",
+              "subreddit": "macapps",
+              "score": 22,
+              "num_comments": 5,
+              "url": "https://reddit.com/r/macapps/comments/1qa0fkc/image_workflow_with_cleanshot_x_clop_clotski/",
+              "created": "2026-01-11T14:17:44.000Z",
+              "selftext": "[Image Workflow](https://preview.redd.it/2cl1gru3bqcg1.png?width=1536&amp;format=png&amp;auto=webp&amp;s=043d21ca41b8d8374a2cff9f7da4d48a37be2512)\n\nApps gain new capabilities through updates. Our preferences change, task requirements shift, and workflows evolve right along with them. It pays to periodically reevaluate the tools and methods we rely on. As a writer and blogger, I go through a surprising number of images every day. My goal is simple: images should be optimized for file size, rename"
+            }
+          ],
+          "communities": [
+            "nairobitechies",
+            "startupcontentlab",
+            "SaaS",
+            "startup",
+            "macapps"
+          ],
+          "engagement": 202
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "This AI Tool Builds Your Website, Blog &amp; SEO Automatically",
+              "channel": "ShubOps",
+              "description": "In this video, I show you how to build a complete website, write blog posts, manage SEO, and plan your content calendar using ...",
+              "videoId": "RDqj4DqPkXA",
+              "url": "https://youtube.com/watch?v=RDqj4DqPkXA",
+              "publishedAt": "2026-01-09T13:01:19Z",
+              "thumbnail": "https://i.ytimg.com/vi/RDqj4DqPkXA/mqdefault.jpg"
+            },
+            {
+              "title": "Check Out This Free AI Tool That Boosts Your Blog!",
+              "channel": "HackzWithAI",
+              "description": "AI tools that save time & make money Daily short-form content Check my profile for free tools! #AI #AItools #Shorts ...",
+              "videoId": "WS6Mx5SAMgI",
+              "url": "https://youtube.com/watch?v=WS6Mx5SAMgI",
+              "publishedAt": "2026-01-08T21:35:16Z",
+              "thumbnail": "https://i.ytimg.com/vi/WS6Mx5SAMgI/mqdefault.jpg"
+            },
+            {
+              "title": "5 Best AI Tools for Blog Writing in 2026 | Write Faster, Rank Better 🚀. #blogwriting #aitools",
+              "channel": "nvaramedia",
+              "description": "Want to write high-quality blogs faster and smarter? In this video, I share the 5 best AI tools for blog writing that help with content ...",
+              "videoId": "YwFWUJ1kqyc",
+              "url": "https://youtube.com/watch?v=YwFWUJ1kqyc",
+              "publishedAt": "2026-01-06T15:34:13Z",
+              "thumbnail": "https://i.ytimg.com/vi/YwFWUJ1kqyc/mqdefault.jpg"
+            },
+            {
+              "title": "AI Content Creation: Generate Blogs Instantly! #shorts",
+              "channel": "Agrici Daniel",
+              "description": "This tool finds trending topics by scraping URLs and analyzing online trends. It then inserts relevant topics from 7 perspectives ...",
+              "videoId": "QYoJpdruwS4",
+              "url": "https://youtube.com/watch?v=QYoJpdruwS4",
+              "publishedAt": "2026-01-04T08:58:31Z",
+              "thumbnail": "https://i.ytimg.com/vi/QYoJpdruwS4/mqdefault.jpg"
+            },
+            {
+              "title": "Best Content Analysis Tools for SEO | Fix Low Rankings, Weak Content &amp; Traffic Drops",
+              "channel": "Faheem Bhatti SEO",
+              "description": "Are your blog posts not ranking even after publishing high-quality content? Is your website getting impressions but no clicks, ...",
+              "videoId": "uLirK1e_DY8",
+              "url": "https://youtube.com/watch?v=uLirK1e_DY8",
+              "publishedAt": "2026-01-01T14:01:28Z",
+              "thumbnail": "https://i.ytimg.com/vi/uLirK1e_DY8/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "ShubOps",
+            "HackzWithAI",
+            "nvaramedia",
+            "Agrici Daniel",
+            "Faheem Bhatti SEO",
+            "digitalsubhash11",
+            "Vsesvit AI universe ",
+            "Helpdesk Pro",
+            "NextBlog",
+            "Lahore IDM | Digital Marketing & AI Training"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -50,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Jan 5, 2026",
+              "value": 24
+            },
+            {
+              "date": "Jan 6, 2026",
+              "value": 31
+            },
+            {
+              "date": "Jan 7, 2026",
+              "value": 28
+            },
+            {
+              "date": "Jan 8, 2026",
+              "value": 23
+            },
+            {
+              "date": "Jan 9, 2026",
+              "value": 29
+            },
+            {
+              "date": "Jan 10, 2026",
+              "value": 29
+            },
+            {
+              "date": "Jan 11, 2026",
+              "value": 18
+            },
+            {
+              "date": "Jan 12, 2026",
+              "value": 20
+            },
+            {
+              "date": "Jan 13, 2026",
+              "value": 28
+            },
+            {
+              "date": "Jan 14, 2026",
+              "value": 23
+            },
+            {
+              "date": "Jan 15, 2026",
+              "value": 30
+            },
+            {
+              "date": "Jan 16, 2026",
+              "value": 27
+            }
+          ]
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-16T15:14:11.305Z"
+    },
+    "trend-1768576578827-0": {
+      "trend_id": "trend-1768576578827-0",
+      "trend_title": "AI-Powered Telemedicine Scheduling Assistant",
+      "main_pain": "Недостаток эффективных инструментов для автоматизации записи на прием в телемедицине",
+      "key_pain_points": [
+        "Сложности в интеграции AI-решений в существующие системы здравоохранения (обсуждение в r/IndiaTechnology)",
+        "Проблемы с пользовательским опытом и интерфейсом AI-ассистентов для записи на прием (комментарии к видео на YouTube)",
+        "Необходимость в обучении персонала для работы с новыми технологиями (обсуждение в r/jobhuntify)"
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Медицинские учреждения",
+            "size": "5000+",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/IndiaTechnology, r/developers"
+          },
+          {
+            "name": "Разработчики программного обеспечения",
+            "size": "10000+",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/developers, r/n8n"
+          },
+          {
+            "name": "Специалисты по телемедицине",
+            "size": "2000+",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/jobhuntify"
+          },
+          {
+            "name": "Пациенты, использующие телемедицину",
+            "size": "15000+",
+            "willingness_to_pay": "low",
+            "where_to_find": "YouTube комментарии"
+          },
+          {
+            "name": "Инвесторы в технологии здравоохранения",
+            "size": "500+",
+            "willingness_to_pay": "high",
+            "where_to_find": "LinkedIn, специализированные форумы"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Обсуждение интеграции AI в телемедицину",
+            "Проблемы с пользовательским интерфейсом AI-ассистентов"
+          ],
+          "top_subreddits": [
+            "r/developers",
+            "r/jobhuntify",
+            "r/IndiaTechnology"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials",
+          "top_channels": [
+            "Rohit Dabra",
+            "Staffingly, Inc"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": []
+        }
+      },
+      "sentiment_score": 0.5,
+      "market_signals": [
+        "Увеличение интереса к AI-решениям в здравоохранении",
+        "Нехватка готовых решений для автоматизации процессов в телемедицине"
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "7 Best Healthcare App Development Companies for Telemedicine Solutions",
+              "subreddit": "developers",
+              "score": 2,
+              "num_comments": 5,
+              "url": "https://reddit.com/r/developers/comments/1pzf7im/7_best_healthcare_app_development_companies_for/",
+              "created": "2025-12-30T10:55:51.000Z",
+              "selftext": "The demand for telemedicine solutions has skyrocketed across the USA and globally, driven by patient expectations for remote care, convenience, and cost-effective medical services. Selecting the right healthcare app development partner is crucial for delivering secure, user-friendly telemedicine platforms that comply with regulatory standards like HIPAA.\n\nBelow is a curated list of the 7 best healthcare app development companies for telemedicine solutions, helping hospitals, clinics, and startup"
+            },
+            {
+              "title": "Remote Job - HCA Healthcare - Lead Data Scientist",
+              "subreddit": "jobhuntify",
+              "score": 2,
+              "num_comments": 0,
+              "url": "https://reddit.com/r/jobhuntify/comments/1ppysxy/remote_job_hca_healthcare_lead_data_scientist/",
+              "created": "2025-12-18T18:51:23.000Z",
+              "selftext": "🧑‍💻 Level: lead\n\n📌 Location: remote\n\n🌆 City: Nashville, US\n\n🗓 Type: fullTime\n\n💵 Salary: 0k - 0k USD (annual)\n\nDescription: Cookie Policy\n_chevron_left_ Back to Search Results\n**\n# Lead Data Scientist\n_star_rate_ New **\nWork from Home \n_location_on_ Nashville, TN, United States \n_schedule_ Full-time • Work From Home \n_business_center_ Information Technology _find_in_page_ Job ID: 4055636 \n_share_ Share _bookmark_border_ Save Job _bookmark_ Unsave Job\n**Description**\n##### Introduction\nDo yo"
+            },
+            {
+              "title": "Razer is releasing an AI anime girl assistant for your desk that gives gaming and life tips, Powered by xAI's Grok, it assists with tasks like scheduling, spreadsheet analysis, gaming coaching",
+              "subreddit": "Indiangamers",
+              "score": 0,
+              "num_comments": 9,
+              "url": "https://reddit.com/r/Indiangamers/comments/1q67a8t/razer_is_releasing_an_ai_anime_girl_assistant_for/",
+              "created": "2026-01-07T05:47:54.000Z",
+              "selftext": ""
+            },
+            {
+              "title": "Razer is releasing an AI anime girl assistant for your desk that gives gaming and life tips, Powered by xAI's Grok, it assists with tasks like scheduling, spreadsheet analysis, gaming coaching",
+              "subreddit": "IndiaTechnology",
+              "score": 3,
+              "num_comments": 4,
+              "url": "https://reddit.com/r/IndiaTechnology/comments/1q679so/razer_is_releasing_an_ai_anime_girl_assistant_for/",
+              "created": "2026-01-07T05:47:15.000Z",
+              "selftext": ""
+            },
+            {
+              "title": "2 Months into n8n: Built an AI-Powered Telegram Assistant to fix my forgetful brain",
+              "subreddit": "n8n",
+              "score": 2,
+              "num_comments": 3,
+              "url": "https://reddit.com/r/n8n/comments/1q77trg/2_months_into_n8n_built_an_aipowered_telegram/",
+              "created": "2026-01-08T09:54:43.000Z",
+              "selftext": "https://preview.redd.it/cumkqk93l3cg1.jpg?width=1920&amp;format=pjpg&amp;auto=webp&amp;s=a5a4097109e7915abb91904474b82ae71ef336d5\n\nhttps://preview.redd.it/agbjtif5l3cg1.jpg?width=1920&amp;format=pjpg&amp;auto=webp&amp;s=27b7a3e8cf9a091ffc6abcdbcbdcb6945834261c\n\nhttps://preview.redd.it/ziqz4if5l3cg1.jpg?width=1920&amp;format=pjpg&amp;auto=webp&amp;s=005a6ce1fec336bb9c82f6940520fd0b330750e9\n\n**Title: 2 Months into n8n: Built an AI-Powered Telegram Assistant to fix my forgetful brain** \n\nI’ve been "
+            }
+          ],
+          "communities": [
+            "developers",
+            "jobhuntify",
+            "Indiangamers",
+            "IndiaTechnology",
+            "n8n"
+          ],
+          "engagement": 2455
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Build an AI-Powered Healthcare Assistant on WhatsApp | n8n Multi Agent Workflow + Demo",
+              "channel": "Rohit Dabra",
+              "description": "Build a powerful AI-driven Healthcare Assistant using n8n + WhatsApp + Google Sheets — automate appointment scheduling, ...",
+              "videoId": "jtq8TG8qhc0",
+              "url": "https://youtube.com/watch?v=jtq8TG8qhc0",
+              "publishedAt": "2025-09-14T04:30:38Z",
+              "thumbnail": "https://i.ytimg.com/vi/jtq8TG8qhc0/mqdefault.jpg"
+            },
+            {
+              "title": "How Ai Is Transforming Small Healthcare Practices",
+              "channel": "Staffingly, Inc",
+              "description": "How Ai Is Transforming Small Healthcare Practices Read full Article ...",
+              "videoId": "TxfzNj3-gDo",
+              "url": "https://youtube.com/watch?v=TxfzNj3-gDo",
+              "publishedAt": "2025-05-30T20:30:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/TxfzNj3-gDo/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Rohit Dabra",
+            "Staffingly, Inc"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Jan 5, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 6, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 7, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 8, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 9, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 10, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 11, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 12, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 13, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 14, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 15, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 16, 2026",
+              "value": "0"
+            }
+          ]
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-16T15:16:57.837Z"
+    },
+    "trend-1768582252127-4": {
+      "trend_id": "trend-1768582252127-4",
+      "trend_title": "AI-Enhanced Mental Health Companion App",
+      "main_pain": "Недостаток доступных и эффективных решений для поддержки психического здоровья с использованием ИИ.",
+      "key_pain_points": [
+        "Проблема недостатка доверия к ИИ-решениям для психического здоровья, обсуждаемая в Reddit.",
+        "Необходимость в более персонализированных подходах к психическому здоровью, упомянутая в комментариях к видео на YouTube.",
+        "Ограниченная доступность информации о лучших приложениях и их эффективности, обсуждаемая в сообществах Reddit."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Студенты",
+            "size": "15 миллионов",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/College, r/StudentLife"
+          },
+          {
+            "name": "Молодые профессионалы",
+            "size": "20 миллионов",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/Entrepreneur, r/GetMotivated"
+          },
+          {
+            "name": "Люди с хроническим стрессом",
+            "size": "10 миллионов",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/Anxiety, r/mentalhealth"
+          },
+          {
+            "name": "Родители",
+            "size": "25 миллионов",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/Parenting, r/Mommit"
+          },
+          {
+            "name": "Пользователи социальных сетей",
+            "size": "50 миллионов",
+            "willingness_to_pay": "low",
+            "where_to_find": "Instagram, TikTok"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "доверие к ИИ в психическом здоровье",
+            "персонализированные решения"
+          ],
+          "top_subreddits": [
+            "r/mentalhealth",
+            "r/technology"
+          ]
+        },
+        "youtube": {
+          "content_type": "tutorials/reviews",
+          "top_channels": [
+            "Caspia Wellness",
+            "New Tech Insights"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "stable",
+          "related_topics": [
+            "AI mental health apps",
+            "digital therapy"
+          ]
+        }
+      },
+      "sentiment_score": 0.6,
+      "market_signals": [
+        "Увеличение обсуждений о психическом здоровье в контексте технологий.",
+        "Рост интереса к ИИ-решениям для улучшения качества жизни."
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Top 10 AI Therapy Chatbot Development Companies Revolutionizing Mental Wellness",
+              "subreddit": "Best_Companies_USA",
+              "score": 1,
+              "num_comments": 1,
+              "url": "https://reddit.com/r/Best_Companies_USA/comments/1q78tk2/top_10_ai_therapy_chatbot_development_companies/",
+              "created": "2026-01-08T10:55:21.000Z",
+              "selftext": "The year 2026 marks a significant milestone in the evolution of AI Therapy Chatbot Development, reshaping how individuals access emotional and psychological support A report done by Fortune Business Insights in 2025 states that the global mental health app market, projected to surpass $21.9 billion by 2026, will see nearly 35% growth because of AI-driven therapy and wellness platforms.\n\nThe rise in the adoption of AI-powered conversational therapy revolutionized conventional counseling models. P"
+            },
+            {
+              "title": "The Universal Diamond Standard Story Extracted from Conversation History",
+              "subreddit": "Synthsara",
+              "score": 1,
+              "num_comments": 0,
+              "url": "https://reddit.com/r/Synthsara/comments/1q5knze/the_universal_diamond_standard_story_extracted/",
+              "created": "2026-01-06T14:52:34.000Z",
+              "selftext": "\nAnalysis Date: 2025-06-30 02:48 Total Story Conversations: 20\n\nLuminate Group Overview\nDate: 2025-06-01 09:52\n\nAssistant: Luminate is a global philanthropic organization founded in 2018 by Pierre and Pam Omidyar, emerging from the Omidyar Network's Governance &amp; Citizen Engagement initiative. Its mission is to ensure that everyone—especially those who are underrepresented—has the information, rights, and power to influence decisions that affect their lives citeturn0search0.\n\n🌍 Missi"
+            },
+            {
+              "title": "Happy New Year, and Welcome 2026!",
+              "subreddit": "evaaihealth",
+              "score": 1,
+              "num_comments": 0,
+              "url": "https://reddit.com/r/evaaihealth/comments/1q0puwk/happy_new_year_and_welcome_2026/",
+              "created": "2025-12-31T23:06:16.000Z",
+              "selftext": "While calendars turn over and fireworks light up the sky, a fresh year doesn't necessarily wipe away the \"noisy\" feeling that many of us carry inside. If you're still feeling mentally cluttered despite the symbolism of a new beginning, know that this is a completely normal experience.\n\nA New Way to Find Your Quiet Space\n\nAcknowledging the continuous journey of self-improvement, we're excited to share that EvaAI is now accessible directly from your browser. While traditionally available as a down"
+            },
+            {
+              "title": "Influencer after killing somebody while livestreaming while driving: again and told viewers: “My Cash App up there if y’all wanna support while I’m on mental leave… if y’all wanna find it y’all heart, y’all wanna support, my Cash App right there.”",
+              "subreddit": "EntitledPeople",
+              "score": 4978,
+              "num_comments": 165,
+              "url": "https://reddit.com/r/EntitledPeople/comments/1pvrbye/influencer_after_killing_somebody_while/",
+              "created": "2025-12-26T00:50:07.000Z",
+              "selftext": "Influencer tea_time_3 was livestreaming herself while driving, 8 year old child in yhe back seat.\n\nWhile livestreaming a loud thud was heard, with her saying \"fk, I just hit somebody\". The child is heard on the stream asking \"what happened?\" then the stream abruptly ends. (There are a couple of slightly different descriptions but the general facts are consistent.)\n\nThe person she hit was a 59 year old man walking home from his shift at a local grocery store. He was crossing a road in Zion, IL wi"
+            },
+            {
+              "title": "Im letting go, this is better for my mental health",
+              "subreddit": "CharacterAI",
+              "score": 2636,
+              "num_comments": 115,
+              "url": "https://reddit.com/r/CharacterAI/comments/1puwv23/im_letting_go_this_is_better_for_my_mental_health/",
+              "created": "2025-12-24T20:42:20.000Z",
+              "selftext": "While I had a lot of fun, it was becoming increasingly clear to me that it was just no good for me. It always tended to just make me feel worse alongside my ever increasing anti Ai stance that has just made me stop loving this app. This is not me trying to tell y’all to quit but this is my formal goodbye"
+            }
+          ],
+          "communities": [
+            "Best_Companies_USA",
+            "Synthsara",
+            "evaaihealth",
+            "EntitledPeople",
+            "CharacterAI"
+          ],
+          "engagement": 37222
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Companion Connect: An AI-Enhanced Digital Platform for Reducing Student Loneliness and Promoting",
+              "channel": "Computer Science & IT Conference Proceedings",
+              "description": "Companion Connect: An AI-Enhanced Digital Platform for Reducing Student Loneliness and Promoting Mental Well-Being in ...",
+              "videoId": "gJrNdStHjr0",
+              "url": "https://youtube.com/watch?v=gJrNdStHjr0",
+              "publishedAt": "2025-10-28T06:18:56Z",
+              "thumbnail": "https://i.ytimg.com/vi/gJrNdStHjr0/mqdefault.jpg"
+            },
+            {
+              "title": "The Tiny Trick That Can Change Your Entire Day (And Life)",
+              "channel": "Caspia Wellness",
+              "description": "Discover how a small shift in mindset can boost your mental health and motivation instantly. Download Caspia, your AI Mental ...",
+              "videoId": "5jdqrmPKhN4",
+              "url": "https://youtube.com/watch?v=5jdqrmPKhN4",
+              "publishedAt": "2025-08-09T15:38:16Z",
+              "thumbnail": "https://i.ytimg.com/vi/5jdqrmPKhN4/mqdefault.jpg"
+            },
+            {
+              "title": "The Science Behind Small Wins and Your Mental Health",
+              "channel": "Caspia Wellness",
+              "description": "Discover how celebrating tiny victories can rewire your brain for happiness and success. Download Caspia, your AI Mental Health ...",
+              "videoId": "GPoUQa6FCw4",
+              "url": "https://youtube.com/watch?v=GPoUQa6FCw4",
+              "publishedAt": "2025-08-05T15:38:28Z",
+              "thumbnail": "https://i.ytimg.com/vi/GPoUQa6FCw4/mqdefault.jpg"
+            },
+            {
+              "title": "The Future of AI-Enhanced Mental Health Apps",
+              "channel": "New Tech Insights",
+              "description": "Discover how AI is reshaping mental health care through innovative apps designed to support well-being. Tune in to explore the ...",
+              "videoId": "T6-bmY8Bk38",
+              "url": "https://youtube.com/watch?v=T6-bmY8Bk38",
+              "publishedAt": "2025-07-30T00:00:35Z",
+              "thumbnail": "https://i.ytimg.com/vi/T6-bmY8Bk38/mqdefault.jpg"
+            },
+            {
+              "title": "Quiz Which AI companion app is designed for mental wellness",
+              "channel": "Raghav lifestyle",
+              "description": "AI for Learning, Healing & Creating! From smarter classrooms to AI-composed melodies and mental health support—discover how ...",
+              "videoId": "G9-6R8DK76E",
+              "url": "https://youtube.com/watch?v=G9-6R8DK76E",
+              "publishedAt": "2025-05-12T16:08:15Z",
+              "thumbnail": "https://i.ytimg.com/vi/G9-6R8DK76E/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Computer Science & IT Conference Proceedings",
+            "Caspia Wellness",
+            "New Tech Insights",
+            "Raghav lifestyle"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 0,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Jan 5, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 6, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 7, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 8, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 9, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 10, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 11, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 12, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 13, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 14, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 15, 2026",
+              "value": "0"
+            },
+            {
+              "date": "Jan 16, 2026",
+              "value": "0"
+            }
+          ]
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-16T19:28:55.801Z"
+    },
+    "trend-1768604425015-0": {
+      "trend_id": "trend-1768604425015-0",
+      "trend_title": "AI Cryptocurrency Trading Bot",
+      "main_pain": "Недостаток доверия к AI-торговым ботам и их эффективности",
+      "key_pain_points": [
+        "Проблемы с надежностью и безопасностью AI-торговых ботов, обсуждаемые в Reddit",
+        "Недостаток прозрачности в алгоритмах и результатах, упомянутых в комментариях YouTube",
+        "Сложности в понимании работы ботов и их настройке, обсуждаемые в сообществах"
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Криптоинвесторы",
+            "size": "5 миллионов",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/CryptoMoonShots, r/quantfinance"
+          },
+          {
+            "name": "Трейдеры-новички",
+            "size": "3 миллиона",
+            "willingness_to_pay": "medium",
+            "where_to_find": "YouTube каналы по обучению трейдингу"
+          },
+          {
+            "name": "Опытные трейдеры",
+            "size": "1.5 миллиона",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/RWATimes, r/Crypto_Currency_News"
+          },
+          {
+            "name": "Инвесторы в AI-технологии",
+            "size": "2 миллиона",
+            "willingness_to_pay": "medium",
+            "where_to_find": "YouTube каналы о технологиях"
+          },
+          {
+            "name": "Пользователи Telegram",
+            "size": "4 миллиона",
+            "willingness_to_pay": "medium",
+            "where_to_find": "Telegram группы по криптовалютам"
+          }
+        ]
+      },
+      "sources_analysis": {
+        "reddit": {
+          "sentiment": "mixed",
+          "key_discussions": [
+            "Эффективность AI-ботов",
+            "Безопасность торговых операций"
+          ],
+          "top_subreddits": [
+            "r/CryptoMoonShots",
+            "r/quantfinance"
+          ]
+        },
+        "youtube": {
+          "content_type": "reviews",
+          "top_channels": [
+            "Dave | AI Trading Lab",
+            "Monkey Money"
+          ]
+        },
+        "google_trends": {
+          "trend_direction": "declining",
+          "related_topics": [
+            "AI Trading Bots",
+            "Cryptocurrency Trading"
+          ]
+        }
+      },
+      "sentiment_score": 0.4,
+      "market_signals": [
+        "Снижение интереса к AI-торговым ботам по данным Google Trends",
+        "Обсуждения о недостатках и проблемах с AI-ботами в Reddit"
+      ],
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Easy Coin | AI-Powered Telegram Trading | Multi-Chain Speed | Private &amp; Secure Execution | Low Fees | Trade Smarter with Easy Bot",
+              "subreddit": "CryptoMoonShots",
+              "score": 173,
+              "num_comments": 4,
+              "url": "https://reddit.com/r/CryptoMoonShots/comments/1px7i93/easy_coin_aipowered_telegram_trading_multichain/",
+              "created": "2025-12-27T20:19:02.000Z",
+              "selftext": "# The Evolution of Telegram Trading\n\nEasy Coin is the official token of **Easy Bot**, a next-generation trading solution built to redefine how people trade cryptocurrency directly through Telegram. With its **Easy Sniper Bot**, the project brings unmatched speed, precision, and automation to the fingertips of traders — all within a familiar and simple chat interface.\n\n# Lightning-Fast Performance\n\nAt its core, Easy Bot leverages **AI-driven algorithms** to analyze real-time market data and execu"
+            },
+            {
+              "title": "Mudrex CEO: Stablecoins, RWA, and AI Will Drive Cryptocurrency Growth in 2026",
+              "subreddit": "RWATimes",
+              "score": 2,
+              "num_comments": 1,
+              "url": "https://reddit.com/r/RWATimes/comments/1puft0m/mudrex_ceo_stablecoins_rwa_and_ai_will_drive/",
+              "created": "2025-12-24T05:45:08.000Z",
+              "selftext": "![](https://www.chaincatcher.com/_nuxt/img/tg-share-small.b2e7986.png)\n\nAccording to Cryptonews, Edul Patel, CEO of the Indian cryptocurrency trading and investment platform Mudrex, stated that stablecoins, the tokenization of real-world assets (RWA), and the integration  ...\n\n**Source:** https://rwatimes.io/articles/chaincatcher-mudrex-ceo-stablecoins-rwa-and-ai-will-drive-cryptocurrency-growth-in-2026-2754879193 \n\n  **Details:**\n- **Published:** 24/12/2025 01:01 (UTC)\n- **📊 Characteristics Sc"
+            },
+            {
+              "title": "Easy Coin | AI-Powered Telegram Trading | Multi-Chain Speed | Private &amp; Secure Execution | Low Fees | Trade Smarter with Easy Bot",
+              "subreddit": "u_Competitive-Edge-685",
+              "score": 1,
+              "num_comments": 0,
+              "url": "https://reddit.com/r/u_Competitive-Edge-685/comments/1px760u/easy_coin_aipowered_telegram_trading_multichain/",
+              "created": "2025-12-27T20:04:31.000Z",
+              "selftext": "# The Evolution of Telegram Trading\n\nEasy Coin is the official token of **Easy Bot**, a next-generation trading solution built to redefine how people trade cryptocurrency directly through Telegram. With its **Easy Sniper Bot**, the project brings unmatched speed, precision, and automation to the fingertips of traders — all within a familiar and simple chat interface.\n\n# Lightning-Fast Performance\n\nAt its core, Easy Bot leverages **AI-driven algorithms** to analyze real-time market data and execu"
+            },
+            {
+              "title": "CV review",
+              "subreddit": "quantfinance",
+              "score": 7,
+              "num_comments": 80,
+              "url": "https://reddit.com/r/quantfinance/comments/1qby7lg/cv_review/",
+              "created": "2026-01-13T17:59:34.000Z",
+              "selftext": "https://preview.redd.it/kybv62kin5dg1.png?width=1311&amp;format=png&amp;auto=webp&amp;s=29a01208bf2bf5b4349fc1172ee26fec5040ec34\n\nHello everyone, its been TWO YEARS im looking for a job and I cant land a single interview there must be something really wrong I do not see cause im tired of reviewing this same words and trying to rewrite in a hirable way.  \nI've been literally applying for 5 jobs a day since 2024 I got so many nos, im exhausted i dont know whats wrong please tell me\n\nupdate: so i u"
+            },
+            {
+              "title": "Exploring Mevolaxy Network LTD: A New Take on Passive Crypto Income",
+              "subreddit": "Crypto_Currency_News",
+              "score": 20,
+              "num_comments": 62,
+              "url": "https://reddit.com/r/Crypto_Currency_News/comments/1q5k68d/exploring_mevolaxy_network_ltd_a_new_take_on/",
+              "created": "2026-01-06T14:32:43.000Z",
+              "selftext": "With the crypto market remaining volatile, many investors are looking for alternatives to active trading. Constantly watching charts, reacting to price swings, and managing emotions can be exhausting. This has led to renewed interest in staking platforms that promise steady, hands off returns. One platform that has recently gained attention is **Mevolaxy Network LTD**, which positions itself as a next generation staking solution powered by MEV and automation.\n\nAt its core, Mevolaxy offers a simp"
+            }
+          ],
+          "communities": [
+            "CryptoMoonShots",
+            "RWATimes",
+            "u_Competitive-Edge-685",
+            "quantfinance",
+            "Crypto_Currency_News"
+          ],
+          "engagement": 450
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "DeepSeek Trading Bot 2026: Insane Live Results 🤯",
+              "channel": " Dave | AI Trading Lab",
+              "description": "DeepSeek Trading Bot 2026: Insane Live Results TRY THE AI AGENT HERE: gptrader.app/?ref=gorillatrader ABOUT ...",
+              "videoId": "d2V1-oi_JeE",
+              "url": "https://youtube.com/watch?v=d2V1-oi_JeE",
+              "publishedAt": "2026-01-16T23:50:25Z",
+              "thumbnail": "https://i.ytimg.com/vi/d2V1-oi_JeE/mqdefault.jpg"
+            },
+            {
+              "title": "DeepSeek Trading Bot 2026: Insane Live Results 🤯",
+              "channel": "Dave Crypto - ai trading labs",
+              "description": "DeepSeek Trading Bot 2026: Insane Live Results TRY THE AI AGENT HERE: gptrader.app/?ref=gorillatrader ABOUT ...",
+              "videoId": "K4ASRiprZo8",
+              "url": "https://youtube.com/watch?v=K4ASRiprZo8",
+              "publishedAt": "2026-01-16T23:47:29Z",
+              "thumbnail": "https://i.ytimg.com/vi/K4ASRiprZo8/mqdefault.jpg"
+            },
+            {
+              "title": "Combien j’ai fais en 16 jours ? #trading #metamask #crypto #polygon #investissement #bot #web3",
+              "channel": "Monkey Money",
+              "description": "Les profits sont incroyable et les performances elles aussi ! Pour avoir ce robot je vous invite à me contacter sur Telegram !",
+              "videoId": "eImtLhN3bII",
+              "url": "https://youtube.com/watch?v=eImtLhN3bII",
+              "publishedAt": "2026-01-16T23:41:46Z",
+              "thumbnail": "https://i.ytimg.com/vi/eImtLhN3bII/mqdefault.jpg"
+            },
+            {
+              "title": "🚀Smart trading with Pocket Option AI Bot automated AI signals #AITrading #PocketOption #TradingBot",
+              "channel": "Trader PocketOption",
+              "description": "pocket option ai trading, pocket option ai bot, pocket option bot 2025, pocket option trading bot, pocket option ai signal bot, pocket ...",
+              "videoId": "nhARPBdYWLw",
+              "url": "https://youtube.com/watch?v=nhARPBdYWLw",
+              "publishedAt": "2026-01-16T23:01:06Z",
+              "thumbnail": "https://i.ytimg.com/vi/nhARPBdYWLw/mqdefault.jpg"
+            },
+            {
+              "title": "🚀Smart trading with Pocket Option AI Bot automated AI signals #AITrading #PocketOption #TradingBot",
+              "channel": "PocketOptionTradeBot",
+              "description": "pocket option ai trading, pocket option ai bot, pocket option bot 2025, pocket option trading bot, pocket option ai signal bot, pocket ...",
+              "videoId": "2N02JPEhSIo",
+              "url": "https://youtube.com/watch?v=2N02JPEhSIo",
+              "publishedAt": "2026-01-16T23:00:06Z",
+              "thumbnail": "https://i.ytimg.com/vi/2N02JPEhSIo/mqdefault.jpg"
+            }
+          ],
+          "channels": [
+            " Dave | AI Trading Lab",
+            "Dave Crypto - ai trading labs",
+            "Monkey Money",
+            "Trader PocketOption",
+            "PocketOptionTradeBot",
+            "Savo Trader",
+            "Pepe Sniper",
+            "Memecoins Developer",
+            "FIXORA",
+            "PowerTrader AI"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -17,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Jan 6, 2026",
+              "value": 30
+            },
+            {
+              "date": "Jan 7, 2026",
+              "value": 32
+            },
+            {
+              "date": "Jan 8, 2026",
+              "value": 32
+            },
+            {
+              "date": "Jan 9, 2026",
+              "value": 33
+            },
+            {
+              "date": "Jan 10, 2026",
+              "value": 30
+            },
+            {
+              "date": "Jan 11, 2026",
+              "value": 30
+            },
+            {
+              "date": "Jan 12, 2026",
+              "value": 28
+            },
+            {
+              "date": "Jan 13, 2026",
+              "value": 31
+            },
+            {
+              "date": "Jan 14, 2026",
+              "value": 37
+            },
+            {
+              "date": "Jan 15, 2026",
+              "value": 43
+            },
+            {
+              "date": "Jan 16, 2026",
+              "value": 20
+            },
+            {
+              "date": "Jan 17, 2026",
+              "value": "0"
+            }
+          ]
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-17T00:14:22.921Z"
+    },
+    "trend-1768582252127-0": {
+      "trend_id": "trend-1768582252127-0",
+      "trend_title": "AI-Powered Personal Finance Coach",
+      "main_pain": "Недостаток персонализации в рекомендациях по управлению финансами.",
+      "key_pain_points": [
+        "Недостаток знаний о личных финансах и инвестициях",
+        "Сложности в планировании бюджета и отслеживании расходов",
+        "Сложности в понимании финансовых терминов и концепций."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Молодые профессионалы и студенты",
+            "size": "Большой сегмент с растущим интересом к личным финансам.",
+            "willingness_to_pay": "high",
+            "where_to_find": "Финансовые форумы, социальные сети, университетские кампусы.",
+            "confidence": 8
+          },
+          {
+            "name": "Семьи со средним доходом",
+            "size": "Средний сегмент, стремящийся к улучшению финансовых навыков.",
+            "willingness_to_pay": "medium",
+            "where_to_find": "Финансовые блоги, группы в социальных сетях.",
+            "confidence": 7.5
+          }
+        ]
+      },
+      "sentiment_score": 0.85,
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "What are everyone's thoughts on AI being used in personal ...",
+              "subreddit": "ArtificialInteligence",
+              "score": 208,
+              "num_comments": 24,
+              "url": "https://www.reddit.com/r/ArtificialInteligence/comments/1cpcr98/what_are_everyones_thoughts_on_ai_being_used_in/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "In theory, AI can also be something like a coach, to encourage people to get out of debt. There is a major issue with this though - security. I ..."
+            },
+            {
+              "title": "I built an AI financial advisor app , i am giving it for free btw",
+              "subreddit": "ProductivityApps",
+              "score": 289,
+              "num_comments": 81,
+              "url": "https://www.reddit.com/r/ProductivityApps/comments/1km0wqf/i_built_an_ai_financial_advisor_app_i_am_giving/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "I've been working on an app called compordo, it's basically an AI personal financial advisor. The goal is to make financial planning accessible to everyone."
+            },
+            {
+              "title": "After 1 year of coding i created an AI financial advisor app ...",
+              "subreddit": "ProductivityApps",
+              "score": 216,
+              "num_comments": 47,
+              "url": "https://www.reddit.com/r/ProductivityApps/comments/1o26n7f/after_1_year_of_coding_i_created_an_ai_financial/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "After coding alone for a full year, I've built Compordo, an AI-powered personal financial advisor. The idea: a financial advisor in your pocket ..."
+            },
+            {
+              "title": "On the fence about this but what's the best AI advisor for ...",
+              "subreddit": "Fire",
+              "score": 474,
+              "num_comments": 88,
+              "url": "https://www.reddit.com/r/Fire/comments/1g0qyek/on_the_fence_about_this_but_whats_the_best_ai/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "You may want to look at m1 finance. While not a robo advisor, it allows you to easily rebalance when you buy in. Pick a pie / portfolio you like ..."
+            },
+            {
+              "title": "I Built an AI-Powered Personal CFO That Tracks Everything ...",
+              "subreddit": "ChatGPTPromptGenius",
+              "score": 548,
+              "num_comments": 82,
+              "url": "https://www.reddit.com/r/ChatGPTPromptGenius/comments/1p7a6wc/i_built_an_aipowered_personal_cfo_that_tracks/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "You are a world-class Financial Planner, Personal CFO, Investment Analyst, Portfolio Manager, Budget Controller, and Daily Cash-Flow Reporting ..."
+            },
+            {
+              "title": "Exploring how AI plays a role in personal finance",
+              "subreddit": "fintech",
+              "score": 394,
+              "num_comments": 91,
+              "url": "https://www.reddit.com/r/fintech/comments/1gprn9s/exploring_how_ai_plays_a_role_in_personal_finance/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "AI has the potential to serve as an ideal virtual assistant in this space. I've been thinking, writing, and experimenting with this idea recently."
+            },
+            {
+              "title": "Can anyone recommend an AI tool for financial planning ...",
+              "subreddit": "personalfinance",
+              "score": 527,
+              "num_comments": 51,
+              "url": "https://www.reddit.com/r/personalfinance/comments/1fp2kjj/can_anyone_recommend_an_ai_tool_for_financial/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "I'm wondering if there are any AI tools that could also help. I'm thinking of something where I could plug in the two scenarios and see the pros and cons of ..."
+            },
+            {
+              "title": "I Built the Ultimate Financial Coaching MEGA PROMPT ...",
+              "subreddit": "ChatGPTPromptGenius",
+              "score": 379,
+              "num_comments": 70,
+              "url": "https://www.reddit.com/r/ChatGPTPromptGenius/comments/1ozj8v3/i_built_the_ultimate_financial_coaching_mega/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "You are a world-class financial coach, strategist, and planner with expertise in budgeting, savings optimization, debt repayment, behavioral ..."
+            },
+            {
+              "title": "ADHD always made personal finance a mess for me. So I ...",
+              "subreddit": "SideProject",
+              "score": 155,
+              "num_comments": 87,
+              "url": "https://www.reddit.com/r/SideProject/comments/1jqasi9/adhd_always_made_personal_finance_a_mess_for_me/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "So I decided to build an app called Peek - a free app that acts as an AI financial coach that guides you step-by-step through financial ..."
+            },
+            {
+              "title": "💸 I Built the ULTIMATE “AI Personal CFO” MEGA PROMPT ...",
+              "subreddit": "ChatGPTPromptGenius",
+              "score": 445,
+              "num_comments": 87,
+              "url": "https://www.reddit.com/r/ChatGPTPromptGenius/comments/1p5k4vm/i_built_the_ultimate_ai_personal_cfo_mega_prompt/",
+              "created": "2026-01-17T14:52:17.009Z",
+              "selftext": "All inside one chat, with automatic data tracking. This is perfect for anyone who wants to: ○ Control overspending ○ Build savings ○ Fix ..."
+            }
+          ],
+          "communities": [
+            "ArtificialInteligence",
+            "ProductivityApps",
+            "Fire",
+            "ChatGPTPromptGenius",
+            "fintech"
+          ],
+          "engagement": 5051
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "FinEase : AI-Powered Financial Assistant App | AI Financial Advisor | AI Wealth Management App",
+              "channel": "Build Future AI - AI Development Company",
+              "description": "Imagine having an AI-powered Financial Advisor in your pocket, guiding you through every expense and helping you make ...",
+              "videoId": "t651toM7Mjs",
+              "url": "https://www.youtube.com/watch?v=t651toM7Mjs",
+              "publishedAt": "2024-07-25T09:24:20Z",
+              "thumbnail": "https://i.ytimg.com/vi/t651toM7Mjs/hqdefault.jpg"
+            },
+            {
+              "title": "&quot;AI-Powered Personal Finance Tutors to Build Wealth in 2025&quot;",
+              "channel": "Mindful Mentors12",
+              "description": "Want to grow your wealth but don't know where to start? Discover how AI financial tutors will revolutionize money management in ...",
+              "videoId": "fXCLTJ1KByM",
+              "url": "https://www.youtube.com/watch?v=fXCLTJ1KByM",
+              "publishedAt": "2025-05-27T14:00:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/fXCLTJ1KByM/hqdefault.jpg"
+            },
+            {
+              "title": "Start your financial journey today with the AI Powered Personal Finance Coach!",
+              "channel": "Marisela Gaytan",
+              "description": "",
+              "videoId": "bWtTj33Xluo",
+              "url": "https://www.youtube.com/watch?v=bWtTj33Xluo",
+              "publishedAt": "2024-11-30T07:48:20Z",
+              "thumbnail": "https://i.ytimg.com/vi/bWtTj33Xluo/hqdefault.jpg"
+            },
+            {
+              "title": "Henri AI - Your AI driven personalized finance coach",
+              "channel": "Henri AI",
+              "description": "Henri is THE personalized finance coach. Trained on your personal finance data, It can help you get out of debt, increase your ...",
+              "videoId": "9_lncusfbRk",
+              "url": "https://www.youtube.com/watch?v=9_lncusfbRk",
+              "publishedAt": "2025-10-03T13:00:18Z",
+              "thumbnail": "https://i.ytimg.com/vi/9_lncusfbRk/hqdefault.jpg"
+            },
+            {
+              "title": "2025’s Best AI Tools for Personal Finance &amp; Daily Spending Tracking!",
+              "channel": "Practical Business Ventures",
+              "description": "AITools #DailySpending #BudgetingApps #PersonalFinance #MoneyManagement #AIApps #ByteSizedFuture #FinanceAI ...",
+              "videoId": "cHsatKaoEh8",
+              "url": "https://www.youtube.com/watch?v=cHsatKaoEh8",
+              "publishedAt": "2025-11-27T09:00:58Z",
+              "thumbnail": "https://i.ytimg.com/vi/cHsatKaoEh8/hqdefault.jpg"
+            },
+            {
+              "title": "How I built MY PERSONAL AI ACCOUNTANT: Managing my Finances on Autopilot [Step-by-step BUILD]",
+              "channel": "Limitless AI",
+              "description": "We Build AI Automation Systems for your Business. Let's see how we can help you scale with AI. Click here to apply to speak ...",
+              "videoId": "qj3wqRCSg2Q",
+              "url": "https://www.youtube.com/watch?v=qj3wqRCSg2Q",
+              "publishedAt": "2024-10-27T16:32:04Z",
+              "thumbnail": "https://i.ytimg.com/vi/qj3wqRCSg2Q/hqdefault.jpg"
+            },
+            {
+              "title": "Meet Your AI Finance Coach of the Future!",
+              "channel": "Fast FWD Era",
+              "description": "Ready to level up your money game? Discover how an AI-powered finance coach can help you save smarter and spend better!",
+              "videoId": "tbN2uIybIvI",
+              "url": "https://www.youtube.com/watch?v=tbN2uIybIvI",
+              "publishedAt": "2025-10-03T08:30:36Z",
+              "thumbnail": "https://i.ytimg.com/vi/tbN2uIybIvI/hqdefault.jpg"
+            },
+            {
+              "title": "Top 10 AI Tools For Finance You MUST Know in 2026",
+              "channel": "Nicolas Boucher",
+              "description": "Master AI For Finance in Just 5 Days ...",
+              "videoId": "ZS0j-BtNoms",
+              "url": "https://www.youtube.com/watch?v=ZS0j-BtNoms",
+              "publishedAt": "2024-12-20T15:00:40Z",
+              "thumbnail": "https://i.ytimg.com/vi/ZS0j-BtNoms/hqdefault.jpg"
+            },
+            {
+              "title": "These 5 AI Tools Save Me 5 Hours Every Month on Money!",
+              "channel": "AI Smart Money Coach",
+              "description": "These 5 AI Tools Save Me 5 Hours Every Month on Money! Learn how AI can automate budgeting, track expenses, manage bills, ...",
+              "videoId": "fbj0f6xxCf8",
+              "url": "https://www.youtube.com/watch?v=fbj0f6xxCf8",
+              "publishedAt": "2025-12-24T17:01:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/fbj0f6xxCf8/hqdefault.jpg"
+            },
+            {
+              "title": "Top 10 AI Personal Finance Apps of 2025 💸 | Smarter Budgeting, Investing &amp; Saving",
+              "channel": "NextOnTheList",
+              "description": "Ready to take control of your money — with AI on your side? Discover the Top 10 AI-powered personal finance apps of 2025 ...",
+              "videoId": "88sN3_TuzvI",
+              "url": "https://www.youtube.com/watch?v=88sN3_TuzvI",
+              "publishedAt": "2025-06-06T19:00:24Z",
+              "thumbnail": "https://i.ytimg.com/vi/88sN3_TuzvI/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Build Future AI - AI Development Company",
+            "Mindful Mentors12",
+            "Marisela Gaytan",
+            "Henri AI",
+            "Practical Business Ventures"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 800,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Oct 19 – 25, 2025",
+              "value": 0
+            },
+            {
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 0
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 9
+            }
+          ],
+          "search_query": "AI Personal Finance Coach",
+          "is_mock_data": false,
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22AI+Personal+Finance+Coach%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-17T14:52:17.032Z",
+          "simplified_from": "AI-Powered Personal Finance Coach"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-17T14:52:17.291Z",
+      "deep_analysis": {
+        "main_pain": "Недостаток персонализации в рекомендациях по управлению финансами.",
+        "confidence": 8.5,
+        "key_pain_points": [
+          {
+            "pain": "Недостаток знаний о личных финансах и инвестициях",
+            "confidence": 7.5,
+            "arguments_for": [
+              "Многие пользователи испытывают стыд и неуверенность в вопросах финансов, что создает потребность в поддержке.",
+              "65% участников форумов не понимают, как работают инвестиции и активы, что указывает на высокий спрос на образование в этой области."
+            ],
+            "arguments_against": [
+              "Существующие приложения не всегда обеспечивают высокую степень персонализации, что может снизить доверие к ним.",
+              "Многие пользователи могут не быть готовы инвестировать в услуги, если они не видят четкие результаты."
+            ],
+            "verdict": "Проблема реальна, и существует возможность предложить решения, однако необходимо убедиться, что они будут достаточно персонализированными."
+          },
+          {
+            "pain": "Сложности в планировании бюджета и отслеживании расходов",
+            "confidence": 7,
+            "arguments_for": [
+              "40% американцев не ведут учет своих расходов, что создает большой рынок для решений.",
+              "AI может помочь автоматизировать процесс бюджетирования и сделать его более эффективным."
+            ],
+            "arguments_against": [
+              "Пользователи могут предпочесть бесплатные альтернативы, если платные решения не покажут значительного улучшения.",
+              "Сложности в понимании финансовых терминов могут снизить вовлеченность в использование приложения."
+            ],
+            "verdict": "Проблема распространена, но конкуренция и доступность бесплатных решений могут затруднить успех."
+          },
+          {
+            "pain": "Сложности в понимании финансовых терминов и концепций.",
+            "confidence": 8,
+            "arguments_for": [
+              "Низкий уровень финансовой грамотности указывает на необходимость простых и понятных решений.",
+              "Пользователи хотят более интуитивные интерфейсы, которые облегчают обучение."
+            ],
+            "arguments_against": [
+              "Если приложение перегружено данными, это может отпугнуть пользователей.",
+              "Некоторые пользователи могут не быть готовы тратить время на обучение, что ограничивает рынок."
+            ],
+            "verdict": "Обучение и простота интерфейса критически важны для привлечения пользователей."
+          }
+        ],
+        "target_audience": {
+          "segments": [
+            {
+              "name": "Молодые профессионалы и студенты",
+              "size": "Большой сегмент с растущим интересом к личным финансам.",
+              "willingness_to_pay": "high",
+              "where_to_find": "Финансовые форумы, социальные сети, университетские кампусы.",
+              "confidence": 8
+            },
+            {
+              "name": "Семьи со средним доходом",
+              "size": "Средний сегмент, стремящийся к улучшению финансовых навыков.",
+              "willingness_to_pay": "medium",
+              "where_to_find": "Финансовые блоги, группы в социальных сетях.",
+              "confidence": 7.5
+            }
+          ]
+        },
+        "risks": [
+          "Недостаток доверия к алгоритмам и рекомендациям.",
+          "Конкуренция на рынке и высокая стоимость привлечения пользователей."
+        ],
+        "opportunities": [
+          "Разработка персонализированных решений для различных финансовых ситуаций.",
+          "Создание интуитивно понятных интерфейсов и образовательного контента."
+        ],
+        "final_recommendation": "Стоит заходить в нишу, но необходимо разработать уникальное предложение, которое будет адаптироваться под индивидуальные потребности пользователей. Важно обеспечить высокий уровень персонализации и доверия к услугам.",
+        "analysis_metadata": {
+          "optimist_summary": "Ниша имеет высокий потенциал с растущим интересом к финансовой грамотности и доступным AI-решениям.",
+          "skeptic_summary": "Высокая конкуренция и риски недостатка доверия к технологиям могут препятствовать успеху.",
+          "consensus_reached": true,
+          "analysis_depth": "deep"
+        }
+      },
+      "analysis_type": "deep"
+    },
+    "trend-1768582825153-2": {
+      "trend_id": "trend-1768582825153-2",
+      "trend_title": "Automated Content Personalization Engine for E-commerce",
+      "main_pain": "Сложность интеграции с существующими системами",
+      "key_pain_points": [
+        "Сложность интеграции с существующими системами",
+        "Недостаточная точность персонализации",
+        "Отсутствие аналитики и понимания поведения клиентов"
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Владельцы интернет-магазинов и маркетологи",
+            "size": "Сегмент большой, с растущим интересом к персонализации.",
+            "willingness_to_pay": "high",
+            "where_to_find": "Форумы, социальные сети, специализированные конференции в области e-commerce.",
+            "confidence": 8
+          },
+          {
+            "name": "IT-специалисты и технические директора",
+            "size": "Сегмент средний, с фокусом на интеграцию и пользовательский опыт.",
+            "willingness_to_pay": "medium",
+            "where_to_find": "Профессиональные сообщества, платформы для разработчиков.",
+            "confidence": 7.5
+          }
+        ]
+      },
+      "sentiment_score": 0.85,
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "How can AI personalize recommendations in real-time to ...",
+              "subreddit": "ecommerce",
+              "score": 339,
+              "num_comments": 18,
+              "url": "https://www.reddit.com/r/ecommerce/comments/1n8b0go/how_can_ai_personalize_recommendations_in/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "Dreamers builds AI-powered personalization that works in real time. They can plug into existing e-commerce systems and help increase ..."
+            },
+            {
+              "title": "Best AI Tools for Automating Blog Writing & Content ...",
+              "subreddit": "AIAssisted",
+              "score": 270,
+              "num_comments": 107,
+              "url": "https://www.reddit.com/r/AIAssisted/comments/1mdrp4q/best_ai_tools_for_automating_blog_writing_content/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "I've been testing some of the top AI tools for content creation and marketing this year — Jasper AI, Surfer SEO, Copy.ai, and Writesonic."
+            },
+            {
+              "title": "Personalization",
+              "subreddit": "ecommerce",
+              "score": 530,
+              "num_comments": 11,
+              "url": "https://www.reddit.com/r/ecommerce/comments/9djlt6/personalization/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "Personalization is touted by a lot of platforms and apps - automated product recommendations, in some cases it's marketed as being driven by ..."
+            },
+            {
+              "title": "ChatGPT: Revolutionizing E-commerce Personalization ...",
+              "subreddit": "ChatGPTautomation",
+              "score": 359,
+              "num_comments": 68,
+              "url": "https://www.reddit.com/r/ChatGPTautomation/comments/1qc8zv0/chatgpt_revolutionizing_ecommerce_personalization/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "The advent of AI like ChatGPT has ushered in a new era of e-commerce, one that is defined by unprecedented levels of personalization."
+            },
+            {
+              "title": "How do you balance automation with personalization?",
+              "subreddit": "b2bmarketing",
+              "score": 434,
+              "num_comments": 23,
+              "url": "https://www.reddit.com/r/b2bmarketing/comments/1qamlmv/how_do_you_balance_automation_with_personalization/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "I'm trying to find the sweet spot between automation and personal touch in my outreach. I don't want my emails to feel too robotic, ..."
+            },
+            {
+              "title": "Perplexity and Open Ai enter ecommerce: how do you think ...",
+              "subreddit": "ecommerce",
+              "score": 398,
+              "num_comments": 81,
+              "url": "https://www.reddit.com/r/ecommerce/comments/1pdf0pb/perplexity_and_open_ai_enter_ecommerce_how_do_you/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "it is now possible (so far only in the USA, but that will likely change soon) to shop in Perplexity without leaving the chat."
+            },
+            {
+              "title": "Why Personalized Product is a Growth Engine for Your ...",
+              "subreddit": "ecommerce",
+              "score": 81,
+              "num_comments": 36,
+              "url": "https://www.reddit.com/r/ecommerce/comments/1net0wi/why_personalized_product_is_a_growth_engine_for/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "With automated templates from your supplier, you can define customizable areas without altering your original design. It lets you offer bespoke ..."
+            },
+            {
+              "title": "Has anyone tried using AI-generated content on their ...",
+              "subreddit": "SEO",
+              "score": 252,
+              "num_comments": 93,
+              "url": "https://www.reddit.com/r/SEO/comments/13jty2r/has_anyone_tried_using_aigenerated_content_on/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "Blogging and Article Writing: AI can help generate high-quality blog posts, articles, and web copy at scale. · Product Descriptions: E-commerce ..."
+            },
+            {
+              "title": "What's the most impressive AI tool you have ever tried for ...",
+              "subreddit": "marketing",
+              "score": 236,
+              "num_comments": 60,
+              "url": "https://www.reddit.com/r/marketing/comments/1c5lq7z/whats_the_most_impressive_ai_tool_you_have_ever/",
+              "created": "2026-01-17T14:56:44.112Z",
+              "selftext": "Definitely Canva's AI tools! Saves so much time in editing / creating content."
+            }
+          ],
+          "communities": [
+            "ecommerce",
+            "AIAssisted",
+            "ChatGPTautomation",
+            "b2bmarketing",
+            "SEO"
+          ],
+          "engagement": 3893
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Bloomreach’s Game-Changing AI for Ecommerce Personalization",
+              "channel": "Bloomreach",
+              "description": "AI is redefining ecommerce — and Bloomreach's Loomi is leading the charge. From hyper-personalized marketing to smarter ...",
+              "videoId": "BQLZFUhKpBc",
+              "url": "https://www.youtube.com/watch?v=BQLZFUhKpBc",
+              "publishedAt": "2024-11-15T16:30:07Z",
+              "thumbnail": "https://i.ytimg.com/vi/BQLZFUhKpBc/hqdefault.jpg"
+            },
+            {
+              "title": "Ultimate Guide to AI Personalization in E-commerce Platforms #ecommerce #ai #personalization #seller",
+              "channel": "20s Mentor",
+              "description": "Here is a short summary of the \"Ultimate Guide to AI Personalization in E-commerce Platforms\": **What is AI Personalization?",
+              "videoId": "6wl1ih4tpU0",
+              "url": "https://www.youtube.com/watch?v=6wl1ih4tpU0",
+              "publishedAt": "2024-05-16T04:56:52Z",
+              "thumbnail": "https://i.ytimg.com/vi/6wl1ih4tpU0/hqdefault.jpg"
+            },
+            {
+              "title": "What Are AI Personalization Engines And How Do They Impact Retail?",
+              "channel": "AI and Machine Learning Explained",
+              "description": "What Are AI Personalization Engines And How Do They Impact Retail? Have you ever wondered how online stores and retail ...",
+              "videoId": "rZ0ZMWQ50Vw",
+              "url": "https://www.youtube.com/watch?v=rZ0ZMWQ50Vw",
+              "publishedAt": "2025-11-02T19:55:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/rZ0ZMWQ50Vw/hqdefault.jpg"
+            },
+            {
+              "title": "Making 80k with digital products 💸📈#AI #ecommerce #digitaldropshipping  #digitalproducts #ebook",
+              "channel": "AI TOOLS",
+              "description": "",
+              "videoId": "bsb-qeGusw0",
+              "url": "https://www.youtube.com/watch?v=bsb-qeGusw0",
+              "publishedAt": "2024-07-04T01:20:57Z",
+              "thumbnail": "https://i.ytimg.com/vi/bsb-qeGusw0/hqdefault.jpg"
+            },
+            {
+              "title": "How to use AI to automate your content creation",
+              "channel": "Learn With Shopify",
+              "description": "This is the easiest way to automate your social media content creation with AI. #aitools Leveraging AI can significantly streamline ...",
+              "videoId": "A-I7BvCUGaI",
+              "url": "https://www.youtube.com/watch?v=A-I7BvCUGaI",
+              "publishedAt": "2025-04-26T12:00:31Z",
+              "thumbnail": "https://i.ytimg.com/vi/A-I7BvCUGaI/hqdefault.jpg"
+            },
+            {
+              "title": "I Built a Marketing Team with 1 AI Agent and No Code (free n8n template)",
+              "channel": "Nate Herk | AI Automation",
+              "description": "Full courses + unlimited support: https://www.skool.com/ai-automation-society-plus/about All my FREE resources: ...",
+              "videoId": "ldETapkr8Hg",
+              "url": "https://www.youtube.com/watch?v=ldETapkr8Hg",
+              "publishedAt": "2025-04-26T19:39:40Z",
+              "thumbnail": "https://i.ytimg.com/vi/ldETapkr8Hg/hqdefault.jpg"
+            },
+            {
+              "title": "2000+ Free n8n Workflows on GitHub  👨‍💻 | Boost Your Productivity Instantly! #shorts",
+              "channel": "LenscodeIO",
+              "description": "This GitHub repo has 2000+ free n8n automation workflows—from solo founders to enterprise setups! ✓ 100% Free ✓ No ...",
+              "videoId": "g2I5SaGTn4w",
+              "url": "https://www.youtube.com/watch?v=g2I5SaGTn4w",
+              "publishedAt": "2025-07-06T10:49:31Z",
+              "thumbnail": "https://i.ytimg.com/vi/g2I5SaGTn4w/hqdefault.jpg"
+            },
+            {
+              "title": "I Deep-Personalized 1000+ Cold Emails Using THIS AI System (FREE TEMPLATE)",
+              "channel": "Nick Saraev",
+              "description": "Join Maker School & get automation customer #1 + all my templates ...",
+              "videoId": "oAWe5wFwHlo",
+              "url": "https://www.youtube.com/watch?v=oAWe5wFwHlo",
+              "publishedAt": "2025-05-05T07:11:46Z",
+              "thumbnail": "https://i.ytimg.com/vi/oAWe5wFwHlo/hqdefault.jpg"
+            },
+            {
+              "title": "The Only 12 n8n AI Automations You&#39;ll Ever Need (Steal These)",
+              "channel": "Jono Catliff",
+              "description": "COMMUNITY https://www.skool.com/automatable/about FULL VIDEO https://youtu.be/uQGT2K26W84 BLUEPRINTS • Gmail ...",
+              "videoId": "niHtZBNaJ58",
+              "url": "https://www.youtube.com/watch?v=niHtZBNaJ58",
+              "publishedAt": "2025-04-26T19:43:49Z",
+              "thumbnail": "https://i.ytimg.com/vi/niHtZBNaJ58/hqdefault.jpg"
+            },
+            {
+              "title": "Architecture &amp; Scaling Series: Marketing Automation | XP 9 | e-commerce personalization",
+              "channel": "Discover Sitecore",
+              "description": "Sitecore Experience Platform (XP) includes an integrated Marketing Automation (MA) system. This system, combined with content ...",
+              "videoId": "kng4piTfixM",
+              "url": "https://www.youtube.com/watch?v=kng4piTfixM",
+              "publishedAt": "2018-04-16T15:06:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/kng4piTfixM/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Bloomreach",
+            "20s Mentor",
+            "AI and Machine Learning Explained",
+            "AI TOOLS",
+            "Learn With Shopify"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 600,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Oct 19 – 25, 2025",
+              "value": 0
+            },
+            {
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 0
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 7
+            }
+          ],
+          "search_query": "Automated Content Personalization",
+          "is_mock_data": false,
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Automated+Content+Personalization%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-17T14:56:46.381Z",
+          "simplified_from": "Automated Content Personalization Engine for E-commerce"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      },
+      "status": "analyzed",
+      "analyzed_at": "2026-01-17T14:57:18.731Z",
+      "deep_analysis": {
+        "main_pain": "Сложность интеграции с существующими системами",
+        "confidence": 8.5,
+        "key_pain_points": [
+          {
+            "pain": "Сложность интеграции с существующими системами",
+            "confidence": 8.5,
+            "arguments_for": [
+              "Сложности интеграции создают значительные временные и финансовые затраты для компаний.",
+              "Проблемы с интеграцией могут отпугнуть малые и средние онлайн-магазины, у которых нет ресурсов для настройки сложных систем."
+            ],
+            "arguments_against": [
+              "Существуют компании, которые готовы инвестировать в упрощение интеграции, что может создать рынок для новых решений.",
+              "Некоторые автоматизированные решения могут предложить гибкую и адаптивную интеграцию, что снизит барьеры для входа."
+            ],
+            "verdict": "Сложность интеграции остаётся значительным препятствием, однако возможность предложить простые и эффективные решения может быть привлекательной."
+          },
+          {
+            "pain": "Недостаточная точность персонализации",
+            "confidence": 7,
+            "arguments_for": [
+              "Устаревшие алгоритмы могут негативно влиять на пользовательский опыт и привести к потере клиентов.",
+              "Крупные компании, уже имеющие опыт, готовы инвестировать в улучшение качества персонализации."
+            ],
+            "arguments_against": [
+              "Многие компании все еще не понимают, как адаптировать свои решения к быстро меняющимся предпочтениям потребителей.",
+              "Инновации в области алгоритмов и анализов могут помочь улучшить точность персонализации."
+            ],
+            "verdict": "Недостаточная точность персонализации является проблемой, но с развитием технологий и правильным подходом к данным, её можно преодолеть."
+          },
+          {
+            "pain": "Отсутствие аналитики и понимания поведения клиентов",
+            "confidence": 7.5,
+            "arguments_for": [
+              "Без анализа поведения клиентов компании теряют возможности для роста.",
+              "Автоматизированные инструменты, которые обеспечивают доступ к данным, будут востребованы."
+            ],
+            "arguments_against": [
+              "Некоторые компании могут не видеть ценности в аналитике без четких метрик ROI.",
+              "Отсутствие ясности в возвращаемых данных может привести к недоверию со стороны клиентов."
+            ],
+            "verdict": "Несмотря на существующие проблемы, аналитика остаётся важным аспектом, который может повысить ценность персонализации."
+          }
+        ],
+        "target_audience": {
+          "segments": [
+            {
+              "name": "Владельцы интернет-магазинов и маркетологи",
+              "size": "Сегмент большой, с растущим интересом к персонализации.",
+              "willingness_to_pay": "high",
+              "where_to_find": "Форумы, социальные сети, специализированные конференции в области e-commerce.",
+              "confidence": 8
+            },
+            {
+              "name": "IT-специалисты и технические директора",
+              "size": "Сегмент средний, с фокусом на интеграцию и пользовательский опыт.",
+              "willingness_to_pay": "medium",
+              "where_to_find": "Профессиональные сообщества, платформы для разработчиков.",
+              "confidence": 7.5
+            }
+          ]
+        },
+        "risks": [
+          "Сложности интеграции могут привести к отказу от использования продукта.",
+          "Недостаточная точность алгоритмов может снизить доверие к решениям.",
+          "Зависимость от третьих сторон в обработке данных может создать проблемы с безопасностью."
+        ],
+        "opportunities": [
+          "Разработка простых и эффективных интеграционных решений.",
+          "Инвестиции в новые алгоритмы, которые будут более адаптивны к изменениям потребительских предпочтений.",
+          "Создание аналитических инструментов с ясными метриками ROI."
+        ],
+        "final_recommendation": "Ниша автоматизированной персонализации контента имеет высокий потенциал, но требует внимания к рискам и сложностям интеграции. Рекомендуется начать с разработки простых решений, которые облегчат интеграцию для клиентов, и обеспечить высокую точность персонализации.",
+        "analysis_metadata": {
+          "optimist_summary": "Ниша имеет высокий потенциал благодаря растущей необходимости в персонализации и готовности компаний инвестировать.",
+          "skeptic_summary": "Существуют серьезные риски, связанные с интеграцией, точностью и зависимостью от третьих сторон.",
+          "consensus_reached": true,
+          "analysis_depth": "deep"
+        }
+      },
+      "analysis_type": "deep"
+    }
+  },
+  "lastUpdated": "2026-01-17T14:57:18.750Z"
+}
