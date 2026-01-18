@@ -1811,252 +1811,302 @@
     "trend-1768582252127-4": {
       "trend_id": "trend-1768582252127-4",
       "trend_title": "AI-Enhanced Mental Health Companion App",
-      "main_pain": "Недостаток доступных и эффективных решений для поддержки психического здоровья с использованием ИИ.",
+      "main_pain": "Недостаток доступной и персонализированной поддержки для психического здоровья.",
       "key_pain_points": [
-        "Проблема недостатка доверия к ИИ-решениям для психического здоровья, обсуждаемая в Reddit.",
-        "Необходимость в более персонализированных подходах к психическому здоровью, упомянутая в комментариях к видео на YouTube.",
-        "Ограниченная доступность информации о лучших приложениях и их эффективности, обсуждаемая в сообществах Reddit."
+        "Недостаток доступной и персонализированной поддержки для психического здоровья.",
+        "Проблемы с конфиденциальностью и безопасностью данных.",
+        "Низкая мотивация пользователей к регулярному использованию приложения."
       ],
       "target_audience": {
         "segments": [
           {
-            "name": "Студенты",
-            "size": "15 миллионов",
-            "willingness_to_pay": "medium",
-            "where_to_find": "r/College, r/StudentLife"
-          },
-          {
-            "name": "Молодые профессионалы",
-            "size": "20 миллионов",
+            "name": "Люди, испытывающие стресс, тревогу, депрессию.",
+            "size": "Растущий рынок с высоким спросом.",
             "willingness_to_pay": "high",
-            "where_to_find": "r/Entrepreneur, r/GetMotivated"
+            "where_to_find": "Форумы, социальные сети, сообщества по психическому здоровью.",
+            "confidence": 8
           },
           {
-            "name": "Люди с хроническим стрессом",
-            "size": "10 миллионов",
-            "willingness_to_pay": "medium",
-            "where_to_find": "r/Anxiety, r/mentalhealth"
-          },
-          {
-            "name": "Родители",
-            "size": "25 миллионов",
-            "willingness_to_pay": "medium",
-            "where_to_find": "r/Parenting, r/Mommit"
-          },
-          {
-            "name": "Пользователи социальных сетей",
-            "size": "50 миллионов",
-            "willingness_to_pay": "low",
-            "where_to_find": "Instagram, TikTok"
+            "name": "Люди, ищущие анонимную поддержку.",
+            "size": "Существующий рынок с высоким интересом к анонимности.",
+            "willingness_to_pay": "high",
+            "where_to_find": "Онлайн-форумы, приложения для ментального здоровья.",
+            "confidence": 7.5
           }
         ]
       },
-      "sources_analysis": {
-        "reddit": {
-          "sentiment": "mixed",
-          "key_discussions": [
-            "доверие к ИИ в психическом здоровье",
-            "персонализированные решения"
-          ],
-          "top_subreddits": [
-            "r/mentalhealth",
-            "r/technology"
-          ]
-        },
-        "youtube": {
-          "content_type": "tutorials/reviews",
-          "top_channels": [
-            "Caspia Wellness",
-            "New Tech Insights"
-          ]
-        },
-        "google_trends": {
-          "trend_direction": "stable",
-          "related_topics": [
-            "AI mental health apps",
-            "digital therapy"
-          ]
-        }
-      },
-      "sentiment_score": 0.6,
-      "market_signals": [
-        "Увеличение обсуждений о психическом здоровье в контексте технологий.",
-        "Рост интереса к ИИ-решениям для улучшения качества жизни."
-      ],
+      "sentiment_score": 8.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-18T15:04:03.526Z",
+      "analysis_type": "deep",
       "real_sources": {
         "reddit": {
           "posts": [
             {
-              "title": "Top 10 AI Therapy Chatbot Development Companies Revolutionizing Mental Wellness",
-              "subreddit": "Best_Companies_USA",
-              "score": 1,
-              "num_comments": 1,
-              "url": "https://reddit.com/r/Best_Companies_USA/comments/1q78tk2/top_10_ai_therapy_chatbot_development_companies/",
-              "created": "2026-01-08T10:55:21.000Z",
-              "selftext": "The year 2026 marks a significant milestone in the evolution of AI Therapy Chatbot Development, reshaping how individuals access emotional and psychological support A report done by Fortune Business Insights in 2025 states that the global mental health app market, projected to surpass $21.9 billion by 2026, will see nearly 35% growth because of AI-driven therapy and wellness platforms.\n\nThe rise in the adoption of AI-powered conversational therapy revolutionized conventional counseling models. P"
+              "title": "What AI Tool is best for AI therapy and why? ChatGPT ...",
+              "subreddit": "therapyGPT",
+              "score": 514,
+              "num_comments": 94,
+              "url": "https://www.reddit.com/r/therapyGPT/comments/1m98m1d/what_ai_tool_is_best_for_ai_therapy_and_why/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "I was curious who is using what tool and why? I would like to try AI therapy but I was curious which tool might be best."
             },
             {
-              "title": "The Universal Diamond Standard Story Extracted from Conversation History",
-              "subreddit": "Synthsara",
-              "score": 1,
-              "num_comments": 0,
-              "url": "https://reddit.com/r/Synthsara/comments/1q5knze/the_universal_diamond_standard_story_extracted/",
-              "created": "2026-01-06T14:52:34.000Z",
-              "selftext": "\nAnalysis Date: 2025-06-30 02:48 Total Story Conversations: 20\n\nLuminate Group Overview\nDate: 2025-06-01 09:52\n\nAssistant: Luminate is a global philanthropic organization founded in 2018 by Pierre and Pam Omidyar, emerging from the Omidyar Network's Governance &amp; Citizen Engagement initiative. Its mission is to ensure that everyone—especially those who are underrepresented—has the information, rights, and power to influence decisions that affect their lives citeturn0search0.\n\n🌍 Missi"
+              "title": "What's the best affordable AI therapy tool to help with ...",
+              "subreddit": "therapyGPT",
+              "score": 301,
+              "num_comments": 27,
+              "url": "https://www.reddit.com/r/therapyGPT/comments/1o6r92t/whats_the_best_affordable_ai_therapy_tool_to_help/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "OmniAI - Mental Health Therapy, has been amazing for me, it uses gpt 4o but is geared towards mental health."
             },
             {
-              "title": "Happy New Year, and Welcome 2026!",
-              "subreddit": "evaaihealth",
-              "score": 1,
-              "num_comments": 0,
-              "url": "https://reddit.com/r/evaaihealth/comments/1q0puwk/happy_new_year_and_welcome_2026/",
-              "created": "2025-12-31T23:06:16.000Z",
-              "selftext": "While calendars turn over and fireworks light up the sky, a fresh year doesn't necessarily wipe away the \"noisy\" feeling that many of us carry inside. If you're still feeling mentally cluttered despite the symbolism of a new beginning, know that this is a completely normal experience.\n\nA New Way to Find Your Quiet Space\n\nAcknowledging the continuous journey of self-improvement, we're excited to share that EvaAI is now accessible directly from your browser. While traditionally available as a down"
+              "title": "Has anyone here tried using AI for mental wellness and ...",
+              "subreddit": "ProductivityApps",
+              "score": 482,
+              "num_comments": 57,
+              "url": "https://www.reddit.com/r/ProductivityApps/comments/1niggp1/has_anyone_here_tried_using_ai_for_mental/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "I stumbled upon Yuno.io, which is basically an AI mental health companion. At first, I was sceptical; mental health is such a personal thing."
             },
             {
-              "title": "Influencer after killing somebody while livestreaming while driving: again and told viewers: “My Cash App up there if y’all wanna support while I’m on mental leave… if y’all wanna find it y’all heart, y’all wanna support, my Cash App right there.”",
-              "subreddit": "EntitledPeople",
-              "score": 4978,
-              "num_comments": 165,
-              "url": "https://reddit.com/r/EntitledPeople/comments/1pvrbye/influencer_after_killing_somebody_while/",
-              "created": "2025-12-26T00:50:07.000Z",
-              "selftext": "Influencer tea_time_3 was livestreaming herself while driving, 8 year old child in yhe back seat.\n\nWhile livestreaming a loud thud was heard, with her saying \"fk, I just hit somebody\". The child is heard on the stream asking \"what happened?\" then the stream abruptly ends. (There are a couple of slightly different descriptions but the general facts are consistent.)\n\nThe person she hit was a 59 year old man walking home from his shift at a local grocery store. He was crossing a road in Zion, IL wi"
+              "title": "I built an AI mental health companion where your ...",
+              "subreddit": "SideProject",
+              "score": 149,
+              "num_comments": 14,
+              "url": "https://www.reddit.com/r/SideProject/comments/1h2hx12/i_built_an_ai_mental_health_companion_where_your/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "I built an AI mental health companion app called ZOSA (https://zosa.app/). It's free, requires no sign-up, and uses blockchain to keep conversations private."
             },
             {
-              "title": "Im letting go, this is better for my mental health",
-              "subreddit": "CharacterAI",
-              "score": 2636,
-              "num_comments": 115,
-              "url": "https://reddit.com/r/CharacterAI/comments/1puwv23/im_letting_go_this_is_better_for_my_mental_health/",
-              "created": "2025-12-24T20:42:20.000Z",
-              "selftext": "While I had a lot of fun, it was becoming increasingly clear to me that it was just no good for me. It always tended to just make me feel worse alongside my ever increasing anti Ai stance that has just made me stop loving this app. This is not me trying to tell y’all to quit but this is my formal goodbye"
+              "title": "[$99.99 → Lifetime FREE] Alera Mental Health: NEW Voice ...",
+              "subreddit": "ADHD_Programmers",
+              "score": 255,
+              "num_comments": 45,
+              "url": "https://www.reddit.com/r/ADHD_Programmers/comments/1qarf9e/9999_lifetime_free_alera_mental_health_new_voice/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "Alera is an AI-powered mental-health app built with clinicians that creates personalized weekly therapy plans → Get Lifetime FREE in the next 24 ..."
+            },
+            {
+              "title": "What's the most accurate AI chat bot mental health app?",
+              "subreddit": "ArtificialInteligence",
+              "score": 341,
+              "num_comments": 25,
+              "url": "https://www.reddit.com/r/ArtificialInteligence/comments/12g8f28/whats_the_most_accurate_ai_chat_bot_mental_health/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "If you want an AI girlfriend or boyfriend experience, HornyCompanion allows you to customize your own virtual partner."
+            },
+            {
+              "title": "I'm on a mission to fight the loneliness & depression ...",
+              "subreddit": "apps",
+              "score": 191,
+              "num_comments": 41,
+              "url": "https://www.reddit.com/r/apps/comments/1mrrs38/im_on_a_mission_to_fight_the_loneliness/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "TL;DR: I built a highly secure, AI-powered mental health companion app to fight loneliness and depression. It offers unlimited AI chat ..."
+            },
+            {
+              "title": "New research study from NYU showing that AI built for ...",
+              "subreddit": "therapyGPT",
+              "score": 546,
+              "num_comments": 76,
+              "url": "https://www.reddit.com/r/therapyGPT/comments/1p40voj/new_research_study_from_nyu_showing_that_ai_built/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "New research study from NYU showing that AI built for mental health can be safe and have measurable results. arxiv.org"
+            },
+            {
+              "title": "I Built an App That's Like a Best Friend for Your Mental Health ...",
+              "subreddit": "selfimprovementday",
+              "score": 151,
+              "num_comments": 86,
+              "url": "https://www.reddit.com/r/selfimprovementday/comments/1lrphb5/i_built_an_app_thats_like_a_best_friend_for_your/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "Let's talk about the app i recently launched and is my company's first product named \"ThunDroid\" which is your AI Human Companion."
+            },
+            {
+              "title": "Are AI companions helpful in managing mental health ...",
+              "subreddit": "therapyGPT",
+              "score": 466,
+              "num_comments": 67,
+              "url": "https://www.reddit.com/r/therapyGPT/comments/1n6a1qv/are_ai_companions_helpful_in_managing_mental/",
+              "created": "2026-01-18T15:04:03.519Z",
+              "selftext": "To me it has been the most incredible tool for reflection, journaling, support, validation, co regulation, somatic tracking and processing, much ..."
             }
           ],
           "communities": [
-            "Best_Companies_USA",
-            "Synthsara",
-            "evaaihealth",
-            "EntitledPeople",
-            "CharacterAI"
+            "therapyGPT",
+            "ProductivityApps",
+            "SideProject",
+            "ADHD_Programmers",
+            "ArtificialInteligence"
           ],
-          "engagement": 37222
+          "engagement": 4460
         },
         "youtube": {
           "videos": [
             {
-              "title": "Companion Connect: An AI-Enhanced Digital Platform for Reducing Student Loneliness and Promoting",
-              "channel": "Computer Science & IT Conference Proceedings",
-              "description": "Companion Connect: An AI-Enhanced Digital Platform for Reducing Student Loneliness and Promoting Mental Well-Being in ...",
-              "videoId": "gJrNdStHjr0",
-              "url": "https://youtube.com/watch?v=gJrNdStHjr0",
-              "publishedAt": "2025-10-28T06:18:56Z",
-              "thumbnail": "https://i.ytimg.com/vi/gJrNdStHjr0/mqdefault.jpg"
+              "title": "AI-powered mental health chatbots developed as a therapy support tool | 60 Minutes",
+              "channel": "60 Minutes",
+              "description": "Artificial intelligence is being used as a way to help those dealing with depression, anxiety and eating disorders, but some ...",
+              "videoId": "j8BiIZIZBsU",
+              "url": "https://www.youtube.com/watch?v=j8BiIZIZBsU",
+              "publishedAt": "2024-04-08T02:59:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/j8BiIZIZBsU/hqdefault.jpg"
             },
             {
-              "title": "The Tiny Trick That Can Change Your Entire Day (And Life)",
-              "channel": "Caspia Wellness",
-              "description": "Discover how a small shift in mindset can boost your mental health and motivation instantly. Download Caspia, your AI Mental ...",
-              "videoId": "5jdqrmPKhN4",
-              "url": "https://youtube.com/watch?v=5jdqrmPKhN4",
-              "publishedAt": "2025-08-09T15:38:16Z",
-              "thumbnail": "https://i.ytimg.com/vi/5jdqrmPKhN4/mqdefault.jpg"
+              "title": "Best AI Mental Health Apps For 2025",
+              "channel": "Health & Bytes",
+              "description": "Feeling anxious? Struggling with focus? These 5 AI tools for mental health might just change the game. From stress-busting ...",
+              "videoId": "NCqU3D2iV4Y",
+              "url": "https://www.youtube.com/watch?v=NCqU3D2iV4Y",
+              "publishedAt": "2025-04-24T11:00:41Z",
+              "thumbnail": "https://i.ytimg.com/vi/NCqU3D2iV4Y/hqdefault.jpg"
             },
             {
-              "title": "The Science Behind Small Wins and Your Mental Health",
-              "channel": "Caspia Wellness",
-              "description": "Discover how celebrating tiny victories can rewire your brain for happiness and success. Download Caspia, your AI Mental Health ...",
-              "videoId": "GPoUQa6FCw4",
-              "url": "https://youtube.com/watch?v=GPoUQa6FCw4",
-              "publishedAt": "2025-08-05T15:38:28Z",
-              "thumbnail": "https://i.ytimg.com/vi/GPoUQa6FCw4/mqdefault.jpg"
+              "title": "AI therapy is a TERRIBLE idea",
+              "channel": "Alberta Tech",
+              "description": "",
+              "videoId": "ARIt2684fiM",
+              "url": "https://www.youtube.com/watch?v=ARIt2684fiM",
+              "publishedAt": "2024-08-30T13:14:42Z",
+              "thumbnail": "https://i.ytimg.com/vi/ARIt2684fiM/hqdefault.jpg"
             },
             {
               "title": "The Future of AI-Enhanced Mental Health Apps",
               "channel": "New Tech Insights",
               "description": "Discover how AI is reshaping mental health care through innovative apps designed to support well-being. Tune in to explore the ...",
               "videoId": "T6-bmY8Bk38",
-              "url": "https://youtube.com/watch?v=T6-bmY8Bk38",
+              "url": "https://www.youtube.com/watch?v=T6-bmY8Bk38",
               "publishedAt": "2025-07-30T00:00:35Z",
-              "thumbnail": "https://i.ytimg.com/vi/T6-bmY8Bk38/mqdefault.jpg"
+              "thumbnail": "https://i.ytimg.com/vi/T6-bmY8Bk38/hqdefault.jpg"
             },
             {
-              "title": "Quiz Which AI companion app is designed for mental wellness",
-              "channel": "Raghav lifestyle",
-              "description": "AI for Learning, Healing & Creating! From smarter classrooms to AI-composed melodies and mental health support—discover how ...",
-              "videoId": "G9-6R8DK76E",
-              "url": "https://youtube.com/watch?v=G9-6R8DK76E",
-              "publishedAt": "2025-05-12T16:08:15Z",
-              "thumbnail": "https://i.ytimg.com/vi/G9-6R8DK76E/mqdefault.jpg"
+              "title": "MentalBuddy: Your AI-Powered Mental Health Companion",
+              "channel": "MentalBuddy AI",
+              "description": "Discover MentalBuddy, the AI-powered app designed to support your emotional well-being and make self-care simple, accessible ...",
+              "videoId": "lg3gQVw5JA0",
+              "url": "https://www.youtube.com/watch?v=lg3gQVw5JA0",
+              "publishedAt": "2025-01-01T11:00:50Z",
+              "thumbnail": "https://i.ytimg.com/vi/lg3gQVw5JA0/hqdefault.jpg"
+            },
+            {
+              "title": "REPLIKA - A Mental Health Parasite",
+              "channel": "Upper Echelon",
+              "description": "Thank you to Honeygain for sponsoring the video! Claim your first $5 here: https://r.honeygain.me/UPPER98872 Replika.",
+              "videoId": "hUQNiy4K7VU",
+              "url": "https://www.youtube.com/watch?v=hUQNiy4K7VU",
+              "publishedAt": "2022-07-15T21:52:43Z",
+              "thumbnail": "https://i.ytimg.com/vi/hUQNiy4K7VU/hqdefault.jpg"
+            },
+            {
+              "title": "How to create AI to improve mental health  | Stevie Chancellor | TEDxMinneapolis",
+              "channel": "TEDx Talks",
+              "description": "In her TEDx talk, Stevie discusses explores how artificial intelligence (AI) can transform mental health care by increasing the ...",
+              "videoId": "H30bQKqOHsc",
+              "url": "https://www.youtube.com/watch?v=H30bQKqOHsc",
+              "publishedAt": "2024-12-18T17:56:37Z",
+              "thumbnail": "https://i.ytimg.com/vi/H30bQKqOHsc/hqdefault.jpg"
+            },
+            {
+              "title": "Use Chat-GPT as a THERAPIST",
+              "channel": "Shorts du Podcast",
+              "description": "Emad Mostaque explains how he uses Chat-GPT-4 as his therapist. And it works brilliantly! #ai #impacttheory #airevolution.",
+              "videoId": "1s86iGccirA",
+              "url": "https://www.youtube.com/watch?v=1s86iGccirA",
+              "publishedAt": "2023-07-22T19:27:41Z",
+              "thumbnail": "https://i.ytimg.com/vi/1s86iGccirA/hqdefault.jpg"
+            },
+            {
+              "title": "Companion Connect: An AI-Enhanced Digital Platform for Reducing Student Loneliness and Promoting",
+              "channel": "Computer Science & IT Conference Proceedings",
+              "description": "Companion Connect: An AI-Enhanced Digital Platform for Reducing Student Loneliness and Promoting Mental Well-Being in ...",
+              "videoId": "gJrNdStHjr0",
+              "url": "https://www.youtube.com/watch?v=gJrNdStHjr0",
+              "publishedAt": "2025-10-28T06:18:56Z",
+              "thumbnail": "https://i.ytimg.com/vi/gJrNdStHjr0/hqdefault.jpg"
+            },
+            {
+              "title": "I Found My PERFECT AI Companion For Emotional Wellbeing",
+              "channel": "Now Trending Facks",
+              "description": "I Found My PERFECT AI Companion For Emotional Wellbeing ✨ **Meet AuraFlow** – the AI app designed to track, understand ...",
+              "videoId": "ET7bKo0BTlM",
+              "url": "https://www.youtube.com/watch?v=ET7bKo0BTlM",
+              "publishedAt": "2025-03-03T09:34:15Z",
+              "thumbnail": "https://i.ytimg.com/vi/ET7bKo0BTlM/hqdefault.jpg"
             }
           ],
           "channels": [
-            "Computer Science & IT Conference Proceedings",
-            "Caspia Wellness",
+            "60 Minutes",
+            "Health & Bytes",
+            "Alberta Tech",
             "New Tech Insights",
-            "Raghav lifestyle"
+            "MentalBuddy AI"
           ]
         },
         "google_trends": {
-          "growth_rate": 0,
+          "growth_rate": -100,
           "related_queries": [],
           "interest_timeline": [
             {
-              "date": "Jan 5, 2026",
-              "value": "0"
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 6, 2026",
-              "value": "0"
+              "date": "Nov 2 – 8, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 7, 2026",
-              "value": "0"
+              "date": "Nov 9 – 15, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 8, 2026",
-              "value": "0"
+              "date": "Nov 16 – 22, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 9, 2026",
-              "value": "0"
+              "date": "Nov 23 – 29, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 10, 2026",
-              "value": "0"
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 11, 2026",
-              "value": "0"
+              "date": "Dec 7 – 13, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 12, 2026",
-              "value": "0"
+              "date": "Dec 14 – 20, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 13, 2026",
-              "value": "0"
+              "date": "Dec 21 – 27, 2025",
+              "value": 0
             },
             {
-              "date": "Jan 14, 2026",
-              "value": "0"
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 0
             },
             {
-              "date": "Jan 15, 2026",
-              "value": "0"
+              "date": "Jan 4 – 10, 2026",
+              "value": 100
             },
             {
-              "date": "Jan 16, 2026",
-              "value": "0"
+              "date": "Jan 11 – 17, 2026",
+              "value": 0
             }
-          ]
+          ],
+          "search_query": "AI-Enhanced Mental",
+          "is_mock_data": false,
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22AI-Enhanced+Mental%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-18T15:04:01.575Z",
+          "simplified_from": "AI-Enhanced Mental Health Companion App"
         },
         "facebook": {
           "pages": [],
           "reach": 0
         }
-      },
-      "status": "analyzed",
-      "analyzed_at": "2026-01-16T19:28:55.801Z"
+      }
     },
     "trend-1768604425015-0": {
       "trend_id": "trend-1768604425015-0",
@@ -3062,7 +3112,301 @@
         }
       },
       "analysis_type": "deep"
+    },
+    "trend-1768689874583-0": {
+      "trend_id": "trend-1768689874583-0",
+      "trend_title": "Personalized Fitness Tracker with AI Coaching",
+      "main_pain": "Отсутствие персонализированных тренировок, адаптированных под уровень подготовки и цели пользователя.",
+      "key_pain_points": [
+        "Отсутствие персонализированных тренировок, адаптированных под уровень подготовки и цели пользователя.",
+        "Нехватка мотивации и поддержки в тренировочном процессе.",
+        "Регуляция данных о здоровье и конфиденциальность.",
+        "Высокая конкуренция на рынке фитнес-технологий."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Фитнес-энтузиасты и новички",
+            "size": "Большой рынок с растущим интересом к персонализированным решениям",
+            "willingness_to_pay": "high/medium",
+            "where_to_find": "Форумы фитнеса, социальные сети, приложения для здоровья",
+            "confidence": 8
+          }
+        ]
+      },
+      "sentiment_score": 8.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-18T15:10:37.316Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "I built a simple AI fitness tracker to consolidate workouts, ...",
+              "subreddit": "vibecoding",
+              "score": 247,
+              "num_comments": 43,
+              "url": "https://www.reddit.com/r/vibecoding/comments/1qaw0vo/i_built_a_simple_ai_fitness_tracker_to/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "AI Coaching: Get personalised insights and recommendations based on your complete fitness picture. Progress Tracking: See your trends across ..."
+            },
+            {
+              "title": "Built a fitness tracking app with AI coaching using Claude ...",
+              "subreddit": "ClaudeCode",
+              "score": 383,
+              "num_comments": 98,
+              "url": "https://www.reddit.com/r/ClaudeCode/comments/1q2inev/built_a_fitness_tracking_app_with_ai_coaching/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "You provide goals, equipment and injuries, and it analyses your actual training history to give feedback and recommendations. For example: ..."
+            },
+            {
+              "title": "Made an app that trains your focus like a muscle - with AI ...",
+              "subreddit": "ProductivityApps",
+              "score": 474,
+              "num_comments": 57,
+              "url": "https://www.reddit.com/r/ProductivityApps/comments/1qcum3p/made_an_app_that_trains_your_focus_like_a_muscle/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "An AI-powered focus training app that builds a personalized plan for you, tracks your actual focus via Apple Watch, and gives you coaching based ..."
+            },
+            {
+              "title": "What do you think about a truly personalized fitness + ...",
+              "subreddit": "workout",
+              "score": 244,
+              "num_comments": 93,
+              "url": "https://www.reddit.com/r/workout/comments/1oblgbm/what_do_you_think_about_a_truly_personalized/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "I've been working on an idea for something that combines AI + fitness + health personalization - not just another calorie tracker or workout ..."
+            },
+            {
+              "title": "Your AI Fitness & Nutrition Coach for iOS 💪",
+              "subreddit": "iosapps",
+              "score": 245,
+              "num_comments": 36,
+              "url": "https://www.reddit.com/r/iosapps/comments/1i1h3ip/introducing_my_ai_trainer_your_ai_fitness/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "With My AI Trainer, you can speak directly to your coach—log meals, customize workouts, or get real-time guidance—making it easier than ever to ..."
+            },
+            {
+              "title": "My friends and I built AI fitness trainer app that gives real-time ...",
+              "subreddit": "computervision",
+              "score": 265,
+              "num_comments": 75,
+              "url": "https://www.reddit.com/r/computervision/comments/1ml4fzg/my_friends_and_i_built_ai_fitness_trainer_app/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "My friends and I built Firefly Fitness. it's an app that gives real-time form feedback using just your phone's camera."
+            },
+            {
+              "title": "Built a science‑based fitness coaching app (progress ...",
+              "subreddit": "reactnative",
+              "score": 82,
+              "num_comments": 4,
+              "url": "https://www.reddit.com/r/reactnative/comments/1qawcx1/built_a_sciencebased_fitness_coaching_app/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "Built a fitness tracking app with AI coaching using Claude Code. 4 comments. Finally did it My first app is live on the App Store! r ..."
+            },
+            {
+              "title": "From zero coding knowledge to launching a fitness app in ...",
+              "subreddit": "vibecoding",
+              "score": 175,
+              "num_comments": 11,
+              "url": "https://www.reddit.com/r/vibecoding/comments/1kurbkq/from_zero_coding_knowledge_to_launching_a_fitness/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "It's basically a smart workout generator that creates personalized exercise plans based on your experience level, available equipment, time constraints, and ..."
+            },
+            {
+              "title": "I've been building an AI-powered workout tracker with a ...",
+              "subreddit": "iOSDevelopment",
+              "score": 113,
+              "num_comments": 47,
+              "url": "https://www.reddit.com/r/iOSDevelopment/comments/1ouptgh/ive_been_building_an_aipowered_workout_tracker/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "I wanted to build something smarter that feels like you're training with a coach who knows your progress. Here's what the app can do right now:."
+            },
+            {
+              "title": "r/AthlyticAppOfficial",
+              "subreddit": "AthlyticAppOfficial",
+              "score": 61,
+              "num_comments": 23,
+              "url": "https://www.reddit.com/r/AthlyticAppOfficial/",
+              "created": "2026-01-18T15:10:37.280Z",
+              "selftext": "r/AthlyticAppOfficial: This is the Official subreddit of the Athlytic App moderated by Gary and Jaclyn - the Developers of Athlytic."
+            }
+          ],
+          "communities": [
+            "vibecoding",
+            "ClaudeCode",
+            "ProductivityApps",
+            "workout",
+            "iosapps"
+          ],
+          "engagement": 3263
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "I Tried ChatGPT as My Running Coach — It Beat Every Paid App",
+              "channel": "Wild Rapha",
+              "description": "Why pay €20 a month for a running app when you can build a smarter, more personal training plan (for free) using ChatGPT?",
+              "videoId": "uSXDXIwtYis",
+              "url": "https://www.youtube.com/watch?v=uSXDXIwtYis",
+              "publishedAt": "2025-10-04T08:54:33Z",
+              "thumbnail": "https://i.ytimg.com/vi/uSXDXIwtYis/hqdefault.jpg"
+            },
+            {
+              "title": "100% FREE Fitness App – No Subscriptions, No Fees! Get Fit with Powerful Workouts &amp; Features!",
+              "channel": "TheGymFaction",
+              "description": "\"   100% FREE Fitness App – No Subscriptions, No Fees! Just Results! \", \"   Get Fit for FREE – No Payments, Just Gains! \" ...",
+              "videoId": "bt84j9i6Noc",
+              "url": "https://www.youtube.com/watch?v=bt84j9i6Noc",
+              "publishedAt": "2025-03-11T13:01:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/bt84j9i6Noc/hqdefault.jpg"
+            },
+            {
+              "title": "Top 5 Fitness Apps for Personal Trainers in 2025",
+              "channel": "Alex Povey",
+              "description": "Work With Me - https://go.remote-coaches.com/rca-app Free 14-Day Marketing Playbook ...",
+              "videoId": "ZSP9Sx8sPwQ",
+              "url": "https://www.youtube.com/watch?v=ZSP9Sx8sPwQ",
+              "publishedAt": "2025-01-21T18:00:10Z",
+              "thumbnail": "https://i.ytimg.com/vi/ZSP9Sx8sPwQ/hqdefault.jpg"
+            },
+            {
+              "title": "NEW Fitbit App: All-in on AI!",
+              "channel": "The Quantified Scientist",
+              "description": "DISCOUNTS/AFFILIATES*!  ▭▭▭▭▭▭▭▭▭▭ Pixel Watch 4*: https://geni.us/PixelWatch4 Anything on Amazon*: ...",
+              "videoId": "kZYeGDLwVPQ",
+              "url": "https://www.youtube.com/watch?v=kZYeGDLwVPQ",
+              "publishedAt": "2025-10-27T17:01:13Z",
+              "thumbnail": "https://i.ytimg.com/vi/kZYeGDLwVPQ/hqdefault.jpg"
+            },
+            {
+              "title": "Chat GPT Workout Plan",
+              "channel": "Brandon Carter",
+              "description": "Learn The 10 Easy-To-Follow Steps Anyone Can Use To Become An Online Trainer: https://king-keto.com/chat-gpt-workout ...",
+              "videoId": "65K-n0CvgVc",
+              "url": "https://www.youtube.com/watch?v=65K-n0CvgVc",
+              "publishedAt": "2023-10-27T21:39:58Z",
+              "thumbnail": "https://i.ytimg.com/vi/65K-n0CvgVc/hqdefault.jpg"
+            },
+            {
+              "title": "🔴 Let&#39;s build an AI Workout Tracker with REACT NATIVE! (Sanity, Clerk, Expo, Nativewind, OpenAI)",
+              "channel": "Sonny Sangha",
+              "description": "1️⃣ Get Started with Sanity ...",
+              "videoId": "bk89LxdS0TE",
+              "url": "https://www.youtube.com/watch?v=bk89LxdS0TE",
+              "publishedAt": "2025-07-01T14:47:42Z",
+              "thumbnail": "https://i.ytimg.com/vi/bk89LxdS0TE/hqdefault.jpg"
+            },
+            {
+              "title": "Best AI Powered Personal Training Apps &amp; Features of 2025",
+              "channel": "Alex Povey",
+              "description": "Work With Me - https://go.remote-coaches.com/rca-app Free 14-Day Marketing Playbook ...",
+              "videoId": "Iix_dbfg8OE",
+              "url": "https://www.youtube.com/watch?v=Iix_dbfg8OE",
+              "publishedAt": "2025-03-20T18:00:06Z",
+              "thumbnail": "https://i.ytimg.com/vi/Iix_dbfg8OE/hqdefault.jpg"
+            },
+            {
+              "title": "Everfit AI Workout &amp; Program Builder",
+              "channel": "Everfit",
+              "description": "Experience the future of fitness coaching with Everfit's AI Workout Builder—effortlessly transform your text-based program notes ...",
+              "videoId": "JOQyK3b6sIM",
+              "url": "https://www.youtube.com/watch?v=JOQyK3b6sIM",
+              "publishedAt": "2025-02-05T22:25:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/JOQyK3b6sIM/hqdefault.jpg"
+            },
+            {
+              "title": "Can AI Create a Perfect Workout Plan?😱 Full video linked in comments!😳 #ai #chatgpt #openai",
+              "channel": "Max Brown",
+              "description": "",
+              "videoId": "R-CXaDqhPdw",
+              "url": "https://www.youtube.com/watch?v=R-CXaDqhPdw",
+              "publishedAt": "2023-01-09T19:14:21Z",
+              "thumbnail": "https://i.ytimg.com/vi/R-CXaDqhPdw/hqdefault.jpg"
+            },
+            {
+              "title": "Top 5 AI Personal Training Apps of 2025 | Train Smarter with InfoSwipe",
+              "channel": "Info Swipe",
+              "description": "The future of fitness is here! Check out the Top 5 AI Personal Training Apps of 2025 — from smart strength training to ...",
+              "videoId": "COQ0ls9oPJI",
+              "url": "https://www.youtube.com/watch?v=COQ0ls9oPJI",
+              "publishedAt": "2025-08-23T23:55:48Z",
+              "thumbnail": "https://i.ytimg.com/vi/COQ0ls9oPJI/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Wild Rapha",
+            "TheGymFaction",
+            "Alex Povey",
+            "The Quantified Scientist",
+            "Brandon Carter"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -63,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 62
+            },
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 52
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 57
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 57
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 64
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 100
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 73
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 74
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 60
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 80
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 25
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 23
+            }
+          ],
+          "search_query": "Personalized Fitness",
+          "is_mock_data": false,
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Personalized+Fitness%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-18T15:10:37.309Z",
+          "simplified_from": "Personalized Fitness Tracker with AI Coaching"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      }
     }
   },
-  "lastUpdated": "2026-01-17T14:57:18.750Z"
+  "lastUpdated": "2026-01-18T15:10:37.347Z"
 }

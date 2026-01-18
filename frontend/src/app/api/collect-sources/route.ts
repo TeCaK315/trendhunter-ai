@@ -242,48 +242,62 @@ function generateMockYouTubeData(query: string): { videos: YouTubeVideo[]; chann
 }
 
 // Generate simplified query variants for Google Trends
+// Strategy: Start with broad, popular terms, then get more specific
 function generateQueryVariants(originalQuery: string): string[] {
-  const variants: string[] = [originalQuery];
+  const variants: string[] = [];
 
-  // Remove common prefixes/suffixes that make queries too specific
-  const simplified = originalQuery
-    .replace(/^AI-Powered\s+/i, 'AI ')
-    .replace(/^AI-Based\s+/i, 'AI ')
+  // Clean up the original query
+  const cleaned = originalQuery
+    .replace(/^AI-Powered\s+/i, '')
+    .replace(/^AI-Based\s+/i, '')
     .replace(/\s+Platform$/i, '')
     .replace(/\s+Tool$/i, '')
     .replace(/\s+App$/i, '')
     .replace(/\s+Software$/i, '')
     .replace(/\s+Service$/i, '')
-    .replace(/\s+Agent$/i, '');
+    .replace(/\s+Agent$/i, '')
+    .replace(/\s+Assistant$/i, '')
+    .trim();
 
-  if (simplified !== originalQuery) {
-    variants.push(simplified);
-  }
+  // Extract meaningful words (skip common/generic terms)
+  const skipWords = [
+    'the', 'and', 'for', 'with', 'app', 'tool', 'platform', 'service',
+    'powered', 'based', 'intelligent', 'smart', 'automated', 'automation',
+    'ai', 'artificial', 'intelligence', 'machine', 'learning'
+  ];
 
-  // Extract key terms (2-3 main words)
-  const words = originalQuery.split(/\s+/).filter(w =>
-    w.length > 2 &&
-    !['the', 'and', 'for', 'with', 'app', 'tool', 'platform', 'service', 'powered', 'based'].includes(w.toLowerCase())
+  const words = cleaned.split(/\s+/).filter(w =>
+    w.length > 2 && !skipWords.includes(w.toLowerCase())
   );
 
+  // Strategy 1: Core topic only (most likely to have data)
+  // For "AI Mental Health Assistant" -> "mental health"
   if (words.length >= 2) {
-    // Try first 2-3 significant words
-    variants.push(words.slice(0, 3).join(' '));
-    if (words.length > 3) {
-      variants.push(words.slice(0, 2).join(' '));
-    }
+    variants.push(words.slice(0, 2).join(' '));
+  }
+  if (words.length >= 1) {
+    variants.push(words[0]);
   }
 
-  // Add "AI" prefix if not present and query is about AI
-  if (originalQuery.toLowerCase().includes('ai') && words.length >= 1) {
-    const mainTopic = words.filter(w => w.toLowerCase() !== 'ai').slice(0, 2).join(' ');
-    if (mainTopic) {
-      variants.push(`AI ${mainTopic}`);
-    }
+  // Strategy 2: Add "therapy" or "wellness" for health-related queries
+  const healthTerms = ['mental', 'health', 'therapy', 'wellness', 'psychology', 'mind'];
+  const isHealthRelated = words.some(w => healthTerms.includes(w.toLowerCase()));
+  if (isHealthRelated) {
+    variants.push('mental health app');
+    variants.push('therapy app');
+    variants.push('mental wellness');
   }
 
-  // Remove duplicates and return
-  return [...new Set(variants)];
+  // Strategy 3: Original query simplified
+  if (cleaned !== originalQuery) {
+    variants.push(cleaned);
+  }
+
+  // Strategy 4: Full original as last resort
+  variants.push(originalQuery);
+
+  // Remove duplicates and empty strings
+  return [...new Set(variants)].filter(v => v.length > 0);
 }
 
 // Fetch Google Trends data using SerpAPI with fallback to simpler queries
