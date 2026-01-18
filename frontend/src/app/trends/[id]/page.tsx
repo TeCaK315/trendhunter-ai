@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import TrendChat from '@/components/TrendChat';
@@ -180,9 +180,75 @@ interface PitchDeck {
   };
 }
 
+// Интерфейсы для данных проекта (META-агент)
+interface RoadmapPhase {
+  duration?: string;
+  goals: string[];
+  deliverables: string[];
+  success_metrics: string[];
+}
+
+interface ProjectRoadmap {
+  mvp: RoadmapPhase;
+  alpha: RoadmapPhase;
+  beta: RoadmapPhase;
+  production: RoadmapPhase;
+}
+
+interface CoreFeature {
+  name: string;
+  description: string;
+  priority: string;
+  user_story?: string;
+  acceptance_criteria?: string[];
+}
+
+interface TechStackItem {
+  category: string;
+  recommendation: string;
+  alternatives?: string[];
+  reasoning?: string;
+}
+
+interface MVPSpecification {
+  core_features: CoreFeature[];
+  tech_stack: TechStackItem[];
+  architecture?: string;
+  estimated_complexity?: string;
+}
+
+interface EnhancementRecommendation {
+  area: string;
+  current_state: string;
+  recommended_improvement: string;
+  expected_impact: string;
+  priority: string;
+}
+
+interface ProjectData {
+  project_name: string;
+  one_liner?: string;
+  problem_statement?: string;
+  solution_overview?: string;
+  github_url?: string;
+  readme_content: string;
+  mvp_specification: MVPSpecification;
+  roadmap: ProjectRoadmap;
+  enhancement_recommendations: EnhancementRecommendation[];
+  business_metrics: {
+    target_users_mvp?: string;
+    target_revenue_mvp?: string;
+    target_users_production?: string;
+    target_revenue_production?: string;
+    key_kpis?: string[];
+  };
+  created_at?: string;
+}
+
 export default function TrendPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const trendId = params.id as string;
 
   const [trend, setTrend] = useState<Trend | null>(null);
@@ -192,6 +258,9 @@ export default function TrendPage() {
   const [collectingSources, setCollectingSources] = useState(false);
   const [currentStep, setCurrentStep] = useState<FlowStep>('overview');
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Ref для отслеживания установки tab из URL (чтобы fetchData не перезаписывал)
+  const tabSetFromUrlRef = useRef(false);
 
   // Deep analysis states (3 agents debate)
   interface AgentAnalysis {
@@ -234,6 +303,155 @@ export default function TrendPage() {
   const [senderCompany, setSenderCompany] = useState('');
   const [showEmailModal, setShowEmailModal] = useState(false);
 
+  // Состояние для дополнительных данных из API (synthesis, strategic_positioning и т.д.)
+  interface SourcesSynthesis {
+    key_insights: string[];
+    sentiment_summary: string;
+    content_gaps: string[];
+    recommended_angles: string[];
+  }
+  const [sourcesSynthesis, setSourcesSynthesis] = useState<SourcesSynthesis | null>(null);
+  const [strategicPositioning, setStrategicPositioning] = useState<string | null>(null);
+  const [differentiationOpportunities, setDifferentiationOpportunities] = useState<string[]>([]);
+  const [investmentThesis, setInvestmentThesis] = useState<string | null>(null);
+  const [recommendedRound, setRecommendedRound] = useState<string | null>(null);
+  const [keyInvestors, setKeyInvestors] = useState<string[]>([]);
+
+  // Состояние для проекта (META-агент)
+  const [projectData, setProjectData] = useState<ProjectData | null>(null);
+  const [loadingProject, setLoadingProject] = useState(false);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const [githubCreated, setGithubCreated] = useState(false);
+  const [isGithubAuthenticated, setIsGithubAuthenticated] = useState(false);
+  const [creatingGithubRepo, setCreatingGithubRepo] = useState(false);
+
+  // Функция проверки GitHub авторизации
+  const checkGithubAuth = useCallback(async () => {
+    try {
+      const githubRes = await fetch('/api/auth/github/user');
+      const githubData = await githubRes.json();
+      // API возвращает { authenticated: true/false, user: ... }
+      const isAuth = githubData.authenticated && !!githubData.user;
+      setIsGithubAuthenticated(isAuth);
+      return isAuth;
+    } catch {
+      setIsGithubAuthenticated(false);
+      return false;
+    }
+  }, []);
+
+  // Проверка auth_success после редиректа с GitHub OAuth
+  useEffect(() => {
+    const authSuccess = searchParams.get('auth_success');
+    const tabParam = searchParams.get('tab');
+
+    if (authSuccess === 'true' && tabParam === 'project') {
+      // СРАЗУ устанавливаем флаг и вкладку, чтобы fetchData не перезаписал
+      tabSetFromUrlRef.current = true;
+      setCurrentStep('project');
+
+      // Перепроверяем статус GitHub авторизации асинхронно
+      checkGithubAuth().then((isAuth) => {
+        if (isAuth) {
+          // Убираем параметры из URL без перезагрузки
+          const url = new URL(window.location.href);
+          url.searchParams.delete('auth_success');
+          url.searchParams.delete('tab');
+          router.replace(url.pathname, { scroll: false });
+        }
+      });
+    } else if (tabParam && !authSuccess) {
+      // Обработка tab параметра при прямой загрузке страницы
+      const validTabs: FlowStep[] = ['overview', 'analysis', 'sources', 'competition', 'venture', 'leads', 'pitch-deck', 'project'];
+      if (validTabs.includes(tabParam as FlowStep)) {
+        tabSetFromUrlRef.current = true;
+        setCurrentStep(tabParam as FlowStep);
+      }
+    }
+  }, [searchParams, checkGithubAuth, router]);
+
+  // Хелпер: Построение накопительного контекста для передачи между экспертами
+  const buildAnalysisContext = () => {
+    const context: Record<string, unknown> = {
+      trend: {
+        id: trend?.id,
+        title: trend?.title,
+        category: trend?.category,
+        why_trending: trend?.why_trending,
+      },
+    };
+
+    // Добавляем данные анализа (от эксперта по болям)
+    if (analysis) {
+      context.analysis = {
+        main_pain: analysis.main_pain,
+        key_pain_points: analysis.key_pain_points,
+        target_audience: analysis.target_audience,
+        opportunities: analysis.key_pain_points, // используем боли как возможности
+        risks: [],
+        market_readiness: analysis.sentiment_score ? Math.round(analysis.sentiment_score * 10) : undefined,
+      };
+    }
+
+    // Добавляем данные из источников
+    if (analysis?.real_sources) {
+      context.sources = {
+        reddit: analysis.real_sources.reddit,
+        google_trends: analysis.real_sources.google_trends,
+        youtube: analysis.real_sources.youtube,
+        synthesis: sourcesSynthesis,
+      };
+    }
+
+    // Добавляем конкурентный анализ
+    if (competition) {
+      context.competition = {
+        competitors: competition.competitors,
+        market_saturation: competition.market_saturation,
+        blue_ocean_score: competition.blue_ocean_score,
+        opportunity_areas: competition.opportunity_areas,
+        strategic_positioning: strategicPositioning,
+        differentiation_opportunities: differentiationOpportunities,
+      };
+    }
+
+    // Добавляем инвестиционные данные
+    if (ventureData) {
+      context.venture = {
+        total_funding_last_year: ventureData.total_funding_last_year,
+        average_round_size: ventureData.average_round_size,
+        funding_trend: ventureData.funding_trend,
+        recent_rounds: ventureData.recent_rounds,
+        active_funds: ventureData.active_funds,
+        investment_hotness: ventureData.investment_hotness,
+        market_signals: ventureData.market_signals,
+        investment_thesis: investmentThesis,
+        recommended_round: recommendedRound,
+        key_investors_to_target: keyInvestors,
+      };
+    }
+
+    // Добавляем данные о лидах
+    if (leadsData) {
+      context.leads = {
+        companies: leadsData.companies,
+        linkedin_queries: leadsData.linkedin_queries,
+        directories: leadsData.directories,
+      };
+    }
+
+    // Добавляем pitch deck
+    if (pitchDeck) {
+      context.pitch = {
+        company_name: pitchDeck.title,
+        tagline: pitchDeck.tagline,
+        slides: pitchDeck.slides,
+      };
+    }
+
+    return context;
+  };
+
   // Fetch trend data
   useEffect(() => {
     const fetchData = async () => {
@@ -252,16 +470,52 @@ export default function TrendPage() {
         if (analysisData.analyses?.[trendId]) {
           setAnalysis(analysisData.analyses[trendId]);
           // If analysis exists, we can show more steps
-          if (analysisData.analyses[trendId].real_sources) {
-            setCurrentStep('sources');
-          } else {
-            setCurrentStep('analysis');
+          // НО не перезаписываем если tab был установлен из URL (после GitHub auth)
+          if (!tabSetFromUrlRef.current) {
+            if (analysisData.analyses[trendId].real_sources) {
+              setCurrentStep('sources');
+            } else {
+              setCurrentStep('analysis');
+            }
           }
         }
 
         // Check if favorite
         const favorites = JSON.parse(localStorage.getItem('trendhunter_favorites') || '[]');
         setIsFavorite(favorites.includes(trendId));
+
+        // Загружаем существующий проект из localStorage (если есть)
+        try {
+          const storedProjects = localStorage.getItem('trendhunter_projects');
+          if (storedProjects) {
+            const projects = JSON.parse(storedProjects);
+            const existingProject = projects.find((p: { trend_id: string }) => p.trend_id === trendId);
+            if (existingProject) {
+              // Восстанавливаем данные проекта
+              setProjectData({
+                project_name: existingProject.name,
+                one_liner: existingProject.description,
+                problem_statement: existingProject.description,
+                solution_overview: '',
+                github_url: existingProject.repo_url,
+                readme_content: '',
+                mvp_specification: existingProject.mvp_specification || { core_features: [], tech_stack: [] },
+                roadmap: existingProject.roadmap || { mvp: { goals: [], deliverables: [], success_metrics: [] }, alpha: { goals: [], deliverables: [], success_metrics: [] }, beta: { goals: [], deliverables: [], success_metrics: [] }, production: { goals: [], deliverables: [], success_metrics: [] } },
+                enhancement_recommendations: [],
+                business_metrics: {},
+                created_at: existingProject.created_at,
+              });
+              if (existingProject.repo_url) {
+                setGithubCreated(true);
+              }
+            }
+          }
+        } catch (storageError) {
+          console.error('Error loading project from localStorage:', storageError);
+        }
+
+        // Check GitHub authentication
+        await checkGithubAuth();
       } catch (error) {
         console.error('Error fetching trend:', error);
       } finally {
@@ -270,7 +524,7 @@ export default function TrendPage() {
     };
 
     fetchData();
-  }, [trendId]);
+  }, [trendId, checkGithubAuth]);
 
   const handleFavorite = () => {
     const favorites = JSON.parse(localStorage.getItem('trendhunter_favorites') || '[]');
@@ -349,17 +603,26 @@ export default function TrendPage() {
     setCollectingSources(true);
 
     try {
+      // Строим контекст от предыдущего эксперта (анализ болей)
+      const context = buildAnalysisContext();
+
       const response = await fetch('/api/collect-sources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: trend.title,
           trend_title: trend.title,
+          context, // Передаём контекст от анализа болей
         }),
       });
 
       const data = await response.json();
       if (data.success) {
+        // Сохраняем синтез от эксперта по источникам
+        if (data.synthesis) {
+          setSourcesSynthesis(data.synthesis);
+        }
+
         // Update analysis with sources
         const updatedAnalysis = {
           ...analysis,
@@ -397,15 +660,29 @@ export default function TrendPage() {
     setLoadingCompetition(true);
 
     try {
+      // Строим контекст от предыдущих экспертов (анализ + источники)
+      const context = buildAnalysisContext();
+
       const response = await fetch('/api/competition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trend_title: trend.title }),
+        body: JSON.stringify({
+          trend_title: trend.title,
+          context, // Передаём накопленный контекст
+        }),
       });
 
       const data = await response.json();
       if (data.success && data.data) {
         setCompetition(data.data);
+
+        // Сохраняем дополнительные данные от эксперта по конкурентам
+        if (data.data.strategic_positioning) {
+          setStrategicPositioning(data.data.strategic_positioning);
+        }
+        if (data.data.differentiation_opportunities) {
+          setDifferentiationOpportunities(data.data.differentiation_opportunities);
+        }
       }
     } catch (error) {
       console.error('Error fetching competition:', error);
@@ -420,15 +697,32 @@ export default function TrendPage() {
     setLoadingVenture(true);
 
     try {
+      // Строим контекст от предыдущих экспертов (анализ + источники + конкуренты)
+      const context = buildAnalysisContext();
+
       const response = await fetch('/api/venture-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trend_title: trend.title }),
+        body: JSON.stringify({
+          trend_title: trend.title,
+          context, // Передаём накопленный контекст
+        }),
       });
 
       const data = await response.json();
       if (data.success && data.data) {
         setVentureData(data.data);
+
+        // Сохраняем дополнительные данные от эксперта по инвестициям
+        if (data.data.investment_thesis) {
+          setInvestmentThesis(data.data.investment_thesis);
+        }
+        if (data.data.recommended_round) {
+          setRecommendedRound(data.data.recommended_round);
+        }
+        if (data.data.key_investors_to_target) {
+          setKeyInvestors(data.data.key_investors_to_target);
+        }
       }
     } catch (error) {
       console.error('Error fetching venture data:', error);
@@ -443,6 +737,9 @@ export default function TrendPage() {
     setLoadingPitch(true);
 
     try {
+      // Строим ПОЛНЫЙ контекст от всех предыдущих экспертов
+      const context = buildAnalysisContext();
+
       const response = await fetch('/api/pitch-deck', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -455,6 +752,7 @@ export default function TrendPage() {
             target_audience: analysis?.target_audience?.segments?.map(s => s.name).join(', '),
             competitors: competition?.competitors,
           },
+          context, // Передаём полный накопленный контекст от всех экспертов
         }),
       });
 
@@ -475,6 +773,9 @@ export default function TrendPage() {
     setLoadingLeads(true);
 
     try {
+      // Строим полный контекст от всех предыдущих экспертов
+      const context = buildAnalysisContext();
+
       const response = await fetch('/api/find-companies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -482,6 +783,7 @@ export default function TrendPage() {
           niche: trend.title,
           painPoint: analysis.main_pain,
           count: 10,
+          context, // Передаём накопленный контекст
         }),
       });
 
@@ -535,6 +837,164 @@ export default function TrendPage() {
       console.error('Error generating email:', error);
     } finally {
       setLoadingEmail(false);
+    }
+  };
+
+  // Создание проекта через META-агент
+  const createProject = async (createGithubRepo = false) => {
+    if (!trend || loadingProject) return;
+    setLoadingProject(true);
+    setProjectError(null);
+
+    try {
+      // Строим ПОЛНЫЙ контекст от ВСЕХ 7 предыдущих экспертов
+      const context = buildAnalysisContext();
+
+      const response = await fetch('/api/create-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trend_id: trend.id,
+          project_name: trend.title.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').substring(0, 50),
+          context, // Передаём полный накопленный контекст от всех экспертов
+          create_github_repo: createGithubRepo,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        setProjectData(data.data);
+        setGithubCreated(data.github_created || false);
+
+        // Сохраняем проект в localStorage для синхронизации с другими страницами
+        try {
+          const storedProjects = localStorage.getItem('trendhunter_projects');
+          const projects = storedProjects ? JSON.parse(storedProjects) : [];
+
+          // Проверяем, существует ли уже проект с этим trend_id
+          const existingIndex = projects.findIndex((p: { trend_id: string }) => p.trend_id === trend.id);
+
+          const newProject = {
+            id: `project-${Date.now()}`,
+            name: data.data.project_name || trend.title,
+            description: data.data.one_liner || data.data.problem_statement || '',
+            repo_url: data.data.github_url || null,
+            clone_url: data.data.github_url ? `${data.data.github_url}.git` : null,
+            trend_id: trend.id,
+            trend_title: trend.title,
+            created_at: new Date().toISOString(),
+            tech_stack: data.data.mvp_specification?.tech_stack?.map((t: TechStackItem) => t.recommendation) || [],
+            solution_type: 'web_app',
+            mvp_specification: data.data.mvp_specification,
+            roadmap: data.data.roadmap,
+          };
+
+          if (existingIndex >= 0) {
+            projects[existingIndex] = { ...projects[existingIndex], ...newProject };
+          } else {
+            projects.push(newProject);
+          }
+
+          localStorage.setItem('trendhunter_projects', JSON.stringify(projects));
+        } catch (storageError) {
+          console.error('Error saving project to localStorage:', storageError);
+        }
+      } else {
+        setProjectError(data.error || 'Не удалось создать проект');
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+      setProjectError('Ошибка при создании проекта');
+    } finally {
+      setLoadingProject(false);
+    }
+  };
+
+  // Создание GitHub репозитория для существующего проекта
+  const createGithubRepoForProject = async () => {
+    if (!projectData || creatingGithubRepo || githubCreated) return;
+    setCreatingGithubRepo(true);
+
+    try {
+      const context = buildAnalysisContext();
+
+      const response = await fetch('/api/create-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trend_id: trend?.id,
+          project_name: projectData.project_name,
+          context,
+          create_github_repo: true,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.github_created && data.data.github_url) {
+        setProjectData(prev => prev ? { ...prev, github_url: data.data.github_url } : null);
+        setGithubCreated(true);
+
+        // Обновляем GitHub URL в localStorage
+        try {
+          const storedProjects = localStorage.getItem('trendhunter_projects');
+          if (storedProjects) {
+            const projects = JSON.parse(storedProjects);
+            const existingIndex = projects.findIndex((p: { trend_id: string }) => p.trend_id === trend?.id);
+
+            if (existingIndex >= 0) {
+              projects[existingIndex].repo_url = data.data.github_url;
+              projects[existingIndex].clone_url = `${data.data.github_url}.git`;
+              localStorage.setItem('trendhunter_projects', JSON.stringify(projects));
+            }
+          }
+        } catch (storageError) {
+          console.error('Error updating project in localStorage:', storageError);
+        }
+      } else {
+        setProjectError('Не удалось создать репозиторий. Проверьте авторизацию в GitHub.');
+      }
+    } catch (error) {
+      console.error('Error creating GitHub repo:', error);
+      setProjectError('Ошибка при создании репозитория');
+    } finally {
+      setCreatingGithubRepo(false);
+    }
+  };
+
+  // Функция сброса проекта (очистка localStorage)
+  const resetProject = () => {
+    if (!trend?.id) return;
+
+    const confirmed = window.confirm(
+      'Вы уверены, что хотите сбросить проект?\n\n' +
+      'Это удалит данные проекта из браузера и позволит запустить анализ заново.\n' +
+      'GitHub репозиторий НЕ будет удалён автоматически.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const storedProjects = localStorage.getItem('trendhunter_projects');
+      if (storedProjects) {
+        const projects = JSON.parse(storedProjects);
+        const filteredProjects = projects.filter((p: { trend_id: string }) => p.trend_id !== trend.id);
+        localStorage.setItem('trendhunter_projects', JSON.stringify(filteredProjects));
+
+        // Триггерим событие storage для обновления других компонентов (например, TrendCard)
+        window.dispatchEvent(new Event('storage'));
+      }
+
+      // Сбрасываем локальное состояние
+      setProjectData(null);
+      setGithubCreated(false);
+      setProjectError(null);
+
+      // Переключаемся на первую вкладку
+      setCurrentStep('overview');
+
+    } catch (error) {
+      console.error('Error resetting project:', error);
+      setProjectError('Ошибка при сбросе проекта');
     }
   };
 
@@ -2119,41 +2579,418 @@ export default function TrendPage() {
 
           {currentStep === 'project' && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-8 text-center">
-                <h3 className="text-2xl font-bold text-white mb-4">Создать проект</h3>
-                <p className="text-zinc-400 mb-6 max-w-lg mx-auto">
-                  На основе анализа тренда &quot;{trend.title}&quot; система создаст GitHub репозиторий
-                  с README, планом на 4 недели и задачами.
-                </p>
-                <button
-                  onClick={() => router.push(`/projects?create=${trend.id}`)}
-                  className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all inline-flex items-center gap-2"
-                >
-                  <span>🚀</span>
-                  Создать проект в GitHub
-                </button>
-              </div>
+              {/* Если проект ещё не создан */}
+              {!projectData && !loadingProject && (
+                <>
+                  <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-8 text-center">
+                    <h3 className="text-2xl font-bold text-white mb-4">META-агент: Создать проект</h3>
+                    <p className="text-zinc-400 mb-6 max-w-lg mx-auto">
+                      На основе ПОЛНОГО анализа от всех 7 экспертов система сгенерирует техническую спецификацию
+                      для Claude Code с roadmap от MVP до Production.
+                    </p>
+                    {projectError && (
+                      <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                        {projectError}
+                      </div>
+                    )}
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                      <button
+                        onClick={() => createProject(false)}
+                        className="px-8 py-4 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl font-medium transition-all inline-flex items-center gap-2"
+                      >
+                        <span>📋</span>
+                        Только спецификация
+                      </button>
+                      {isGithubAuthenticated ? (
+                        <button
+                          onClick={() => createProject(true)}
+                          className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
+                        >
+                          <span>🚀</span>
+                          Создать + GitHub репо
+                        </button>
+                      ) : (
+                        <a
+                          href={`/api/auth/github?returnUrl=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}?tab=project` : `/trends/${params.id}?tab=project`)}`}
+                          className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
+                        >
+                          <span>🔐</span>
+                          Войти в GitHub для создания репо
+                        </a>
+                      )}
+                    </div>
+                    {!isGithubAuthenticated && (
+                      <p className="mt-4 text-sm text-zinc-500">
+                        После авторизации вы сможете автоматически создать репозиторий с README
+                      </p>
+                    )}
+                  </div>
 
-              {/* What will be created */}
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Что будет создано:</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {[
-                    { icon: '📁', title: 'GitHub Repository', desc: 'Приватный репозиторий с базовой структурой' },
-                    { icon: '📝', title: 'README.md', desc: 'Описание проекта, tech stack, инструкции' },
-                    { icon: '📋', title: 'Issues', desc: 'Задачи на 4 недели разработки' },
-                    { icon: '🤖', title: 'AI Агенты', desc: 'Developer, Marketing, Sales ассистенты' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-3 p-4 bg-zinc-800/50 rounded-lg">
-                      <span className="text-2xl">{item.icon}</span>
+                  {/* Что будет создано */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Что сгенерирует META-агент:</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {[
+                        { icon: '📝', title: 'README.md', desc: 'Полное описание проекта с визией и целями' },
+                        { icon: '⚙️', title: 'MVP Specification', desc: 'Core features, tech stack, timeline' },
+                        { icon: '🗺️', title: 'Roadmap', desc: 'MVP → Alpha → Beta → Production' },
+                        { icon: '📋', title: 'Tasks', desc: 'Недельные задачи для разработки' },
+                        { icon: '💰', title: 'Business Metrics', desc: 'Target MRR, break-even, pricing' },
+                        { icon: '🤖', title: 'AI Агенты', desc: 'Developer, Marketing, Sales фокусы' },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-3 p-4 bg-zinc-800/50 rounded-lg">
+                          <span className="text-2xl">{item.icon}</span>
+                          <div>
+                            <div className="font-medium text-white">{item.title}</div>
+                            <div className="text-sm text-zinc-400">{item.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Загрузка */}
+              {loadingProject && (
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-12 text-center">
+                  <div className="animate-spin w-12 h-12 border-3 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">META-агент работает...</h3>
+                  <p className="text-zinc-400">Анализирует данные от всех экспертов и генерирует спецификацию</p>
+                </div>
+              )}
+
+              {/* Результаты */}
+              {projectData && (
+                <>
+                  {/* Заголовок */}
+                  <div className="bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 border border-emerald-500/20 rounded-xl p-6">
+                    <div className="flex items-start justify-between">
                       <div>
-                        <div className="font-medium text-white">{item.title}</div>
-                        <div className="text-sm text-zinc-400">{item.desc}</div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-3xl">✅</span>
+                          <h3 className="text-2xl font-bold text-white">{projectData.project_name}</h3>
+                        </div>
+                        {projectData.one_liner && (
+                          <p className="text-zinc-300 mb-2">{projectData.one_liner}</p>
+                        )}
+                        {projectData.github_url ? (
+                          <a
+                            href={projectData.github_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            {projectData.github_url}
+                          </a>
+                        ) : (
+                          <p className="text-zinc-500 text-sm">GitHub репозиторий не создан</p>
+                        )}
+                      </div>
+                      {/* Кнопка создания GitHub репо если его нет */}
+                      {!projectData.github_url && !creatingGithubRepo && (
+                        <div className="flex-shrink-0">
+                          {isGithubAuthenticated ? (
+                            <button
+                              onClick={createGithubRepoForProject}
+                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all inline-flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                              </svg>
+                              Создать GitHub репо
+                            </button>
+                          ) : (
+                            <a
+                              href={`/api/auth/github?returnUrl=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}?tab=project` : `/trends/${params.id}?tab=project`)}`}
+                              className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm font-medium transition-all inline-flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                              </svg>
+                              Войти в GitHub
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      {creatingGithubRepo && (
+                        <div className="flex items-center gap-2 text-zinc-400">
+                          <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                          <span className="text-sm">Создание репо...</span>
+                        </div>
+                      )}
+                    </div>
+                    {projectError && (
+                      <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                        {projectError}
+                      </div>
+                    )}
+
+                    {/* Кнопка сброса проекта */}
+                    <div className="mt-4 pt-4 border-t border-zinc-700/50">
+                      <button
+                        onClick={resetProject}
+                        className="text-sm text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Сбросить проект
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Problem & Solution */}
+                  {(projectData.problem_statement || projectData.solution_overview) && (
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {projectData.problem_statement && (
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                          <h4 className="text-sm text-red-400 mb-2 font-medium">Problem</h4>
+                          <p className="text-zinc-300 text-sm">{projectData.problem_statement}</p>
+                        </div>
+                      )}
+                      {projectData.solution_overview && (
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                          <h4 className="text-sm text-emerald-400 mb-2 font-medium">Solution</h4>
+                          <p className="text-zinc-300 text-sm">{projectData.solution_overview}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* MVP Specification */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <span>⚙️</span> MVP Specification
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="text-sm text-zinc-400 mb-2">Core Features</h4>
+                        <div className="space-y-2">
+                          {projectData.mvp_specification?.core_features?.map((f, i) => (
+                            <div key={i} className="p-3 bg-zinc-800/50 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-white">{f.name}</span>
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  f.priority === 'must-have' || f.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                                  f.priority === 'should-have' || f.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                  'bg-zinc-700 text-zinc-400'
+                                }`}>{f.priority}</span>
+                              </div>
+                              <p className="text-sm text-zinc-400 mt-1">{f.description}</p>
+                              {f.user_story && (
+                                <p className="text-xs text-zinc-500 mt-2 italic">{f.user_story}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm text-zinc-400 mb-2">Tech Stack</h4>
+                        <div className="space-y-2">
+                          {projectData.mvp_specification?.tech_stack?.map((item, i) => (
+                            <div key={i} className="p-3 bg-zinc-800/50 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-zinc-500">{item.category}:</span>
+                                <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded">{item.recommendation}</span>
+                              </div>
+                              {item.alternatives && item.alternatives.length > 0 && (
+                                <div className="mt-1 flex gap-1">
+                                  <span className="text-xs text-zinc-600">Alt:</span>
+                                  {item.alternatives.map((alt, j) => (
+                                    <span key={j} className="text-xs text-zinc-500">{alt}{j < item.alternatives!.length - 1 ? ',' : ''}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {projectData.mvp_specification?.architecture && (
+                          <div className="mt-4 pt-4 border-t border-zinc-700">
+                            <div className="text-sm">
+                              <span className="text-zinc-400">Architecture:</span>
+                              <span className="text-white ml-2">{projectData.mvp_specification.architecture}</span>
+                            </div>
+                            {projectData.mvp_specification.estimated_complexity && (
+                              <div className="text-sm mt-1">
+                                <span className="text-zinc-400">Complexity:</span>
+                                <span className={`ml-2 ${
+                                  projectData.mvp_specification.estimated_complexity === 'high' ? 'text-red-400' :
+                                  projectData.mvp_specification.estimated_complexity === 'medium' ? 'text-amber-400' :
+                                  'text-emerald-400'
+                                }`}>{projectData.mvp_specification.estimated_complexity}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+
+                  {/* Roadmap */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <span>🗺️</span> Roadmap: MVP → Production
+                    </h3>
+                    <div className="space-y-4">
+                      {[
+                        { key: 'mvp', label: 'MVP', color: 'indigo' },
+                        { key: 'alpha', label: 'Alpha', color: 'purple' },
+                        { key: 'beta', label: 'Beta', color: 'amber' },
+                        { key: 'production', label: 'Production', color: 'emerald' },
+                      ].map((phase, i) => {
+                        const phaseData = projectData.roadmap?.[phase.key as keyof ProjectRoadmap];
+                        if (!phaseData) return null;
+                        return (
+                          <div key={i} className="relative pl-8 pb-4 border-l-2 border-indigo-500/30 last:border-l-transparent">
+                            <div className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-${phase.color}-500`} style={{backgroundColor: phase.color === 'indigo' ? '#6366f1' : phase.color === 'purple' ? '#a855f7' : phase.color === 'amber' ? '#f59e0b' : '#10b981'}} />
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-semibold text-white">{phase.label}</h4>
+                              {phaseData.duration && (
+                                <span className="text-xs px-2 py-1 bg-zinc-800 text-zinc-400 rounded">{phaseData.duration}</span>
+                              )}
+                            </div>
+                            <div className="grid md:grid-cols-3 gap-4">
+                              <div>
+                                <span className="text-xs text-zinc-500">Goals:</span>
+                                <ul className="mt-1 space-y-1">
+                                  {phaseData.goals?.map((g, j) => (
+                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
+                                      <span className="text-emerald-400">→</span> {g}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <span className="text-xs text-zinc-500">Deliverables:</span>
+                                <ul className="mt-1 space-y-1">
+                                  {phaseData.deliverables?.map((d, j) => (
+                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
+                                      <span className="text-indigo-400">✓</span> {d}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <span className="text-xs text-zinc-500">Success Metrics:</span>
+                                <ul className="mt-1 space-y-1">
+                                  {phaseData.success_metrics?.map((m, j) => (
+                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
+                                      <span className="text-amber-400">📊</span> {m}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Business Metrics */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <span>💰</span> Business Metrics
+                    </h3>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
+                        <div className="text-lg font-bold text-zinc-300">{projectData.business_metrics?.target_users_mvp || 'TBD'}</div>
+                        <div className="text-xs text-zinc-500">MVP Users</div>
+                      </div>
+                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
+                        <div className="text-lg font-bold text-zinc-300">{projectData.business_metrics?.target_revenue_mvp || 'TBD'}</div>
+                        <div className="text-xs text-zinc-500">MVP Revenue</div>
+                      </div>
+                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
+                        <div className="text-lg font-bold text-emerald-400">{projectData.business_metrics?.target_users_production || 'TBD'}</div>
+                        <div className="text-xs text-zinc-500">Production Users</div>
+                      </div>
+                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
+                        <div className="text-lg font-bold text-emerald-400">{projectData.business_metrics?.target_revenue_production || 'TBD'}</div>
+                        <div className="text-xs text-zinc-500">Production Revenue</div>
+                      </div>
+                    </div>
+                    {projectData.business_metrics?.key_kpis && projectData.business_metrics.key_kpis.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-zinc-700">
+                        <span className="text-xs text-zinc-500">Key KPIs:</span>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {projectData.business_metrics.key_kpis.map((kpi, i) => (
+                            <span key={i} className="px-2 py-1 bg-indigo-500/10 text-indigo-300 text-xs rounded">{kpi}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Enhancement Recommendations */}
+                  {projectData.enhancement_recommendations?.length > 0 && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <span>💡</span> Enhancement Recommendations
+                      </h3>
+                      <div className="space-y-3">
+                        {projectData.enhancement_recommendations.map((rec, i) => (
+                          <div key={i} className="p-4 bg-zinc-800/50 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-white">{rec.area}</span>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                rec.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                                rec.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                'bg-zinc-700 text-zinc-400'
+                              }`}>{rec.priority}</span>
+                            </div>
+                            <p className="text-sm text-zinc-400">{rec.current_state}</p>
+                            <p className="text-sm text-emerald-400 mt-1">→ {rec.recommended_improvement}</p>
+                            <p className="text-xs text-zinc-500 mt-1">Impact: {rec.expected_impact}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* README Preview */}
+                  {projectData.readme_content && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                          <span>📝</span> README.md
+                        </h3>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(projectData.readme_content)}
+                          className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded text-sm transition-colors"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto max-h-80 whitespace-pre-wrap">
+                        {projectData.readme_content}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-4 justify-center">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(JSON.stringify(projectData, null, 2))}
+                      className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors inline-flex items-center gap-2"
+                    >
+                      <span>📋</span>
+                      Copy Full JSON
+                    </button>
+                    <button
+                      onClick={() => router.push(`/projects?data=${encodeURIComponent(JSON.stringify(projectData))}`)}
+                      className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors inline-flex items-center gap-2"
+                    >
+                      <span>🚀</span>
+                      Открыть в проектах
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

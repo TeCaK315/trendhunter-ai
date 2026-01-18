@@ -941,11 +941,11 @@ function TrendDetailView({
       {/* Action button */}
       <div className="pt-4">
         <Link
-          href={`/project/${trend.id}`}
+          href={`/trends/${trend.id}?tab=project`}
           className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
         >
           <span>🚀</span>
-          <span>Создать проект</span>
+          <span>Перейти к проекту</span>
         </Link>
       </div>
     </div>

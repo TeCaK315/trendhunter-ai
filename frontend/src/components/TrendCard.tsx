@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface Trend {
@@ -19,10 +19,14 @@ interface Trend {
   source?: string;
 }
 
+interface ProjectData {
+  trend_id: string;
+  name: string;
+  repo_url?: string;
+}
+
 interface TrendCardProps {
   trend: Trend;
-  onFavorite?: (id: string) => void;
-  isFavorite?: boolean;
 }
 
 const categoryConfig: Record<string, { icon: string; color: string }> = {
@@ -74,70 +78,42 @@ function getScoreLabel(score: number): string {
   return 'Низкий';
 }
 
-export default function TrendCard({ trend, onFavorite, isFavorite = false }: TrendCardProps) {
-  const [favorite, setFavorite] = useState(isFavorite);
+export default function TrendCard({ trend }: TrendCardProps) {
   const [showModal, setShowModal] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isProjectCompleted, setIsProjectCompleted] = useState(false);
   const router = useRouter();
   const overallScore = getOverallScore(trend);
   const config = categoryConfig[trend.category] || { icon: '📌', color: 'from-zinc-500/20 to-zinc-600/20' };
 
-  const handleFavorite = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setFavorite(!favorite);
-    onFavorite?.(trend.id);
-  };
+  // Проверяем, завершён ли проект (GitHub репозиторий создан = проект готов)
+  useEffect(() => {
+    const checkProjectCompletion = () => {
+      try {
+        const savedProjects = localStorage.getItem('trendhunter_projects');
+        if (savedProjects) {
+          const projects: ProjectData[] = JSON.parse(savedProjects);
+          const project = projects.find(p => p.trend_id === trend.id);
 
-  const handleAnalyze = async () => {
-    if (isAnalyzing) return;
-
-    setIsAnalyzing(true);
-
-    if (!favorite) {
-      setFavorite(true);
-      onFavorite?.(trend.id);
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-      const response = await fetch('http://localhost:5678/webhook/detect-pain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          trend_id: trend.id,
-          trend_title: trend.title,
-          trend_category: trend.category,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Analysis completed:', data);
-        setIsAnalyzing(false);
-        setShowModal(false);
-        router.push('/favorites');
-      } else {
-        console.error('Analysis failed with status:', response.status);
-        setIsAnalyzing(false);
+          // Проект завершён, если есть GitHub URL (repo_url)
+          setIsProjectCompleted(!!project?.repo_url);
+        } else {
+          setIsProjectCompleted(false);
+        }
+      } catch (error) {
+        console.error('Error checking project completion:', error);
+        setIsProjectCompleted(false);
       }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Analysis request timed out, but may still be processing');
-        setIsAnalyzing(false);
-        setShowModal(false);
-        router.push('/favorites');
-      } else {
-        console.error('Error triggering analysis:', error);
-        setIsAnalyzing(false);
-      }
-    }
-  };
+    };
+
+    checkProjectCompletion();
+
+    // Слушаем изменения localStorage
+    const handleStorageChange = () => checkProjectCompletion();
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [trend.id]);
 
   const metrics = [
     { label: 'Возможность', value: trend.opportunity_score, icon: '🎯' },
@@ -170,14 +146,15 @@ export default function TrendCard({ trend, onFavorite, isFavorite = false }: Tre
               </div>
             </div>
 
-            {/* Favorite button */}
-            <button
-              onClick={handleFavorite}
-              className={`star-btn text-2xl transition-all duration-300 ${favorite ? 'active scale-110' : ''}`}
-              title={favorite ? 'Убрать из избранного' : 'Добавить в избранное'}
-            >
-              {favorite ? '★' : '☆'}
-            </button>
+            {/* Project completed indicator */}
+            {isProjectCompleted && (
+              <div
+                className="text-2xl text-yellow-400 animate-pulse"
+                title="Проект завершён: все этапы пройдены, репозиторий создан"
+              >
+                ★
+              </div>
+            )}
           </div>
 
           {/* Category */}
@@ -354,40 +331,22 @@ export default function TrendCard({ trend, onFavorite, isFavorite = false }: Tre
 
             {/* Modal Footer */}
             <div className="p-6 border-t border-zinc-800 flex gap-3">
+              {/* Индикатор завершённого проекта */}
+              {isProjectCompleted && (
+                <div className="flex-1 py-3.5 rounded-xl font-medium bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 flex items-center justify-center gap-2">
+                  <span className="text-xl">★</span>
+                  <span>Проект завершён</span>
+                </div>
+              )}
               <button
-                onClick={handleFavorite}
-                className={`flex-1 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-                  favorite
-                    ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/20'
-                    : 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700'
-                }`}
+                onClick={() => {
+                  setShowModal(false);
+                  router.push(`/trends/${trend.id}`);
+                }}
+                className="flex-1 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
               >
-                <span className="text-xl">{favorite ? '★' : '☆'}</span>
-                <span>{favorite ? 'В избранном' : 'В избранное'}</span>
-              </button>
-              <button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing}
-                className={`flex-1 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-                  isAnalyzing
-                    ? 'bg-indigo-500/30 cursor-wait text-indigo-300'
-                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40'
-                }`}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    <span>Анализ...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>🔍</span>
-                    <span>Анализировать</span>
-                  </>
-                )}
+                <span>🚀</span>
+                <span>Открыть детали</span>
               </button>
             </div>
           </div>

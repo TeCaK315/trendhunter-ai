@@ -45,12 +45,39 @@ const agents: { id: AgentType; label: string; icon: string; description: string 
   { id: 'designer', label: 'Designer', icon: '🎨', description: 'UX/UI и дизайн' },
 ];
 
-const quickPrompts = [
-  { text: 'Создай MVP план', icon: '🚀' },
-  { text: 'Как привлечь первых клиентов?', icon: '🎯' },
-  { text: 'Какой tech stack выбрать?', icon: '⚙️' },
-  { text: 'Сколько можно заработать?', icon: '💵' },
-];
+// Быстрые действия для каждого агента
+const quickPromptsByAgent: Record<AgentType, { text: string; icon: string }[]> = {
+  general: [
+    { text: 'Создай MVP план', icon: '🚀' },
+    { text: 'Какие риски у проекта?', icon: '⚠️' },
+    { text: 'Оцени потенциал рынка', icon: '📊' },
+    { text: 'Сколько нужно инвестиций?', icon: '💵' },
+  ],
+  developer: [
+    { text: 'Какой tech stack выбрать?', icon: '⚙️' },
+    { text: 'Опиши архитектуру системы', icon: '🏗️' },
+    { text: 'Сколько времени на MVP?', icon: '⏰' },
+    { text: 'Какие API интеграции нужны?', icon: '🔌' },
+  ],
+  marketing: [
+    { text: 'Как привлечь первых клиентов?', icon: '🎯' },
+    { text: 'Какие каналы продвижения?', icon: '📢' },
+    { text: 'Создай контент-план', icon: '📝' },
+    { text: 'Какой бюджет на маркетинг?', icon: '💰' },
+  ],
+  sales: [
+    { text: 'Сколько можно заработать?', icon: '💵' },
+    { text: 'Какую модель монетизации?', icon: '💳' },
+    { text: 'Как выстроить воронку продаж?', icon: '📈' },
+    { text: 'Какую цену установить?', icon: '🏷️' },
+  ],
+  designer: [
+    { text: 'Какой UI/UX нужен для MVP?', icon: '🎨' },
+    { text: 'Опиши user journey', icon: '🗺️' },
+    { text: 'Какой стиль бренда?', icon: '✨' },
+    { text: 'Что важно для конверсии?', icon: '🎯' },
+  ],
+};
 
 export default function TrendChat({ trendContext, className = '' }: TrendChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -170,7 +197,7 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
               Задай вопрос о тренде &quot;{trendContext.title}&quot;
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
-              {quickPrompts.map((prompt, i) => (
+              {quickPromptsByAgent[selectedAgent].map((prompt, i) => (
                 <button
                   key={i}
                   onClick={() => sendMessage(prompt.text)}

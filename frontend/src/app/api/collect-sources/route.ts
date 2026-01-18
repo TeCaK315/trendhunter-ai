@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AnalysisData } from '@/types/analysis-context';
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+
+// Контекст анализа, полученный от предыдущих экспертов
+interface AnalysisContext {
+  trend: {
+    title: string;
+    category?: string;
+    why_trending?: string;
+  };
+  analysis?: AnalysisData;
+}
 
 interface RedditPost {
   title: string;
@@ -460,12 +472,138 @@ function generateMockGoogleTrendsData(query: string): GoogleTrendsData {
   };
 }
 
+// Генерирует расширенные поисковые запросы на основе контекста анализа
+function generateContextualQueries(context: AnalysisContext): string[] {
+  const queries: string[] = [];
+  const baseQuery = context.trend.title;
+
+  // Базовый запрос
+  queries.push(baseQuery);
+
+  // Если есть анализ болей - добавляем запросы по болям
+  if (context.analysis) {
+    // Главная боль
+    if (context.analysis.main_pain) {
+      queries.push(`${baseQuery} ${context.analysis.main_pain}`);
+    }
+
+    // Ключевые боли (берём первые 2)
+    if (context.analysis.key_pain_points?.length) {
+      for (const pain of context.analysis.key_pain_points.slice(0, 2)) {
+        queries.push(pain);
+      }
+    }
+
+    // Целевая аудитория
+    if (context.analysis.target_audience?.primary) {
+      queries.push(`${baseQuery} for ${context.analysis.target_audience.primary}`);
+    }
+  }
+
+  // Убираем дубликаты
+  return [...new Set(queries)];
+}
+
+// Генерирует AI-синтез найденных данных с учётом контекста
+async function generateSourcesSynthesis(
+  context: AnalysisContext,
+  sources: CollectedSources
+): Promise<{
+  key_insights: string[];
+  sentiment_summary: string;
+  content_gaps: string[];
+  recommended_angles: string[];
+}> {
+  if (!OPENAI_API_KEY) {
+    return {
+      key_insights: ['Данные собраны из Reddit, YouTube и Google Trends'],
+      sentiment_summary: 'Нейтральный интерес к теме',
+      content_gaps: ['Требуется дополнительный анализ'],
+      recommended_angles: ['Общий подход к теме'],
+    };
+  }
+
+  try {
+    const contextInfo = context.analysis
+      ? `
+Контекст анализа:
+- Главная боль: ${context.analysis.main_pain}
+- Ключевые боли: ${context.analysis.key_pain_points?.join(', ')}
+- Целевая аудитория: ${context.analysis.target_audience?.primary}
+- Возможности: ${context.analysis.opportunities?.join(', ')}`
+      : '';
+
+    const prompt = `Проанализируй собранные данные из источников для тренда "${context.trend.title}".
+${contextInfo}
+
+Данные из Reddit (${sources.reddit.posts.length} постов):
+${sources.reddit.posts.slice(0, 5).map(p => `- "${p.title}" (${p.score} upvotes, r/${p.subreddit})`).join('\n')}
+
+Данные из Google Trends:
+- Рост: ${sources.google_trends.growth_rate}%
+- Связанные запросы: ${sources.google_trends.related_queries?.slice(0, 5).map(q => q.query).join(', ')}
+
+YouTube видео (${sources.youtube.videos.length}):
+${sources.youtube.videos.slice(0, 3).map(v => `- "${v.title}" (${v.channel})`).join('\n')}
+
+Верни JSON:
+{
+  "key_insights": ["3-5 ключевых инсайтов из данных"],
+  "sentiment_summary": "Краткое описание настроения аудитории",
+  "content_gaps": ["Какие темы недостаточно освещены"],
+  "recommended_angles": ["Рекомендуемые углы для контента/продукта"]
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('OpenAI API error');
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+  } catch (error) {
+    console.error('Error generating synthesis:', error);
+  }
+
+  return {
+    key_insights: ['Данные успешно собраны из нескольких источников'],
+    sentiment_summary: 'Активный интерес к теме в сообществе',
+    content_gaps: ['Недостаточно практических гайдов'],
+    recommended_angles: ['Фокус на решении конкретных болей пользователей'],
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query, trend_title } = body;
+    const { query, trend_title, context } = body;
 
-    const searchQuery = query || trend_title;
+    // Строим контекст анализа
+    const analysisContext: AnalysisContext = context || {
+      trend: {
+        title: query || trend_title,
+      },
+    };
+
+    const searchQuery = analysisContext.trend.title;
 
     if (!searchQuery) {
       return NextResponse.json(
@@ -475,28 +613,63 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Collecting sources for: ${searchQuery}`);
+    console.log(`Context received:`, analysisContext.analysis ? 'with analysis data' : 'basic');
+
+    // Генерируем расширенные запросы на основе контекста
+    const contextualQueries = generateContextualQueries(analysisContext);
+    console.log(`Contextual queries: ${contextualQueries.join(', ')}`);
 
     // Fetch all sources in parallel
-    const [redditData, youtubeData, googleTrendsData] = await Promise.all([
-      fetchRedditPosts(searchQuery),
+    // Для Reddit и YouTube используем несколько запросов если есть контекст
+    const redditPromises = contextualQueries.slice(0, 2).map(q => fetchRedditPosts(q));
+    const [youtubeData, googleTrendsData, ...redditResults] = await Promise.all([
       fetchYouTubeVideos(searchQuery),
       fetchGoogleTrends(searchQuery),
+      ...redditPromises,
     ]);
+
+    // Объединяем результаты Reddit из разных запросов
+    const combinedRedditPosts: RedditPost[] = [];
+    const communitiesSet = new Set<string>();
+    let totalEngagement = 0;
+
+    for (const result of redditResults) {
+      for (const post of result.posts) {
+        // Избегаем дубликатов по URL
+        if (!combinedRedditPosts.some(p => p.url === post.url)) {
+          combinedRedditPosts.push(post);
+        }
+      }
+      result.communities.forEach(c => communitiesSet.add(c));
+      totalEngagement += result.engagement;
+    }
+
+    const redditData = {
+      posts: combinedRedditPosts.slice(0, 15), // Больше постов благодаря контексту
+      communities: Array.from(communitiesSet).slice(0, 8),
+      engagement: totalEngagement,
+    };
 
     const sources: CollectedSources = {
       reddit: redditData,
       youtube: youtubeData,
       google_trends: googleTrendsData,
       facebook: {
-        pages: [], // Facebook API requires special permissions
+        pages: [],
         reach: 0,
       },
     };
 
+    // Генерируем AI-синтез если есть контекст анализа
+    const synthesis = await generateSourcesSynthesis(analysisContext, sources);
+
     return NextResponse.json({
       success: true,
       sources,
+      synthesis, // Новое поле с AI-анализом источников
       query: searchQuery,
+      contextual_queries_used: contextualQueries,
+      context_received: !!analysisContext.analysis,
       collected_at: new Date().toISOString(),
     });
   } catch (error) {

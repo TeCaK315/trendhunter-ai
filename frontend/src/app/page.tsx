@@ -104,7 +104,6 @@ const INITIAL_DISPLAY_COUNT = 6;
 export default function Home() {
   const [trends, setTrends] = useState<Trend[]>(mockTrends);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -117,10 +116,6 @@ export default function Home() {
 
   useEffect(() => {
     fetchTrends();
-    const savedFavorites = localStorage.getItem('trendhunter_favorites');
-    if (savedFavorites) {
-      setFavorites(new Set(JSON.parse(savedFavorites)));
-    }
 
     const refreshInterval = setInterval(() => {
       console.log('Auto-refreshing trends...');
@@ -178,31 +173,6 @@ export default function Home() {
     } finally {
       setGenerating(false);
     }
-  };
-
-  const handleFavorite = (id: string) => {
-    const trend = trends.find(t => t.id === id);
-
-    setFavorites((prev) => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(id)) {
-        newFavorites.delete(id);
-        const storedFavorites = JSON.parse(localStorage.getItem('trendhunter_favorites_data') || '[]');
-        const updatedFavorites = storedFavorites.filter((t: Trend) => t.id !== id);
-        localStorage.setItem('trendhunter_favorites_data', JSON.stringify(updatedFavorites));
-      } else {
-        newFavorites.add(id);
-        if (trend) {
-          const storedFavorites = JSON.parse(localStorage.getItem('trendhunter_favorites_data') || '[]');
-          if (!storedFavorites.find((t: Trend) => t.id === id)) {
-            storedFavorites.push(trend);
-            localStorage.setItem('trendhunter_favorites_data', JSON.stringify(storedFavorites));
-          }
-        }
-      }
-      localStorage.setItem('trendhunter_favorites', JSON.stringify([...newFavorites]));
-      return newFavorites;
-    });
   };
 
   const toggleSortDirection = () => {
@@ -357,8 +327,8 @@ export default function Home() {
                 <div className="text-xs text-zinc-500 mt-1">Ср. рейтинг</div>
               </div>
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">{favorites.size}</div>
-                <div className="text-xs text-zinc-500 mt-1">В избранном</div>
+                <div className="text-2xl font-bold text-white">{categories.length - 1}</div>
+                <div className="text-xs text-zinc-500 mt-1">Категорий</div>
               </div>
             </div>
           </div>
@@ -505,8 +475,6 @@ export default function Home() {
                   <TrendCard
                     key={trend.id}
                     trend={trend}
-                    onFavorite={handleFavorite}
-                    isFavorite={favorites.has(trend.id)}
                   />
                 ))}
               </div>
@@ -548,8 +516,7 @@ export default function Home() {
               <span>Данные обновляются автоматически каждые 6 часов через n8n</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link href="/favorites" className="hover:text-white transition-colors">Избранное</Link>
-              <Link href="/projects" className="hover:text-white transition-colors">Проекты</Link>
+              <Link href="/niche-research" className="hover:text-white transition-colors">Исследование ниши</Link>
             </div>
           </div>
         </footer>

@@ -3,18 +3,35 @@ import { NextRequest, NextResponse } from 'next/server';
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
 
+// Парсинг state для получения returnUrl
+function parseState(stateParam: string | null): { returnUrl: string } {
+  if (!stateParam) return { returnUrl: '/' };
+
+  try {
+    const decoded = Buffer.from(stateParam, 'base64').toString('utf-8');
+    const parsed = JSON.parse(decoded);
+    return { returnUrl: parsed.returnUrl || '/' };
+  } catch {
+    return { returnUrl: '/' };
+  }
+}
+
 // GET /api/auth/github/callback - Handle GitHub OAuth callback
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const stateParam = searchParams.get('state');
+
+  // Парсим state для получения returnUrl
+  const { returnUrl } = parseState(stateParam);
 
   if (error) {
-    return NextResponse.redirect(new URL('/?auth_error=' + error, request.url));
+    return NextResponse.redirect(new URL(returnUrl + '?auth_error=' + error, request.url));
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL('/?auth_error=no_code', request.url));
+    return NextResponse.redirect(new URL(returnUrl + '?auth_error=no_code', request.url));
   }
 
   try {
@@ -51,8 +68,11 @@ export async function GET(request: NextRequest) {
 
     const userData = await userResponse.json();
 
-    // Create response with redirect
-    const response = NextResponse.redirect(new URL('/?auth_success=true', request.url));
+    // Create response with redirect to original page
+    const redirectUrl = returnUrl.includes('?')
+      ? `${returnUrl}&auth_success=true`
+      : `${returnUrl}?auth_success=true`;
+    const response = NextResponse.redirect(new URL(redirectUrl, request.url));
 
     // Store auth data in cookies (httpOnly for security)
     response.cookies.set('github_token', accessToken, {

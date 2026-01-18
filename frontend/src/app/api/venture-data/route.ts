@@ -3,6 +3,38 @@ import { NextRequest, NextResponse } from 'next/server';
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
+// Контекст от предыдущих экспертов (анализ + источники + конкуренты)
+interface PreviousContext {
+  trend: {
+    title: string;
+    category?: string;
+  };
+  analysis?: {
+    main_pain: string;
+    key_pain_points?: string[];
+    target_audience?: {
+      primary: string;
+      segments?: Array<{ name: string; size: string }>;
+    };
+    opportunities?: string[];
+    market_readiness?: number;
+  };
+  sources?: {
+    google_trends?: {
+      growth_rate: number;
+    };
+    synthesis?: {
+      key_insights: string[];
+    };
+  };
+  competition?: {
+    competitors: Array<{ name: string; description: string; funding?: string }>;
+    market_saturation: string;
+    blue_ocean_score: number;
+    strategic_positioning?: string;
+  };
+}
+
 interface FundingRound {
   company: string;
   amount: string;
@@ -228,34 +260,73 @@ async function searchActiveFunds(query: string): Promise<ActiveFund[]> {
   return funds.slice(0, 8);
 }
 
-// AI analysis of venture landscape
+// AI analysis of venture landscape with full context
 async function analyzeVentureLandscape(
   query: string,
   rounds: FundingRound[],
-  funds: ActiveFund[]
-): Promise<Partial<VentureData>> {
+  funds: ActiveFund[],
+  context?: PreviousContext
+): Promise<Partial<VentureData> & {
+  investment_thesis?: string;
+  recommended_round?: string;
+  key_investors_to_target?: string[];
+}> {
   if (!OPENAI_API_KEY) {
     return getDefaultAnalysis(rounds, funds);
   }
 
   try {
-    const prompt = `Analyze the venture capital landscape for "${query}" based on:
+    // Формируем контекст от предыдущих экспертов
+    let contextSection = '';
 
-Recent Funding Rounds:
+    if (context?.analysis) {
+      contextSection += `
+## Контекст от эксперта по анализу:
+- Главная боль: ${context.analysis.main_pain}
+- Целевая аудитория: ${context.analysis.target_audience?.primary || 'не определена'}
+- Возможности: ${context.analysis.opportunities?.join(', ') || 'не определены'}
+- Готовность рынка: ${context.analysis.market_readiness || 'не оценена'}/10
+`;
+    }
+
+    if (context?.sources?.google_trends) {
+      contextSection += `- Рост интереса по Google Trends: ${context.sources.google_trends.growth_rate}%
+`;
+    }
+
+    if (context?.competition) {
+      contextSection += `
+## Контекст от эксперта по конкурентам:
+- Насыщенность рынка: ${context.competition.market_saturation}
+- Blue Ocean Score: ${context.competition.blue_ocean_score}/10
+- Позиционирование: ${context.competition.strategic_positioning || 'не определено'}
+- Конкуренты с финансированием: ${context.competition.competitors.filter(c => c.funding).map(c => `${c.name} (${c.funding})`).join(', ') || 'нет данных'}
+`;
+    }
+
+    const prompt = `Ты эксперт по венчурным инвестициям. Проанализируй инвестиционный ландшафт для "${query}".
+${contextSection}
+## Найденные раунды финансирования:
 ${rounds.map(r => `- ${r.company}: ${r.amount} (${r.round_type})`).join('\n')}
 
-Active Investors: ${funds.map(f => f.name).join(', ')}
+## Активные инвесторы: ${funds.map(f => f.name).join(', ')}
 
-Provide analysis in JSON:
+ВАЖНО: Учитывай контекст от предыдущих экспертов:
+- Если боль острая и рынок растёт - это сильный сигнал для инвесторов
+- Если Blue Ocean Score высокий - меньше конкуренции за инвестиции
+- Если есть финансированные конкуренты - значит рынок validated
+
+Верни JSON:
 {
-  "total_funding_estimate": "$XXM-$XXM",
+  "total_funding_estimate": "$XXM-$XXM в нише за последний год",
   "average_round_size": "$XM",
   "funding_trend": "growing" | "stable" | "declining",
   "investment_hotness": 0-10,
-  "market_signals": ["signal1", "signal2", "signal3"]
-}
-
-Be concise. Base estimates on the data provided.`;
+  "market_signals": ["сигнал для инвесторов 1", "сигнал 2"],
+  "investment_thesis": "Краткий тезис почему инвесторы вкладывают в эту нишу",
+  "recommended_round": "Рекомендуемый тип раунда для стартапа в этой нише",
+  "key_investors_to_target": ["Инвестор 1", "Инвестор 2", "Инвестор 3"]
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -266,8 +337,8 @@ Be concise. Base estimates on the data provided.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 400,
+        temperature: 0.4,
+        max_tokens: 800,
       }),
     });
 
@@ -287,6 +358,9 @@ Be concise. Base estimates on the data provided.`;
         funding_trend: parsed.funding_trend || 'stable',
         investment_hotness: parsed.investment_hotness || 5,
         market_signals: parsed.market_signals || [],
+        investment_thesis: parsed.investment_thesis,
+        recommended_round: parsed.recommended_round,
+        key_investors_to_target: parsed.key_investors_to_target || [],
       };
     }
   } catch (error) {
@@ -439,16 +513,21 @@ function getMockFunds(query: string): ActiveFund[] {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query, trend_title } = body;
+    const { query, trend_title, context } = body;
 
-    if (!query && !trend_title) {
+    if (!query && !trend_title && !context?.trend?.title) {
       return NextResponse.json(
         { success: false, error: 'Query or trend_title is required' },
         { status: 400 }
       );
     }
 
-    const searchQuery = query || trend_title;
+    // Контекст от предыдущих экспертов
+    const previousContext: PreviousContext | undefined = context;
+    const searchQuery = query || trend_title || context?.trend?.title;
+
+    console.log(`Venture analysis for: ${searchQuery}`);
+    console.log(`Context received:`, previousContext?.competition ? 'full (analysis + sources + competition)' : 'partial');
 
     // Fetch data in parallel
     const [rounds, funds] = await Promise.all([
@@ -456,10 +535,10 @@ export async function POST(request: NextRequest) {
       searchActiveFunds(searchQuery),
     ]);
 
-    // AI analysis
-    const analysis = await analyzeVentureLandscape(searchQuery, rounds, funds);
+    // AI analysis with full context
+    const analysis = await analyzeVentureLandscape(searchQuery, rounds, funds, previousContext);
 
-    const result: VentureData = {
+    const result = {
       niche: searchQuery,
       total_funding_last_year: analysis.total_funding_last_year || 'Unknown',
       average_round_size: analysis.average_round_size || 'Unknown',
@@ -468,6 +547,10 @@ export async function POST(request: NextRequest) {
       active_funds: funds,
       investment_hotness: analysis.investment_hotness || 5,
       market_signals: analysis.market_signals || [],
+      // Новые поля на основе контекста
+      investment_thesis: analysis.investment_thesis || null,
+      recommended_round: analysis.recommended_round || null,
+      key_investors_to_target: analysis.key_investors_to_target || [],
       sources: [
         {
           name: 'Google News Search',
@@ -486,6 +569,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       analyzed_at: new Date().toISOString(),
+      context_received: !!previousContext?.competition,
     };
 
     return NextResponse.json({
