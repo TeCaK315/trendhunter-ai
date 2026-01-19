@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import TrendChat from '@/components/TrendChat';
+import { recommendProductType, type ProductType } from '@/lib/productRecommendation';
 
 interface Trend {
   id: string;
@@ -231,6 +232,7 @@ interface ProjectData {
   problem_statement?: string;
   solution_overview?: string;
   github_url?: string;
+  vercel_url?: string;
   readme_content: string;
   mvp_specification: MVPSpecification;
   roadmap: ProjectRoadmap;
@@ -324,6 +326,47 @@ export default function TrendPage() {
   const [githubCreated, setGithubCreated] = useState(false);
   const [isGithubAuthenticated, setIsGithubAuthenticated] = useState(false);
   const [creatingGithubRepo, setCreatingGithubRepo] = useState(false);
+
+  // Новые состояния для расширенного создания проекта
+  const [selectedProductType, setSelectedProductType] = useState<'landing' | 'saas' | 'ai-wrapper' | 'ecommerce'>('landing');
+  const [autoDeploy, setAutoDeploy] = useState(false);
+  const [isVercelAuthenticated, setIsVercelAuthenticated] = useState(false);
+  const [vercelDeployed, setVercelDeployed] = useState(false);
+  const [vercelUrl, setVercelUrl] = useState<string | null>(null);
+  const [hasAutoSelectedType, setHasAutoSelectedType] = useState(false);
+
+  // Рекомендация типа продукта на основе анализа тренда
+  const productRecommendation = useMemo(() => {
+    if (!trend) return null;
+
+    return recommendProductType(
+      {
+        title: trend.title,
+        category: trend.category,
+        why_trending: trend.why_trending,
+      },
+      analysis ? {
+        main_pain: analysis.main_pain,
+        key_pain_points: analysis.key_pain_points,
+        target_audience: analysis.target_audience ? {
+          primary: analysis.target_audience.segments?.[0]?.name,
+          segments: analysis.target_audience.segments,
+        } : undefined,
+      } : undefined,
+      pitchDeck ? {
+        company_name: pitchDeck.title,
+        tagline: pitchDeck.tagline,
+      } : undefined
+    );
+  }, [trend, analysis, pitchDeck]);
+
+  // Автоматически устанавливаем рекомендуемый тип при первом расчёте
+  useEffect(() => {
+    if (productRecommendation && !hasAutoSelectedType && currentStep === 'project') {
+      setSelectedProductType(productRecommendation.recommended);
+      setHasAutoSelectedType(true);
+    }
+  }, [productRecommendation, hasAutoSelectedType, currentStep]);
 
   // Функция проверки GitHub авторизации
   const checkGithubAuth = useCallback(async () => {
@@ -858,6 +901,8 @@ export default function TrendPage() {
           project_name: trend.title.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').substring(0, 50),
           context, // Передаём полный накопленный контекст от всех экспертов
           create_github_repo: createGithubRepo,
+          product_type: selectedProductType, // Новый параметр: тип продукта
+          auto_deploy: autoDeploy && isVercelAuthenticated, // Новый параметр: автодеплой
         }),
       });
 
@@ -865,6 +910,12 @@ export default function TrendPage() {
       if (data.success && data.data) {
         setProjectData(data.data);
         setGithubCreated(data.github_created || false);
+
+        // Обновляем Vercel статус
+        if (data.vercel_deployed && data.data.vercel_url) {
+          setVercelDeployed(true);
+          setVercelUrl(data.data.vercel_url);
+        }
 
         // Сохраняем проект в localStorage для синхронизации с другими страницами
         try {
@@ -880,11 +931,13 @@ export default function TrendPage() {
             description: data.data.one_liner || data.data.problem_statement || '',
             repo_url: data.data.github_url || null,
             clone_url: data.data.github_url ? `${data.data.github_url}.git` : null,
+            vercel_url: data.data.vercel_url || null,
             trend_id: trend.id,
             trend_title: trend.title,
             created_at: new Date().toISOString(),
             tech_stack: data.data.mvp_specification?.tech_stack?.map((t: TechStackItem) => t.recommendation) || [],
-            solution_type: 'web_app',
+            solution_type: selectedProductType,
+            product_type: selectedProductType,
             mvp_specification: data.data.mvp_specification,
             roadmap: data.data.roadmap,
           };
@@ -2582,11 +2635,148 @@ export default function TrendPage() {
               {/* Если проект ещё не создан */}
               {!projectData && !loadingProject && (
                 <>
+                  {/* Выбор типа продукта */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🎯</span>
+                        <h3 className="text-lg font-semibold text-white">Выберите тип продукта</h3>
+                      </div>
+                      {productRecommendation && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
+                          <span className="text-emerald-400 text-sm">✨ AI рекомендует:</span>
+                          <span className="text-emerald-300 text-sm font-medium">
+                            {productRecommendation.recommended === 'landing' ? 'Landing' :
+                             productRecommendation.recommended === 'saas' ? 'SaaS' :
+                             productRecommendation.recommended === 'ai-wrapper' ? 'AI Wrapper' : 'E-commerce'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Объяснение рекомендации */}
+                    {productRecommendation && productRecommendation.reasoning && (
+                      <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg mt-0.5">💡</span>
+                          <div>
+                            <p className="text-sm text-emerald-300/90">{productRecommendation.reasoning}</p>
+                            {selectedProductType !== productRecommendation.recommended && (
+                              <p className="text-xs text-zinc-500 mt-2">
+                                Вы выбрали другой тип — это тоже хороший выбор!
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                      {[
+                        { id: 'landing' as const, name: 'Landing + Waitlist', icon: '🚀', desc: 'Лендинг со сбором email и Supabase', complexity: 'Легко', time: '1-2 дня' },
+                        { id: 'saas' as const, name: 'SaaS Dashboard', icon: '📊', desc: 'Приложение с авторизацией и дашбордом', complexity: 'Средне', time: '1-2 недели' },
+                        { id: 'ai-wrapper' as const, name: 'AI Wrapper', icon: '🤖', desc: 'Чат-интерфейс для AI с историей', complexity: 'Средне', time: '3-5 дней' },
+                        { id: 'ecommerce' as const, name: 'E-commerce Lite', icon: '🛒', desc: 'Магазин с каталогом и корзиной', complexity: 'Сложно', time: '1-2 недели' },
+                      ].map((type) => {
+                        const isRecommended = productRecommendation?.recommended === type.id;
+                        const recommendationScore = productRecommendation?.allRecommendations.find(r => r.type === type.id);
+                        const isSelected = selectedProductType === type.id;
+
+                        return (
+                          <button
+                            key={type.id}
+                            onClick={() => setSelectedProductType(type.id)}
+                            className={`relative text-left p-5 rounded-xl border-2 transition-all ${
+                              isSelected
+                                ? 'bg-indigo-500/10 border-indigo-500 shadow-lg shadow-indigo-500/20'
+                                : isRecommended
+                                  ? 'bg-emerald-500/5 border-emerald-500/40 hover:border-emerald-500/60'
+                                  : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
+                            }`}
+                          >
+                            {/* Бейдж рекомендации */}
+                            {isRecommended && !isSelected && (
+                              <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-xs font-medium rounded-full shadow-lg">
+                                Рекомендуем
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl">{type.icon}</span>
+                                <span className={`font-semibold ${
+                                  isSelected ? 'text-indigo-300' :
+                                  isRecommended ? 'text-emerald-300' : 'text-white'
+                                }`}>
+                                  {type.name}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <div className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
+                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-zinc-400 mb-2">{type.desc}</p>
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className={`px-2 py-0.5 rounded-full ${
+                                type.complexity === 'Легко' ? 'bg-green-500/20 text-green-400' :
+                                type.complexity === 'Средне' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-red-500/20 text-red-400'
+                              }`}>
+                                {type.complexity}
+                              </span>
+                              <span className="text-zinc-500">{type.time}</span>
+                              {/* Показываем релевантность только если есть рекомендация */}
+                              {recommendationScore && recommendationScore.score > 0 && (
+                                <span className={`px-2 py-0.5 rounded-full ${
+                                  isRecommended ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'
+                                }`}>
+                                  {Math.min(100, Math.round(recommendationScore.score))}% match
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Auto-deploy toggle */}
+                    {isGithubAuthenticated && (
+                      <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">▲</span>
+                          <div>
+                            <div className="font-medium text-white">Автодеплой на Vercel</div>
+                            <div className="text-sm text-zinc-400">Продукт будет сразу доступен онлайн</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setAutoDeploy(!autoDeploy)}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${
+                            autoDeploy ? 'bg-indigo-500' : 'bg-zinc-700'
+                          }`}
+                        >
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            autoDeploy ? 'left-7' : 'left-1'
+                          }`} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CTA блок */}
                   <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-8 text-center">
-                    <h3 className="text-2xl font-bold text-white mb-4">META-агент: Создать проект</h3>
+                    <h3 className="text-2xl font-bold text-white mb-4">
+                      Создать {selectedProductType === 'landing' ? 'Landing Page' :
+                               selectedProductType === 'saas' ? 'SaaS приложение' :
+                               selectedProductType === 'ai-wrapper' ? 'AI приложение' : 'Магазин'}
+                    </h3>
                     <p className="text-zinc-400 mb-6 max-w-lg mx-auto">
-                      На основе ПОЛНОГО анализа от всех 7 экспертов система сгенерирует техническую спецификацию
-                      для Claude Code с roadmap от MVP до Production.
+                      Система сгенерирует полностью рабочий код с интеграцией Supabase,
+                      готовый к запуску {autoDeploy ? 'и автоматически задеплоит на Vercel' : ''}.
                     </p>
                     {projectError && (
                       <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
@@ -2604,10 +2794,10 @@ export default function TrendPage() {
                       {isGithubAuthenticated ? (
                         <button
                           onClick={() => createProject(true)}
-                          className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
+                          className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25"
                         >
                           <span>🚀</span>
-                          Создать + GitHub репо
+                          {autoDeploy ? 'Создать + GitHub + Deploy' : 'Создать + GitHub репо'}
                         </button>
                       ) : (
                         <a
@@ -2621,22 +2811,22 @@ export default function TrendPage() {
                     </div>
                     {!isGithubAuthenticated && (
                       <p className="mt-4 text-sm text-zinc-500">
-                        После авторизации вы сможете автоматически создать репозиторий с README
+                        После авторизации вы сможете автоматически создать репозиторий с рабочим кодом
                       </p>
                     )}
                   </div>
 
                   {/* Что будет создано */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Что сгенерирует META-агент:</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">Что будет сгенерировано:</h3>
                     <div className="grid md:grid-cols-2 gap-4">
                       {[
-                        { icon: '📝', title: 'README.md', desc: 'Полное описание проекта с визией и целями' },
-                        { icon: '⚙️', title: 'MVP Specification', desc: 'Core features, tech stack, timeline' },
-                        { icon: '🗺️', title: 'Roadmap', desc: 'MVP → Alpha → Beta → Production' },
-                        { icon: '📋', title: 'Tasks', desc: 'Недельные задачи для разработки' },
-                        { icon: '💰', title: 'Business Metrics', desc: 'Target MRR, break-even, pricing' },
-                        { icon: '🤖', title: 'AI Агенты', desc: 'Developer, Marketing, Sales фокусы' },
+                        { icon: '💻', title: 'Рабочий код', desc: `Полный Next.js проект для ${selectedProductType}` },
+                        { icon: '🗄️', title: 'База данных', desc: 'Supabase схема + API интеграция' },
+                        { icon: '🎨', title: 'UI компоненты', desc: 'Tailwind CSS + готовые страницы' },
+                        { icon: '🔐', title: selectedProductType === 'saas' ? 'Авторизация' : 'Интеграции', desc: selectedProductType === 'saas' ? 'Supabase Auth + OAuth' : 'API ключи и webhooks' },
+                        { icon: '📝', title: 'Документация', desc: 'README + инструкция по настройке' },
+                        { icon: autoDeploy ? '▲' : '🗺️', title: autoDeploy ? 'Live URL' : 'Roadmap', desc: autoDeploy ? 'Автоматический деплой на Vercel' : 'План развития MVP → Production' },
                       ].map((item, i) => (
                         <div key={i} className="flex items-start gap-3 p-4 bg-zinc-800/50 rounded-lg">
                           <span className="text-2xl">{item.icon}</span>
@@ -2674,19 +2864,33 @@ export default function TrendPage() {
                         {projectData.one_liner && (
                           <p className="text-zinc-300 mb-2">{projectData.one_liner}</p>
                         )}
-                        {projectData.github_url ? (
-                          <a
-                            href={projectData.github_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm"
-                          >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                            </svg>
-                            {projectData.github_url}
-                          </a>
-                        ) : (
+                        <div className="flex flex-wrap gap-4">
+                          {projectData.github_url && (
+                            <a
+                              href={projectData.github_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm"
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                              </svg>
+                              GitHub
+                            </a>
+                          )}
+                          {(projectData.vercel_url || vercelUrl) && (
+                            <a
+                              href={projectData.vercel_url || vercelUrl || ''}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 text-sm"
+                            >
+                              <span className="text-base">▲</span>
+                              Live Demo
+                            </a>
+                          )}
+                        </div>
+                        {!projectData.github_url && !projectData.vercel_url && !vercelUrl && (
                           <p className="text-zinc-500 text-sm">GitHub репозиторий не создан</p>
                         )}
                       </div>

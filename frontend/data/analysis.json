@@ -3858,7 +3858,621 @@
           "reach": 0
         }
       }
+    },
+    "trend-1768776365163-0": {
+      "trend_id": "trend-1768776365163-0",
+      "trend_title": "AI Customer Feedback Analyzer",
+      "main_pain": "Компании теряют время и ресурсы на ручной анализ отзывов клиентов, что замедляет процесс улучшения продуктов.",
+      "key_pain_points": [
+        "Компании теряют время и ресурсы на ручной анализ отзывов клиентов.",
+        "Трудности в выявлении ключевых тем и паттернов в отзывах.",
+        "Нехватка инструментов для интеграции с существующими системами управления клиентскими данными."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые и средние предприятия",
+            "size": "Составляют значительную часть рынка с высоким интересом к автоматизации.",
+            "willingness_to_pay": "high",
+            "where_to_find": "Профессиональные форумы, вебинары, выставки технологий.",
+            "confidence": 8
+          },
+          {
+            "name": "Маркетологи и продуктовые менеджеры",
+            "size": "Важно для анализа и принятия решений.",
+            "willingness_to_pay": "medium",
+            "where_to_find": "Профессиональные сообщества, конференции.",
+            "confidence": 7.5
+          }
+        ]
+      },
+      "sentiment_score": 8.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-19T02:00:13.279Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Need help automating customer feedback analysis using AI",
+              "subreddit": "nocode",
+              "score": 409,
+              "num_comments": 74,
+              "url": "https://www.reddit.com/r/nocode/comments/1cmxou3/need_help_automating_customer_feedback_analysis/",
+              "created": "2026-01-19T02:00:03.785Z",
+              "selftext": "I run an online review and feedback tool called localyser.com that automatically fetches reviews from across the Web and analyzes them using AI."
+            },
+            {
+              "title": "AI for customer feedback insight",
+              "subreddit": "ProductManagement",
+              "score": 464,
+              "num_comments": 27,
+              "url": "https://www.reddit.com/r/ProductManagement/comments/1bnthbc/ai_for_customer_feedback_insight/",
+              "created": "2026-01-19T02:00:03.785Z",
+              "selftext": "For starters, I think you can just paste a bunch of text into ChatGPT and ask it to extract a list of common themes."
+            },
+            {
+              "title": "Analyzing Customer Feedback at Scale",
+              "subreddit": "ProductManagement",
+              "score": 240,
+              "num_comments": 100,
+              "url": "https://www.reddit.com/r/ProductManagement/comments/1klawf2/analyzing_customer_feedback_at_scale/",
+              "created": "2026-01-19T02:00:03.786Z",
+              "selftext": "We set up a single portal that everyone (customers + internal teams) uses to submit and track feedback. Makes it way easier to spot real ..."
+            },
+            {
+              "title": "AI Augmented Restaurant Reviews Sentiment Analysis ...",
+              "subreddit": "PowerBI",
+              "score": 403,
+              "num_comments": 38,
+              "url": "https://www.reddit.com/r/PowerBI/comments/1dmpaab/ai_augmented_restaurant_reviews_sentiment/",
+              "created": "2026-01-19T02:00:03.786Z",
+              "selftext": "The dashboard is designed to provide a comprehensive analysis of restaurant reviews, powered by AI and NLP (Natural Language Processing) machine learning ..."
+            },
+            {
+              "title": "AI-Powered Tool to Automatically Evaluate Customer ...",
+              "subreddit": "AI_Agents",
+              "score": 300,
+              "num_comments": 94,
+              "url": "https://www.reddit.com/r/AI_Agents/comments/1knccdg/aipowered_tool_to_automatically_evaluate_customer/",
+              "created": "2026-01-19T02:00:03.786Z",
+              "selftext": "It's an AI-powered solution that automatically analyzes monthly customer support chat logs (like Zendesk chat transcripts) and generates structured performance ..."
+            },
+            {
+              "title": "Tried 3 feedback tools. Still ended up building our own ...",
+              "subreddit": "ProductManagement",
+              "score": 407,
+              "num_comments": 102,
+              "url": "https://www.reddit.com/r/ProductManagement/comments/1ll1ye5/tried_3_feedback_tools_still_ended_up_building/",
+              "created": "2026-01-19T02:00:03.787Z",
+              "selftext": "AI handles categorization, sentiment analysis, and pattern recognition. This saves us hours and makes it easy for anyone, even without a ..."
+            },
+            {
+              "title": "Built 12 free AI tools for entrepreneurs - would love your ...",
+              "subreddit": "microsaas",
+              "score": 366,
+              "num_comments": 48,
+              "url": "https://www.reddit.com/r/microsaas/comments/1m57mv1/built_12_free_ai_tools_for_entrepreneurs_would/",
+              "created": "2026-01-19T02:00:03.787Z",
+              "selftext": "Hey everyone! I've been building a collection of AI-powered tools to solve the everyday pain points we all face as entrepreneurs and ..."
+            },
+            {
+              "title": "Is anyone using AI to analyze their product/customer ...",
+              "subreddit": "shopify",
+              "score": 193,
+              "num_comments": 59,
+              "url": "https://www.reddit.com/r/shopify/comments/1b2x7vn/is_anyone_using_ai_to_analyze_their/",
+              "created": "2026-01-19T02:00:03.787Z",
+              "selftext": "You can identify which aspects customers respond to most positively - be it shipping speed, a particular product line or feature - and focus on ..."
+            },
+            {
+              "title": "Built an AI-powered content analyzer to help with Google's ...",
+              "subreddit": "SaaS",
+              "score": 133,
+              "num_comments": 39,
+              "url": "https://www.reddit.com/r/SaaS/comments/1n8a5ym/built_an_aipowered_content_analyzer_to_help_with/",
+              "created": "2026-01-19T02:00:03.787Z",
+              "selftext": "I recently launched a tool called Rankora – it analyzes content and compares it against competitors to see how ready it is for Google's new AI ..."
+            },
+            {
+              "title": "Built a simple GEO/SEO analyzer tool - would love honest ...",
+              "subreddit": "microsaas",
+              "score": 99,
+              "num_comments": 20,
+              "url": "https://www.reddit.com/r/microsaas/comments/1pnim90/built_a_simple_geoseo_analyzer_tool_would_love/",
+              "created": "2026-01-19T02:00:03.787Z",
+              "selftext": "It uses AI to analyze your content structure and suggest optimizations for both traditional search engines and AI assistants like ChatGPT, ..."
+            },
+            {
+              "title": "Поделитесь своим стартапом - ежеквартальный пост",
+              "subreddit": "startups",
+              "score": 379,
+              "num_comments": 57,
+              "url": "https://www.reddit.com/r/startups/comments/1jwuuer/share_your_startup_quarterly_post/?tl=ru",
+              "created": "2026-01-19T02:00:03.592Z",
+              "selftext": "Оно показывает надежные продукты, обзоры, лучшие предложения и со временем изучает ваши предпочтения. Наша цель - уменьшить усталость от ..."
+            }
+          ],
+          "communities": [
+            "nocode",
+            "ProductManagement",
+            "PowerBI",
+            "AI_Agents",
+            "microsaas",
+            "startups"
+          ],
+          "engagement": 4709
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "AI Based Customer Feedback Analyzer with DeepSeek AI",
+              "channel": "Beyond Boundaries",
+              "description": "Getting tons of customer feedback but no time to read through it all? Let DeepSeek AI do the hard work with its powerful AI Based ...",
+              "videoId": "WDrJkz6LjV8",
+              "url": "https://www.youtube.com/watch?v=WDrJkz6LjV8",
+              "publishedAt": "2025-05-29T06:53:41Z",
+              "thumbnail": "https://i.ytimg.com/vi/WDrJkz6LjV8/hqdefault.jpg"
+            },
+            {
+              "title": "Agent.AI - Customer Feedback Analyzer",
+              "channel": "Marketing Migration",
+              "description": "Tired of sifting through endless survey responses and support tickets? The Customer Feedback Analyzer does the heavy lifting for ...",
+              "videoId": "FB0cHBgyxdQ",
+              "url": "https://www.youtube.com/watch?v=FB0cHBgyxdQ",
+              "publishedAt": "2025-04-09T17:50:16Z",
+              "thumbnail": "https://i.ytimg.com/vi/FB0cHBgyxdQ/hqdefault.jpg"
+            },
+            {
+              "title": "Build a Customer Feedback Analyzer",
+              "channel": "DataCamp",
+              "description": "Code Along in DataLab: https://www.datacamp.com/code-along/ai-python-zero-to-hero-build-a-customer-feedback-analyzer Part ...",
+              "videoId": "u0hIsxJImB8",
+              "url": "https://www.youtube.com/watch?v=u0hIsxJImB8",
+              "publishedAt": "2025-01-17T05:08:24Z",
+              "thumbnail": "https://i.ytimg.com/vi/u0hIsxJImB8/hqdefault.jpg"
+            },
+            {
+              "title": "📊 AI Feedback Analyzer Demo | Turn Customer Feedback into Actionable Insights",
+              "channel": "Credifly",
+              "description": "See how our AI-powered app transforms raw customer feedback into actionable business improvements. In this demo, you'll ...",
+              "videoId": "QGigpnFq13Y",
+              "url": "https://www.youtube.com/watch?v=QGigpnFq13Y",
+              "publishedAt": "2025-09-03T06:47:47Z",
+              "thumbnail": "https://i.ytimg.com/vi/QGigpnFq13Y/hqdefault.jpg"
+            },
+            {
+              "title": "Customer Audio Feedback AI Analyzer DEMO (using OpenAI + Hugging Face)",
+              "channel": "DATA JARVIS",
+              "description": "Customer feedback is often gathered using survey forms. However, this method can be inefficient as response rates are typically ...",
+              "videoId": "IhwZNMFTOAQ",
+              "url": "https://www.youtube.com/watch?v=IhwZNMFTOAQ",
+              "publishedAt": "2024-10-05T09:00:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/IhwZNMFTOAQ/hqdefault.jpg"
+            },
+            {
+              "title": "AI Customer Feedback Analyzer | NLP + Streamlit Project Demo",
+              "channel": "Sattyam Samania",
+              "description": "In this video, I am showing my project AI Customer Feedback Analyzer. Many companies get hundreds of reviews and support ...",
+              "videoId": "o3ZFV6Mxj_c",
+              "url": "https://www.youtube.com/watch?v=o3ZFV6Mxj_c",
+              "publishedAt": "2025-09-17T10:43:04Z",
+              "thumbnail": "https://i.ytimg.com/vi/o3ZFV6Mxj_c/hqdefault.jpg"
+            },
+            {
+              "title": "AI Analyzes Customer Feedback: Turn Data into Gold!",
+              "channel": "Rob Kalwarowsky",
+              "description": "Brands drown in customer feedback. We use AI to analyze it, revealing key trends like packaging satisfaction vs. price concerns.",
+              "videoId": "yUkCtbFanR0",
+              "url": "https://www.youtube.com/watch?v=yUkCtbFanR0",
+              "publishedAt": "2025-05-17T14:01:45Z",
+              "thumbnail": "https://i.ytimg.com/vi/yUkCtbFanR0/hqdefault.jpg"
+            },
+            {
+              "title": "How to Create an AI Customer Feedback Analyzer Using AI Agent",
+              "channel": "Pabbly",
+              "description": "In this video, you'll learn how to build an AI Customer Feedback Analyzer using AI Agent. We'll guide you through the process of ...",
+              "videoId": "z7ZaOP680LE",
+              "url": "https://www.youtube.com/watch?v=z7ZaOP680LE",
+              "publishedAt": "2025-06-27T12:02:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/z7ZaOP680LE/hqdefault.jpg"
+            },
+            {
+              "title": "AI Feedback Analyzer - Smart Insights for Smart Decisions",
+              "channel": "Deviniti",
+              "description": "Feedback analysts and administrators (like PO or UX/UI) can effectively manage and analyze users feedback. This enables ...",
+              "videoId": "B_vhe-xJGqQ",
+              "url": "https://www.youtube.com/watch?v=B_vhe-xJGqQ",
+              "publishedAt": "2023-10-24T18:15:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/B_vhe-xJGqQ/hqdefault.jpg"
+            },
+            {
+              "title": "Trip Feedback Analyzer: Turn Reviews into Strategy with AI",
+              "channel": "Best AI Academy",
+              "description": "In this video, we introduce the Trips Feedback Analyzer Agent — an AI agent designed to help travel agencies make smarter, ...",
+              "videoId": "D9XoX_SJVp8",
+              "url": "https://www.youtube.com/watch?v=D9XoX_SJVp8",
+              "publishedAt": "2025-06-25T19:23:39Z",
+              "thumbnail": "https://i.ytimg.com/vi/D9XoX_SJVp8/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Beyond Boundaries",
+            "Marketing Migration",
+            "DataCamp",
+            "Credifly",
+            "DATA JARVIS"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -36,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 50
+            },
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 56
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 57
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 66
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 75
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 92
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 96
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 90
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 52
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 49
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 32
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 32
+            }
+          ],
+          "search_query": "Customer Feedback",
+          "is_mock_data": false,
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Customer+Feedback%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-19T02:00:07.583Z",
+          "simplified_from": "AI Customer Feedback Analyzer"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      }
+    },
+    "trend-1768582252127-1": {
+      "trend_id": "trend-1768582252127-1",
+      "trend_title": "AI-Driven Content Creation for Small Businesses",
+      "main_pain": "Недостаток уникальности контента",
+      "key_pain_points": [
+        "Недостаток уникальности контента",
+        "Сложности с SEO-оптимизацией контента",
+        "Недостаток контроля над качеством контента",
+        "Регуляторные и этические вопросы"
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Владельцы малых бизнесов",
+            "size": "10 млн малых бизнесов в России",
+            "willingness_to_pay": "high",
+            "where_to_find": "Профессиональные сообщества, социальные сети, бизнес-форумы",
+            "confidence": 8
+          }
+        ]
+      },
+      "sentiment_score": 8.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-19T14:37:35.976Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "How do you use AI for your Small Business?",
+              "subreddit": "AiForSmallBusiness",
+              "score": 70,
+              "num_comments": 94,
+              "url": "https://www.reddit.com/r/AiForSmallBusiness/comments/1ou23ye/how_do_you_use_ai_for_your_small_business/",
+              "created": "2026-01-19T14:37:22.167Z",
+              "selftext": "I use AI mostly for content and workflow stuff..things like drafting emails, writing product descriptions, and cleaning up spreadsheets. It also ..."
+            },
+            {
+              "title": "How are you actually using AI in your small business to ...",
+              "subreddit": "smallbusiness",
+              "score": 50,
+              "num_comments": 26,
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1m10e9z/how_are_you_actually_using_ai_in_your_small/",
+              "created": "2026-01-19T14:37:22.167Z",
+              "selftext": "I run a small ecommerce store and use AI mostly for ideas about product descriptions and ad copy - it saves me tons of time."
+            },
+            {
+              "title": "How Can Small Businesses Use AI to Grow?",
+              "subreddit": "NextGenAITool",
+              "score": 394,
+              "num_comments": 32,
+              "url": "https://www.reddit.com/r/NextGenAITool/comments/1n53vqd/how_can_small_businesses_use_ai_to_grow/",
+              "created": "2026-01-19T14:37:22.168Z",
+              "selftext": "AI tools can predict which leads are most likely to convert, helping sales teams focus on high-value opportunities. AI-powered CRM systems ..."
+            },
+            {
+              "title": "Has anyone here used an AI-powered tool for something ...",
+              "subreddit": "Entrepreneur",
+              "score": 263,
+              "num_comments": 64,
+              "url": "https://www.reddit.com/r/Entrepreneur/comments/1hysq1p/has_anyone_here_used_an_aipowered_tool_for/",
+              "created": "2026-01-19T14:37:22.168Z",
+              "selftext": "There are tools like Copy ai and Jasper for automating content writing. Gennova ai uses AI to create personalized social media content, ..."
+            },
+            {
+              "title": "Best AI Tools for Automating a Small Business in 2025",
+              "subreddit": "SmallBusinessUAE",
+              "score": 279,
+              "num_comments": 79,
+              "url": "https://www.reddit.com/r/SmallBusinessUAE/comments/1itw3n4/best_ai_tools_for_automating_a_small_business_in/",
+              "created": "2026-01-19T14:37:22.168Z",
+              "selftext": "ChatGPT (OpenAI) & Gemini (Google AI): These tools help generate high-quality marketing copy, blog posts, email campaigns, and social media ..."
+            },
+            {
+              "title": "AI Tools That Actually Boost your Marketing.",
+              "subreddit": "digital_marketing",
+              "score": 103,
+              "num_comments": 100,
+              "url": "https://www.reddit.com/r/digital_marketing/comments/1mqlfjk/ai_tools_that_actually_boost_your_marketing/",
+              "created": "2026-01-19T14:37:22.168Z",
+              "selftext": "AI is transforming digital marketing. A few tools that really help: Copy & Content: ChatGPT, Jasper, Copy.ai. Design & Visuals: Canva AI, ..."
+            },
+            {
+              "title": "How I used AI content tools to generate our first 100 ...",
+              "subreddit": "Entrepreneur",
+              "score": 372,
+              "num_comments": 31,
+              "url": "https://www.reddit.com/r/Entrepreneur/comments/1osg75g/how_i_used_ai_content_tools_to_generate_our_first/",
+              "created": "2026-01-19T14:37:22.168Z",
+              "selftext": "I wanted to share our experience with AI-powered content creation and get your thoughts on whether we're missing opportunities. Our biggest ..."
+            },
+            {
+              "title": "How AI Content Tools Are Empowering Small Businesses ...",
+              "subreddit": "RateMyStartupIdea",
+              "score": 97,
+              "num_comments": 57,
+              "url": "https://www.reddit.com/r/RateMyStartupIdea/comments/1nzgr74/unlocking_growth_how_ai_content_tools_are/",
+              "created": "2026-01-19T14:37:22.168Z",
+              "selftext": "Efficiency: AI automates tasks like blog writing, social media scheduling, copywriting, and even customer responses, freeing up precious hours ..."
+            },
+            {
+              "title": "What are the best AI tools for business owners",
+              "subreddit": "ChatGPTPro",
+              "score": 369,
+              "num_comments": 109,
+              "url": "https://www.reddit.com/r/ChatGPTPro/comments/1nlngy5/what_are_the_best_ai_tools_for_business_owners/",
+              "created": "2026-01-19T14:37:22.168Z",
+              "selftext": "ChatGPT for brainstorming, content creation, marketing, and even general knowledge on tax, accounting, deep market research and of course, email ..."
+            },
+            {
+              "title": "Mod Monday",
+              "subreddit": "MB2Bannerlord",
+              "score": 359,
+              "num_comments": 58,
+              "url": "https://www.reddit.com/r/MB2Bannerlord/comments/19774eb/mod_monday/",
+              "created": "2026-01-19T14:37:19.455Z",
+              "selftext": "Welcome to Mod Monday! In the comments of this post, a list of mods that have been created or updated in the past week can be found."
+            },
+            {
+              "title": "Mod Monday",
+              "subreddit": "MB2Bannerlord",
+              "score": 388,
+              "num_comments": 95,
+              "url": "https://www.reddit.com/r/MB2Bannerlord/comments/z6uqll/mod_monday/",
+              "created": "2026-01-19T14:37:19.456Z",
+              "selftext": "﻿Известна проблема с модом, помеченная как \"Отсутствие зависимостей\". Пока что просто игнорируйте предупреждение и включайте мод вручную. ﻿ ..."
+            }
+          ],
+          "communities": [
+            "AiForSmallBusiness",
+            "smallbusiness",
+            "NextGenAITool",
+            "Entrepreneur",
+            "SmallBusinessUAE",
+            "MB2Bannerlord"
+          ],
+          "engagement": 4234
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "AI Tools for Small Business - 7 Ways Small Business Can Use AI Today",
+              "channel": "Philip VanDusen",
+              "description": "Extended 30 Day HighLevel Trial: https://www.gohighlevel.com/philipvandusen So, how can small businesses leverage all the AI ...",
+              "videoId": "-y4swMaeJeI",
+              "url": "https://www.youtube.com/watch?v=-y4swMaeJeI",
+              "publishedAt": "2024-03-26T14:00:00Z",
+              "thumbnail": "https://i.ytimg.com/vi/-y4swMaeJeI/hqdefault.jpg"
+            },
+            {
+              "title": "How To Use AI to Start, Build &amp; Grow Your Small Business (20 AI Marketing Tools!)",
+              "channel": "HubSpot Marketing",
+              "description": "Download our AI Marketing Guide to supercharge your marketing strategy here:* https://clickhubspot.com/k9g8 Transform your ...",
+              "videoId": "nkuPUJVzB_E",
+              "url": "https://www.youtube.com/watch?v=nkuPUJVzB_E",
+              "publishedAt": "2025-02-05T18:15:02Z",
+              "thumbnail": "https://i.ytimg.com/vi/nkuPUJVzB_E/hqdefault.jpg"
+            },
+            {
+              "title": "Get Rich with these 5 AI business ideas",
+              "channel": "Dan Martell",
+              "description": "",
+              "videoId": "ioyg0pYqzlI",
+              "url": "https://www.youtube.com/watch?v=ioyg0pYqzlI",
+              "publishedAt": "2023-12-08T22:36:18Z",
+              "thumbnail": "https://i.ytimg.com/vi/ioyg0pYqzlI/hqdefault.jpg"
+            },
+            {
+              "title": "Building a business with AI",
+              "channel": "Dan Martell",
+              "description": "",
+              "videoId": "vspBGjmYeE0",
+              "url": "https://www.youtube.com/watch?v=vspBGjmYeE0",
+              "publishedAt": "2025-05-29T15:01:40Z",
+              "thumbnail": "https://i.ytimg.com/vi/vspBGjmYeE0/hqdefault.jpg"
+            },
+            {
+              "title": "The Best Way To Create An AI-Driven Content Strategy For Small Businesses",
+              "channel": "WoopSocial - Grow Your Social Media",
+              "description": "The salient point of our discussion revolves around the transformative potential of artificial intelligence in alleviating the burdens of ...",
+              "videoId": "UNp2r2f_oB0",
+              "url": "https://www.youtube.com/watch?v=UNp2r2f_oB0",
+              "publishedAt": "2025-12-03T12:46:00Z",
+              "thumbnail": "https://i.ytimg.com/vi/UNp2r2f_oB0/hqdefault.jpg"
+            },
+            {
+              "title": "Boost Your Small Business with AI-Driven Content Creation Strategies!",
+              "channel": "Jon Lakefish",
+              "description": "Discover how AI technology can revolutionize your small business, allowing you to create amazing content and messages more ...",
+              "videoId": "FSGRKn0u1F0",
+              "url": "https://www.youtube.com/watch?v=FSGRKn0u1F0",
+              "publishedAt": "2024-08-20T14:02:44Z",
+              "thumbnail": "https://i.ytimg.com/vi/FSGRKn0u1F0/hqdefault.jpg"
+            },
+            {
+              "title": "7 AI Business Ideas That Will Make You a Millionaire in 2025",
+              "channel": "Neil Patel",
+              "description": "Want More Traffic, Leads, and Sales With Our Digital Marketing Help? Go Here: https://npdigital.com/ Most people chase AI ...",
+              "videoId": "uHuiO984uRs",
+              "url": "https://www.youtube.com/watch?v=uHuiO984uRs",
+              "publishedAt": "2025-05-27T13:01:39Z",
+              "thumbnail": "https://i.ytimg.com/vi/uHuiO984uRs/hqdefault.jpg"
+            },
+            {
+              "title": "This AI tool will create your ads in SECONDS",
+              "channel": "Learn With Shopify",
+              "description": "How to generate ad creatives with AI quickly efficiently that will outperform your competitors. #aitools #ai #adstrategy ...",
+              "videoId": "TdKLibSbbyc",
+              "url": "https://www.youtube.com/watch?v=TdKLibSbbyc",
+              "publishedAt": "2024-04-14T12:00:24Z",
+              "thumbnail": "https://i.ytimg.com/vi/TdKLibSbbyc/hqdefault.jpg"
+            },
+            {
+              "title": "This is how AI is changing marketing forever",
+              "channel": "Learn With Shopify",
+              "description": "The effects of AI in the workforce and how it affects marketers. #ai.",
+              "videoId": "lOW7TzvTWHw",
+              "url": "https://www.youtube.com/watch?v=lOW7TzvTWHw",
+              "publishedAt": "2024-06-21T21:00:25Z",
+              "thumbnail": "https://i.ytimg.com/vi/lOW7TzvTWHw/hqdefault.jpg"
+            },
+            {
+              "title": "Making $1000/Day With AI?",
+              "channel": "Codie Sanchez",
+              "description": "",
+              "videoId": "SXNBsSy6Xlg",
+              "url": "https://www.youtube.com/watch?v=SXNBsSy6Xlg",
+              "publishedAt": "2025-04-20T22:30:58Z",
+              "thumbnail": "https://i.ytimg.com/vi/SXNBsSy6Xlg/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Philip VanDusen",
+            "HubSpot Marketing",
+            "Dan Martell",
+            "WoopSocial - Grow Your Social Media",
+            "Jon Lakefish"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -60,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 48
+            },
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 38
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 52
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 53
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 42
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 45
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 35
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 38
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 30
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 24
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 17
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 19
+            }
+          ],
+          "search_query": "AI-Driven Content",
+          "is_mock_data": false,
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22AI-Driven+Content%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-19T14:37:25.021Z",
+          "simplified_from": "AI-Driven Content Creation for Small Businesses"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      }
     }
   },
-  "lastUpdated": "2026-01-18T21:45:25.301Z"
+  "lastUpdated": "2026-01-19T14:37:36.028Z"
 }

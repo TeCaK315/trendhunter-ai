@@ -1,6 +1,142 @@
 {
   "trends": [
     {
+      "id": "trend-1768799469486-0",
+      "title": "AI Personal Trainer for Home Workouts",
+      "category": "HealthTech",
+      "popularity_score": 85,
+      "opportunity_score": 9,
+      "pain_score": 8.5,
+      "feasibility_score": 8,
+      "profit_potential": 9.2,
+      "growth_rate": 30,
+      "why_trending": "С ростом интереса к домашним тренировкам и фитнесу, пользователи ищут персонализированные решения, которые помогут им поддерживать физическую форму без необходимости посещения спортзала.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-19T05:11:09.486Z"
+    },
+    {
+      "id": "trend-1768799469486-1",
+      "title": "AI-Based Meal Planner for Fitness Goals",
+      "category": "HealthTech",
+      "popularity_score": 78,
+      "opportunity_score": 8.7,
+      "pain_score": 7.8,
+      "feasibility_score": 8.5,
+      "profit_potential": 8.9,
+      "growth_rate": 25,
+      "why_trending": "С увеличением спроса на здоровое питание и фитнес, пользователи нуждаются в индивидуальных планах питания, которые соответствуют их целям и предпочтениям.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-19T05:11:09.486Z"
+    },
+    {
+      "id": "trend-1768799469486-2",
+      "title": "AI-Driven Mental Health Companion App",
+      "category": "HealthTech",
+      "popularity_score": 80,
+      "opportunity_score": 9.2,
+      "pain_score": 8,
+      "feasibility_score": 7.5,
+      "profit_potential": 9,
+      "growth_rate": 40,
+      "why_trending": "С увеличением осознания важности психического здоровья, пользователи ищут доступные и конфиденциальные решения для поддержки своего эмоционального состояния.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-19T05:11:09.486Z"
+    },
+    {
+      "id": "trend-1768799469486-3",
+      "title": "AI-Powered Habit Tracker for Productivity",
+      "category": "SaaS",
+      "popularity_score": 75,
+      "opportunity_score": 8.3,
+      "pain_score": 7.5,
+      "feasibility_score": 8.2,
+      "profit_potential": 8.5,
+      "growth_rate": 28,
+      "why_trending": "С ростом интереса к саморазвитию и продуктивности, пользователи ищут инструменты, которые помогут им отслеживать и улучшать свои привычки.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-19T05:11:09.486Z"
+    },
+    {
+      "id": "trend-1768799469486-4",
+      "title": "AI-Powered Sleep Coach App",
+      "category": "HealthTech",
+      "popularity_score": 82,
+      "opportunity_score": 8.9,
+      "pain_score": 8.7,
+      "feasibility_score": 8.4,
+      "profit_potential": 9.1,
+      "growth_rate": 35,
+      "why_trending": "С увеличением проблем со сном и осознанием его важности для здоровья, пользователи ищут решения, которые помогут улучшить качество сна.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-19T05:11:09.486Z"
+    },
+    {
+      "id": "trend-1768776365163-0",
+      "title": "AI Customer Feedback Analyzer",
+      "category": "SaaS",
+      "popularity_score": 85,
+      "opportunity_score": 9,
+      "pain_score": 8.5,
+      "feasibility_score": 8.7,
+      "profit_potential": 9.5,
+      "growth_rate": 45,
+      "why_trending": "С увеличением онлайн-обслуживания клиентов компании ищут способы быстро анализировать отзывы и улучшать свои продукты. AI может автоматизировать этот процесс, выявляя ключевые темы и проблемы.",
+      "source": "Google Trends",
+      "status": "analyzed",
+      "first_detected_at": "2026-01-18T22:46:05.163Z",
+      "analysis_available": true
+    },
+    {
+      "id": "trend-1768776365163-2",
+      "title": "AI Personal Finance Advisor",
+      "category": "FinTech",
+      "popularity_score": 78,
+      "opportunity_score": 8.9,
+      "pain_score": 8,
+      "feasibility_score": 8.3,
+      "profit_potential": 9.2,
+      "growth_rate": 38,
+      "why_trending": "С увеличением финансовой грамотности пользователей возрастает интерес к персонализированным финансовым советам. AI может анализировать расходы и предлагать оптимальные стратегии сбережений.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-18T22:46:05.163Z"
+    },
+    {
+      "id": "trend-1768776365163-3",
+      "title": "AI-Driven Social Media Content Generator",
+      "category": "SaaS",
+      "popularity_score": 82,
+      "opportunity_score": 9.1,
+      "pain_score": 8.4,
+      "feasibility_score": 8.6,
+      "profit_potential": 9.4,
+      "growth_rate": 36,
+      "why_trending": "С увеличением конкуренции в социальных сетях компании нуждаются в уникальном контенте. AI может автоматически генерировать посты, учитывая тренды и целевую аудиторию.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-18T22:46:05.163Z"
+    },
+    {
+      "id": "trend-1768776365163-4",
+      "title": "AI-Enhanced Remote Team Collaboration Tool",
+      "category": "Technology",
+      "popularity_score": 77,
+      "opportunity_score": 8.7,
+      "pain_score": 8.1,
+      "feasibility_score": 8.4,
+      "profit_potential": 9.1,
+      "growth_rate": 35,
+      "why_trending": "С переходом на удалённую работу команды ищут решения для эффективного взаимодействия. AI может улучшать коммуникацию и управление проектами, предлагая рекомендации по взаимодействию.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-18T22:46:05.163Z"
+    },
+    {
       "id": "trend-1768689874583-0",
       "title": "Personalized Fitness Tracker with AI Coaching",
       "category": "HealthTech",
@@ -242,8 +378,9 @@
       "growth_rate": 40,
       "why_trending": "Малые предприятия стремятся к созданию качественного контента, но часто не имеют ресурсов для этого. AI может помочь автоматизировать процесс создания текстов и графики.",
       "source": "Google Trends",
-      "status": "active",
-      "first_detected_at": "2026-01-16T16:50:52.127Z"
+      "status": "analyzed",
+      "first_detected_at": "2026-01-16T16:50:52.127Z",
+      "analysis_available": true
     },
     {
       "id": "trend-1768582252127-2",
@@ -522,5 +659,5 @@
       "first_detected_at": "2026-01-15T23:58:25.912Z"
     }
   ],
-  "lastUpdated": "2026-01-17T22:44:34.620Z"
+  "lastUpdated": "2026-01-19T05:11:09.792Z"
 }

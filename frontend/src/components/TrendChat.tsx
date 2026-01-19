@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -79,13 +79,58 @@ const quickPromptsByAgent: Record<AgentType, { text: string; icon: string }[]> =
   ],
 };
 
+// Ключ для localStorage
+const getStorageKey = (trendTitle: string, agentId: AgentType) =>
+  `chat_${trendTitle.replace(/\s+/g, '_')}_${agentId}`;
+
 export default function TrendChat({ trendContext, className = '' }: TrendChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Отдельная история для каждого агента
+  const [messagesByAgent, setMessagesByAgent] = useState<Record<AgentType, Message[]>>({
+    general: [],
+    developer: [],
+    marketing: [],
+    sales: [],
+    designer: [],
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AgentType>('general');
   const [isExpanded, setIsExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Загружаем историю из localStorage при монтировании
+  useEffect(() => {
+    const loadedMessages: Record<AgentType, Message[]> = {
+      general: [],
+      developer: [],
+      marketing: [],
+      sales: [],
+      designer: [],
+    };
+
+    agents.forEach(agent => {
+      const key = getStorageKey(trendContext.title, agent.id);
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        try {
+          loadedMessages[agent.id] = JSON.parse(saved);
+        } catch {
+          // Игнорируем ошибки парсинга
+        }
+      }
+    });
+
+    setMessagesByAgent(loadedMessages);
+  }, [trendContext.title]);
+
+  // Сохраняем историю в localStorage при изменении
+  const saveMessages = useCallback((agentId: AgentType, messages: Message[]) => {
+    const key = getStorageKey(trendContext.title, agentId);
+    localStorage.setItem(key, JSON.stringify(messages));
+  }, [trendContext.title]);
+
+  // Получаем сообщения текущего агента
+  const messages = messagesByAgent[selectedAgent];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -99,7 +144,15 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
     if (!text.trim() || loading) return;
 
     const userMessage: Message = { role: 'user', content: text };
-    setMessages((prev) => [...prev, userMessage]);
+    const currentMessages = messagesByAgent[selectedAgent];
+    const newMessages = [...currentMessages, userMessage];
+
+    // Обновляем состояние и сохраняем
+    setMessagesByAgent(prev => ({
+      ...prev,
+      [selectedAgent]: newMessages
+    }));
+    saveMessages(selectedAgent, newMessages);
     setInput('');
     setLoading(true);
 
@@ -108,7 +161,7 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [...messages, userMessage],
+          messages: newMessages,
           agent_type: selectedAgent,
           trend_context: trendContext,
         }),
@@ -116,17 +169,39 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
 
       const data = await response.json();
 
-      if (data.success) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: data.message }]);
-      } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: 'Произошла ошибка. Попробуйте ещё раз.' }]);
-      }
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: data.success ? data.message : 'Произошла ошибка. Попробуйте ещё раз.'
+      };
+
+      const updatedMessages = [...newMessages, assistantMessage];
+      setMessagesByAgent(prev => ({
+        ...prev,
+        [selectedAgent]: updatedMessages
+      }));
+      saveMessages(selectedAgent, updatedMessages);
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Ошибка соединения. Проверьте интернет.' }]);
+      const errorMessage: Message = { role: 'assistant', content: 'Ошибка соединения. Проверьте интернет.' };
+      const updatedMessages = [...newMessages, errorMessage];
+      setMessagesByAgent(prev => ({
+        ...prev,
+        [selectedAgent]: updatedMessages
+      }));
+      saveMessages(selectedAgent, updatedMessages);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Очистка истории текущего агента
+  const clearCurrentChat = () => {
+    setMessagesByAgent(prev => ({
+      ...prev,
+      [selectedAgent]: []
+    }));
+    const key = getStorageKey(trendContext.title, selectedAgent);
+    localStorage.removeItem(key);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -171,42 +246,45 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
 
       {/* Agent Selector */}
       <div className="flex gap-1 p-2 border-b border-zinc-800 bg-zinc-900/50 overflow-x-auto">
-        {agents.map((agent) => (
-          <button
-            key={agent.id}
-            onClick={() => setSelectedAgent(agent.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-all ${
-              selectedAgent === agent.id
-                ? 'bg-indigo-500/20 text-indigo-400'
-                : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-            }`}
-          >
-            <span>{agent.icon}</span>
-            <span>{agent.label}</span>
-          </button>
-        ))}
+        {agents.map((agent) => {
+          const msgCount = messagesByAgent[agent.id].length;
+          return (
+            <button
+              key={agent.id}
+              onClick={() => setSelectedAgent(agent.id)}
+              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-all ${
+                selectedAgent === agent.id
+                  ? 'bg-indigo-500/20 text-indigo-400'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }`}
+            >
+              <span>{agent.icon}</span>
+              <span>{agent.label}</span>
+              {msgCount > 0 && (
+                <span className={`ml-1 px-1.5 py-0.5 text-xs rounded-full ${
+                  selectedAgent === agent.id
+                    ? 'bg-indigo-500/30 text-indigo-300'
+                    : 'bg-zinc-700 text-zinc-400'
+                }`}>
+                  {msgCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px] max-h-[350px]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px] max-h-[300px]">
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-3">{currentAgent.icon}</div>
             <div className="text-white font-medium mb-2">Привет! Я {currentAgent.label}</div>
-            <div className="text-sm text-zinc-400 mb-4">
+            <div className="text-sm text-zinc-400">
               Задай вопрос о тренде &quot;{trendContext.title}&quot;
             </div>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {quickPromptsByAgent[selectedAgent].map((prompt, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(prompt.text)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors"
-                >
-                  <span>{prompt.icon}</span>
-                  <span>{prompt.text}</span>
-                </button>
-              ))}
+            <div className="text-xs text-zinc-500 mt-2">
+              Используй быстрые действия ниже или напиши свой вопрос
             </div>
           </div>
         ) : (
@@ -248,28 +326,61 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
         )}
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-zinc-800 bg-zinc-900/95">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Напиши сообщение..."
-            disabled={loading}
-            className="flex-1 px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white rounded-xl transition-all"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+      {/* Input + Quick Actions */}
+      <div className="border-t border-zinc-800 bg-zinc-900/95">
+        {/* Quick Actions - всегда видны */}
+        <div className="px-3 pt-3 pb-2">
+          <div className="flex flex-wrap gap-1.5">
+            {quickPromptsByAgent[selectedAgent].map((prompt, i) => (
+              <button
+                key={i}
+                onClick={() => sendMessage(prompt.text)}
+                disabled={loading}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 rounded-lg text-xs transition-colors border border-zinc-700 hover:border-zinc-600"
+              >
+                <span>{prompt.icon}</span>
+                <span>{prompt.text}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </form>
+
+        {/* Input Field */}
+        <form onSubmit={handleSubmit} className="px-3 pb-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Напиши сообщение..."
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={clearCurrentChat}
+                disabled={loading}
+                className="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-400 hover:text-white rounded-xl transition-all"
+                title="Очистить историю"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white rounded-xl transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

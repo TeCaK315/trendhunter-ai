@@ -1193,13 +1193,18 @@ function generateRepoName(projectName: string): string {
     .replace(/-+$/, '');
 }
 
+// Импорт генератора шаблонов
+import { generateProjectFiles as generateTemplateFiles } from '@/lib/templates/generator';
+import { type ProductType } from '@/lib/templates';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { context, project_name, create_github_repo } = body;
+    const { context, project_name, create_github_repo, product_type, auto_deploy } = body;
 
-    // Получаем GitHub токен из cookies
+    // Получаем токены из cookies
     const githubToken = request.cookies.get('github_token')?.value;
+    const vercelToken = request.cookies.get('vercel_token')?.value;
 
     if (!context?.trend?.title) {
       return NextResponse.json(
@@ -1208,7 +1213,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Валидация product_type
+    const validProductTypes: ProductType[] = ['landing', 'saas', 'ai-wrapper', 'ecommerce'];
+    const selectedProductType: ProductType = validProductTypes.includes(product_type) ? product_type : 'landing';
+
     console.log(`Creating project for: ${context.trend.title}`);
+    console.log(`Product type: ${selectedProductType}`);
     console.log(`Context stages completed:`, {
       analysis: !!context.analysis,
       sources: !!context.sources,
@@ -1218,6 +1228,7 @@ export async function POST(request: NextRequest) {
       pitch: !!context.pitch,
     });
     console.log(`GitHub integration: ${create_github_repo ? 'enabled' : 'disabled'}, token: ${githubToken ? 'present' : 'missing'}`);
+    console.log(`Auto deploy: ${auto_deploy ? 'enabled' : 'disabled'}, Vercel token: ${vercelToken ? 'present' : 'missing'}`);
 
     // Генерируем полную спецификацию проекта
     const projectOutput = await generateProjectSpecification(context);
@@ -1229,6 +1240,8 @@ export async function POST(request: NextRequest) {
 
     let github_url: string | undefined;
     let github_created = false;
+    let vercel_url: string | undefined;
+    let vercel_deployed = false;
 
     // Если запрошено создание GitHub репозитория и есть токен
     if (create_github_repo !== false && githubToken) {
@@ -1245,13 +1258,20 @@ export async function POST(request: NextRequest) {
           github_url = repoResult.url;
           github_created = true;
 
-          // Генерируем полную структуру проекта
-          const projectFiles = generateProjectFiles(projectOutput, context);
+          // Генерируем файлы на основе выбранного типа продукта
+          let projectFiles: Record<string, string>;
 
-          // README добавляем отдельно с полным контентом из projectOutput
-          projectFiles['README.md'] = projectOutput.readme_content;
+          if (selectedProductType && selectedProductType !== 'landing') {
+            // Используем новые функциональные шаблоны
+            projectFiles = generateTemplateFiles(selectedProductType, context);
+          } else {
+            // Используем старую генерацию (бойлерплейт)
+            projectFiles = generateProjectFiles(projectOutput, context);
+            // README добавляем отдельно с полным контентом из projectOutput
+            projectFiles['README.md'] = projectOutput.readme_content;
+          }
 
-          console.log(`Creating ${Object.keys(projectFiles).length} files in repo...`);
+          console.log(`Creating ${Object.keys(projectFiles).length} files in repo (type: ${selectedProductType})...`);
 
           // Создаём все файлы в репозитории
           const structureResult = await createProjectStructure(
@@ -1266,6 +1286,28 @@ export async function POST(request: NextRequest) {
           } else {
             console.warn(`GitHub repo created with ${structureResult.filesCreated} files, but some failed:`, structureResult.errors);
           }
+
+          // Автоматический деплой на Vercel если запрошено
+          if (auto_deploy && vercelToken && github_url) {
+            try {
+              const { deployFromGitHub } = await import('@/lib/vercel');
+              const repoPath = `${username}/${repoName}`;
+
+              console.log(`Deploying to Vercel: ${repoPath}`);
+
+              const deployResult = await deployFromGitHub(vercelToken, repoName, repoPath);
+
+              if (deployResult.success) {
+                vercel_url = deployResult.projectUrl;
+                vercel_deployed = true;
+                console.log(`Vercel deployment started: ${vercel_url}`);
+              } else {
+                console.warn('Vercel deployment failed:', deployResult.error);
+              }
+            } catch (deployError) {
+              console.error('Vercel deployment error:', deployError);
+            }
+          }
         } else {
           console.warn('Failed to create GitHub repo:', repoResult.error);
         }
@@ -1277,8 +1319,11 @@ export async function POST(request: NextRequest) {
       data: {
         ...projectOutput,
         github_url,
+        vercel_url,
+        product_type: selectedProductType,
       },
       github_created,
+      vercel_deployed,
       context_summary: {
         trend: context.trend.title,
         main_pain: context.analysis?.main_pain,
