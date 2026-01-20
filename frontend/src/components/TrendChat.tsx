@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { setItem, getItem, removeItem } from '@/lib/storage';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -110,23 +111,21 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
 
     agents.forEach(agent => {
       const key = getStorageKey(trendContext.title, agent.id);
-      const saved = localStorage.getItem(key);
+      const saved = getItem<Message[]>(key);
       if (saved) {
-        try {
-          loadedMessages[agent.id] = JSON.parse(saved);
-        } catch {
-          // Игнорируем ошибки парсинга
-        }
+        loadedMessages[agent.id] = saved;
       }
     });
 
     setMessagesByAgent(loadedMessages);
   }, [trendContext.title]);
 
-  // Сохраняем историю в localStorage при изменении
+  // Сохраняем историю в localStorage при изменении (с LRU cache)
   const saveMessages = useCallback((agentId: AgentType, messages: Message[]) => {
     const key = getStorageKey(trendContext.title, agentId);
-    localStorage.setItem(key, JSON.stringify(messages));
+    // Ограничиваем количество сообщений для экономии места
+    const messagesToSave = messages.slice(-50); // Последние 50 сообщений
+    setItem(key, messagesToSave);
   }, [trendContext.title]);
 
   // Получаем сообщения текущего агента
@@ -201,7 +200,7 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
       [selectedAgent]: []
     }));
     const key = getStorageKey(trendContext.title, selectedAgent);
-    localStorage.removeItem(key);
+    removeItem(key);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

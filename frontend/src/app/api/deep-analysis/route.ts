@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+import { callAgent, parseJSONResponse, formatErrorForUser, type OpenAIError } from '@/lib/openai';
 
 interface DeepAnalysisRequest {
   trend_title: string;
@@ -149,42 +148,9 @@ const ARBITER_PROMPT = `Ты Senior Product Strategist с 20+ лет опыта.
   }
 }`;
 
-async function callAgent(systemPrompt: string, userPrompt: string): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 3000
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error('OpenAI API error');
-  }
-
-  const result = await response.json();
-  return result.choices?.[0]?.message?.content || '';
-}
-
-function parseJSON<T>(content: string): T | null {
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch (e) {
-    console.error('Failed to parse JSON:', e);
-  }
-  return null;
+// Wrapper для callAgent с обработкой ошибок
+async function runAgent(systemPrompt: string, userPrompt: string): Promise<{ success: true; content: string } | { success: false; error: OpenAIError }> {
+  return callAgent(systemPrompt, userPrompt, { maxRetries: 3, retryDelayMs: 1000 });
 }
 
 export async function POST(request: NextRequest) {
@@ -213,20 +179,34 @@ ${body.existing_analysis?.key_pain_points?.length ? `**Выявленные бо
     console.log('Starting parallel analysis: Optimist + Skeptic');
     const startTime = Date.now();
 
-    const [optimistResponse, skepticResponse] = await Promise.all([
-      callAgent(OPTIMIST_PROMPT, userPrompt),
-      callAgent(SKEPTIC_PROMPT, userPrompt)
+    const [optimistResult, skepticResult] = await Promise.all([
+      runAgent(OPTIMIST_PROMPT, userPrompt),
+      runAgent(SKEPTIC_PROMPT, userPrompt)
     ]);
 
     const parallelTime = Date.now() - startTime;
     console.log(`Parallel analysis completed in ${parallelTime}ms`);
 
-    const optimistAnalysis = parseJSON<AgentResponse>(optimistResponse);
-    const skepticAnalysis = parseJSON<AgentResponse>(skepticResponse);
+    // Проверяем ошибки от агентов
+    if (!optimistResult.success) {
+      return NextResponse.json(
+        { success: false, error: formatErrorForUser(optimistResult.error), errorCode: optimistResult.error.code },
+        { status: 500 }
+      );
+    }
+    if (!skepticResult.success) {
+      return NextResponse.json(
+        { success: false, error: formatErrorForUser(skepticResult.error), errorCode: skepticResult.error.code },
+        { status: 500 }
+      );
+    }
+
+    const optimistAnalysis = parseJSONResponse<AgentResponse>(optimistResult.content);
+    const skepticAnalysis = parseJSONResponse<AgentResponse>(skepticResult.content);
 
     if (!optimistAnalysis || !skepticAnalysis) {
       return NextResponse.json(
-        { success: false, error: 'Не удалось получить анализ от агентов' },
+        { success: false, error: 'Не удалось распознать ответ AI. Попробуйте ещё раз.' },
         { status: 500 }
       );
     }
@@ -245,15 +225,22 @@ ${JSON.stringify(skepticAnalysis, null, 2)}
 
 Синтезируй эти два мнения в объективный финальный анализ.`;
 
-    const arbiterResponse = await callAgent(ARBITER_PROMPT, arbiterUserPrompt);
+    const arbiterResult = await runAgent(ARBITER_PROMPT, arbiterUserPrompt);
     const arbiterTime = Date.now() - arbiterStartTime;
     console.log(`Arbitration completed in ${arbiterTime}ms`);
 
-    const arbitrationResult = parseJSON<ArbitrationResult>(arbiterResponse);
+    if (!arbiterResult.success) {
+      return NextResponse.json(
+        { success: false, error: formatErrorForUser(arbiterResult.error), errorCode: arbiterResult.error.code },
+        { status: 500 }
+      );
+    }
+
+    const arbitrationResult = parseJSONResponse<ArbitrationResult>(arbiterResult.content);
 
     if (!arbitrationResult) {
       return NextResponse.json(
-        { success: false, error: 'Не удалось синтезировать анализ' },
+        { success: false, error: 'Не удалось синтезировать анализ. Попробуйте ещё раз.' },
         { status: 500 }
       );
     }

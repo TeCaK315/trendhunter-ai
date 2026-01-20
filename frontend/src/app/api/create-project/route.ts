@@ -499,7 +499,7 @@ async function createGitHubRepo(
         name: repoName,
         description: description,
         private: false,
-        auto_init: false, // Мы сами добавим README
+        auto_init: true, // Создаём с начальным коммитом для Git Data API
       }),
     });
 
@@ -1111,7 +1111,7 @@ Need help? Check [PROJECT_SPEC.md](./PROJECT_SPEC.md) for full project details.
   return files;
 }
 
-// Создание всех файлов проекта в репозитории
+// Создание всех файлов проекта в репозитории ОДНИМ коммитом (Git Data API)
 async function createProjectStructure(
   token: string,
   owner: string,
@@ -1119,49 +1119,163 @@ async function createProjectStructure(
   files: Record<string, string>
 ): Promise<{ success: boolean; filesCreated: number; errors: string[] }> {
   const errors: string[] = [];
-  let filesCreated = 0;
-
-  // Сначала создаём README (первый коммит)
-  if (files['README.md']) {
-    const result = await addFileToRepo(token, owner, repo, 'README.md', files['README.md'], 'Initial commit: Add README');
-    if (result.success) {
-      filesCreated++;
-    } else {
-      errors.push(`README.md: ${result.error}`);
-    }
-    delete files['README.md'];
-  }
-
-  // Небольшая задержка между запросами чтобы не превысить rate limit
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-  // Создаём остальные файлы по очереди
-  for (const [path, content] of Object.entries(files)) {
-    await delay(300); // 300ms между запросами
-
-    const result = await addFileToRepo(
-      token,
-      owner,
-      repo,
-      path,
-      content,
-      `Add ${path}`
-    );
-
-    if (result.success) {
-      filesCreated++;
-      console.log(`Created: ${path}`);
-    } else {
-      errors.push(`${path}: ${result.error}`);
-      console.warn(`Failed to create ${path}: ${result.error}`);
-    }
-  }
-
-  return {
-    success: errors.length === 0,
-    filesCreated,
-    errors
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
   };
+
+  try {
+    // Небольшая задержка чтобы GitHub успел создать начальный коммит
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 0. Получаем информацию о текущей ветке (main или master)
+    let baseBranch = 'main';
+    let baseCommitSha: string | null = null;
+
+    for (const branch of ['main', 'master']) {
+      const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+        headers,
+      });
+
+      if (refResponse.ok) {
+        const refData = await refResponse.json();
+        baseBranch = branch;
+        baseCommitSha = refData.object.sha;
+        console.log(`Found base branch: ${branch}, commit: ${baseCommitSha}`);
+        break;
+      }
+    }
+
+    if (!baseCommitSha) {
+      console.log('No base commit found, creating orphan commit...');
+    }
+
+    // 1. Создаём blob для каждого файла
+    const blobs: Array<{ path: string; sha: string }> = [];
+
+    for (const [path, content] of Object.entries(files)) {
+      const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          content: Buffer.from(content).toString('base64'),
+          encoding: 'base64',
+        }),
+      });
+
+      if (!blobResponse.ok) {
+        const error = await blobResponse.json();
+        errors.push(`Blob ${path}: ${error.message}`);
+        continue;
+      }
+
+      const blob = await blobResponse.json();
+      blobs.push({ path, sha: blob.sha });
+    }
+
+    if (blobs.length === 0) {
+      return { success: false, filesCreated: 0, errors: ['No files created'] };
+    }
+
+    console.log(`Created ${blobs.length} blobs`);
+
+    // 2. Создаём tree со всеми файлами
+    const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        tree: blobs.map(b => ({
+          path: b.path,
+          mode: '100644', // file mode
+          type: 'blob',
+          sha: b.sha,
+        })),
+      }),
+    });
+
+    if (!treeResponse.ok) {
+      const error = await treeResponse.json();
+      return { success: false, filesCreated: 0, errors: [`Tree creation failed: ${error.message}`] };
+    }
+
+    const tree = await treeResponse.json();
+    console.log(`Created tree: ${tree.sha}`);
+
+    // 3. Создаём commit (с родителем если есть base commit)
+    const commitPayload: Record<string, unknown> = {
+      message: `🚀 MVP Project: Full structure
+
+Generated by TrendHunter AI Meta-Agent
+- ${blobs.length} files created
+- Ready for: npm install && npm run dev`,
+      tree: tree.sha,
+    };
+
+    // Добавляем родительский коммит если он есть
+    if (baseCommitSha) {
+      commitPayload.parents = [baseCommitSha];
+    }
+
+    const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(commitPayload),
+    });
+
+    if (!commitResponse.ok) {
+      const error = await commitResponse.json();
+      return { success: false, filesCreated: 0, errors: [`Commit creation failed: ${error.message}`] };
+    }
+
+    const commit = await commitResponse.json();
+    console.log(`Created commit: ${commit.sha}`);
+
+    // 4. Обновляем ref чтобы указывал на новый коммит
+    const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${baseBranch}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        sha: commit.sha,
+        force: true,
+      }),
+    });
+
+    if (!refResponse.ok) {
+      // Если PATCH не работает, пробуем создать ref
+      const createRefResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          ref: `refs/heads/${baseBranch}`,
+          sha: commit.sha,
+        }),
+      });
+
+      if (!createRefResponse.ok) {
+        const error = await createRefResponse.json();
+        errors.push(`Failed to update branch reference: ${error.message}`);
+      } else {
+        console.log(`Created ${baseBranch} branch at commit ${commit.sha}`);
+      }
+    } else {
+      console.log(`Updated ${baseBranch} branch to commit ${commit.sha}`);
+    }
+
+    return {
+      success: errors.length === 0,
+      filesCreated: blobs.length,
+      errors,
+    };
+
+  } catch (error) {
+    console.error('createProjectStructure error:', error);
+    return {
+      success: false,
+      filesCreated: 0,
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
+    };
+  }
 }
 
 // Получение имени пользователя GitHub
@@ -1193,14 +1307,17 @@ function generateRepoName(projectName: string): string {
     .replace(/-+$/, '');
 }
 
-// Импорт генератора шаблонов
+// Импорт генератора шаблонов (старые)
 import { generateProjectFiles as generateTemplateFiles } from '@/lib/templates/generator';
 import { type ProductType } from '@/lib/templates';
+
+// Импорт новых MVP шаблонов
+import { generateMVP, MVPType } from '@/lib/mvp-templates';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { context, project_name, create_github_repo, product_type, auto_deploy } = body;
+    const { context, project_name, create_github_repo, product_type, mvp_type, auto_deploy } = body;
 
     // Получаем токены из cookies
     const githubToken = request.cookies.get('github_token')?.value;
@@ -1213,12 +1330,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Валидация product_type
+    // Проверяем, используем ли новую систему MVP или старую
+    const validMVPTypes: MVPType[] = ['ai-tool', 'calculator', 'dashboard', 'landing-waitlist'];
+    const useNewMVPSystem = mvp_type && validMVPTypes.includes(mvp_type);
+
+    // Валидация product_type (для обратной совместимости)
     const validProductTypes: ProductType[] = ['landing', 'saas', 'ai-wrapper', 'ecommerce'];
     const selectedProductType: ProductType = validProductTypes.includes(product_type) ? product_type : 'landing';
 
     console.log(`Creating project for: ${context.trend.title}`);
-    console.log(`Product type: ${selectedProductType}`);
+    console.log(`MVP type: ${mvp_type || 'auto'}, Product type (legacy): ${selectedProductType}`);
+    console.log(`Using new MVP system: ${useNewMVPSystem}`);
     console.log(`Context stages completed:`, {
       analysis: !!context.analysis,
       sources: !!context.sources,
@@ -1242,6 +1364,8 @@ export async function POST(request: NextRequest) {
     let github_created = false;
     let vercel_url: string | undefined;
     let vercel_deployed = false;
+    let files_created = 0;
+    let generated_files: string[] = [];
 
     // Если запрошено создание GitHub репозитория и есть токен
     if (create_github_repo !== false && githubToken) {
@@ -1261,8 +1385,14 @@ export async function POST(request: NextRequest) {
           // Генерируем файлы на основе выбранного типа продукта
           let projectFiles: Record<string, string>;
 
-          if (selectedProductType && selectedProductType !== 'landing') {
-            // Используем новые функциональные шаблоны
+          if (useNewMVPSystem) {
+            // Используем НОВУЮ систему MVP с рабочим функционалом
+            console.log(`Generating MVP with new system: ${mvp_type}`);
+            const mvpResult = generateMVP(context, mvp_type as MVPType);
+            projectFiles = mvpResult.files;
+            console.log(`MVP generated: ${mvpResult.projectName}, ${Object.keys(projectFiles).length} files`);
+          } else if (selectedProductType && selectedProductType !== 'landing') {
+            // Используем старые функциональные шаблоны
             projectFiles = generateTemplateFiles(selectedProductType, context);
           } else {
             // Используем старую генерацию (бойлерплейт)
@@ -1271,7 +1401,9 @@ export async function POST(request: NextRequest) {
             projectFiles['README.md'] = projectOutput.readme_content;
           }
 
-          console.log(`Creating ${Object.keys(projectFiles).length} files in repo (type: ${selectedProductType})...`);
+          // Сохраняем список файлов для response
+          generated_files = Object.keys(projectFiles);
+          console.log(`Creating ${generated_files.length} files in repo (type: ${selectedProductType})...`);
 
           // Создаём все файлы в репозитории
           const structureResult = await createProjectStructure(
@@ -1281,10 +1413,12 @@ export async function POST(request: NextRequest) {
             projectFiles
           );
 
+          files_created = structureResult.filesCreated;
+
           if (structureResult.success) {
-            console.log(`GitHub repo created with ${structureResult.filesCreated} files: ${github_url}`);
+            console.log(`GitHub repo created with ${files_created} files: ${github_url}`);
           } else {
-            console.warn(`GitHub repo created with ${structureResult.filesCreated} files, but some failed:`, structureResult.errors);
+            console.warn(`GitHub repo created with ${files_created} files, but some failed:`, structureResult.errors);
           }
 
           // Автоматический деплой на Vercel если запрошено
@@ -1314,6 +1448,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Извлекаем список фич для response
+    const features_list = projectOutput.mvp_specification?.core_features?.map(f => ({
+      name: f.name,
+      description: f.description,
+      priority: f.priority,
+    })) || [];
+
     return NextResponse.json({
       success: true,
       data: {
@@ -1321,9 +1462,16 @@ export async function POST(request: NextRequest) {
         github_url,
         vercel_url,
         product_type: selectedProductType,
+        mvp_type: useNewMVPSystem ? mvp_type : null,
+        is_functional_mvp: useNewMVPSystem, // Флаг что это рабочий MVP
       },
       github_created,
       vercel_deployed,
+      // Новые поля из таблицы требований
+      files_created,
+      generated_files,
+      features_list,
+      preview_url: vercel_url || null, // Alias для vercel_url
       context_summary: {
         trend: context.trend.title,
         main_pain: context.analysis?.main_pain,

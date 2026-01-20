@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getItem } from '@/lib/storage';
+import { useTranslations } from '@/lib/i18n';
 
 interface Trend {
   id: string;
@@ -27,6 +29,7 @@ interface ProjectData {
 
 interface TrendCardProps {
   trend: Trend;
+  dataTour?: string;
 }
 
 const categoryConfig: Record<string, { icon: string; color: string }> = {
@@ -45,21 +48,6 @@ const categoryConfig: Record<string, { icon: string; color: string }> = {
   'Education': { icon: '📚', color: 'from-orange-500/20 to-amber-500/20' },
 };
 
-function getTimeAgo(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-  if (diffMinutes < 1) return 'Только что';
-  if (diffMinutes < 60) return `${diffMinutes} мин назад`;
-  if (diffHours < 24) return `${diffHours} ч назад`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} д назад`;
-}
-
 function getOverallScore(trend: Trend): number {
   return Number(((trend.opportunity_score + trend.pain_score + trend.feasibility_score + trend.profit_potential) / 4).toFixed(1));
 }
@@ -71,30 +59,54 @@ function getScoreColor(score: number): string {
   return 'from-red-500 to-rose-500';
 }
 
-function getScoreLabel(score: number): string {
-  if (score >= 8.5) return 'Отлично';
-  if (score >= 7) return 'Хорошо';
-  if (score >= 5) return 'Средне';
-  return 'Низкий';
-}
-
-export default function TrendCard({ trend }: TrendCardProps) {
+export default function TrendCard({ trend, dataTour }: TrendCardProps) {
   const [showModal, setShowModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isProjectCompleted, setIsProjectCompleted] = useState(false);
   const router = useRouter();
+  const t = useTranslations();
   const overallScore = getOverallScore(trend);
   const config = categoryConfig[trend.category] || { icon: '📌', color: 'from-zinc-500/20 to-zinc-600/20' };
+
+  // Localized time ago
+  const getTimeAgoLocalized = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+    if (diffMinutes < 1) return t.trendCard.justNow;
+    if (diffMinutes < 60) return `${diffMinutes} ${t.trendCard.minAgo}`;
+    if (diffHours < 24) return `${diffHours} ${t.trendCard.hoursAgo}`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} ${t.trendCard.daysAgo}`;
+  };
+
+  // Localized score label
+  const getScoreLabelLocalized = (score: number): string => {
+    if (score >= 8.5) return t.trendCard.excellent;
+    if (score >= 7) return t.trendCard.good;
+    if (score >= 5) return t.trendCard.average;
+    return t.trendCard.low;
+  };
+
+  // Localized metrics
+  const metrics = [
+    { label: t.trendCard.opportunity, value: trend.opportunity_score, icon: '🎯' },
+    { label: t.trendCard.pain, value: trend.pain_score, icon: '🔥' },
+    { label: t.trendCard.feasibility, value: trend.feasibility_score, icon: '⚡' },
+    { label: t.trendCard.profit, value: trend.profit_potential, icon: '💰' },
+  ];
 
   // Проверяем, завершён ли проект (GitHub репозиторий создан = проект готов)
   useEffect(() => {
     const checkProjectCompletion = () => {
       try {
-        const savedProjects = localStorage.getItem('trendhunter_projects');
-        if (savedProjects) {
-          const projects: ProjectData[] = JSON.parse(savedProjects);
+        const projects = getItem<ProjectData[]>('trendhunter_projects');
+        if (projects) {
           const project = projects.find(p => p.trend_id === trend.id);
-
           // Проект завершён, если есть GitHub URL (repo_url)
           setIsProjectCompleted(!!project?.repo_url);
         } else {
@@ -115,17 +127,11 @@ export default function TrendCard({ trend }: TrendCardProps) {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [trend.id]);
 
-  const metrics = [
-    { label: 'Возможность', value: trend.opportunity_score, icon: '🎯' },
-    { label: 'Боль', value: trend.pain_score, icon: '🔥' },
-    { label: 'Выполнимость', value: trend.feasibility_score, icon: '⚡' },
-    { label: 'Выгода', value: trend.profit_potential, icon: '💰' },
-  ];
-
   return (
     <>
       <div
         className="trend-card group"
+        data-tour={dataTour}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -142,7 +148,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
                 {overallScore}
               </div>
               <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-900/80 text-zinc-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity`}>
-                {getScoreLabel(overallScore)}
+                {getScoreLabelLocalized(overallScore)}
               </div>
             </div>
 
@@ -150,7 +156,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
             {isProjectCompleted && (
               <div
                 className="text-2xl text-yellow-400 animate-pulse"
-                title="Проект завершён: все этапы пройдены, репозиторий создан"
+                title={t.trendCard.projectCreated}
               >
                 ★
               </div>
@@ -201,7 +207,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
           <div className="flex justify-between items-center pt-4 border-t border-zinc-800/50">
             <div className="flex items-center gap-2 text-xs text-zinc-500">
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-              <span>{getTimeAgo(trend.first_detected_at)}</span>
+              <span>{getTimeAgoLocalized(trend.first_detected_at)}</span>
               {trend.source && (
                 <>
                   <span className="text-zinc-700">•</span>
@@ -213,7 +219,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
               <button
                 onClick={() => setShowModal(true)}
                 className="px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                title="Быстрый просмотр"
+                title={t.trendCard.details}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -224,7 +230,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
                 onClick={() => router.push(`/trends/${trend.id}`)}
                 className="detail-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105"
               >
-                Открыть
+                {t.trendCard.details}
               </button>
             </div>
           </div>
@@ -270,10 +276,10 @@ export default function TrendCard({ trend }: TrendCardProps) {
                   {overallScore}
                 </div>
                 <div>
-                  <div className="text-zinc-400 text-sm mb-1">Общий рейтинг</div>
-                  <div className="text-white font-semibold text-lg">{getScoreLabel(overallScore)} потенциал</div>
+                  <div className="text-zinc-400 text-sm mb-1">{t.trendCard.overallRating}</div>
+                  <div className="text-white font-semibold text-lg">{getScoreLabelLocalized(overallScore)} {t.trendCard.potential}</div>
                   <div className="text-xs text-zinc-500 mt-1">
-                    На основе 4 ключевых метрик
+                    {t.trendCard.basedOnMetrics}
                   </div>
                 </div>
               </div>
@@ -282,7 +288,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
               <div className="bg-zinc-900/30 rounded-xl p-4">
                 <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
                   <span>💡</span>
-                  Почему это трендит
+                  {t.trendCard.whyTrending}
                 </h3>
                 <p className="text-zinc-400">{trend.why_trending}</p>
               </div>
@@ -291,7 +297,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
               <div>
                 <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
                   <span>📊</span>
-                  Детальные метрики
+                  {t.trendCard.detailedMetrics}
                 </h3>
                 <div className="space-y-4">
                   {metrics.map((metric) => (
@@ -318,7 +324,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
               <div className="flex items-center gap-4 text-sm text-zinc-500 pt-2">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span>Обнаружено {getTimeAgo(trend.first_detected_at)}</span>
+                  <span>{t.trendCard.detected} {getTimeAgoLocalized(trend.first_detected_at)}</span>
                 </div>
                 {trend.source && (
                   <div className="flex items-center gap-2">
@@ -335,7 +341,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
               {isProjectCompleted && (
                 <div className="flex-1 py-3.5 rounded-xl font-medium bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 flex items-center justify-center gap-2">
                   <span className="text-xl">★</span>
-                  <span>Проект завершён</span>
+                  <span>{t.trendCard.projectCreated}</span>
                 </div>
               )}
               <button
@@ -346,7 +352,7 @@ export default function TrendCard({ trend }: TrendCardProps) {
                 className="flex-1 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
               >
                 <span>🚀</span>
-                <span>Открыть детали</span>
+                <span>{t.trendCard.openDetails}</span>
               </button>
             </div>
           </div>

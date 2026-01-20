@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
 import Sidebar from '@/components/layout/Sidebar';
+import { getItem } from '@/lib/storage';
 
 interface Project {
   id: string;
@@ -128,9 +129,9 @@ export default function ProjectsPage() {
 
   const loadProjects = () => {
     try {
-      const stored = localStorage.getItem('trendhunter_projects');
+      const stored = getItem<Project[]>('trendhunter_projects');
       if (stored) {
-        setProjects(JSON.parse(stored));
+        setProjects(stored);
       }
     } catch (error) {
       console.error('Error loading projects:', error);

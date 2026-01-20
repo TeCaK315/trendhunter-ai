@@ -1,23 +1,27 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from '@/lib/i18n';
+import { useSidebar } from '@/lib/SidebarContext';
 
-interface NavItem {
+interface NavItemConfig {
   href: string;
-  label: string;
+  labelKey: 'home' | 'nicheResearch' | 'favorites' | 'projects';
   icon: React.ReactNode;
+  tourId?: string;
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggleCollapsed } = useSidebar();
+  const t = useTranslations();
 
-  const navItems: NavItem[] = [
+  const navItemsConfig: NavItemConfig[] = [
     {
       href: '/',
-      label: 'Поток идей',
+      labelKey: 'home',
+      tourId: 'nav-home',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -26,10 +30,31 @@ export default function Sidebar() {
     },
     {
       href: '/niche-research',
-      label: 'Исследование ниши',
+      labelKey: 'nicheResearch',
+      tourId: 'nav-research',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      ),
+    },
+    {
+      href: '/favorites',
+      labelKey: 'favorites',
+      tourId: 'nav-favorites',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      ),
+    },
+    {
+      href: '/projects',
+      labelKey: 'projects',
+      tourId: 'nav-projects',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
         </svg>
       ),
     },
@@ -65,12 +90,13 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItemsConfig.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
+              data-tour={item.tourId}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
                 active
                   ? 'bg-indigo-500/10 text-white'
@@ -87,7 +113,7 @@ export default function Sidebar() {
               </span>
 
               {!collapsed && (
-                <span className="font-medium text-sm">{item.label}</span>
+                <span className="font-medium text-sm">{t.nav[item.labelKey]}</span>
               )}
             </Link>
           );
@@ -97,7 +123,7 @@ export default function Sidebar() {
       {/* Collapse button */}
       <div className="p-3 border-t border-zinc-800/50">
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={toggleCollapsed}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-zinc-500 hover:text-white hover:bg-zinc-800/50 rounded-xl transition-all"
         >
           <svg
@@ -108,7 +134,7 @@ export default function Sidebar() {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
-          {!collapsed && <span className="text-sm">Свернуть</span>}
+          {!collapsed && <span className="text-sm">{t.nav.collapse}</span>}
         </button>
       </div>
     </aside>

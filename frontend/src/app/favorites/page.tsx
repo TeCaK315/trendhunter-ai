@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
+import { getItem, setItem } from '@/lib/storage';
 
 interface Trend {
   id: string;
@@ -184,9 +185,8 @@ export default function FavoritesPage() {
 
   const loadFavorites = () => {
     try {
-      const storedFavorites = localStorage.getItem('trendhunter_favorites_data');
-      if (storedFavorites) {
-        const favoriteTrends: Trend[] = JSON.parse(storedFavorites);
+      const favoriteTrends = getItem<Trend[]>('trendhunter_favorites_data');
+      if (favoriteTrends) {
         setFavorites(favoriteTrends);
         if (favoriteTrends.length > 0) {
           setSelectedTrend(favoriteTrends[0]);
@@ -281,9 +281,9 @@ export default function FavoritesPage() {
 
   const handleRemoveFavorite = (id: string) => {
     const updatedFavorites = favorites.filter(t => t.id !== id);
-    localStorage.setItem('trendhunter_favorites_data', JSON.stringify(updatedFavorites));
+    setItem('trendhunter_favorites_data', updatedFavorites);
     const favoriteIds = updatedFavorites.map(t => t.id);
-    localStorage.setItem('trendhunter_favorites', JSON.stringify(favoriteIds));
+    setItem('trendhunter_favorites', favoriteIds);
     setFavorites(updatedFavorites);
     if (selectedTrend?.id === id) {
       setSelectedTrend(updatedFavorites[0] || null);

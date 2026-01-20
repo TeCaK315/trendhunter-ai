@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
-// Контекст от предыдущих экспертов (анализ + источники + конкуренты)
+// Контекст от предыдущих экспертов
 interface PreviousContext {
   trend: {
     title: string;
@@ -60,15 +60,15 @@ interface VentureData {
   funding_trend: 'growing' | 'stable' | 'declining';
   recent_rounds: FundingRound[];
   active_funds: ActiveFund[];
-  investment_hotness: number; // 0-10
+  investment_hotness: number;
   market_signals: string[];
   sources: Array<{ name: string; url: string; accessed_at: string }>;
   analyzed_at: string;
+  error?: string;
 }
 
 // Extract core niche keywords for more relevant search
 function extractNicheKeywords(query: string): string {
-  // Remove overly generic AI terms that dilute search relevance
   const genericTerms = [
     'ai-powered', 'ai powered', 'ai-based', 'ai based',
     'platform', 'tool', 'app', 'software', 'service', 'agent', 'assistant',
@@ -80,10 +80,8 @@ function extractNicheKeywords(query: string): string {
     cleaned = cleaned.replace(new RegExp(term, 'gi'), ' ');
   }
 
-  // Clean up extra spaces
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
-  // If too short after cleaning, use original but simplified
   if (cleaned.length < 5) {
     return query.split(' ').slice(0, 3).join(' ');
   }
@@ -91,30 +89,43 @@ function extractNicheKeywords(query: string): string {
   return cleaned;
 }
 
-// Search for funding news using SerpAPI
-async function searchFundingNews(query: string): Promise<FundingRound[]> {
-  const rounds: FundingRound[] = [];
-
+// Search for funding news using SerpAPI - NO MOCKS
+async function searchFundingNews(query: string): Promise<{ rounds: FundingRound[]; error?: string }> {
   if (!SERPAPI_KEY) {
-    return getMockFundingRounds(query);
+    return {
+      rounds: [],
+      error: 'SERPAPI_KEY не настроен. Добавьте ключ в .env.local для поиска данных о финансировании.'
+    };
   }
 
-  try {
-    // Extract core niche keywords for relevant search
-    const nicheKeywords = extractNicheKeywords(query);
-    console.log(`Searching funding for niche: "${nicheKeywords}" (from: "${query}")`);
+  const rounds: FundingRound[] = [];
 
-    // Search for recent funding announcements - use 2025 2026 for fresh data
-    // Add niche-specific terms to exclude unrelated AI giants
+  try {
+    const nicheKeywords = extractNicheKeywords(query);
+
+    // Search for recent funding announcements
     const searchQuery = `"${nicheKeywords}" startup funding round 2025 2026 -OpenAI -Anthropic -Google -Microsoft`;
     const searchUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&tbs=qdr:m6&num=15&api_key=${SERPAPI_KEY}`;
 
     const response = await fetch(searchUrl);
     if (!response.ok) {
-      return getMockFundingRounds(query);
+      const errorText = await response.text();
+      console.error('SerpAPI funding search error:', response.status, errorText);
+      return {
+        rounds: [],
+        error: `Ошибка SerpAPI (${response.status}): Не удалось найти данные о финансировании`
+      };
     }
 
     const data = await response.json();
+
+    if (data.error) {
+      return {
+        rounds: [],
+        error: `SerpAPI: ${data.error}`
+      };
+    }
+
     const results = data.organic_results || [];
 
     for (const result of results.slice(0, 8)) {
@@ -122,7 +133,7 @@ async function searchFundingNews(query: string): Promise<FundingRound[]> {
       const link = result.link || '';
       const snippet = result.snippet || '';
 
-      // Look for funding indicators in title/snippet
+      // Look for funding indicators
       const fundingMatch = snippet.match(/\$(\d+(?:\.\d+)?)\s*(M|million|B|billion)/i);
       const roundMatch = title.match(/(seed|series\s*[a-z]|pre-seed|angel)/i);
 
@@ -142,16 +153,19 @@ async function searchFundingNews(query: string): Promise<FundingRound[]> {
       }
     }
 
-    // Also search TechCrunch specifically
+    // Also search TechCrunch
     const tcResults = await searchTechCrunch(query);
     rounds.push(...tcResults);
 
   } catch (error) {
     console.error('Error searching funding news:', error);
-    return getMockFundingRounds(query);
+    return {
+      rounds: [],
+      error: `Ошибка сети при поиске финансирования: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
   }
 
-  // Deduplicate by company name (normalized)
+  // Deduplicate by company name
   const seen = new Set<string>();
   const uniqueRounds = rounds.filter(round => {
     const key = round.company.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -160,17 +174,23 @@ async function searchFundingNews(query: string): Promise<FundingRound[]> {
     return true;
   });
 
-  return uniqueRounds.slice(0, 10);
+  if (uniqueRounds.length === 0) {
+    return {
+      rounds: [],
+      error: `По запросу "${query}" не найдено данных о раундах финансирования`
+    };
+  }
+
+  return { rounds: uniqueRounds.slice(0, 10) };
 }
 
 // Search TechCrunch for funding news
 async function searchTechCrunch(query: string): Promise<FundingRound[]> {
-  const rounds: FundingRound[] = [];
-
   if (!SERPAPI_KEY) return [];
 
+  const rounds: FundingRound[] = [];
+
   try {
-    // Use niche keywords for TechCrunch search too
     const nicheKeywords = extractNicheKeywords(query);
     const searchQuery = `site:techcrunch.com "${nicheKeywords}" raises funding 2025 2026 -OpenAI -Anthropic`;
     const searchUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&tbs=qdr:m6&num=5&api_key=${SERPAPI_KEY}`;
@@ -200,32 +220,47 @@ async function searchTechCrunch(query: string): Promise<FundingRound[]> {
       }
     }
   } catch (error) {
-    console.log('TechCrunch search error:', error);
+    console.error('TechCrunch search error:', error);
   }
 
   return rounds;
 }
 
-// Search for active VCs in the space
-async function searchActiveFunds(query: string): Promise<ActiveFund[]> {
-  const funds: ActiveFund[] = [];
-
+// Search for active VCs - NO MOCKS
+async function searchActiveFunds(query: string): Promise<{ funds: ActiveFund[]; error?: string }> {
   if (!SERPAPI_KEY) {
-    return getMockFunds(query);
+    return {
+      funds: [],
+      error: 'SERPAPI_KEY не настроен. Добавьте ключ в .env.local для поиска инвесторов.'
+    };
   }
 
+  const funds: ActiveFund[] = [];
+
   try {
-    // Use niche keywords for VC search
     const nicheKeywords = extractNicheKeywords(query);
     const searchQuery = `"${nicheKeywords}" venture capital investors 2025 2026`;
     const searchUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&tbs=qdr:y&num=10&api_key=${SERPAPI_KEY}`;
 
     const response = await fetch(searchUrl);
     if (!response.ok) {
-      return getMockFunds(query);
+      const errorText = await response.text();
+      console.error('SerpAPI VC search error:', response.status, errorText);
+      return {
+        funds: [],
+        error: `Ошибка SerpAPI (${response.status}): Не удалось найти инвесторов`
+      };
     }
 
     const data = await response.json();
+
+    if (data.error) {
+      return {
+        funds: [],
+        error: `SerpAPI: ${data.error}`
+      };
+    }
+
     const results = data.organic_results || [];
 
     // Known VC names to look for
@@ -254,13 +289,23 @@ async function searchActiveFunds(query: string): Promise<ActiveFund[]> {
     }
   } catch (error) {
     console.error('Error searching funds:', error);
-    return getMockFunds(query);
+    return {
+      funds: [],
+      error: `Ошибка сети при поиске инвесторов: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
   }
 
-  return funds.slice(0, 8);
+  if (funds.length === 0) {
+    return {
+      funds: [],
+      error: `По запросу "${query}" не найдены активные инвесторы`
+    };
+  }
+
+  return { funds: funds.slice(0, 8) };
 }
 
-// AI analysis of venture landscape with full context
+// AI analysis of venture landscape
 async function analyzeVentureLandscape(
   query: string,
   rounds: FundingRound[],
@@ -272,11 +317,23 @@ async function analyzeVentureLandscape(
   key_investors_to_target?: string[];
 }> {
   if (!OPENAI_API_KEY) {
-    return getDefaultAnalysis(rounds, funds);
+    return {
+      ...getDefaultAnalysis(rounds, funds),
+      error: 'OPENAI_API_KEY не настроен. AI-анализ недоступен.'
+    };
+  }
+
+  if (rounds.length === 0 && funds.length === 0) {
+    return {
+      total_funding_last_year: 'Нет данных',
+      average_round_size: 'Нет данных',
+      funding_trend: 'stable',
+      investment_hotness: 0,
+      market_signals: ['Недостаточно данных для анализа инвестиционной активности'],
+    };
   }
 
   try {
-    // Формируем контекст от предыдущих экспертов
     let contextSection = '';
 
     if (context?.analysis) {
@@ -307,9 +364,9 @@ async function analyzeVentureLandscape(
     const prompt = `Ты эксперт по венчурным инвестициям. Проанализируй инвестиционный ландшафт для "${query}".
 ${contextSection}
 ## Найденные раунды финансирования:
-${rounds.map(r => `- ${r.company}: ${r.amount} (${r.round_type})`).join('\n')}
+${rounds.length > 0 ? rounds.map(r => `- ${r.company}: ${r.amount} (${r.round_type})`).join('\n') : 'Нет данных о раундах'}
 
-## Активные инвесторы: ${funds.map(f => f.name).join(', ')}
+## Активные инвесторы: ${funds.length > 0 ? funds.map(f => f.name).join(', ') : 'Не найдены'}
 
 ВАЖНО: Учитывай контекст от предыдущих экспертов:
 - Если боль острая и рынок растёт - это сильный сигнал для инвесторов
@@ -343,7 +400,12 @@ ${rounds.map(r => `- ${r.company}: ${r.amount} (${r.round_type})`).join('\n')}
     });
 
     if (!response.ok) {
-      return getDefaultAnalysis(rounds, funds);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('OpenAI API error:', response.status, errorData);
+      return {
+        ...getDefaultAnalysis(rounds, funds),
+        error: `Ошибка OpenAI API (${response.status}): ${errorData.error?.message || 'Не удалось выполнить анализ'}`
+      };
     }
 
     const data = await response.json();
@@ -365,6 +427,10 @@ ${rounds.map(r => `- ${r.company}: ${r.amount} (${r.round_type})`).join('\n')}
     }
   } catch (error) {
     console.error('AI analysis error:', error);
+    return {
+      ...getDefaultAnalysis(rounds, funds),
+      error: `Ошибка AI-анализа: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
   }
 
   return getDefaultAnalysis(rounds, funds);
@@ -372,7 +438,6 @@ ${rounds.map(r => `- ${r.company}: ${r.amount} (${r.round_type})`).join('\n')}
 
 // Helper functions
 function extractCompanyFromTitle(title: string): string {
-  // Remove common suffixes and extract company name
   return title
     .replace(/\s*[-|–:].*$/g, '')
     .replace(/raises.*$/i, '')
@@ -389,7 +454,7 @@ function extractDateFromSnippet(snippet: string): string {
   const monthMatch = snippet.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}/i);
   if (monthMatch) return monthMatch[0];
 
-  return '2024';
+  return 'Дата неизвестна';
 }
 
 function extractRoundType(text: string): string {
@@ -445,69 +510,16 @@ function getVCWebsite(vcName: string): string {
 function getDefaultAnalysis(rounds: FundingRound[], funds: ActiveFund[]): Partial<VentureData> {
   const roundCount = rounds.length;
   return {
-    total_funding_last_year: roundCount > 5 ? '$100M+' : roundCount > 2 ? '$20M-$100M' : '$5M-$20M',
-    average_round_size: '$5M-$15M',
+    total_funding_last_year: roundCount > 5 ? '$100M+' : roundCount > 2 ? '$20M-$100M' : roundCount > 0 ? '$5M-$20M' : 'Нет данных',
+    average_round_size: roundCount > 0 ? '$5M-$15M' : 'Нет данных',
     funding_trend: roundCount > 5 ? 'growing' : 'stable',
     investment_hotness: Math.min(10, roundCount + funds.length),
-    market_signals: [
-      'Active investor interest',
-      'Multiple funding rounds announced',
-      'Growing market segment',
-    ],
+    market_signals: roundCount > 0 || funds.length > 0 ? [
+      'Активный интерес инвесторов',
+      'Объявлены раунды финансирования',
+      'Растущий сегмент рынка',
+    ] : ['Недостаточно данных для выводов'],
   };
-}
-
-function getMockFundingRounds(query: string): FundingRound[] {
-  const nicheKeywords = extractNicheKeywords(query);
-  const capitalizedNiche = nicheKeywords.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
-  return [
-    {
-      company: `${capitalizedNiche} Health`,
-      amount: '$8M',
-      round_type: 'Seed',
-      date: 'January 2026',
-      investors: ['Y Combinator', 'Accel'],
-      source_url: 'https://techcrunch.com',
-    },
-    {
-      company: `${capitalizedNiche} Labs`,
-      amount: '$20M',
-      round_type: 'Series A',
-      date: 'November 2025',
-      investors: ['Sequoia', 'a16z'],
-      source_url: 'https://techcrunch.com',
-    },
-    {
-      company: `Mind${capitalizedNiche.replace(/\s/g, '')}`,
-      amount: '$3.5M',
-      round_type: 'Pre-Seed',
-      date: 'October 2025',
-      investors: ['First Round Capital'],
-      source_url: 'https://techcrunch.com',
-    },
-  ];
-}
-
-function getMockFunds(query: string): ActiveFund[] {
-  return [
-    {
-      name: 'Y Combinator',
-      focus_areas: [query, 'AI', 'SaaS'],
-      recent_investments: [],
-      typical_check_size: '$500K',
-      website: 'https://www.ycombinator.com',
-      crunchbase_url: 'https://www.crunchbase.com/organization/y-combinator',
-    },
-    {
-      name: 'Sequoia Capital',
-      focus_areas: [query, 'Enterprise', 'Consumer'],
-      recent_investments: [],
-      typical_check_size: '$10M-$100M',
-      website: 'https://www.sequoiacap.com',
-      crunchbase_url: 'https://www.crunchbase.com/organization/sequoia-capital',
-    },
-  ];
 }
 
 export async function POST(request: NextRequest) {
@@ -522,32 +534,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Контекст от предыдущих экспертов
     const previousContext: PreviousContext | undefined = context;
     const searchQuery = query || trend_title || context?.trend?.title;
 
-    console.log(`Venture analysis for: ${searchQuery}`);
-    console.log(`Context received:`, previousContext?.competition ? 'full (analysis + sources + competition)' : 'partial');
+    // Check API keys
+    const missingKeys: string[] = [];
+    if (!SERPAPI_KEY) missingKeys.push('SERPAPI_KEY');
 
     // Fetch data in parallel
-    const [rounds, funds] = await Promise.all([
+    const [roundsResult, fundsResult] = await Promise.all([
       searchFundingNews(searchQuery),
       searchActiveFunds(searchQuery),
     ]);
 
     // AI analysis with full context
-    const analysis = await analyzeVentureLandscape(searchQuery, rounds, funds, previousContext);
+    const analysis = await analyzeVentureLandscape(
+      searchQuery,
+      roundsResult.rounds,
+      fundsResult.funds,
+      previousContext
+    );
 
     const result = {
       niche: searchQuery,
-      total_funding_last_year: analysis.total_funding_last_year || 'Unknown',
-      average_round_size: analysis.average_round_size || 'Unknown',
+      total_funding_last_year: analysis.total_funding_last_year || 'Нет данных',
+      average_round_size: analysis.average_round_size || 'Нет данных',
       funding_trend: analysis.funding_trend || 'stable',
-      recent_rounds: rounds,
-      active_funds: funds,
-      investment_hotness: analysis.investment_hotness || 5,
+      recent_rounds: roundsResult.rounds,
+      active_funds: fundsResult.funds,
+      investment_hotness: analysis.investment_hotness || 0,
       market_signals: analysis.market_signals || [],
-      // Новые поля на основе контекста
       investment_thesis: analysis.investment_thesis || null,
       recommended_round: analysis.recommended_round || null,
       key_investors_to_target: analysis.key_investors_to_target || [],
@@ -570,6 +586,8 @@ export async function POST(request: NextRequest) {
       ],
       analyzed_at: new Date().toISOString(),
       context_received: !!previousContext?.competition,
+      errors: [roundsResult.error, fundsResult.error, analysis.error].filter(Boolean),
+      warnings: missingKeys.length > 0 ? `Отсутствуют API ключи: ${missingKeys.join(', ')}` : undefined,
     };
 
     return NextResponse.json({
@@ -597,7 +615,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Redirect to POST handler
   const postRequest = new Request(request.url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+import { callOpenAI, formatErrorForUser, type OpenAIMessage } from '@/lib/openai';
 
 // Типы специализированных агентов
 type AgentType = 'general' | 'developer' | 'marketing' | 'sales' | 'designer';
@@ -304,37 +303,29 @@ ${analysis.market_signals.map(s => `- ${s}`).join('\n')}`;
     }
 
     // Prepare messages for OpenAI
-    const openaiMessages: ChatMessage[] = [
+    const openaiMessages: OpenAIMessage[] = [
       { role: 'system', content: agentPrompt + contextMessage },
       ...messages
     ];
 
-    // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: openaiMessages,
-        temperature: 0.7,
-        max_tokens: 2000
-      })
+    // Call OpenAI API with retry logic
+    const result = await callOpenAI(openaiMessages, {
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      maxTokens: 2000,
+      maxRetries: 3,
+      retryDelayMs: 1000
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('OpenAI API error:', errorData);
+    if (!result.success) {
+      console.error('OpenAI API error:', result.error);
       return NextResponse.json(
-        { success: false, error: 'Failed to get AI response' },
+        { success: false, error: formatErrorForUser(result.error) },
         { status: 500 }
       );
     }
 
-    const data = await response.json();
-    const aiMessage = data.choices?.[0]?.message?.content || 'Извините, не удалось получить ответ.';
+    const aiMessage = result.content;
 
     return NextResponse.json({
       success: true,

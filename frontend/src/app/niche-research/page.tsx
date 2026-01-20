@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
+import { getItem, setItem } from '@/lib/storage';
 
 interface NicheAnalysis {
   niche_analysis: {
@@ -91,7 +92,7 @@ export default function NicheResearchPage() {
         setAnalysis(data.analysis);
 
         // Save to history in localStorage
-        const history = JSON.parse(localStorage.getItem('niche_research_history') || '[]');
+        const history = getItem<Array<{ id: string; niche: string; description: string; analysis: NicheAnalysis; timestamp: string }>>('niche_research_history') || [];
         history.unshift({
           id: Date.now().toString(),
           niche,
@@ -99,7 +100,7 @@ export default function NicheResearchPage() {
           analysis: data.analysis,
           timestamp: data.timestamp
         });
-        localStorage.setItem('niche_research_history', JSON.stringify(history.slice(0, 20)));
+        setItem('niche_research_history', history.slice(0, 20));
       } else {
         setError(data.error || 'Ошибка анализа');
       }
@@ -533,10 +534,10 @@ export default function NicheResearchPage() {
                     };
 
                     // Add to favorites
-                    const favorites = JSON.parse(localStorage.getItem('trendhunter_favorites') || '[]');
-                    if (!favorites.find((f: {id: string}) => f.id === newTrend.id)) {
+                    const favorites = getItem<Array<{id: string}>>('trendhunter_favorites') || [];
+                    if (!favorites.find((f) => f.id === newTrend.id)) {
                       favorites.push(newTrend);
-                      localStorage.setItem('trendhunter_favorites', JSON.stringify(favorites));
+                      setItem('trendhunter_favorites', favorites);
                       alert('Добавлено в избранное!');
                     }
                   }}

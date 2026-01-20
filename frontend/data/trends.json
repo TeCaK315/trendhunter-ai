@@ -1,6 +1,66 @@
 {
   "trends": [
     {
+      "id": "trend-1768906884559-0",
+      "title": "AI-Powered Customer Feedback Analyzer",
+      "category": "SaaS",
+      "popularity_score": 82,
+      "opportunity_score": 8.7,
+      "pain_score": 7.5,
+      "feasibility_score": 8.3,
+      "profit_potential": 9,
+      "growth_rate": 35,
+      "why_trending": "С увеличением числа компаний, стремящихся улучшить клиентский опыт, автоматизированный анализ отзывов становится критически важным для понимания потребностей клиентов.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-20T11:01:24.559Z"
+    },
+    {
+      "id": "trend-1768906884559-2",
+      "title": "AI-Based Personalized Learning Platform",
+      "category": "EdTech",
+      "popularity_score": 85,
+      "opportunity_score": 9.3,
+      "pain_score": 8.5,
+      "feasibility_score": 8,
+      "profit_potential": 9.5,
+      "growth_rate": 50,
+      "why_trending": "С переходом на дистанционное обучение, персонализированные платформы становятся необходимыми для адаптации образовательного процесса к индивидуальным потребностям студентов.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-20T11:01:24.559Z"
+    },
+    {
+      "id": "trend-1768906884559-3",
+      "title": "AI-Enhanced Virtual Event Management Tool",
+      "category": "Technology",
+      "popularity_score": 76,
+      "opportunity_score": 8.8,
+      "pain_score": 7.8,
+      "feasibility_score": 8.4,
+      "profit_potential": 8.9,
+      "growth_rate": 30,
+      "why_trending": "С увеличением числа виртуальных мероприятий, инструменты для управления ими с использованием AI помогают организаторам оптимизировать процесс и улучшить взаимодействие с участниками.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-20T11:01:24.559Z"
+    },
+    {
+      "id": "trend-1768906884559-4",
+      "title": "AI-Powered Employee Wellness Tracker",
+      "category": "HealthTech",
+      "popularity_score": 80,
+      "opportunity_score": 8.6,
+      "pain_score": 7.3,
+      "feasibility_score": 8.1,
+      "profit_potential": 9.1,
+      "growth_rate": 45,
+      "why_trending": "С увеличением внимания к психическому и физическому здоровью сотрудников, инструменты для отслеживания благополучия становятся важными для компаний, стремящихся поддерживать своих работников.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-20T11:01:24.559Z"
+    },
+    {
       "id": "trend-1768799469486-0",
       "title": "AI Personal Trainer for Home Workouts",
       "category": "HealthTech",
@@ -118,8 +178,9 @@
       "growth_rate": 36,
       "why_trending": "С увеличением конкуренции в социальных сетях компании нуждаются в уникальном контенте. AI может автоматически генерировать посты, учитывая тренды и целевую аудиторию.",
       "source": "Google Trends",
-      "status": "active",
-      "first_detected_at": "2026-01-18T22:46:05.163Z"
+      "status": "analyzed",
+      "first_detected_at": "2026-01-18T22:46:05.163Z",
+      "analysis_available": true
     },
     {
       "id": "trend-1768776365163-4",
@@ -659,5 +720,5 @@
       "first_detected_at": "2026-01-15T23:58:25.912Z"
     }
   ],
-  "lastUpdated": "2026-01-19T05:11:09.792Z"
+  "lastUpdated": "2026-01-20T11:01:24.619Z"
 }

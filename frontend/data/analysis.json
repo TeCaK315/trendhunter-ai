@@ -4472,7 +4472,299 @@
           "reach": 0
         }
       }
+    },
+    "trend-1768776365163-3": {
+      "trend_id": "trend-1768776365163-3",
+      "trend_title": "AI-Driven Social Media Content Generator",
+      "main_pain": "Необходимость создания уникального контента для социальных сетей, который выделяется среди множества конкурентов.",
+      "key_pain_points": [
+        "Необходимость создания уникального контента для социальных сетей, который выделяется среди множества конкурентов.",
+        "Недостаток времени у маркетологов и владельцев бизнеса для создания качественного контента.",
+        "Проблемы с соблюдением авторских прав и плагиата."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые и средние бизнесы, маркетологи, владельцы брендов.",
+            "size": "Рынок малых и средних бизнесов, активно использующих социальные сети.",
+            "willingness_to_pay": "high",
+            "where_to_find": "Форумы маркетологов, социальные сети, специализированные выставки.",
+            "confidence": 8
+          }
+        ]
+      },
+      "sentiment_score": 8.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-19T23:19:57.304Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "AI Post Generator Recommendations",
+              "subreddit": "SocialMediaMarketing",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SocialMediaMarketing/comments/1dkfetm/ai_post_generator_recommendations/",
+              "created": "2026-01-19T23:19:47.742Z",
+              "selftext": "I can recommend several AI tools that can cater to your needs, including caption generation, image suggestions, and smart linking/tagging."
+            },
+            {
+              "title": "What's the BEST AI Tool You're Using Right Now for Social ...",
+              "subreddit": "aipromptprogramming",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/aipromptprogramming/comments/1m4p6dd/whats_the_best_ai_tool_youre_using_right_now_for/",
+              "created": "2026-01-19T23:19:47.742Z",
+              "selftext": "For social media I love Planable - saves a ton of time while keeping everything on brand. For video content CapCut or OpusClip are great for ..."
+            },
+            {
+              "title": "I Built an AI-Powered Social Media Machine That Writes ...",
+              "subreddit": "n8n",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/n8n/comments/1jv9ikl/i_built_an_aipowered_social_media_machine_that/",
+              "created": "2026-01-19T23:19:47.742Z",
+              "selftext": "This system generates viral-ready content (of course you can customise the style in the prompt), lets you approve it from your phone, and posts across LinkedIn ..."
+            },
+            {
+              "title": "Has anyone here tried an AI social media post generator? ...",
+              "subreddit": "SocialMediaMarketing",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SocialMediaMarketing/comments/1o5gdsa/has_anyone_here_tried_an_ai_social_media_post/",
+              "created": "2026-01-19T23:19:47.742Z",
+              "selftext": "Some people say it saves hours of brainstorming time, while others think it makes posts feel robotic or repetitive. I'm curious — has anyone ..."
+            },
+            {
+              "title": "Automate Your Social Media Posts with AI – Save Time & ...",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1gk1q7e/automate_your_social_media_posts_with_ai_save/",
+              "created": "2026-01-19T23:19:47.743Z",
+              "selftext": "It automatically connects your website's RSS feed and publishes posts on social media platforms like Facebook, Twitter, and LinkedIn – all using ..."
+            },
+            {
+              "title": "Here are the AI tools social media gurus are using to get ...",
+              "subreddit": "ChatGPT",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ChatGPT/comments/14b0mqq/here_are_the_ai_tools_social_media_gurus_are/",
+              "created": "2026-01-19T23:19:47.743Z",
+              "selftext": "You simply enter a URL and GoCharlie will use AI to convert it to posts suitable for Facebook, Instagram, and Linkedin. Not only is a great tool ..."
+            },
+            {
+              "title": "Are you using AI for social media content creation? How do ...",
+              "subreddit": "SocialMediaMarketing",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SocialMediaMarketing/comments/1hyse14/are_you_using_ai_for_social_media_content/",
+              "created": "2026-01-19T23:19:47.743Z",
+              "selftext": "We've been experimenting with AI tools like Canvas, Midjourney and recently Gennova AI, and it seems to be working really well."
+            },
+            {
+              "title": "Any good AI tools for social media posts?",
+              "subreddit": "socialmedia",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/socialmedia/comments/1mn66oo/any_good_ai_tools_for_social_media_posts/",
+              "created": "2026-01-19T23:19:47.743Z",
+              "selftext": "Any good AI tools for social media posts? ... Recently stumbled on Predis.ai, which is a great AI tool that creates amazing social media posts."
+            },
+            {
+              "title": "what's the BEST ai tool you're using right now for social ...",
+              "subreddit": "aipromptprogramming",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/aipromptprogramming/comments/1p4oib8/whats_the_best_ai_tool_youre_using_right_now_for/",
+              "created": "2026-01-19T23:19:47.743Z",
+              "selftext": "ChatGPT is still my main for outlining and rewriting captions, Nano Banana is fun for quick visuals but it gets chaotic real fast, and Haliuo ai ..."
+            },
+            {
+              "title": "What's the most impressive AI tool you have ever tried for ...",
+              "subreddit": "marketing",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/marketing/comments/1c5lq7z/whats_the_most_impressive_ai_tool_you_have_ever/",
+              "created": "2026-01-19T23:19:47.743Z",
+              "selftext": "HubSpot, SEMrush, and Canva offer impressive AI-powered marketing features."
+            }
+          ],
+          "communities": [
+            "SocialMediaMarketing",
+            "aipromptprogramming",
+            "n8n",
+            "automation",
+            "ChatGPT"
+          ],
+          "engagement": 0,
+          "error": "SerpAPI: Google hasn't returned any results for this query."
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "This Social Media AI Automation Creates Unique Content Daily! (100% Automated!)",
+              "channel": "AI Andy",
+              "description": "Build and automate anything in one powerful visual platform.",
+              "videoId": "SV32mn0yy5c",
+              "url": "https://www.youtube.com/watch?v=SV32mn0yy5c",
+              "publishedAt": "2024-09-04T12:00:33Z",
+              "thumbnail": "https://i.ytimg.com/vi/SV32mn0yy5c/hqdefault.jpg"
+            },
+            {
+              "title": "How I Use AI to Automate Content Creation - Step-by-Step (FULL GUIDE)",
+              "channel": "AI Master",
+              "description": "sponsored by Sign up to VEED to free! https://bit.ly/4eDMZpL Become an AI Master – All-in-one AI Learning https://aimaster.me/ ...",
+              "videoId": "duGOA6ZiGtE",
+              "url": "https://www.youtube.com/watch?v=duGOA6ZiGtE",
+              "publishedAt": "2024-09-29T08:10:57Z",
+              "thumbnail": "https://i.ytimg.com/vi/duGOA6ZiGtE/hqdefault.jpg"
+            },
+            {
+              "title": "Best PAID AI Tools Free Alternatives 2025 | #AITools #FreeAI #Productivity2025",
+              "channel": "AW-TECHNOLOGIES",
+              "description": "Discover the top free alternatives to paid AI tools in 2025 that can supercharge your productivity without breaking the bank!",
+              "videoId": "bFGayjPe7yA",
+              "url": "https://www.youtube.com/watch?v=bFGayjPe7yA",
+              "publishedAt": "2025-03-17T20:45:01Z",
+              "thumbnail": "https://i.ytimg.com/vi/bFGayjPe7yA/hqdefault.jpg"
+            },
+            {
+              "title": "This AI tool will create your ads in SECONDS",
+              "channel": "Learn With Shopify",
+              "description": "How to generate ad creatives with AI quickly efficiently that will outperform your competitors. #aitools #ai #adstrategy ...",
+              "videoId": "TdKLibSbbyc",
+              "url": "https://www.youtube.com/watch?v=TdKLibSbbyc",
+              "publishedAt": "2024-04-14T12:00:24Z",
+              "thumbnail": "https://i.ytimg.com/vi/TdKLibSbbyc/hqdefault.jpg"
+            },
+            {
+              "title": "Full Social Media Marketing Strategy In 8 Minutes | GaryVee Q&amp;A Session",
+              "channel": "GaryVee",
+              "description": "Today's video is tactical social media advice that you can start using today. I talk about knowing which content works best on each ...",
+              "videoId": "HjUJf5bKCpU",
+              "url": "https://www.youtube.com/watch?v=HjUJf5bKCpU",
+              "publishedAt": "2024-10-15T19:00:09Z",
+              "thumbnail": "https://i.ytimg.com/vi/HjUJf5bKCpU/hqdefault.jpg"
+            },
+            {
+              "title": "How to Automate Social Media Posts with AI | Save Time &amp; Boost Engagement!",
+              "channel": "Website Learners",
+              "description": "LIMITED TIME: Get 1 Year of GravityWrite at $97 Visit ➜ https://gravitywrite.com/ ❤️ *Start here* ...",
+              "videoId": "00obLp8vowQ",
+              "url": "https://www.youtube.com/watch?v=00obLp8vowQ",
+              "publishedAt": "2025-01-01T11:00:00Z",
+              "thumbnail": "https://i.ytimg.com/vi/00obLp8vowQ/hqdefault.jpg"
+            },
+            {
+              "title": "AI Social Media Automation: How to Post Daily Content 100% on Autopilot!",
+              "channel": "Solopreneur",
+              "description": "Sign Up Free for Make: https://www.make.com/en/register?pc=startfree (Exclusive Bonus: Includes 1 Month on the pro plan for free ...",
+              "videoId": "4ZI_fL4cw_c",
+              "url": "https://www.youtube.com/watch?v=4ZI_fL4cw_c",
+              "publishedAt": "2024-11-05T18:39:38Z",
+              "thumbnail": "https://i.ytimg.com/vi/4ZI_fL4cw_c/hqdefault.jpg"
+            },
+            {
+              "title": "AI to generate social media posts #socialmedia #posts #ai",
+              "channel": "Waqas Sharif Designer",
+              "description": "",
+              "videoId": "2-8PLKI73SM",
+              "url": "https://www.youtube.com/watch?v=2-8PLKI73SM",
+              "publishedAt": "2023-08-21T06:19:35Z",
+              "thumbnail": "https://i.ytimg.com/vi/2-8PLKI73SM/hqdefault.jpg"
+            },
+            {
+              "title": "Automate Your Social Media Content (No Effort Required!) 💻☕ #contentcreation #digitalmarketing",
+              "channel": "Website Learners",
+              "description": "Start here* ➜ https://www.make.com/en/register?pc=websitelearners *AI Social media post creator* ➜ Coming Soon ...",
+              "videoId": "jyKBSOfn9QA",
+              "url": "https://www.youtube.com/watch?v=jyKBSOfn9QA",
+              "publishedAt": "2025-01-02T11:30:24Z",
+              "thumbnail": "https://i.ytimg.com/vi/jyKBSOfn9QA/hqdefault.jpg"
+            },
+            {
+              "title": "How To Create A 30-Day Content Calendar &amp; Grow On Social Media #contentcreation #ai",
+              "channel": "Saptaparna Dhar",
+              "description": "How To Create A 30-Day Content Calendar & Grow On Social Media This is the exact ChatGPT Prompt to create 30 days Content ...",
+              "videoId": "scqAWkgLLKQ",
+              "url": "https://www.youtube.com/watch?v=scqAWkgLLKQ",
+              "publishedAt": "2024-06-27T13:54:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/scqAWkgLLKQ/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "AI Andy",
+            "AI Master",
+            "AW-TECHNOLOGIES",
+            "Learn With Shopify",
+            "GaryVee"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -69,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 45
+            },
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 52
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 57
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 67
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 58
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 57
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 46
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 37
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 29
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 28
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 14
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 14
+            }
+          ],
+          "search_query": "AI-Driven Social",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22AI-Driven+Social%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-19T23:19:48.855Z"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      }
     }
   },
-  "lastUpdated": "2026-01-19T14:37:36.028Z"
+  "lastUpdated": "2026-01-19T23:19:57.333Z"
 }

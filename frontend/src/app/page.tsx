@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import TrendCard from '@/components/TrendCard';
-import Sidebar from '@/components/layout/Sidebar';
 import GitHubAuth from '@/components/GitHubAuth';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useTranslations } from '@/lib/i18n';
 
 interface Trend {
   id: string;
@@ -25,84 +26,36 @@ interface Trend {
 type SortField = 'overall_score' | 'opportunity_score' | 'pain_score' | 'feasibility_score' | 'profit_potential' | 'first_detected_at';
 type SortDirection = 'asc' | 'desc';
 
-const sortOptions: { id: SortField; label: string; icon: string }[] = [
-  { id: 'overall_score', label: 'Общая оценка', icon: '📊' },
-  { id: 'first_detected_at', label: 'По дате', icon: '🕐' },
-  { id: 'opportunity_score', label: 'Возможность', icon: '🎯' },
-  { id: 'pain_score', label: 'Боль', icon: '🔥' },
-  { id: 'feasibility_score', label: 'Выполнимость', icon: '⚡' },
-  { id: 'profit_potential', label: 'Выгода', icon: '💰' },
+const sortOptionsConfig: { id: SortField; labelKey: keyof typeof import('@/lib/i18n/translations').translations.ru.sort; icon: string }[] = [
+  { id: 'overall_score', labelKey: 'overallScore', icon: '📊' },
+  { id: 'first_detected_at', labelKey: 'byDate', icon: '🕐' },
+  { id: 'opportunity_score', labelKey: 'opportunity', icon: '🎯' },
+  { id: 'pain_score', labelKey: 'pain', icon: '🔥' },
+  { id: 'feasibility_score', labelKey: 'feasibility', icon: '⚡' },
+  { id: 'profit_potential', labelKey: 'profit', icon: '💰' },
 ];
 
 function getOverallScore(trend: Trend): number {
   return Number(((trend.opportunity_score + trend.pain_score + trend.feasibility_score + trend.profit_potential) / 4).toFixed(1));
 }
 
-const categories = [
-  { id: 'all', label: 'Все ниши', icon: '🌐' },
-  { id: 'Technology', label: 'Technology', icon: '⚙️' },
-  { id: 'SaaS', label: 'SaaS', icon: '💻' },
-  { id: 'E-commerce', label: 'E-commerce', icon: '🛒' },
-  { id: 'Mobile Apps', label: 'Mobile Apps', icon: '📱' },
-  { id: 'EdTech', label: 'EdTech', icon: '🎓' },
-  { id: 'HealthTech', label: 'HealthTech', icon: '💚' },
-  { id: 'AI/ML', label: 'AI/ML', icon: '🤖' },
-  { id: 'FinTech', label: 'FinTech', icon: '💰' },
+const categoriesConfig: { id: string; labelKey: keyof typeof import('@/lib/i18n/translations').translations.ru.categories; icon: string }[] = [
+  { id: 'all', labelKey: 'all', icon: '🌐' },
+  { id: 'Technology', labelKey: 'technology', icon: '⚙️' },
+  { id: 'SaaS', labelKey: 'saas', icon: '💻' },
+  { id: 'E-commerce', labelKey: 'ecommerce', icon: '🛒' },
+  { id: 'Mobile Apps', labelKey: 'mobileApps', icon: '📱' },
+  { id: 'EdTech', labelKey: 'edtech', icon: '🎓' },
+  { id: 'HealthTech', labelKey: 'healthtech', icon: '💚' },
+  { id: 'AI/ML', labelKey: 'aiml', icon: '🤖' },
+  { id: 'FinTech', labelKey: 'fintech', icon: '💰' },
 ];
 
-// Mock data for testing before n8n sends real data
-const mockTrends: Trend[] = [
-  {
-    id: '1',
-    title: 'AI-ассистент для создания контент-планов',
-    category: 'SaaS',
-    popularity_score: 85,
-    opportunity_score: 9.2,
-    pain_score: 8.8,
-    feasibility_score: 8.5,
-    profit_potential: 9.5,
-    growth_rate: 72,
-    why_trending: 'Автоматическая генерация контент-стратегии на основе анализа конкурентов и трендов в нише',
-    status: 'active',
-    first_detected_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    source: 'Reddit + Google Trends',
-  },
-  {
-    id: '2',
-    title: 'Платформа для подбора БАДов на основе анализов',
-    category: 'HealthTech',
-    popularity_score: 78,
-    opportunity_score: 8.7,
-    pain_score: 9.2,
-    feasibility_score: 7.0,
-    profit_potential: 9.0,
-    growth_rate: 65,
-    why_trending: 'Персонализированные рекомендации витаминов и добавок по результатам анализа крови',
-    status: 'active',
-    first_detected_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    source: 'YouTube + Facebook',
-  },
-  {
-    id: '3',
-    title: 'Маркетплейс аренды спортивного оборудования',
-    category: 'E-commerce',
-    popularity_score: 72,
-    opportunity_score: 8.5,
-    pain_score: 8.0,
-    feasibility_score: 8.8,
-    profit_potential: 8.2,
-    growth_rate: 58,
-    why_trending: 'P2P платформа для краткосрочной аренды велосипедов, лыж, сноубордов и другого спортинвентаря',
-    status: 'active',
-    first_detected_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    source: 'Reddit',
-  },
-];
 
 const INITIAL_DISPLAY_COUNT = 6;
 
 export default function Home() {
-  const [trends, setTrends] = useState<Trend[]>(mockTrends);
+  const [trends, setTrends] = useState<Trend[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,12 +66,12 @@ export default function Home() {
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const t = useTranslations();
 
   useEffect(() => {
     fetchTrends();
 
     const refreshInterval = setInterval(() => {
-      console.log('Auto-refreshing trends...');
       fetchTrends();
     }, 5 * 60 * 1000);
 
@@ -157,7 +110,8 @@ export default function Home() {
   const generateNewTrends = async () => {
     setGenerating(true);
     try {
-      const response = await fetch('http://localhost:5678/webhook/generate-trends', {
+      // Используем API route вместо прямого вызова n8n webhook
+      const response = await fetch('/api/generate-trends', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -165,8 +119,9 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success) {
-        // Refresh trends after generation
         await fetchTrends();
+      } else if (data.error) {
+        console.error('Error generating trends:', data.error);
       }
     } catch (error) {
       console.error('Error generating trends:', error);
@@ -219,7 +174,7 @@ export default function Home() {
   const hasMoreTrends = sortedTrends.length > INITIAL_DISPLAY_COUNT;
   const hiddenCount = sortedTrends.length - INITIAL_DISPLAY_COUNT;
 
-  const currentSortOption = sortOptions.find(opt => opt.id === sortField);
+  const currentSortOption = sortOptionsConfig.find(opt => opt.id === sortField);
 
   // Stats for hero
   const totalIdeas = trends.length;
@@ -227,11 +182,9 @@ export default function Home() {
   // Stats calculation (mostPopularCategory available for future use)
 
   return (
-    <div className="min-h-screen bg-[#09090b]">
-      <Sidebar />
-
+    <div className="min-h-screen">
       {/* Main Content */}
-      <div className="lg:ml-64 min-h-screen">
+      <div className="min-h-screen">
         {/* Top Bar */}
         <header className="sticky top-0 z-30 glass border-b border-zinc-800/50">
           <div className="px-6 py-4">
@@ -244,7 +197,7 @@ export default function Home() {
                   </svg>
                   <input
                     type="text"
-                    placeholder="Поиск идей..."
+                    placeholder={t.home.searchPlaceholder}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
@@ -256,23 +209,23 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 {lastUpdated && (
                   <span className="hidden md:block text-xs text-zinc-500 bg-zinc-800/50 px-3 py-1.5 rounded-lg">
-                    Обновлено: {new Date(lastUpdated).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    {t.home.updated}: {new Date(lastUpdated).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
                 <button
                   onClick={generateNewTrends}
                   disabled={generating || refreshing}
+                  data-tour="generate-trends"
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     generating
                       ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white'
                   }`}
-                  title="Запустить AI для генерации новых идей"
                 >
                   <svg className={`w-4 h-4 ${generating ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  <span className="hidden sm:inline">{generating ? 'Генерация...' : 'Новые идеи'}</span>
+                  <span className="hidden sm:inline">{generating ? t.home.generating : t.home.newIdeas}</span>
                 </button>
                 <button
                   onClick={fetchTrends}
@@ -282,13 +235,13 @@ export default function Home() {
                       ? 'bg-zinc-800 text-zinc-500 cursor-wait'
                       : 'bg-zinc-800 hover:bg-zinc-700 text-white'
                   }`}
-                  title="Обновить список с сервера"
                 >
                   <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span className="hidden sm:inline">{refreshing ? 'Обновление...' : 'Обновить'}</span>
+                  <span className="hidden sm:inline">{refreshing ? t.home.refreshing : t.home.refresh}</span>
                 </button>
+                <LanguageSwitcher compact />
                 <GitHubAuth compact />
               </div>
             </div>
@@ -301,34 +254,33 @@ export default function Home() {
             <div className="flex items-center gap-2 mb-4">
               <span className="badge badge-info">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                Live данные
+                {t.home.liveData}
               </span>
-              <span className="text-sm text-zinc-500">Обновляется каждые 6 часов</span>
+              <span className="text-sm text-zinc-500">{t.home.updatesEvery6Hours}</span>
             </div>
 
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
-              Найди свою <span className="gradient-text">идею</span><br />
-              для следующего проекта
+              {t.home.heroTitle1} <span className="gradient-text">{t.home.heroTitle2}</span><br />
+              {t.home.heroTitle3}
             </h1>
 
             <p className="text-lg text-zinc-400 mb-8 max-w-2xl">
-              AI анализирует тренды из Reddit, Google Trends, YouTube и других источников,
-              чтобы найти перспективные ниши с высоким потенциалом.
+              {t.home.heroDescription}
             </p>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 max-w-lg">
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
                 <div className="text-2xl font-bold text-white">{totalIdeas}</div>
-                <div className="text-xs text-zinc-500 mt-1">Идей</div>
+                <div className="text-xs text-zinc-500 mt-1">{t.home.ideas}</div>
               </div>
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
                 <div className="text-2xl font-bold gradient-text">{avgScore}</div>
-                <div className="text-xs text-zinc-500 mt-1">Ср. рейтинг</div>
+                <div className="text-xs text-zinc-500 mt-1">{t.home.avgRating}</div>
               </div>
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">{categories.length - 1}</div>
-                <div className="text-xs text-zinc-500 mt-1">Категорий</div>
+                <div className="text-2xl font-bold text-white">{categoriesConfig.length - 1}</div>
+                <div className="text-xs text-zinc-500 mt-1">{t.home.categories}</div>
               </div>
             </div>
           </div>
@@ -343,7 +295,7 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             {/* Category filters */}
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {categories.map((cat) => (
+              {categoriesConfig.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
@@ -352,7 +304,7 @@ export default function Home() {
                   }`}
                 >
                   <span>{cat.icon}</span>
-                  <span>{cat.label}</span>
+                  <span>{t.categories[cat.labelKey]}</span>
                 </button>
               ))}
             </div>
@@ -364,14 +316,14 @@ export default function Home() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-sm text-white transition-all"
               >
                 <span>{currentSortOption?.icon}</span>
-                <span className="hidden sm:inline">{currentSortOption?.label}</span>
+                <span className="hidden sm:inline">{currentSortOption ? t.sort[currentSortOption.labelKey] : ''}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleSortDirection();
                   }}
                   className="ml-1 p-1 hover:bg-zinc-700 rounded transition-colors"
-                  title={sortDirection === 'desc' ? 'Высокие → Низкие' : 'Низкие → Высокие'}
+                  title={sortDirection === 'desc' ? t.sort.highToLow : t.sort.lowToHigh}
                 >
                   {sortDirection === 'desc' ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,7 +343,7 @@ export default function Home() {
               {sortDropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
                   <div className="p-2">
-                    {sortOptions.map((option) => (
+                    {sortOptionsConfig.map((option) => (
                       <button
                         key={option.id}
                         onClick={() => handleSortChange(option.id)}
@@ -400,7 +352,7 @@ export default function Home() {
                         }`}
                       >
                         <span>{option.icon}</span>
-                        <span>{option.label}</span>
+                        <span>{t.sort[option.labelKey]}</span>
                         {sortField === option.id && (
                           <span className="ml-auto text-xs opacity-60">
                             {sortDirection === 'desc' ? '↓' : '↑'}
@@ -444,16 +396,16 @@ export default function Home() {
               <div className="w-20 h-20 bg-zinc-800 rounded-full flex items-center justify-center mb-6">
                 <span className="text-4xl">📭</span>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Ничего не найдено</h3>
+              <h3 className="text-xl font-semibold text-white mb-2">{t.home.nothingFound}</h3>
               <p className="text-zinc-400 max-w-md">
-                {searchQuery ? 'Попробуйте изменить поисковый запрос' : 'Нет трендов в этой категории. Запустите Trend Analyzer в n8n чтобы получить свежие данные'}
+                {searchQuery ? t.home.tryChangingSearch : t.home.noTrendsInCategory}
               </p>
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="mt-4 btn-secondary"
                 >
-                  Сбросить поиск
+                  {t.home.resetSearch}
                 </button>
               )}
             </div>
@@ -462,19 +414,20 @@ export default function Home() {
               {/* Results count */}
               <div className="flex items-center justify-between mb-6">
                 <p className="text-sm text-zinc-500">
-                  Найдено <span className="text-white font-medium">{sortedTrends.length}</span> идей
+                  {t.home.found} <span className="text-white font-medium">{sortedTrends.length}</span> {t.home.moreIdeas}
                   {selectedCategory !== 'all' && (
-                    <span> в категории <span className="text-indigo-400">{categories.find(c => c.id === selectedCategory)?.label}</span></span>
+                    <span> {t.home.ideasIn} <span className="text-indigo-400">{t.categories[categoriesConfig.find(c => c.id === selectedCategory)?.labelKey || 'all']}</span></span>
                   )}
                 </p>
               </div>
 
               {/* Trends Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 stagger-children">
-                {displayedTrends.map((trend) => (
+                {displayedTrends.map((trend, index) => (
                   <TrendCard
                     key={trend.id}
                     trend={trend}
+                    dataTour={index === 0 ? 'trend-card' : undefined}
                   />
                 ))}
               </div>
@@ -491,11 +444,11 @@ export default function Home() {
                         <svg className="w-5 h-5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                         </svg>
-                        <span>Скрыть</span>
+                        <span>{t.home.hide}</span>
                       </>
                     ) : (
                       <>
-                        <span>Показать ещё {hiddenCount} идей</span>
+                        <span>{t.home.showMore} {hiddenCount} {t.home.moreIdeas}</span>
                         <svg className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -513,10 +466,10 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Данные обновляются автоматически каждые 6 часов через n8n</span>
+              <span>{t.home.dataUpdatesAuto}</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link href="/niche-research" className="hover:text-white transition-colors">Исследование ниши</Link>
+              <Link href="/niche-research" className="hover:text-white transition-colors">{t.nav.nicheResearch}</Link>
             </div>
           </div>
         </footer>

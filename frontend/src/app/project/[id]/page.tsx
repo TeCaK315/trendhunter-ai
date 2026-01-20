@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
 import Sidebar from '@/components/layout/Sidebar';
+import { getItem, setItem, removeItem } from '@/lib/storage';
 
 // Interface for tracking which quick actions have responses
 interface QuickActionResponse {
@@ -688,10 +689,9 @@ export default function ProjectPage() {
   // Load existing project data from localStorage
   const loadProjectData = () => {
     try {
-      const storedProjects = localStorage.getItem('trendhunter_projects');
-      if (storedProjects) {
-        const projects = JSON.parse(storedProjects);
-        const found = projects.find((p: { trend_id: string }) => p.trend_id === projectId);
+      const projects = getItem<Array<{ trend_id: string; repo_url?: string; clone_url?: string }>>('trendhunter_projects');
+      if (projects) {
+        const found = projects.find((p) => p.trend_id === projectId);
         if (found && found.repo_url) {
           setProjectCreated({
             repo_url: found.repo_url,
@@ -722,7 +722,7 @@ export default function ProjectPage() {
   useEffect(() => {
     if (messages.length > 0 && projectId) {
       const chatKey = `trendhunter_chat_${projectId}`;
-      localStorage.setItem(chatKey, JSON.stringify(messages));
+      setItem(chatKey, messages);
     }
   }, [messages, projectId]);
 
@@ -730,7 +730,7 @@ export default function ProjectPage() {
   useEffect(() => {
     if (projectId) {
       const quickActionsKey = `trendhunter_quickactions_${projectId}`;
-      localStorage.setItem(quickActionsKey, JSON.stringify(usedQuickActions));
+      setItem(quickActionsKey, usedQuickActions);
     }
   }, [usedQuickActions, projectId]);
 
@@ -738,11 +738,10 @@ export default function ProjectPage() {
     try {
       // Load chat messages
       const chatKey = `trendhunter_chat_${projectId}`;
-      const savedChat = localStorage.getItem(chatKey);
+      const savedChat = getItem<ChatMessage[]>(chatKey);
       if (savedChat) {
-        const parsedMessages = JSON.parse(savedChat);
         // Convert timestamp strings back to Date objects
-        const messagesWithDates = parsedMessages.map((msg: ChatMessage) => ({
+        const messagesWithDates = savedChat.map((msg) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
         }));
@@ -751,10 +750,9 @@ export default function ProjectPage() {
 
       // Load used quick actions
       const quickActionsKey = `trendhunter_quickactions_${projectId}`;
-      const savedQuickActions = localStorage.getItem(quickActionsKey);
+      const savedQuickActions = getItem<QuickActionResponse[]>(quickActionsKey);
       if (savedQuickActions) {
-        const parsedQuickActions = JSON.parse(savedQuickActions);
-        setUsedQuickActions(parsedQuickActions);
+        setUsedQuickActions(savedQuickActions);
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
@@ -764,17 +762,16 @@ export default function ProjectPage() {
   const clearChatHistory = () => {
     const chatKey = `trendhunter_chat_${projectId}`;
     const quickActionsKey = `trendhunter_quickactions_${projectId}`;
-    localStorage.removeItem(chatKey);
-    localStorage.removeItem(quickActionsKey);
+    removeItem(chatKey);
+    removeItem(quickActionsKey);
     setMessages([]);
     setUsedQuickActions([]);
   };
 
   const loadTrend = () => {
     try {
-      const storedFavorites = localStorage.getItem('trendhunter_favorites_data');
-      if (storedFavorites) {
-        const favorites: Trend[] = JSON.parse(storedFavorites);
+      const favorites = getItem<Trend[]>('trendhunter_favorites_data');
+      if (favorites) {
         const found = favorites.find(t => t.id === projectId);
         if (found) {
           setTrend(found);
@@ -1063,11 +1060,11 @@ export default function ProjectPage() {
 
         // Save project to localStorage
         try {
-          const storedProjects = localStorage.getItem('trendhunter_projects');
-          const projects = storedProjects ? JSON.parse(storedProjects) : [];
+          const storedProjects = getItem<Array<{ trend_id: string }>>('trendhunter_projects');
+          const projects = storedProjects || [];
 
           // Check if project already exists
-          const existingIndex = projects.findIndex((p: { trend_id: string }) => p.trend_id === trend.id);
+          const existingIndex = projects.findIndex((p) => p.trend_id === trend.id);
 
           const newProject = {
             id: `project-${Date.now()}`,
@@ -1088,7 +1085,7 @@ export default function ProjectPage() {
             projects.push(newProject);
           }
 
-          localStorage.setItem('trendhunter_projects', JSON.stringify(projects));
+          setItem('trendhunter_projects', projects);
         } catch (storageError) {
           console.error('Error saving project to localStorage:', storageError);
         }

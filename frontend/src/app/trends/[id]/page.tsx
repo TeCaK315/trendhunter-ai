@@ -5,7 +5,10 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import TrendChat from '@/components/TrendChat';
+import MVPTypeSelector from '@/components/MVPTypeSelector';
 import { recommendProductType, type ProductType } from '@/lib/productRecommendation';
+import { MVPType, MVPGenerationContext } from '@/lib/mvp-templates';
+import { useLanguage } from '@/lib/i18n';
 
 interface Trend {
   id: string;
@@ -252,6 +255,7 @@ export default function TrendPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const trendId = params.id as string;
+  const { language, t } = useLanguage();
 
   const [trend, setTrend] = useState<Trend | null>(null);
   const [analysis, setAnalysis] = useState<TrendAnalysis | null>(null);
@@ -326,6 +330,11 @@ export default function TrendPage() {
   const [githubCreated, setGithubCreated] = useState(false);
   const [isGithubAuthenticated, setIsGithubAuthenticated] = useState(false);
   const [creatingGithubRepo, setCreatingGithubRepo] = useState(false);
+
+  // Состояние для нового MVP селектора
+  const [showMVPSelector, setShowMVPSelector] = useState(false);
+  const [selectedMVPType, setSelectedMVPType] = useState<MVPType | null>(null);
+  const [pendingCreateWithGithub, setPendingCreateWithGithub] = useState(false);
 
   // Новые состояния для расширенного создания проекта
   const [selectedProductType, setSelectedProductType] = useState<'landing' | 'saas' | 'ai-wrapper' | 'ecommerce'>('landing');
@@ -883,8 +892,21 @@ export default function TrendPage() {
     }
   };
 
+  // Открытие модального окна выбора MVP типа
+  const handleOpenMVPSelector = (withGithub: boolean) => {
+    setPendingCreateWithGithub(withGithub);
+    setShowMVPSelector(true);
+  };
+
+  // Обработчик выбора MVP типа
+  const handleMVPTypeSelect = (type: MVPType) => {
+    setSelectedMVPType(type);
+    setShowMVPSelector(false);
+    createProject(pendingCreateWithGithub, type);
+  };
+
   // Создание проекта через META-агент
-  const createProject = async (createGithubRepo = false) => {
+  const createProject = async (createGithubRepo = false, mvpType?: MVPType) => {
     if (!trend || loadingProject) return;
     setLoadingProject(true);
     setProjectError(null);
@@ -901,7 +923,8 @@ export default function TrendPage() {
           project_name: trend.title.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').substring(0, 50),
           context, // Передаём полный накопленный контекст от всех экспертов
           create_github_repo: createGithubRepo,
-          product_type: selectedProductType, // Новый параметр: тип продукта
+          product_type: selectedProductType, // Старый параметр для обратной совместимости
+          mvp_type: mvpType, // Новый параметр: тип MVP из нового селектора
           auto_deploy: autoDeploy && isVercelAuthenticated, // Новый параметр: автодеплой
         }),
       });
@@ -938,6 +961,8 @@ export default function TrendPage() {
             tech_stack: data.data.mvp_specification?.tech_stack?.map((t: TechStackItem) => t.recommendation) || [],
             solution_type: selectedProductType,
             product_type: selectedProductType,
+            mvp_type: mvpType, // Новый тип MVP из селектора
+            is_functional_mvp: data.is_functional_mvp || false, // Флаг функционального MVP
             mvp_specification: data.data.mvp_specification,
             roadmap: data.data.roadmap,
           };
@@ -1066,14 +1091,14 @@ export default function TrendPage() {
   }, [currentStep]);
 
   const flowSteps = [
-    { id: 'overview', label: 'Обзор', icon: '📊' },
-    { id: 'analysis', label: 'Анализ', icon: '🔍' },
-    { id: 'sources', label: 'Источники', icon: '📚' },
-    { id: 'competition', label: 'Конкуренты', icon: '🏆' },
-    { id: 'venture', label: 'Инвестиции', icon: '💰' },
-    { id: 'leads', label: 'Клиенты', icon: '👥' },
-    { id: 'pitch-deck', label: 'Pitch Deck', icon: '📑' },
-    { id: 'project', label: 'Проект', icon: '🚀' },
+    { id: 'overview', label: t.trendDetail.tabs.overview, icon: '📊' },
+    { id: 'analysis', label: t.trendDetail.tabs.analysis, icon: '🔍' },
+    { id: 'sources', label: t.trendDetail.tabs.sources, icon: '📚' },
+    { id: 'competition', label: t.trendDetail.tabs.competition, icon: '🏆' },
+    { id: 'venture', label: t.trendDetail.tabs.venture, icon: '💰' },
+    { id: 'leads', label: t.trendDetail.tabs.leads, icon: '👥' },
+    { id: 'pitch-deck', label: t.trendDetail.tabs.pitchDeck, icon: '📑' },
+    { id: 'project', label: t.trendDetail.tabs.project, icon: '🚀' },
   ];
 
   if (loading) {
@@ -1090,9 +1115,9 @@ export default function TrendPage() {
         <Sidebar />
         <div className="lg:ml-64 p-8">
           <div className="text-center py-20">
-            <h1 className="text-2xl text-white mb-4">Тренд не найден</h1>
+            <h1 className="text-2xl text-white mb-4">{t.trendDetail.notFound}</h1>
             <Link href="/" className="text-indigo-400 hover:text-indigo-300">
-              Вернуться на главную
+              {t.trendDetail.backToHome}
             </Link>
           </div>
         </div>
@@ -1109,11 +1134,11 @@ export default function TrendPage() {
         <div className="px-6 py-4 border-b border-zinc-800/50">
           <div className="flex items-center gap-2 text-sm">
             <Link href="/" className="text-zinc-500 hover:text-white transition-colors">
-              Главная
+              {t.trendDetail.breadcrumbs.home}
             </Link>
             <span className="text-zinc-600">/</span>
             <Link href="/" className="text-zinc-500 hover:text-white transition-colors">
-              Тренды
+              {t.trendDetail.breadcrumbs.trends}
             </Link>
             <span className="text-zinc-600">/</span>
             <span className="text-white truncate max-w-[300px]">{trend.title}</span>
@@ -1172,7 +1197,7 @@ export default function TrendPage() {
                   {trend.category}
                 </span>
                 <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-sm">
-                  +{trend.growth_rate}% рост
+                  +{trend.growth_rate}% {t.trendDetail.overview.growth}
                 </span>
               </div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-3">{trend.title}</h1>
@@ -1194,7 +1219,7 @@ export default function TrendPage() {
               </button>
               <div className="text-right">
                 <div className="text-3xl font-bold text-white">{getOverallScore(trend)}</div>
-                <div className="text-xs text-zinc-500">Общая оценка</div>
+                <div className="text-xs text-zinc-500">{t.trendDetail.overview.overallScore}</div>
               </div>
             </div>
           </div>
@@ -1205,10 +1230,10 @@ export default function TrendPage() {
               {/* Metrics */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Возможность', value: trend.opportunity_score, icon: '🎯', color: 'indigo' },
-                  { label: 'Острота боли', value: trend.pain_score, icon: '🔥', color: 'red' },
-                  { label: 'Выполнимость', value: trend.feasibility_score, icon: '⚡', color: 'amber' },
-                  { label: 'Потенциал', value: trend.profit_potential, icon: '💰', color: 'emerald' },
+                  { label: t.trendDetail.overview.opportunity, value: trend.opportunity_score, icon: '🎯', color: 'indigo' },
+                  { label: t.trendDetail.overview.painLevel, value: trend.pain_score, icon: '🔥', color: 'red' },
+                  { label: t.trendDetail.overview.feasibility, value: trend.feasibility_score, icon: '⚡', color: 'amber' },
+                  { label: t.trendDetail.overview.potential, value: trend.profit_potential, icon: '💰', color: 'emerald' },
                 ].map((metric) => (
                   <div key={metric.label} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -1229,29 +1254,29 @@ export default function TrendPage() {
               {/* Info */}
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Информация</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.overview.information}</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Источник</span>
+                      <span className="text-zinc-400">{t.trendDetail.overview.source}</span>
                       <span className="text-white">{trend.source || 'Google Trends'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Обнаружен</span>
+                      <span className="text-zinc-400">{t.trendDetail.overview.detected}</span>
                       <span className="text-white">
                         {new Date(trend.first_detected_at).toLocaleDateString('ru-RU')}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Статус</span>
+                      <span className="text-zinc-400">{t.trendDetail.overview.status}</span>
                       <span className="text-emerald-400">{trend.status}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Следующий шаг</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.overview.nextStep}</h3>
                   <p className="text-zinc-400 mb-4">
-                    Запустите AI-анализ для выявления болевых точек и целевой аудитории.
+                    {t.trendDetail.overview.runAnalysisDescription}
                   </p>
                   <button
                     onClick={runAnalysis}
@@ -1265,12 +1290,12 @@ export default function TrendPage() {
                     {analyzing ? (
                       <>
                         <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                        Анализирую...
+                        {t.trendDetail.overview.analyzing}
                       </>
                     ) : (
                       <>
                         <span>🔍</span>
-                        Запустить анализ
+                        {t.trendDetail.overview.runAnalysis}
                       </>
                     )}
                   </button>
@@ -1285,11 +1310,11 @@ export default function TrendPage() {
               {analysis.analysis_type === 'deep' && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full flex items-center gap-1">
-                    <span>🧠</span> Глубокий анализ: 3 AI-агента
+                    <span>🧠</span> {t.trendDetail.analysis.deepAnalysis}
                   </span>
                   {analysisMetadata?.consensus_reached && (
                     <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full">
-                      ✓ Консенсус достигнут
+                      ✓ {t.trendDetail.analysis.consensusReached}
                     </span>
                   )}
                 </div>
@@ -1300,9 +1325,9 @@ export default function TrendPage() {
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
                   <div className="p-4 border-b border-zinc-800 bg-zinc-800/30">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <span>⚔️</span> Дебаты AI-агентов
+                      <span>⚔️</span> {t.trendDetail.analysis.aiDebate}
                     </h3>
-                    <p className="text-sm text-zinc-400 mt-1">Два агента спорят о потенциале ниши, третий выносит вердикт</p>
+                    <p className="text-sm text-zinc-400 mt-1">{t.trendDetail.analysis.aiDebateDescription}</p>
                   </div>
 
                   <div className="grid md:grid-cols-2 divide-x divide-zinc-800">
@@ -1311,8 +1336,8 @@ export default function TrendPage() {
                       <div className="flex items-center gap-2 mb-4">
                         <span className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-xl">😊</span>
                         <div>
-                          <div className="font-medium text-emerald-400">Оптимист</div>
-                          <div className="text-xs text-zinc-500">Венчурный аналитик</div>
+                          <div className="font-medium text-emerald-400">{t.trendDetail.analysis.optimist}</div>
+                          <div className="text-xs text-zinc-500">{t.trendDetail.analysis.optimistRole}</div>
                         </div>
                       </div>
 
@@ -1327,7 +1352,7 @@ export default function TrendPage() {
                                 pain.willingness_to_pay === 'medium' ? 'bg-amber-500/20 text-amber-300' :
                                 'bg-zinc-500/20 text-zinc-300'
                               }`}>
-                                Готовность платить: {pain.willingness_to_pay}
+                                {t.trendDetail.analysis.willingnessToPay}: {pain.willingness_to_pay}
                               </span>
                             </div>
                           </div>
@@ -1335,7 +1360,7 @@ export default function TrendPage() {
                       </div>
 
                       <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg">
-                        <div className="text-xs text-zinc-500 mb-1">Вывод оптимиста:</div>
+                        <div className="text-xs text-zinc-500 mb-1">{t.trendDetail.analysis.optimistConclusion}:</div>
                         <div className="text-sm text-emerald-300">{analysisMetadata?.optimist_summary || rawAnalyses.optimist.overall_assessment}</div>
                       </div>
                     </div>
@@ -1345,8 +1370,8 @@ export default function TrendPage() {
                       <div className="flex items-center gap-2 mb-4">
                         <span className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-xl">🤨</span>
                         <div>
-                          <div className="font-medium text-red-400">Скептик</div>
-                          <div className="text-xs text-zinc-500">Опытный инвестор</div>
+                          <div className="font-medium text-red-400">{t.trendDetail.analysis.skeptic}</div>
+                          <div className="text-xs text-zinc-500">{t.trendDetail.analysis.skepticRole}</div>
                         </div>
                       </div>
 
@@ -1361,7 +1386,7 @@ export default function TrendPage() {
                                 pain.willingness_to_pay === 'medium' ? 'bg-amber-500/20 text-amber-300' :
                                 'bg-zinc-500/20 text-zinc-300'
                               }`}>
-                                Готовность платить: {pain.willingness_to_pay}
+                                {t.trendDetail.analysis.willingnessToPay}: {pain.willingness_to_pay}
                               </span>
                             </div>
                           </div>
@@ -1369,7 +1394,7 @@ export default function TrendPage() {
                       </div>
 
                       <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg">
-                        <div className="text-xs text-zinc-500 mb-1">Вывод скептика:</div>
+                        <div className="text-xs text-zinc-500 mb-1">{t.trendDetail.analysis.skepticConclusion}:</div>
                         <div className="text-sm text-red-300">{analysisMetadata?.skeptic_summary || rawAnalyses.skeptic.overall_assessment}</div>
                       </div>
                     </div>
@@ -1382,20 +1407,20 @@ export default function TrendPage() {
                 <div className="flex items-center gap-3 mb-4">
                   <span className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-2xl">⚖️</span>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Вердикт Арбитра</h3>
-                    <p className="text-sm text-zinc-400">Senior Product Strategist с 20+ лет опыта</p>
+                    <h3 className="text-lg font-semibold text-white">{t.trendDetail.analysis.arbiterVerdict}</h3>
+                    <p className="text-sm text-zinc-400">{t.trendDetail.analysis.arbiterRole}</p>
                   </div>
                   {analysis.sentiment_score && (
                     <div className="ml-auto text-right">
                       <div className="text-2xl font-bold text-purple-400">{analysis.sentiment_score}/10</div>
-                      <div className="text-xs text-zinc-500">Уверенность</div>
+                      <div className="text-xs text-zinc-500">{t.trendDetail.analysis.confidence}</div>
                     </div>
                   )}
                 </div>
 
                 <div className="p-4 bg-zinc-800/50 rounded-lg mb-4">
                   <div className="text-xs text-purple-400 mb-1 flex items-center gap-1">
-                    <span>🔥</span> ГЛАВНАЯ БОЛЬ
+                    <span>🔥</span> {t.trendDetail.analysis.mainPain}
                   </div>
                   <p className="text-xl text-white">{analysis.main_pain}</p>
                 </div>
@@ -1404,7 +1429,7 @@ export default function TrendPage() {
               {/* Key Pain Points */}
               {analysis.key_pain_points && analysis.key_pain_points.length > 0 && (
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Ключевые болевые точки (после арбитража)</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.analysis.keyPainPoints}</h3>
                   <div className="space-y-3">
                     {analysis.key_pain_points.map((pain, index) => (
                       <div key={index} className="flex items-start gap-3 p-3 bg-zinc-800/50 rounded-lg">
@@ -1419,7 +1444,7 @@ export default function TrendPage() {
               {/* Target Audience */}
               {analysis.target_audience?.segments && analysis.target_audience.segments.length > 0 && (
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Целевая аудитория</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.analysis.targetAudience}</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     {analysis.target_audience.segments.map((segment, index) => (
                       <div key={index} className="p-4 bg-zinc-800/50 rounded-lg">
@@ -1432,10 +1457,10 @@ export default function TrendPage() {
                           )}
                         </div>
                         <div className="text-sm text-zinc-400 space-y-1">
-                          <div>Размер: {segment.size}</div>
-                          <div>Готовность платить: {segment.willingness_to_pay}</div>
+                          <div>{t.trendDetail.analysis.size}: {segment.size}</div>
+                          <div>{t.trendDetail.analysis.willingnessToPay}: {segment.willingness_to_pay}</div>
                           {segment.where_to_find && (
-                            <div>Где найти: {segment.where_to_find}</div>
+                            <div>{t.trendDetail.analysis.whereToFind}: {segment.where_to_find}</div>
                           )}
                         </div>
                       </div>
@@ -1446,9 +1471,9 @@ export default function TrendPage() {
 
               {/* Next Step */}
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Следующий шаг</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.analysis.nextStep}</h3>
                 <p className="text-zinc-400 mb-4">
-                  Соберите реальные данные из Reddit, YouTube и Google Trends для подтверждения анализа.
+                  {t.trendDetail.analysis.collectSourcesDescription}
                 </p>
                 <button
                   onClick={collectSources}
@@ -1462,12 +1487,12 @@ export default function TrendPage() {
                   {collectingSources ? (
                     <>
                       <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                      Собираю данные...
+                      {t.trendDetail.analysis.collectingData}
                     </>
                   ) : (
                     <>
                       <span>📚</span>
-                      Собрать источники
+                      {t.trendDetail.analysis.collectSources}
                     </>
                   )}
                 </button>
@@ -1485,7 +1510,7 @@ export default function TrendPage() {
                       <span>📈</span> Google Trends
                       {analysis.real_sources.google_trends.is_mock_data && (
                         <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                          Симуляция
+                          {t.trendDetail.sources.simulation}
                         </span>
                       )}
                     </h3>
@@ -1496,7 +1521,7 @@ export default function TrendPage() {
                         rel="noopener noreferrer"
                         className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                       >
-                        Открыть в Google Trends
+                        {t.trendDetail.sources.openInGoogleTrends}
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
@@ -1506,7 +1531,7 @@ export default function TrendPage() {
 
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <div className="p-4 bg-zinc-800/50 rounded-lg">
-                      <div className="text-sm text-zinc-400 mb-1">Рост за год</div>
+                      <div className="text-sm text-zinc-400 mb-1">{t.trendDetail.sources.yearlyGrowth}</div>
                       <div className={`text-2xl font-bold ${
                         analysis.real_sources.google_trends.growth_rate >= 0 ? 'text-emerald-400' : 'text-red-400'
                       }`}>
@@ -1515,7 +1540,7 @@ export default function TrendPage() {
                       </div>
                     </div>
                     <div className="p-4 bg-zinc-800/50 rounded-lg">
-                      <div className="text-sm text-zinc-400 mb-1">Связанные запросы</div>
+                      <div className="text-sm text-zinc-400 mb-1">{t.trendDetail.sources.relatedQueries}</div>
                       <div className="text-lg text-white">
                         {analysis.real_sources.google_trends.related_queries?.length || 0}
                       </div>
@@ -1526,7 +1551,7 @@ export default function TrendPage() {
                   {analysis.real_sources.google_trends.related_queries &&
                    analysis.real_sources.google_trends.related_queries.length > 0 && (
                     <div>
-                      <div className="text-sm text-zinc-400 mb-3">Связанные запросы:</div>
+                      <div className="text-sm text-zinc-400 mb-3">{t.trendDetail.sources.relatedQueries}:</div>
                       <div className="space-y-2">
                         {analysis.real_sources.google_trends.related_queries.slice(0, 8).map((q, i) => {
                           // Parse growth value - can be "100", "+150%", "Breakout", etc.
@@ -1679,7 +1704,7 @@ export default function TrendPage() {
                   className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                 >
                   <span>🏆</span>
-                  Анализ конкурентов
+                  {t.trendDetail.competition.analyzeCompetitors}
                 </button>
               </div>
             </div>
@@ -1691,35 +1716,35 @@ export default function TrendPage() {
               {loadingCompetition ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
-                  <p className="text-zinc-400">Анализируем конкурентов...</p>
+                  <p className="text-zinc-400">{t.trendDetail.competition.analyzingCompetitors}</p>
                 </div>
               ) : competition ? (
                 <>
                   {/* Competition Overview */}
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <div className="text-sm text-zinc-400 mb-2">Насыщенность рынка</div>
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.competition.marketSaturation}</div>
                       <div className={`text-2xl font-bold ${
                         competition.market_saturation === 'low' ? 'text-emerald-400' :
                         competition.market_saturation === 'medium' ? 'text-amber-400' : 'text-red-400'
                       }`}>
-                        {competition.market_saturation === 'low' ? 'Низкая' :
-                         competition.market_saturation === 'medium' ? 'Средняя' : 'Высокая'}
+                        {competition.market_saturation === 'low' ? t.trendDetail.competition.low :
+                         competition.market_saturation === 'medium' ? t.trendDetail.competition.medium : t.trendDetail.competition.high}
                       </div>
                     </div>
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                       <div className="text-sm text-zinc-400 mb-2">Blue Ocean Score</div>
                       <div className="text-2xl font-bold text-indigo-400">{competition.blue_ocean_score}/10</div>
-                      <div className="text-xs text-zinc-500 mt-1">Чем выше - тем меньше конкуренция</div>
+                      <div className="text-xs text-zinc-500 mt-1">{t.trendDetail.competition.blueOceanHint}</div>
                     </div>
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <div className="text-sm text-zinc-400 mb-2">Уровень риска</div>
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.competition.riskLevel}</div>
                       <div className={`text-2xl font-bold ${
                         competition.risk_level === 'low' ? 'text-emerald-400' :
                         competition.risk_level === 'medium' ? 'text-amber-400' : 'text-red-400'
                       }`}>
-                        {competition.risk_level === 'low' ? 'Низкий' :
-                         competition.risk_level === 'medium' ? 'Средний' : 'Высокий'}
+                        {competition.risk_level === 'low' ? t.trendDetail.competition.low :
+                         competition.risk_level === 'medium' ? t.trendDetail.competition.medium : t.trendDetail.competition.high}
                       </div>
                     </div>
                   </div>
@@ -1727,7 +1752,7 @@ export default function TrendPage() {
                   {/* Competitors */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-4">
-                      Конкуренты ({competition.competitors.length})
+                      {t.trendDetail.competition.competitors} ({competition.competitors.length})
                     </h3>
                     <div className="space-y-3">
                       {competition.competitors.map((comp, index) => (
@@ -1759,7 +1784,7 @@ export default function TrendPage() {
                   {competition.opportunity_areas.length > 0 && (
                     <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <span>💡</span> Области возможностей
+                        <span>💡</span> {t.trendDetail.competition.opportunityAreas}
                       </h3>
                       <div className="space-y-2">
                         {competition.opportunity_areas.map((area, index) => (
@@ -1774,7 +1799,7 @@ export default function TrendPage() {
 
                   {/* Sources */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-sm font-medium text-zinc-400 mb-3">Источники данных</h3>
+                    <h3 className="text-sm font-medium text-zinc-400 mb-3">{t.trendDetail.sources.dataSources}</h3>
                     <div className="flex flex-wrap gap-2">
                       {competition.sources.map((source, index) => (
                         <a
@@ -1795,22 +1820,22 @@ export default function TrendPage() {
 
                   {/* Next Step */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Следующий шаг</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.competition.nextStep}</h3>
                     <p className="text-zinc-400 mb-4">
-                      Изучите инвестиционный ландшафт и активные фонды в этой нише.
+                      {t.trendDetail.competition.ventureDescription}
                     </p>
                     <button
                       onClick={() => setCurrentStep('venture')}
                       className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                     >
                       <span>💰</span>
-                      Венчурные данные
+                      {t.trendDetail.venture.ventureData}
                     </button>
                   </div>
                 </>
               ) : (
                 <div className="text-center py-20 text-zinc-400">
-                  Не удалось загрузить данные о конкурентах
+                  {t.trendDetail.competition.loadError}
                 </div>
               )}
             </div>
@@ -1822,32 +1847,32 @@ export default function TrendPage() {
               {loadingVenture ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
-                  <p className="text-zinc-400">Собираем данные об инвестициях...</p>
+                  <p className="text-zinc-400">{t.trendDetail.venture.collectingData}</p>
                 </div>
               ) : ventureData ? (
                 <>
                   {/* Overview */}
                   <div className="grid md:grid-cols-4 gap-4">
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <div className="text-sm text-zinc-400 mb-2">Инвестиции за год</div>
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.venture.yearlyInvestments}</div>
                       <div className="text-2xl font-bold text-emerald-400">{ventureData.total_funding_last_year}</div>
                     </div>
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <div className="text-sm text-zinc-400 mb-2">Средний раунд</div>
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.venture.averageRound}</div>
                       <div className="text-2xl font-bold text-white">{ventureData.average_round_size}</div>
                     </div>
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <div className="text-sm text-zinc-400 mb-2">Тренд финансирования</div>
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.venture.fundingTrend}</div>
                       <div className={`text-2xl font-bold ${
                         ventureData.funding_trend === 'growing' ? 'text-emerald-400' :
                         ventureData.funding_trend === 'stable' ? 'text-amber-400' : 'text-red-400'
                       }`}>
-                        {ventureData.funding_trend === 'growing' ? '📈 Растёт' :
-                         ventureData.funding_trend === 'stable' ? '➡️ Стабильно' : '📉 Падает'}
+                        {ventureData.funding_trend === 'growing' ? `📈 ${t.trendDetail.venture.growing}` :
+                         ventureData.funding_trend === 'stable' ? `➡️ ${t.trendDetail.venture.stable}` : `📉 ${t.trendDetail.venture.declining}`}
                       </div>
                     </div>
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <div className="text-sm text-zinc-400 mb-2">Инвест. привлекательность</div>
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.venture.investmentAttractiveness}</div>
                       <div className="text-2xl font-bold text-indigo-400">{ventureData.investment_hotness}/10</div>
                     </div>
                   </div>
@@ -1856,7 +1881,7 @@ export default function TrendPage() {
                   {ventureData.recent_rounds.length > 0 && (
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4">
-                        Недавние раунды ({ventureData.recent_rounds.length})
+                        {t.trendDetail.venture.recentRounds} ({ventureData.recent_rounds.length})
                       </h3>
                       <div className="space-y-3">
                         {ventureData.recent_rounds.map((round, index) => (
@@ -1889,7 +1914,7 @@ export default function TrendPage() {
                   {ventureData.active_funds.length > 0 && (
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4">
-                        Активные фонды ({ventureData.active_funds.length})
+                        {t.trendDetail.venture.activeFunds} ({ventureData.active_funds.length})
                       </h3>
                       <div className="grid md:grid-cols-2 gap-4">
                         {ventureData.active_funds.map((fund, index) => (
@@ -1912,7 +1937,7 @@ export default function TrendPage() {
                                 rel="noopener noreferrer"
                                 className="text-xs text-indigo-400 hover:text-indigo-300"
                               >
-                                Сайт
+                                {t.trendDetail.venture.website}
                               </a>
                               <a
                                 href={fund.crunchbase_url}
@@ -1933,7 +1958,7 @@ export default function TrendPage() {
                   {ventureData.market_signals.length > 0 && (
                     <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <span>📡</span> Рыночные сигналы
+                        <span>📡</span> {t.trendDetail.venture.marketSignals}
                       </h3>
                       <div className="space-y-2">
                         {ventureData.market_signals.map((signal, index) => (
@@ -1948,7 +1973,7 @@ export default function TrendPage() {
 
                   {/* Sources */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-sm font-medium text-zinc-400 mb-3">Источники данных</h3>
+                    <h3 className="text-sm font-medium text-zinc-400 mb-3">{t.trendDetail.sources.dataSources}</h3>
                     <div className="flex flex-wrap gap-2">
                       {ventureData.sources.map((source, index) => (
                         <a
@@ -2770,13 +2795,12 @@ export default function TrendPage() {
                   {/* CTA блок */}
                   <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-8 text-center">
                     <h3 className="text-2xl font-bold text-white mb-4">
-                      Создать {selectedProductType === 'landing' ? 'Landing Page' :
-                               selectedProductType === 'saas' ? 'SaaS приложение' :
-                               selectedProductType === 'ai-wrapper' ? 'AI приложение' : 'Магазин'}
+                      {language === 'ru' ? 'Создать рабочий MVP' : 'Create Working MVP'}
                     </h3>
                     <p className="text-zinc-400 mb-6 max-w-lg mx-auto">
-                      Система сгенерирует полностью рабочий код с интеграцией Supabase,
-                      готовый к запуску {autoDeploy ? 'и автоматически задеплоит на Vercel' : ''}.
+                      {language === 'ru'
+                        ? 'AI проанализирует тренд и предложит оптимальный тип MVP с реальной функциональностью'
+                        : 'AI will analyze the trend and suggest the optimal MVP type with real functionality'}
                     </p>
                     {projectError && (
                       <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
@@ -2785,19 +2809,21 @@ export default function TrendPage() {
                     )}
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                       <button
-                        onClick={() => createProject(false)}
+                        onClick={() => handleOpenMVPSelector(false)}
                         className="px-8 py-4 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl font-medium transition-all inline-flex items-center gap-2"
                       >
                         <span>📋</span>
-                        Только спецификация
+                        {language === 'ru' ? 'Только спецификация' : 'Specification Only'}
                       </button>
                       {isGithubAuthenticated ? (
                         <button
-                          onClick={() => createProject(true)}
+                          onClick={() => handleOpenMVPSelector(true)}
                           className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25"
                         >
                           <span>🚀</span>
-                          {autoDeploy ? 'Создать + GitHub + Deploy' : 'Создать + GitHub репо'}
+                          {autoDeploy
+                            ? (language === 'ru' ? 'Создать + GitHub + Deploy' : 'Create + GitHub + Deploy')
+                            : (language === 'ru' ? 'Создать + GitHub репо' : 'Create + GitHub Repo')}
                         </button>
                       ) : (
                         <a
@@ -2805,13 +2831,15 @@ export default function TrendPage() {
                           className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                         >
                           <span>🔐</span>
-                          Войти в GitHub для создания репо
+                          {language === 'ru' ? 'Войти в GitHub для создания репо' : 'Login to GitHub to create repo'}
                         </a>
                       )}
                     </div>
                     {!isGithubAuthenticated && (
                       <p className="mt-4 text-sm text-zinc-500">
-                        После авторизации вы сможете автоматически создать репозиторий с рабочим кодом
+                        {language === 'ru'
+                          ? 'После авторизации вы сможете автоматически создать репозиторий с рабочим кодом'
+                          : 'After authorization you can automatically create a repository with working code'}
                       </p>
                     )}
                   </div>
@@ -3214,6 +3242,32 @@ export default function TrendPage() {
           } : undefined,
         }}
       />
+
+      {/* MVP Type Selector Modal */}
+      {showMVPSelector && trend && (
+        <MVPTypeSelector
+          context={{
+            trend: {
+              id: trend.id,
+              title: trend.title,
+              category: trend.category,
+              why_trending: trend.why_trending,
+            },
+            analysis: analysis ? {
+              main_pain: analysis.main_pain,
+              key_pain_points: analysis.key_pain_points,
+              target_audience: analysis.target_audience,
+            } : undefined,
+            pitch: pitchDeck ? {
+              company_name: pitchDeck.title,
+              tagline: pitchDeck.tagline,
+            } : undefined,
+          } as MVPGenerationContext}
+          onSelect={handleMVPTypeSelect}
+          onCancel={() => setShowMVPSelector(false)}
+          isLoading={loadingProject}
+        />
+      )}
     </div>
   );
 }

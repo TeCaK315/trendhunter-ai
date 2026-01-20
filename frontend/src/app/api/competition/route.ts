@@ -48,22 +48,25 @@ interface Competitor {
 interface CompetitionData {
   competitors: Competitor[];
   market_saturation: 'low' | 'medium' | 'high';
-  blue_ocean_score: number; // 0-10, higher = less competition
+  blue_ocean_score: number;
   total_funding_in_niche: string;
   opportunity_areas: string[];
   risk_level: 'low' | 'medium' | 'high';
   sources: Array<{ name: string; url: string; accessed_at: string }>;
   analyzed_at: string;
+  error?: string;
 }
 
-// Search for competitors using SerpAPI Google Search
-async function searchCompetitors(query: string): Promise<Competitor[]> {
-  const competitors: Competitor[] = [];
-
+// Search for competitors using SerpAPI Google Search - NO MOCKS
+async function searchCompetitors(query: string): Promise<{ competitors: Competitor[]; error?: string }> {
   if (!SERPAPI_KEY) {
-    // Return mock data if no API key
-    return getMockCompetitors(query);
+    return {
+      competitors: [],
+      error: 'SERPAPI_KEY не настроен. Добавьте ключ в .env.local для поиска конкурентов.'
+    };
   }
+
+  const competitors: Competitor[] = [];
 
   try {
     // Search for startups/companies in this space
@@ -72,20 +75,32 @@ async function searchCompetitors(query: string): Promise<Competitor[]> {
 
     const response = await fetch(searchUrl);
     if (!response.ok) {
-      console.log('SerpAPI search error:', response.status);
-      return getMockCompetitors(query);
+      const errorText = await response.text();
+      console.error('SerpAPI search error:', response.status, errorText);
+      return {
+        competitors: [],
+        error: `Ошибка SerpAPI (${response.status}): Не удалось найти конкурентов`
+      };
     }
 
     const data = await response.json();
+
+    // Check for API error
+    if (data.error) {
+      return {
+        competitors: [],
+        error: `SerpAPI: ${data.error}`
+      };
+    }
+
     const organicResults = data.organic_results || [];
 
     for (const result of organicResults.slice(0, 8)) {
-      // Filter out non-company results
       const title = result.title || '';
       const link = result.link || '';
       const snippet = result.snippet || '';
 
-      // Skip if it's a news article, blog, or listicle
+      // Skip news articles, blogs, listicles
       if (link.includes('medium.com') ||
           link.includes('forbes.com') ||
           link.includes('techcrunch.com') ||
@@ -109,17 +124,27 @@ async function searchCompetitors(query: string): Promise<Competitor[]> {
 
   } catch (error) {
     console.error('Error searching competitors:', error);
-    return getMockCompetitors(query);
+    return {
+      competitors: [],
+      error: `Ошибка сети при поиске конкурентов: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
   }
 
-  return competitors.slice(0, 10);
+  if (competitors.length === 0) {
+    return {
+      competitors: [],
+      error: `По запросу "${query}" не найдено конкурентов`
+    };
+  }
+
+  return { competitors: competitors.slice(0, 10) };
 }
 
 // Search Product Hunt for competitors
 async function searchProductHunt(query: string): Promise<Competitor[]> {
-  const competitors: Competitor[] = [];
-
   if (!SERPAPI_KEY) return [];
+
+  const competitors: Competitor[] = [];
 
   try {
     const searchQuery = `site:producthunt.com ${query}`;
@@ -147,7 +172,7 @@ async function searchProductHunt(query: string): Promise<Competitor[]> {
       });
     }
   } catch (error) {
-    console.log('Product Hunt search error:', error);
+    console.error('Product Hunt search error:', error);
   }
 
   return competitors;
@@ -155,27 +180,37 @@ async function searchProductHunt(query: string): Promise<Competitor[]> {
 
 // Extract company name from search result title
 function extractCompanyName(title: string): string {
-  // Remove common suffixes
   return title
-    .replace(/\s*[-|–]\s*.*/g, '') // Remove everything after dash/pipe
-    .replace(/\s*:\s*.*/g, '') // Remove everything after colon
-    .replace(/\.(com|io|co|app|ai)$/i, '') // Remove domain extensions
+    .replace(/\s*[-|–]\s*.*/g, '')
+    .replace(/\s*:\s*.*/g, '')
+    .replace(/\.(com|io|co|app|ai)$/i, '')
     .trim()
     .substring(0, 50);
 }
 
-// Analyze competition using AI with full context from previous experts
+// Analyze competition using AI with full context
 async function analyzeCompetition(
   query: string,
   competitors: Competitor[],
   context?: PreviousContext
 ): Promise<Partial<CompetitionData> & { strategic_positioning?: string; differentiation_opportunities?: string[] }> {
   if (!OPENAI_API_KEY) {
-    return getDefaultAnalysis(competitors);
+    return {
+      ...getDefaultAnalysis(competitors),
+      error: 'OPENAI_API_KEY не настроен. AI-анализ недоступен.'
+    };
+  }
+
+  if (competitors.length === 0) {
+    return {
+      market_saturation: 'low',
+      blue_ocean_score: 9,
+      opportunity_areas: ['Рынок свободен - конкуренты не найдены'],
+      risk_level: 'low',
+    };
   }
 
   try {
-    // Формируем контекст от предыдущих экспертов
     let contextSection = '';
     if (context?.analysis) {
       contextSection += `
@@ -236,13 +271,17 @@ ${competitors.map((c, i) => `${i + 1}. ${c.name}: ${c.description}`).join('\n')}
     });
 
     if (!response.ok) {
-      return getDefaultAnalysis(competitors);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('OpenAI API error:', response.status, errorData);
+      return {
+        ...getDefaultAnalysis(competitors),
+        error: `Ошибка OpenAI API (${response.status}): ${errorData.error?.message || 'Не удалось выполнить анализ'}`
+      };
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    // Parse JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
@@ -257,6 +296,10 @@ ${competitors.map((c, i) => `${i + 1}. ${c.name}: ${c.description}`).join('\n')}
     }
   } catch (error) {
     console.error('AI analysis error:', error);
+    return {
+      ...getDefaultAnalysis(competitors),
+      error: `Ошибка AI-анализа: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
   }
 
   return getDefaultAnalysis(competitors);
@@ -267,28 +310,9 @@ function getDefaultAnalysis(competitors: Competitor[]): Partial<CompetitionData>
   return {
     market_saturation: count > 7 ? 'high' : count > 3 ? 'medium' : 'low',
     blue_ocean_score: Math.max(1, 10 - count),
-    opportunity_areas: ['Differentiation needed', 'Niche targeting', 'Better UX'],
+    opportunity_areas: count > 0 ? ['Требуется дифференциация', 'Фокус на нишу', 'Улучшение UX'] : ['Рынок свободен'],
     risk_level: count > 5 ? 'high' : count > 2 ? 'medium' : 'low',
   };
-}
-
-function getMockCompetitors(query: string): Competitor[] {
-  return [
-    {
-      name: 'Example Startup 1',
-      website: 'https://example1.com',
-      description: `A startup working on ${query} solutions for businesses.`,
-      source: 'Mock Data',
-      source_url: 'https://google.com',
-    },
-    {
-      name: 'Example Startup 2',
-      website: 'https://example2.com',
-      description: `Another company in the ${query} space with AI-powered features.`,
-      source: 'Mock Data',
-      source_url: 'https://google.com',
-    },
-  ];
 }
 
 export async function POST(request: NextRequest) {
@@ -303,15 +327,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Строим контекст от предыдущих экспертов
     const previousContext: PreviousContext | undefined = context;
     const searchQuery = query || trend_title || context?.trend?.title;
 
-    console.log(`Competition analysis for: ${searchQuery}`);
-    console.log(`Context received:`, previousContext?.analysis ? 'with analysis + sources' : 'basic');
+    // Check API keys
+    const missingKeys: string[] = [];
+    if (!SERPAPI_KEY) missingKeys.push('SERPAPI_KEY');
 
     // Search for competitors
-    const competitors = await searchCompetitors(searchQuery);
+    const { competitors, error: searchError } = await searchCompetitors(searchQuery);
 
     // Analyze competition with full context
     const analysis = await analyzeCompetition(searchQuery, competitors, previousContext);
@@ -320,10 +344,9 @@ export async function POST(request: NextRequest) {
       competitors,
       market_saturation: analysis.market_saturation || 'medium',
       blue_ocean_score: analysis.blue_ocean_score || 5,
-      total_funding_in_niche: 'Data requires Crunchbase API',
+      total_funding_in_niche: 'Требуется Crunchbase API для данных о финансировании',
       opportunity_areas: analysis.opportunity_areas || [],
       risk_level: analysis.risk_level || 'medium',
-      // Новые поля на основе контекста
       strategic_positioning: analysis.strategic_positioning || null,
       differentiation_opportunities: analysis.differentiation_opportunities || [],
       sources: [
@@ -340,6 +363,8 @@ export async function POST(request: NextRequest) {
       ],
       analyzed_at: new Date().toISOString(),
       context_received: !!previousContext?.analysis,
+      errors: [searchError, analysis.error].filter(Boolean),
+      warnings: missingKeys.length > 0 ? `Отсутствуют API ключи: ${missingKeys.join(', ')}` : undefined,
     };
 
     return NextResponse.json({
@@ -367,7 +392,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Redirect to POST handler
   const postRequest = new Request(request.url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
