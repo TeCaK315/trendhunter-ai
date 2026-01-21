@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
-import Sidebar from '@/components/layout/Sidebar';
 import { getItem, setItem, removeItem } from '@/lib/storage';
 
 // Interface for tracking which quick actions have responses
@@ -1275,10 +1274,7 @@ export default function ProjectPage() {
   const categoryIcon = categoryIcons[trend.category] || '📌';
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
-      <Sidebar />
-
-      <div className="lg:ml-64 min-h-screen flex flex-col">
+    <div className="flex flex-col">
         {/* Project header */}
         <header className="sticky top-0 z-30 glass border-b border-[var(--border-color)]">
           <div className="max-w-7xl mx-auto px-6 py-4">
@@ -2531,7 +2527,6 @@ export default function ProjectPage() {
           </div>
         )}
       </main>
-      </div>
 
       {/* Email Generation Modal */}
       {emailModalOpen && (

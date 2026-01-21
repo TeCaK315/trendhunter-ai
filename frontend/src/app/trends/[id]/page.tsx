@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Sidebar from '@/components/layout/Sidebar';
 import TrendChat from '@/components/TrendChat';
 import MVPTypeSelector from '@/components/MVPTypeSelector';
 import { recommendProductType, type ProductType } from '@/lib/productRecommendation';
-import { MVPType, MVPGenerationContext } from '@/lib/mvp-templates';
+import { MVPType, MVPGenerationContext, ProductSpecification } from '@/lib/mvp-templates';
 import { useLanguage } from '@/lib/i18n';
 
 interface Trend {
@@ -336,6 +335,11 @@ export default function TrendPage() {
   const [selectedMVPType, setSelectedMVPType] = useState<MVPType | null>(null);
   const [pendingCreateWithGithub, setPendingCreateWithGithub] = useState(false);
 
+  // Product Specification - AI гипотезы о продукте (NEW)
+  const [productSpec, setProductSpec] = useState<ProductSpecification | null>(null);
+  const [loadingProductSpec, setLoadingProductSpec] = useState(false);
+  const [productSpecError, setProductSpecError] = useState<string | null>(null);
+
   // Новые состояния для расширенного создания проекта
   const [selectedProductType, setSelectedProductType] = useState<'landing' | 'saas' | 'ai-wrapper' | 'ecommerce'>('landing');
   const [autoDeploy, setAutoDeploy] = useState(false);
@@ -499,6 +503,11 @@ export default function TrendPage() {
         tagline: pitchDeck.tagline,
         slides: pitchDeck.slides,
       };
+    }
+
+    // Добавляем Product Specification (AI-гипотезы о продукте)
+    if (productSpec) {
+      context.productSpec = productSpec;
     }
 
     return context;
@@ -706,6 +715,55 @@ export default function TrendPage() {
     return ((t.opportunity_score + t.pain_score + t.feasibility_score + t.profit_potential) / 4).toFixed(1);
   };
 
+  // Fetch Product Specification (AI гипотезы о продукте) - вызывается перед созданием проекта
+  const fetchProductSpec = async (): Promise<ProductSpecification | null> => {
+    if (!trend || !analysis?.main_pain) {
+      setProductSpecError('Необходим анализ болей перед созданием спецификации');
+      return null;
+    }
+
+    // Если уже есть - возвращаем
+    if (productSpec) return productSpec;
+
+    setLoadingProductSpec(true);
+    setProductSpecError(null);
+
+    try {
+      const context = buildAnalysisContext();
+
+      const response = await fetch('/api/product-spec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trend: {
+            title: trend.title,
+            category: trend.category,
+            why_trending: trend.why_trending,
+          },
+          analysis: context.analysis,
+          competition: context.competition,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.product_spec) {
+        setProductSpec(data.product_spec);
+        console.log('[ProductSpec] Generated:', data.metadata);
+        return data.product_spec;
+      } else {
+        setProductSpecError(data.error || 'Не удалось создать спецификацию');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching product spec:', error);
+      setProductSpecError('Ошибка при создании спецификации продукта');
+      return null;
+    } finally {
+      setLoadingProductSpec(false);
+    }
+  };
+
   // Fetch competition data
   const fetchCompetition = async () => {
     if (!trend || competition) return;
@@ -899,9 +957,14 @@ export default function TrendPage() {
   };
 
   // Обработчик выбора MVP типа
-  const handleMVPTypeSelect = (type: MVPType) => {
+  const handleMVPTypeSelect = async (type: MVPType) => {
     setSelectedMVPType(type);
     setShowMVPSelector(false);
+
+    // Получаем Product Specification перед созданием проекта
+    // Это даст META-агенту конкретные данные о том КАК должен работать продукт
+    await fetchProductSpec();
+
     createProject(pendingCreateWithGithub, type);
   };
 
@@ -912,7 +975,12 @@ export default function TrendPage() {
     setProjectError(null);
 
     try {
-      // Строим ПОЛНЫЙ контекст от ВСЕХ 7 предыдущих экспертов
+      // Сначала получаем Product Specification если ещё нет
+      if (!productSpec) {
+        await fetchProductSpec();
+      }
+
+      // Строим ПОЛНЫЙ контекст от ВСЕХ 7 предыдущих экспертов + productSpec
       const context = buildAnalysisContext();
 
       const response = await fetch('/api/create-project', {
@@ -1111,25 +1179,19 @@ export default function TrendPage() {
 
   if (!trend) {
     return (
-      <div className="min-h-screen bg-[#09090b]">
-        <Sidebar />
-        <div className="lg:ml-64 p-8">
-          <div className="text-center py-20">
-            <h1 className="text-2xl text-white mb-4">{t.trendDetail.notFound}</h1>
-            <Link href="/" className="text-indigo-400 hover:text-indigo-300">
-              {t.trendDetail.backToHome}
-            </Link>
-          </div>
+      <div className="p-8">
+        <div className="text-center py-20">
+          <h1 className="text-2xl text-white mb-4">{t.trendDetail.notFound}</h1>
+          <Link href="/" className="text-indigo-400 hover:text-indigo-300">
+            {t.trendDetail.backToHome}
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b]">
-      <Sidebar />
-
-      <div className="lg:ml-64 min-h-screen">
+    <div>
         {/* Breadcrumbs */}
         <div className="px-6 py-4 border-b border-zinc-800/50">
           <div className="flex items-center gap-2 text-sm">
@@ -1147,7 +1209,7 @@ export default function TrendPage() {
 
         {/* Flow Steps */}
         <div className="px-6 py-4 border-b border-zinc-800/50 bg-zinc-900/30">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
             {flowSteps.map((step, index) => {
               const isActive = step.id === currentStep;
               const isPast = flowSteps.findIndex(s => s.id === currentStep) > index;
@@ -3226,7 +3288,6 @@ export default function TrendPage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* Chat with context */}
       <TrendChat
@@ -3262,10 +3323,12 @@ export default function TrendPage() {
               company_name: pitchDeck.title,
               tagline: pitchDeck.tagline,
             } : undefined,
+            // NEW: Передаём productSpec если уже есть
+            productSpec: productSpec || undefined,
           } as MVPGenerationContext}
           onSelect={handleMVPTypeSelect}
           onCancel={() => setShowMVPSelector(false)}
-          isLoading={loadingProject}
+          isLoading={loadingProject || loadingProductSpec}
         />
       )}
     </div>

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Sidebar from '@/components/layout/Sidebar';
 import { getItem, setItem } from '@/lib/storage';
 
 interface NicheAnalysis {
@@ -124,10 +123,7 @@ export default function NicheResearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
-      <Sidebar />
-
-      <div className="lg:ml-64 min-h-screen">
+    <div>
         {/* Header */}
         <header className="sticky top-0 z-30 glass border-b border-[var(--border-color)]">
           <div className="max-w-7xl mx-auto px-6 py-4">
@@ -564,7 +560,6 @@ export default function NicheResearchPage() {
             </div>
           )}
         </main>
-      </div>
     </div>
   );
 }

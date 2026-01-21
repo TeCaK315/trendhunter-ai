@@ -78,6 +78,7 @@ export function generateMVP(
 
 /**
  * Получает рекомендуемый тип MVP с объяснением
+ * Если есть productSpec - использует его generation_approach для более точной рекомендации
  */
 export function getRecommendedMVPType(context: MVPGenerationContext): {
   type: MVPType;
@@ -85,6 +86,34 @@ export function getRecommendedMVPType(context: MVPGenerationContext): {
   reason: string;
   alternatives: MVPType[];
 } {
+  // Если есть productSpec - используем его рекомендацию
+  if (context.productSpec) {
+    const specApproach = context.productSpec.generation_approach;
+
+    // Маппинг generation_approach -> MVPType
+    const approachToType: Record<string, MVPType> = {
+      'ai-tool': 'ai-tool',
+      'calculator': 'calculator',
+      'dashboard': 'dashboard',
+      'automation': 'ai-tool', // automation -> ai-tool
+      'marketplace': 'dashboard', // marketplace -> dashboard
+      'content-platform': 'landing-waitlist', // content-platform -> landing
+    };
+
+    const type = approachToType[specApproach] || detectMVPType(context);
+    const confidence = Math.round(context.productSpec.confidence_score * 10); // 0-10 -> 0-100
+
+    // Формируем причину на основе productSpec
+    const reason = `AI анализ определил: ${context.productSpec.magic_location.description}. ` +
+      `Пользователь получает: ${context.productSpec.user_output.primary_output}`;
+
+    const alternatives: MVPType[] = ['ai-tool', 'calculator', 'dashboard', 'landing-waitlist']
+      .filter(t => t !== type) as MVPType[];
+
+    return { type, confidence, reason, alternatives };
+  }
+
+  // Fallback: старая логика
   const type = detectMVPType(context);
   const definition = getMVPTypeDefinition(type);
 

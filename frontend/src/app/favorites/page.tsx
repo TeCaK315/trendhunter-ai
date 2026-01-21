@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import Sidebar from '@/components/layout/Sidebar';
 import { getItem, setItem } from '@/lib/storage';
 
 interface Trend {
@@ -385,10 +384,7 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
   const analyzedCount = favorites.filter(f => analyses[f.id]).length;
 
   return (
-    <div className="min-h-screen bg-[#09090b]">
-      <Sidebar />
-
-      <div className="lg:ml-64 min-h-screen">
+    <div>
         {/* Header */}
         <header className="sticky top-0 z-30 glass border-b border-zinc-800/50">
           <div className="px-6 py-4">
@@ -541,7 +537,6 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
             </div>
           )}
         </main>
-      </div>
     </div>
   );
 }

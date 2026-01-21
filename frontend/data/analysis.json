@@ -3862,146 +3862,146 @@
     "trend-1768776365163-0": {
       "trend_id": "trend-1768776365163-0",
       "trend_title": "AI Customer Feedback Analyzer",
-      "main_pain": "Компании теряют время и ресурсы на ручной анализ отзывов клиентов, что замедляет процесс улучшения продуктов.",
+      "main_pain": "Недостаточная скорость и точность анализа отзывов клиентов",
       "key_pain_points": [
-        "Компании теряют время и ресурсы на ручной анализ отзывов клиентов.",
-        "Трудности в выявлении ключевых тем и паттернов в отзывах.",
-        "Нехватка инструментов для интеграции с существующими системами управления клиентскими данными."
+        "Недостаточная скорость и точность анализа отзывов клиентов",
+        "Недостаток интеграции с существующими системами",
+        "Проблема конфиденциальности данных и соблюдения регуляций"
       ],
       "target_audience": {
         "segments": [
           {
-            "name": "Малые и средние предприятия",
-            "size": "Составляют значительную часть рынка с высоким интересом к автоматизации.",
+            "name": "Менеджеры по продукту и владельцы малых и средних бизнесов",
+            "size": "Крупный рынок, так как многие компании ищут способы оптимизации анализа отзывов.",
             "willingness_to_pay": "high",
-            "where_to_find": "Профессиональные форумы, вебинары, выставки технологий.",
+            "where_to_find": "Профессиональные сообщества, форумы SaaS, мероприятия по обмену опытом.",
             "confidence": 8
           },
           {
-            "name": "Маркетологи и продуктовые менеджеры",
-            "size": "Важно для анализа и принятия решений.",
+            "name": "IT-менеджеры и маркетологи",
+            "size": "Средний рынок с возможностью роста.",
             "willingness_to_pay": "medium",
-            "where_to_find": "Профессиональные сообщества, конференции.",
+            "where_to_find": "Семинары, конференции по IT и маркетингу.",
             "confidence": 7.5
           }
         ]
       },
       "sentiment_score": 8.5,
       "status": "sources_collected",
-      "analyzed_at": "2026-01-19T02:00:13.279Z",
+      "analyzed_at": "2026-01-20T22:20:55.284Z",
       "analysis_type": "deep",
       "real_sources": {
         "reddit": {
           "posts": [
             {
-              "title": "Need help automating customer feedback analysis using AI",
-              "subreddit": "nocode",
-              "score": 409,
-              "num_comments": 74,
-              "url": "https://www.reddit.com/r/nocode/comments/1cmxou3/need_help_automating_customer_feedback_analysis/",
-              "created": "2026-01-19T02:00:03.785Z",
-              "selftext": "I run an online review and feedback tool called localyser.com that automatically fetches reviews from across the Web and analyzes them using AI."
-            },
-            {
               "title": "AI for customer feedback insight",
               "subreddit": "ProductManagement",
-              "score": 464,
-              "num_comments": 27,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/ProductManagement/comments/1bnthbc/ai_for_customer_feedback_insight/",
-              "created": "2026-01-19T02:00:03.785Z",
-              "selftext": "For starters, I think you can just paste a bunch of text into ChatGPT and ask it to extract a list of common themes."
+              "created": "2026-01-20T22:20:48.199Z",
+              "selftext": "AI can indeed streamline the process of generating insights from customer feedback. We use HiFivestar to collect data from web forms, surveys, ..."
+            },
+            {
+              "title": "Need help automating customer feedback analysis using AI",
+              "subreddit": "nocode",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/nocode/comments/1cmxou3/need_help_automating_customer_feedback_analysis/",
+              "created": "2026-01-20T22:20:48.199Z",
+              "selftext": "I'm using AI to process customer feedback for my company, which I get through email and social media. The AI summarizes the feedback and creates a task list of ..."
             },
             {
               "title": "Analyzing Customer Feedback at Scale",
               "subreddit": "ProductManagement",
-              "score": 240,
-              "num_comments": 100,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/ProductManagement/comments/1klawf2/analyzing_customer_feedback_at_scale/",
-              "created": "2026-01-19T02:00:03.786Z",
+              "created": "2026-01-20T22:20:48.199Z",
               "selftext": "We set up a single portal that everyone (customers + internal teams) uses to submit and track feedback. Makes it way easier to spot real ..."
             },
             {
               "title": "AI Augmented Restaurant Reviews Sentiment Analysis ...",
               "subreddit": "PowerBI",
-              "score": 403,
-              "num_comments": 38,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/PowerBI/comments/1dmpaab/ai_augmented_restaurant_reviews_sentiment/",
-              "created": "2026-01-19T02:00:03.786Z",
+              "created": "2026-01-20T22:20:48.199Z",
               "selftext": "The dashboard is designed to provide a comprehensive analysis of restaurant reviews, powered by AI and NLP (Natural Language Processing) machine learning ..."
             },
             {
               "title": "AI-Powered Tool to Automatically Evaluate Customer ...",
               "subreddit": "AI_Agents",
-              "score": 300,
-              "num_comments": 94,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/AI_Agents/comments/1knccdg/aipowered_tool_to_automatically_evaluate_customer/",
-              "created": "2026-01-19T02:00:03.786Z",
+              "created": "2026-01-20T22:20:48.199Z",
               "selftext": "It's an AI-powered solution that automatically analyzes monthly customer support chat logs (like Zendesk chat transcripts) and generates structured performance ..."
             },
             {
               "title": "Tried 3 feedback tools. Still ended up building our own ...",
               "subreddit": "ProductManagement",
-              "score": 407,
-              "num_comments": 102,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/ProductManagement/comments/1ll1ye5/tried_3_feedback_tools_still_ended_up_building/",
-              "created": "2026-01-19T02:00:03.787Z",
+              "created": "2026-01-20T22:20:48.199Z",
               "selftext": "AI handles categorization, sentiment analysis, and pattern recognition. This saves us hours and makes it easy for anyone, even without a ..."
             },
             {
               "title": "Built 12 free AI tools for entrepreneurs - would love your ...",
               "subreddit": "microsaas",
-              "score": 366,
-              "num_comments": 48,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/microsaas/comments/1m57mv1/built_12_free_ai_tools_for_entrepreneurs_would/",
-              "created": "2026-01-19T02:00:03.787Z",
+              "created": "2026-01-20T22:20:48.199Z",
               "selftext": "Hey everyone! I've been building a collection of AI-powered tools to solve the everyday pain points we all face as entrepreneurs and ..."
             },
             {
               "title": "Is anyone using AI to analyze their product/customer ...",
               "subreddit": "shopify",
-              "score": 193,
-              "num_comments": 59,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/shopify/comments/1b2x7vn/is_anyone_using_ai_to_analyze_their/",
-              "created": "2026-01-19T02:00:03.787Z",
+              "created": "2026-01-20T22:20:48.199Z",
               "selftext": "You can identify which aspects customers respond to most positively - be it shipping speed, a particular product line or feature - and focus on ..."
-            },
-            {
-              "title": "Built an AI-powered content analyzer to help with Google's ...",
-              "subreddit": "SaaS",
-              "score": 133,
-              "num_comments": 39,
-              "url": "https://www.reddit.com/r/SaaS/comments/1n8a5ym/built_an_aipowered_content_analyzer_to_help_with/",
-              "created": "2026-01-19T02:00:03.787Z",
-              "selftext": "I recently launched a tool called Rankora – it analyzes content and compares it against competitors to see how ready it is for Google's new AI ..."
             },
             {
               "title": "Built a simple GEO/SEO analyzer tool - would love honest ...",
               "subreddit": "microsaas",
-              "score": 99,
-              "num_comments": 20,
+              "score": 0,
+              "num_comments": 0,
               "url": "https://www.reddit.com/r/microsaas/comments/1pnim90/built_a_simple_geoseo_analyzer_tool_would_love/",
-              "created": "2026-01-19T02:00:03.787Z",
+              "created": "2026-01-20T22:20:48.199Z",
               "selftext": "It uses AI to analyze your content structure and suggest optimizations for both traditional search engines and AI assistants like ChatGPT, ..."
             },
             {
-              "title": "Поделитесь своим стартапом - ежеквартальный пост",
-              "subreddit": "startups",
-              "score": 379,
-              "num_comments": 57,
-              "url": "https://www.reddit.com/r/startups/comments/1jwuuer/share_your_startup_quarterly_post/?tl=ru",
-              "created": "2026-01-19T02:00:03.592Z",
-              "selftext": "Оно показывает надежные продукты, обзоры, лучшие предложения и со временем изучает ваши предпочтения. Наша цель - уменьшить усталость от ..."
+              "title": "Built an AI-powered content analyzer to help with Google's ...",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1n8a5ym/built_an_aipowered_content_analyzer_to_help_with/",
+              "created": "2026-01-20T22:20:48.199Z",
+              "selftext": "I recently launched a tool called Rankora – it analyzes content and compares it against competitors to see how ready it is for Google's new AI ..."
+            },
+            {
+              "title": "Начинаешь новую работу в SAP? Задавай здесь ...",
+              "subreddit": "SAP",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SAP/comments/16r29hf/starting_a_new_job_in_sap_post_here_for_questions/?tl=ru",
+              "created": "2026-01-20T22:20:47.704Z",
+              "selftext": "Начинаешь новую работу в SAP? Задавай здесь вопросы о советах для новичков, сертификации, зарплате, выборе технологического направления и других ..."
             }
           ],
           "communities": [
-            "nocode",
             "ProductManagement",
+            "nocode",
             "PowerBI",
             "AI_Agents",
             "microsaas",
-            "startups"
+            "SAP"
           ],
-          "engagement": 4709
+          "engagement": 0
         },
         "youtube": {
           "videos": [
@@ -4051,15 +4051,6 @@
               "thumbnail": "https://i.ytimg.com/vi/IhwZNMFTOAQ/hqdefault.jpg"
             },
             {
-              "title": "AI Customer Feedback Analyzer | NLP + Streamlit Project Demo",
-              "channel": "Sattyam Samania",
-              "description": "In this video, I am showing my project AI Customer Feedback Analyzer. Many companies get hundreds of reviews and support ...",
-              "videoId": "o3ZFV6Mxj_c",
-              "url": "https://www.youtube.com/watch?v=o3ZFV6Mxj_c",
-              "publishedAt": "2025-09-17T10:43:04Z",
-              "thumbnail": "https://i.ytimg.com/vi/o3ZFV6Mxj_c/hqdefault.jpg"
-            },
-            {
               "title": "AI Analyzes Customer Feedback: Turn Data into Gold!",
               "channel": "Rob Kalwarowsky",
               "description": "Brands drown in customer feedback. We use AI to analyze it, revealing key trends like packaging satisfaction vs. price concerns.",
@@ -4067,6 +4058,15 @@
               "url": "https://www.youtube.com/watch?v=yUkCtbFanR0",
               "publishedAt": "2025-05-17T14:01:45Z",
               "thumbnail": "https://i.ytimg.com/vi/yUkCtbFanR0/hqdefault.jpg"
+            },
+            {
+              "title": "AI Customer Feedback Analyzer | NLP + Streamlit Project Demo",
+              "channel": "Sattyam Samania",
+              "description": "In this video, I am showing my project AI Customer Feedback Analyzer. Many companies get hundreds of reviews and support ...",
+              "videoId": "o3ZFV6Mxj_c",
+              "url": "https://www.youtube.com/watch?v=o3ZFV6Mxj_c",
+              "publishedAt": "2025-09-17T10:43:04Z",
+              "thumbnail": "https://i.ytimg.com/vi/o3ZFV6Mxj_c/hqdefault.jpg"
             },
             {
               "title": "How to Create an AI Customer Feedback Analyzer Using AI Agent",
@@ -4105,63 +4105,61 @@
           ]
         },
         "google_trends": {
-          "growth_rate": -36,
+          "growth_rate": -40,
           "related_queries": [],
           "interest_timeline": [
             {
               "date": "Oct 26 – Nov 1, 2025",
-              "value": 50
+              "value": 48
             },
             {
               "date": "Nov 2 – 8, 2025",
-              "value": 56
+              "value": 54
             },
             {
               "date": "Nov 9 – 15, 2025",
-              "value": 57
+              "value": 55
             },
             {
               "date": "Nov 16 – 22, 2025",
-              "value": 66
+              "value": 63
             },
             {
               "date": "Nov 23 – 29, 2025",
-              "value": 75
+              "value": 69
             },
             {
               "date": "Nov 30 – Dec 6, 2025",
-              "value": 92
-            },
-            {
-              "date": "Dec 7 – 13, 2025",
-              "value": 96
-            },
-            {
-              "date": "Dec 14 – 20, 2025",
               "value": 90
             },
             {
+              "date": "Dec 7 – 13, 2025",
+              "value": 81
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 86
+            },
+            {
               "date": "Dec 21 – 27, 2025",
-              "value": 52
+              "value": 51
             },
             {
               "date": "Dec 28, 2025 – Jan 3, 2026",
-              "value": 49
+              "value": 47
             },
             {
               "date": "Jan 4 – 10, 2026",
-              "value": 32
+              "value": 35
             },
             {
               "date": "Jan 11 – 17, 2026",
-              "value": 32
+              "value": 29
             }
           ],
           "search_query": "Customer Feedback",
-          "is_mock_data": false,
           "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Customer+Feedback%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
-          "fetched_at": "2026-01-19T02:00:07.583Z",
-          "simplified_from": "AI Customer Feedback Analyzer"
+          "fetched_at": "2026-01-20T22:20:48.075Z"
         },
         "facebook": {
           "pages": [],
@@ -4766,5 +4764,5 @@
       }
     }
   },
-  "lastUpdated": "2026-01-19T23:19:57.333Z"
+  "lastUpdated": "2026-01-20T22:20:55.319Z"
 }

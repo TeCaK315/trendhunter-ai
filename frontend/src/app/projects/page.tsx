@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
-import Sidebar from '@/components/layout/Sidebar';
 import { getItem } from '@/lib/storage';
 
 interface Project {
@@ -249,10 +248,7 @@ export default function ProjectsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
-      <Sidebar />
-
-      <div className="lg:ml-64 min-h-screen">
+    <div>
         {/* Sticky Header */}
         <header className="sticky top-0 z-30 glass border-b border-[var(--border-color)]">
           <div className="max-w-7xl mx-auto px-6 py-4">
@@ -698,7 +694,6 @@ export default function ProjectsPage() {
             </div>
           )}
         </main>
-      </div>
     </div>
   );
 }

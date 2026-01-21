@@ -22,28 +22,98 @@ function escapeJsx(str: string): string {
 
 /**
  * Генерирует конфигурацию AI Tool на основе контекста анализа
+ * Приоритет данных: productSpec > analysis > defaults
  */
 export function generateAIToolConfig(context: MVPGenerationContext): AIToolConfig {
   const mainPain = context.analysis?.main_pain || context.trend.title;
   const painPoints = context.analysis?.key_pain_points || [];
   const targetAudience = context.analysis?.target_audience?.primary || 'пользователи';
+  const productSpec = context.productSpec;
 
-  // Определяем тип инструмента на основе боли
-  const painLower = mainPain.toLowerCase();
-
+  // Если есть productSpec - используем его данные
   let inputType: 'text' | 'url' | 'form' = 'text';
   let outputFormat: 'text' | 'json' | 'list' | 'table' = 'list';
+  let inputPlaceholder = 'Введите текст для анализа...';
+  let systemPromptHint = '';
 
-  if (painLower.includes('отзыв') || painLower.includes('review') ||
-      painLower.includes('feedback') || painLower.includes('комментар')) {
-    inputType = 'url';
-    outputFormat = 'table';
-  } else if (painLower.includes('анализ') || painLower.includes('analysis')) {
-    outputFormat = 'list';
+  if (productSpec) {
+    // Маппинг input_type из productSpec в AIToolConfig
+    const inputTypeMap: Record<string, 'text' | 'url' | 'form'> = {
+      'text': 'text',
+      'url': 'url',
+      'form': 'form',
+      'file': 'text', // fallback
+      'selection': 'form',
+      'voice': 'text',
+      'image': 'text',
+    };
+    inputType = inputTypeMap[productSpec.user_input.input_type] || 'text';
+
+    // Маппинг output_format из productSpec
+    const outputMap: Record<string, 'text' | 'json' | 'list' | 'table'> = {
+      'text': 'text',
+      'report': 'text',
+      'score': 'json',
+      'list': 'list',
+      'visualization': 'json',
+      'recommendation': 'list',
+      'action': 'list',
+    };
+    outputFormat = outputMap[productSpec.user_output.output_format] || 'list';
+
+    // Генерируем placeholder на основе required_fields
+    if (productSpec.user_input.required_fields.length > 0) {
+      const field = productSpec.user_input.required_fields[0];
+      inputPlaceholder = field.example || field.description || productSpec.user_input.primary_input;
+    } else {
+      inputPlaceholder = productSpec.user_input.primary_input;
+    }
+
+    // Используем AI prompt hint если есть
+    systemPromptHint = productSpec.magic_location.ai_prompt_hint || '';
+  } else {
+    // Fallback: определяем тип на основе боли (старая логика)
+    const painLower = mainPain.toLowerCase();
+    if (painLower.includes('отзыв') || painLower.includes('review') ||
+        painLower.includes('feedback') || painLower.includes('комментар')) {
+      inputType = 'url';
+      outputFormat = 'table';
+    } else if (painLower.includes('анализ') || painLower.includes('analysis')) {
+      outputFormat = 'list';
+    }
+    inputPlaceholder = inputType === 'url'
+      ? 'Вставьте ссылку на Reddit пост, Product Hunt, или другой источник...'
+      : 'Введите текст для анализа...';
   }
 
-  // Генерируем системный промпт
-  const systemPrompt = `Ты - эксперт по анализу в области "${context.trend.title}".
+  // Генерируем системный промпт с учётом productSpec
+  let systemPrompt: string;
+
+  if (productSpec && systemPromptHint) {
+    // Используем AI-сгенерированный hint как основу
+    systemPrompt = `Ты - эксперт по анализу в области "${context.trend.title}".
+
+${systemPromptHint}
+
+Контекст задачи:
+- Главная боль пользователя: ${mainPain}
+- Целевая аудитория: ${targetAudience}
+- Что пользователь ожидает получить: ${productSpec.user_output.primary_output}
+- Пример выходных данных: ${productSpec.user_output.example}
+
+${painPoints.length > 0 ? `Дополнительные аспекты для анализа:
+${painPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}` : ''}
+
+Формат ответа:
+- ${productSpec.user_output.output_format === 'list' ? 'Используй bullet points для структурирования' : ''}
+- ${productSpec.user_output.output_format === 'report' ? 'Сформируй детальный отчёт с заголовками' : ''}
+- ${productSpec.user_output.output_format === 'score' ? 'Выдай числовую оценку с обоснованием' : ''}
+- ${productSpec.user_output.output_format === 'recommendation' ? 'Дай конкретные рекомендации к действию' : ''}
+- Выдели главные инсайты
+- Отвечай на русском языке, если не указано иное.`;
+  } else {
+    // Fallback: старая логика промпта
+    systemPrompt = `Ты - эксперт по анализу в области "${context.trend.title}".
 
 Твоя задача: ${mainPain}
 
@@ -59,20 +129,24 @@ ${painPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 - Добавь рекомендации по действиям
 
 Отвечай на русском языке, если не указано иное.`;
+  }
+
+  // Генерируем название и описание
+  const toolName = context.pitch?.company_name || `${context.trend.title} Analyzer`;
+  const toolDescription = productSpec
+    ? productSpec.user_output.value_proposition
+    : (context.pitch?.tagline || `Умный анализатор для ${mainPain}`);
 
   return {
-    toolName: context.pitch?.company_name || `${context.trend.title} Analyzer`,
-    toolDescription: context.pitch?.tagline || `Умный анализатор для ${mainPain}`,
+    toolName,
+    toolDescription,
     inputType,
-    inputPlaceholder: inputType === 'url'
-      ? 'Вставьте ссылку на Reddit пост, Product Hunt, или другой источник...'
-      : 'Введите текст для анализа...',
+    inputPlaceholder,
     systemPrompt,
     outputFormat,
-    exampleInput: inputType === 'url'
-      ? 'https://www.reddit.com/r/startups/comments/...'
-      : 'Пример текста для анализа...',
-    exampleOutput: 'Структурированные результаты анализа появятся здесь'
+    exampleInput: productSpec?.user_input.required_fields[0]?.example
+      || (inputType === 'url' ? 'https://www.reddit.com/r/startups/comments/...' : 'Пример текста для анализа...'),
+    exampleOutput: productSpec?.user_output.example || 'Структурированные результаты анализа появятся здесь'
   };
 }
 

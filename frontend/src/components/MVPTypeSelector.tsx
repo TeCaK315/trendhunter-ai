@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { MVPType, mvpTypeDefinitions, getRecommendedMVPType, MVPGenerationContext } from '@/lib/mvp-templates';
 import { useLanguage } from '@/lib/i18n';
+import ProductSpecPreview from './ProductSpecPreview';
 
 interface MVPTypeSelectorProps {
   context: MVPGenerationContext;
@@ -109,6 +110,13 @@ export default function MVPTypeSelector({
                 <p className="text-zinc-300">{recommendation.reason}</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Product Spec Preview */}
+        {context.productSpec && (
+          <div className="px-6 mt-4">
+            <ProductSpecPreview spec={context.productSpec} />
           </div>
         )}
 

@@ -21,6 +21,102 @@ export interface MVPTypeDefinition {
   generationTime: string; // Примерное время генерации
 }
 
+/**
+ * Product Specification - AI-сгенерированные гипотезы о продукте
+ * Создаётся ПОСЛЕ анализа болей и ПЕРЕД генерацией кода
+ */
+export interface ProductSpecification {
+  // Что пользователь получает
+  user_output: {
+    primary_output: string;
+    output_format: 'text' | 'report' | 'score' | 'list' | 'visualization' | 'recommendation' | 'action';
+    example: string;
+    value_proposition: string;
+  };
+
+  // Что пользователь вводит
+  user_input: {
+    primary_input: string;
+    input_type: 'text' | 'url' | 'file' | 'form' | 'selection' | 'voice' | 'image';
+    required_fields: Array<{
+      name: string;
+      type: string;
+      description: string;
+      example?: string;
+    }>;
+    optional_fields?: Array<{
+      name: string;
+      type: string;
+      description: string;
+    }>;
+  };
+
+  // User flow
+  user_flow: {
+    steps: Array<{
+      step_number: number;
+      action: string;
+      user_sees: string;
+      time_to_complete: string;
+    }>;
+    total_time_to_value: string;
+    aha_moment: string;
+  };
+
+  // Где происходит магия
+  magic_location: {
+    type: 'ai_analysis' | 'ai_generation' | 'formula_calculation' | 'data_aggregation' | 'api_orchestration' | 'pattern_matching';
+    description: string;
+    technical_approach: string;
+    ai_prompt_hint?: string;
+  };
+
+  // Технические требования
+  technical_requirements: {
+    apis_needed: Array<{
+      name: string;
+      purpose: string;
+      free_tier_available: boolean;
+      estimated_cost?: string;
+    }>;
+    database_required: boolean;
+    database_reason?: string;
+    auth_required: boolean;
+    auth_reason?: string;
+    recommended_stack: {
+      frontend: string;
+      backend: string;
+      database?: string;
+      ai_provider?: string;
+    };
+  };
+
+  // Монетизация
+  monetization: {
+    model: 'freemium' | 'subscription' | 'pay_per_use' | 'one_time' | 'free_with_ads' | 'enterprise';
+    free_tier_limits?: string;
+    pricing_tiers?: Array<{
+      name: string;
+      price: string;
+      features: string[];
+    }>;
+    reasoning: string;
+  };
+
+  // Текущее решение пользователя
+  current_user_solution: {
+    how_they_solve_now: string;
+    pain_points_with_current: string[];
+    our_advantage: string;
+    switching_cost: 'low' | 'medium' | 'high';
+  };
+
+  // Метаданные
+  confidence_score: number;
+  generation_approach: 'ai-tool' | 'calculator' | 'dashboard' | 'automation' | 'marketplace' | 'content-platform';
+  mvp_complexity: 'simple' | 'medium' | 'complex';
+}
+
 // Полный контекст анализа для генерации MVP
 export interface MVPGenerationContext {
   trend: {
@@ -69,6 +165,8 @@ export interface MVPGenerationContext {
     company_name?: string;
     tagline?: string;
   };
+  // NEW: Product Specification - AI-гипотезы о продукте
+  productSpec?: ProductSpecification;
 }
 
 // Результат генерации MVP
