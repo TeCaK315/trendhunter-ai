@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAgent, parseJSONResponse, formatErrorForUser, type OpenAIError } from '@/lib/openai';
+import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 
 /**
  * /api/product-spec
@@ -257,6 +258,14 @@ async function runProductSpecAgent(
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting - uses GPT-4o
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`analysis:${clientIP}`, RATE_LIMITS.analysis);
+
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const body: ProductSpecRequest = await request.json();
 
     if (!body.trend?.title) {

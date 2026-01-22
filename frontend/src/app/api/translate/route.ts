@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callOpenAI, type OpenAIMessage } from '@/lib/openai';
+import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 
 interface TranslateRequest {
   content: Record<string, unknown>;
@@ -18,6 +19,14 @@ function getCacheKey(content: Record<string, unknown>, targetLang: string): stri
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`translate:${clientIP}`, RATE_LIMITS.translate);
+
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const body: TranslateRequest = await request.json();
     const { content, targetLang, fields } = body;
 
@@ -195,6 +204,14 @@ Example output for English: {"title": "AI Analyzer", "items": [{"name": "Optimis
 // Batch перевод для нескольких объектов
 export async function PUT(request: NextRequest) {
   try {
+    // Rate limiting (batch uses same limit as single)
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`translate:${clientIP}`, RATE_LIMITS.translate);
+
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const body: { items: Record<string, unknown>[]; targetLang: 'en' | 'ru'; fields?: string[] } = await request.json();
     const { items, targetLang, fields } = body;
 

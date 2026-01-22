@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAgent, parseJSONResponse, formatErrorForUser, type OpenAIError } from '@/lib/openai';
+import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 
 interface DeepAnalysisRequest {
   trend_title: string;
@@ -155,6 +156,14 @@ async function runAgent(systemPrompt: string, userPrompt: string): Promise<{ suc
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting - analysis uses expensive GPT-4o
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`analysis:${clientIP}`, RATE_LIMITS.analysis);
+
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const body: DeepAnalysisRequest = await request.json();
 
     if (!body.trend_title) {

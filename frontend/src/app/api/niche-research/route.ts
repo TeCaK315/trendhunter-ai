@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { researchNiche, isAIConfigured } from '@/lib/ai';
+import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 
 interface NicheResearchRequest {
   niche: string;
@@ -10,6 +11,14 @@ interface NicheResearchRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`analysis:${clientIP}`, RATE_LIMITS.analysis);
+
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const body: NicheResearchRequest = await request.json();
 
     if (!body.niche || !body.description) {

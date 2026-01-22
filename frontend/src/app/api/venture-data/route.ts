@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -625,6 +626,14 @@ function getDefaultAnalysis(rounds: FundingRound[], funds: ActiveFund[]): Partia
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting - uses external APIs
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`analysis:${clientIP}`, RATE_LIMITS.analysis);
+
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const body = await request.json();
     const { query, trend_title, context } = body;
 

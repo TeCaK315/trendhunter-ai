@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callOpenAI, formatErrorForUser, type OpenAIMessage } from '@/lib/openai';
+import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 
 // Типы специализированных агентов
 type AgentType = 'general' | 'developer' | 'marketing' | 'sales' | 'designer';
@@ -205,6 +206,14 @@ ${KNOWLEDGE_BASE}`
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting for chat
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`chat:${clientIP}`, RATE_LIMITS.translate);
+
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const body: ChatRequest = await request.json();
     const { messages, trend_context, agent_type = 'general' } = body;
 
