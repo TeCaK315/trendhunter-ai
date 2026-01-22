@@ -70,9 +70,9 @@ interface VentureData {
 // Extract core niche keywords for more relevant search
 function extractNicheKeywords(query: string): string {
   const genericTerms = [
-    'ai-powered', 'ai powered', 'ai-based', 'ai based',
+    'ai-powered', 'ai powered', 'ai-based', 'ai based', 'ai ',
     'platform', 'tool', 'app', 'software', 'service', 'agent', 'assistant',
-    'automated', 'automation', 'intelligent', 'smart'
+    'automated', 'automation', 'intelligent', 'smart', 'solution', 'system'
   ];
 
   let cleaned = query.toLowerCase();
@@ -82,11 +82,50 @@ function extractNicheKeywords(query: string): string {
 
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
+  // If cleaned is too short, extract the main domain words
   if (cleaned.length < 5) {
-    return query.split(' ').slice(0, 3).join(' ');
+    const words = query.split(/\s+/).filter(w =>
+      w.length > 3 &&
+      !genericTerms.some(t => t.includes(w.toLowerCase()))
+    );
+    return words.slice(0, 2).join(' ') || query.split(' ').slice(0, 3).join(' ');
   }
 
   return cleaned;
+}
+
+// Get industry-specific search terms for funding searches
+function getIndustrySearchTerms(query: string): string[] {
+  const terms: string[] = [];
+  const lowerQuery = query.toLowerCase();
+
+  // Domain-specific industry mappings
+  const industryMappings: Record<string, string[]> = {
+    feedback: ['customer feedback', 'review management', 'voice of customer', 'VoC'],
+    customer: ['customer success', 'CX platform', 'customer service', 'customer experience'],
+    health: ['digital health', 'healthtech', 'mental health', 'telehealth'],
+    finance: ['fintech', 'financial software', 'payment', 'neobank'],
+    marketing: ['martech', 'marketing automation', 'advertising tech', 'adtech'],
+    sales: ['sales tech', 'revenue intelligence', 'sales enablement', 'CRM'],
+    hr: ['HR tech', 'HRtech', 'talent management', 'recruiting', 'ATS'],
+    learning: ['edtech', 'e-learning', 'corporate training', 'LMS'],
+    analytics: ['data analytics', 'business intelligence', 'BI platform'],
+    content: ['content tech', 'content management', 'creator economy', 'CMS'],
+    productivity: ['productivity software', 'workflow automation', 'collaboration'],
+    security: ['cybersecurity', 'infosec', 'security software'],
+    ecommerce: ['e-commerce', 'retail tech', 'online marketplace', 'DTC'],
+    support: ['helpdesk', 'ticketing system', 'support automation'],
+    analyzer: ['analytics platform', 'insights platform', 'data platform'],
+  };
+
+  // Find matching industries
+  for (const [key, alternatives] of Object.entries(industryMappings)) {
+    if (lowerQuery.includes(key)) {
+      terms.push(...alternatives.slice(0, 2));
+    }
+  }
+
+  return terms;
 }
 
 // Search for funding news using SerpAPI - NO MOCKS
@@ -102,10 +141,19 @@ async function searchFundingNews(query: string): Promise<{ rounds: FundingRound[
 
   try {
     const nicheKeywords = extractNicheKeywords(query);
+    const industryTerms = getIndustrySearchTerms(query);
 
-    // Search for recent funding announcements
-    const searchQuery = `"${nicheKeywords}" startup funding round 2025 2026 -OpenAI -Anthropic -Google -Microsoft`;
+    // Build search queries - prioritize industry-specific terms
+    const searchTerms = industryTerms.length > 0
+      ? industryTerms[0]  // Use first industry term as primary
+      : nicheKeywords;
+
+    // Search for recent funding announcements - exclude generic AI companies
+    const exclusions = '-OpenAI -Anthropic -Google -Microsoft -Meta -Amazon -Apple -Nvidia -"artificial intelligence market" -"AI market size" -"AI industry"';
+    const searchQuery = `"${searchTerms}" startup funding round 2025 2026 ${exclusions}`;
     const searchUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&tbs=qdr:m6&num=15&api_key=${SERPAPI_KEY}`;
+
+    console.log(`[venture-data] Searching for: ${searchTerms}`);
 
     const response = await fetch(searchUrl);
     if (!response.ok) {
@@ -128,14 +176,14 @@ async function searchFundingNews(query: string): Promise<{ rounds: FundingRound[
 
     const results = data.organic_results || [];
 
-    for (const result of results.slice(0, 8)) {
+    for (const result of results.slice(0, 10)) {
       const title = result.title || '';
       const link = result.link || '';
       const snippet = result.snippet || '';
 
       // Look for funding indicators
       const fundingMatch = snippet.match(/\$(\d+(?:\.\d+)?)\s*(M|million|B|billion)/i);
-      const roundMatch = title.match(/(seed|series\s*[a-z]|pre-seed|angel)/i);
+      const roundMatch = (title + ' ' + snippet).match(/(seed|series\s*[a-z]|pre-seed|angel|bridge|growth)/i);
 
       if (fundingMatch || roundMatch) {
         const amount = fundingMatch
@@ -153,8 +201,14 @@ async function searchFundingNews(query: string): Promise<{ rounds: FundingRound[
       }
     }
 
+    // If we have additional industry terms, search with them too
+    if (industryTerms.length > 1) {
+      const secondaryResults = await searchWithTerm(industryTerms[1]);
+      rounds.push(...secondaryResults);
+    }
+
     // Also search TechCrunch
-    const tcResults = await searchTechCrunch(query);
+    const tcResults = await searchTechCrunch(searchTerms);
     rounds.push(...tcResults);
 
   } catch (error) {
@@ -177,22 +231,65 @@ async function searchFundingNews(query: string): Promise<{ rounds: FundingRound[
   if (uniqueRounds.length === 0) {
     return {
       rounds: [],
-      error: `По запросу "${query}" не найдено данных о раундах финансирования`
+      error: `По запросу "${query}" не найдено данных о раундах финансирования в нише`
     };
   }
 
   return { rounds: uniqueRounds.slice(0, 10) };
 }
 
-// Search TechCrunch for funding news
-async function searchTechCrunch(query: string): Promise<FundingRound[]> {
+// Helper function to search with a specific term
+async function searchWithTerm(term: string): Promise<FundingRound[]> {
   if (!SERPAPI_KEY) return [];
 
   const rounds: FundingRound[] = [];
 
   try {
-    const nicheKeywords = extractNicheKeywords(query);
-    const searchQuery = `site:techcrunch.com "${nicheKeywords}" raises funding 2025 2026 -OpenAI -Anthropic`;
+    const exclusions = '-OpenAI -Anthropic -Google -Microsoft -Meta';
+    const searchQuery = `"${term}" startup raises funding 2025 2026 ${exclusions}`;
+    const searchUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&tbs=qdr:m6&num=8&api_key=${SERPAPI_KEY}`;
+
+    const response = await fetch(searchUrl);
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const results = data.organic_results || [];
+
+    for (const result of results.slice(0, 5)) {
+      const title = result.title || '';
+      const link = result.link || '';
+      const snippet = result.snippet || '';
+
+      const fundingMatch = snippet.match(/\$(\d+(?:\.\d+)?)\s*(M|million|B|billion)/i);
+      const roundMatch = (title + ' ' + snippet).match(/(seed|series\s*[a-z]|pre-seed|angel)/i);
+
+      if (fundingMatch || roundMatch) {
+        rounds.push({
+          company: extractCompanyFromTitle(title),
+          amount: fundingMatch ? `$${fundingMatch[1]}${fundingMatch[2].toUpperCase().charAt(0)}` : 'Undisclosed',
+          round_type: roundMatch ? roundMatch[1] : 'Unknown',
+          date: extractDateFromSnippet(snippet),
+          investors: extractInvestorsFromSnippet(snippet),
+          source_url: link,
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Secondary search error:', error);
+  }
+
+  return rounds;
+}
+
+// Search TechCrunch for funding news
+async function searchTechCrunch(searchTerms: string): Promise<FundingRound[]> {
+  if (!SERPAPI_KEY) return [];
+
+  const rounds: FundingRound[] = [];
+
+  try {
+    // Use the provided search terms directly - they're already industry-specific
+    const searchQuery = `site:techcrunch.com "${searchTerms}" raises funding 2025 2026 -OpenAI -Anthropic -"AI market" -"AI industry"`;
     const searchUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&tbs=qdr:m6&num=5&api_key=${SERPAPI_KEY}`;
 
     const response = await fetch(searchUrl);
@@ -201,7 +298,7 @@ async function searchTechCrunch(query: string): Promise<FundingRound[]> {
     const data = await response.json();
     const results = data.organic_results || [];
 
-    for (const result of results.slice(0, 3)) {
+    for (const result of results.slice(0, 5)) {
       const title = result.title || '';
       const link = result.link || '';
       const snippet = result.snippet || '';
@@ -238,9 +335,13 @@ async function searchActiveFunds(query: string): Promise<{ funds: ActiveFund[]; 
   const funds: ActiveFund[] = [];
 
   try {
-    const nicheKeywords = extractNicheKeywords(query);
-    const searchQuery = `"${nicheKeywords}" venture capital investors 2025 2026`;
+    // Use industry-specific terms for VC search
+    const industryTerms = getIndustrySearchTerms(query);
+    const searchTerm = industryTerms.length > 0 ? industryTerms[0] : extractNicheKeywords(query);
+    const searchQuery = `"${searchTerm}" venture capital investors 2025 2026 -"AI market"`;
     const searchUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(searchQuery)}&tbs=qdr:y&num=10&api_key=${SERPAPI_KEY}`;
+
+    console.log(`[venture-data] Searching VCs for: ${searchTerm}`);
 
     const response = await fetch(searchUrl);
     if (!response.ok) {
@@ -454,7 +555,7 @@ function extractDateFromSnippet(snippet: string): string {
   const monthMatch = snippet.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}/i);
   if (monthMatch) return monthMatch[0];
 
-  return 'Дата неизвестна';
+  return 'DATE_UNKNOWN';
 }
 
 function extractRoundType(text: string): string {

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
 import { getItem } from '@/lib/storage';
+import { useTranslations } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface Project {
   id: string;
@@ -111,6 +113,7 @@ const languageColors: Record<string, string> = {
 };
 
 export default function ProjectsPage() {
+  const t = useTranslations();
   const [projects, setProjects] = useState<Project[]>([]);
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,14 +257,16 @@ export default function ProjectsPage() {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">Мои проекты</h1>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t.projects.title}</h1>
                 <p className="text-sm text-[var(--text-muted)] mt-1">
-                  {projects.length > 0 ? `${projects.length} проектов создано` : 'Управляйте вашими проектами'}
+                  {projects.length > 0 ? `${projects.length} ${t.nav.projects.toLowerCase()}` : t.projects.emptyDescription}
                 </p>
               </div>
 
-              {/* View Toggle */}
-              <div className="flex items-center gap-2 bg-[var(--bg-secondary)] rounded-xl p-1">
+              <div className="flex items-center gap-3">
+                <LanguageSwitcher />
+                {/* View Toggle */}
+                <div className="flex items-center gap-2 bg-[var(--bg-secondary)] rounded-xl p-1">
                 <button
                   onClick={() => setActiveView('all')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -288,6 +293,7 @@ export default function ProjectsPage() {
                   </svg>
                   GitHub
                 </button>
+              </div>
               </div>
             </div>
           </div>

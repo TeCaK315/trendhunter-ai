@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getItem } from '@/lib/storage';
-import { useTranslations } from '@/lib/i18n';
+import { useTranslations, useLanguage, useTranslateContent } from '@/lib/i18n';
 
 interface Trend {
   id: string;
@@ -16,6 +16,7 @@ interface Trend {
   profit_potential: number;
   growth_rate: number;
   why_trending: string;
+  why_trending_en?: string; // English version for bilingual support
   status: string;
   first_detected_at: string;
   source?: string;
@@ -65,8 +66,32 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
   const [isProjectCompleted, setIsProjectCompleted] = useState(false);
   const router = useRouter();
   const t = useTranslations();
+  const { language } = useLanguage();
   const overallScore = getOverallScore(trend);
   const config = categoryConfig[trend.category] || { icon: '📌', color: 'from-zinc-500/20 to-zinc-600/20' };
+
+  // Для английского: используем готовый перевод why_trending_en если есть, иначе переводим через API
+  const needsTranslation = language === 'en' && !trend.why_trending_en;
+
+  // Перевод контента тренда (только если нет готового перевода)
+  const trendContent = needsTranslation ? {
+    title: trend.title,
+    why_trending: trend.why_trending,
+  } : null;
+
+  const { data: translatedTrend } = useTranslateContent(trendContent, {
+    cacheKey: `trend-card-${trend.id}`,
+    fields: ['title', 'why_trending']
+  });
+
+  // Используем переведённые данные или оригинал
+  const displayTitle = language === 'en'
+    ? (translatedTrend?.title || trend.title)
+    : trend.title;
+
+  const displayWhyTrending = language === 'en'
+    ? (trend.why_trending_en || translatedTrend?.why_trending || trend.why_trending)
+    : trend.why_trending;
 
   // Localized time ago
   const getTimeAgoLocalized = (dateString: string): string => {
@@ -171,12 +196,12 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
 
           {/* Title */}
           <h3 className="text-lg font-semibold text-white mb-2 leading-tight group-hover:text-indigo-100 transition-colors">
-            {trend.title}
+            {displayTitle}
           </h3>
 
           {/* Description */}
           <p className="text-sm text-zinc-400 mb-5 line-clamp-2 group-hover:text-zinc-300 transition-colors">
-            {trend.why_trending}
+            {displayWhyTrending}
           </p>
 
           {/* Metrics Grid */}
@@ -255,7 +280,7 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
                     <span className="text-base">{config.icon}</span>
                     <span>{trend.category}</span>
                   </div>
-                  <h2 className="text-2xl font-bold text-white">{trend.title}</h2>
+                  <h2 className="text-2xl font-bold text-white">{displayTitle}</h2>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
@@ -290,7 +315,7 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
                   <span>💡</span>
                   {t.trendCard.whyTrending}
                 </h3>
-                <p className="text-zinc-400">{trend.why_trending}</p>
+                <p className="text-zinc-400">{displayWhyTrending}</p>
               </div>
 
               {/* Detailed Metrics */}

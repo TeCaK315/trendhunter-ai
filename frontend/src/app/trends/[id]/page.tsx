@@ -7,7 +7,8 @@ import TrendChat from '@/components/TrendChat';
 import MVPTypeSelector from '@/components/MVPTypeSelector';
 import { recommendProductType, type ProductType } from '@/lib/productRecommendation';
 import { MVPType, MVPGenerationContext, ProductSpecification } from '@/lib/mvp-templates';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, useTranslateContent } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface Trend {
   id: string;
@@ -20,6 +21,7 @@ interface Trend {
   profit_potential: number;
   growth_rate: number;
   why_trending: string;
+  why_trending_en?: string;
   status: string;
   first_detected_at: string;
   source?: string;
@@ -79,7 +81,13 @@ interface TrendAnalysis {
   analysis_type?: 'basic' | 'deep';
 }
 
-type FlowStep = 'overview' | 'analysis' | 'sources' | 'competition' | 'venture' | 'leads' | 'pitch-deck' | 'project';
+// Оптимизированный flow: 4 основных шага вместо 8
+// Каждый шаг содержит подразделы с полным контентом
+type FlowStep = 'overview' | 'research' | 'business' | 'project';
+
+// Подразделы внутри каждого шага
+type ResearchSubTab = 'analysis' | 'sources' | 'competition';
+type BusinessSubTab = 'venture' | 'leads' | 'pitch';
 
 interface DecisionMaker {
   role: string;
@@ -262,7 +270,61 @@ export default function TrendPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [collectingSources, setCollectingSources] = useState(false);
   const [currentStep, setCurrentStep] = useState<FlowStep>('overview');
+  const [researchSubTab, setResearchSubTab] = useState<ResearchSubTab>('analysis');
+  const [businessSubTab, setBusinessSubTab] = useState<BusinessSubTab>('venture');
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Translation hooks for dynamic content
+  const trendForTranslation = trend ? {
+    why_trending: trend.why_trending,
+  } : null;
+
+  const { data: translatedTrend, isLoading: translatingTrend } = useTranslateContent(
+    language === 'en' && trend && !trend.why_trending_en ? trendForTranslation : null,
+    { cacheKey: trend ? `trend-${trend.id}` : undefined, fields: ['why_trending'] }
+  );
+
+  const analysisForTranslation = analysis ? {
+    main_pain: analysis.main_pain,
+    key_pain_points: analysis.key_pain_points,
+    // Target audience segments
+    target_segments: analysis.target_audience?.segments?.map(s => ({
+      name: s.name,
+      size: s.size,
+      willingness_to_pay: s.willingness_to_pay,
+      where_to_find: s.where_to_find || '',
+    })) || [],
+  } : null;
+
+  const { data: translatedAnalysis, isLoading: translatingAnalysis } = useTranslateContent(
+    language === 'en' && analysis ? analysisForTranslation : null,
+    { cacheKey: analysis ? `analysis-${analysis.trend_id}` : undefined, fields: ['main_pain', 'key_pain_points', 'target_segments'] }
+  );
+
+  // Computed translated values
+  const displayWhyTrending = trend ? (
+    language === 'en'
+      ? (trend.why_trending_en || translatedTrend?.why_trending || trend.why_trending)
+      : trend.why_trending
+  ) : '';
+
+  const displayMainPain = analysis ? (
+    language === 'en'
+      ? (translatedAnalysis?.main_pain || analysis.main_pain)
+      : analysis.main_pain
+  ) : '';
+
+  const displayKeyPainPoints = analysis?.key_pain_points ? (
+    language === 'en'
+      ? (translatedAnalysis?.key_pain_points || analysis.key_pain_points)
+      : analysis.key_pain_points
+  ) : [];
+
+  const displayTargetSegments = analysis?.target_audience?.segments ? (
+    language === 'en'
+      ? ((translatedAnalysis?.target_segments as typeof analysis.target_audience.segments) || analysis.target_audience.segments)
+      : analysis.target_audience.segments
+  ) : [];
 
   // Ref для отслеживания установки tab из URL (чтобы fetchData не перезаписывал)
   const tabSetFromUrlRef = useRef(false);
@@ -287,6 +349,48 @@ export default function TrendPage() {
     skeptic_summary?: string;
     consensus_reached?: boolean;
   } | null>(null);
+
+  // Translation for rawAnalyses (Optimist/Skeptic debate)
+  const rawAnalysesForTranslation = (rawAnalyses.optimist && rawAnalyses.skeptic) ? {
+    optimist_pains: rawAnalyses.optimist.pains.map(p => ({ pain: p.pain, reasoning: p.reasoning })),
+    skeptic_pains: rawAnalyses.skeptic.pains.map(p => ({ pain: p.pain, reasoning: p.reasoning })),
+    optimist_conclusion: analysisMetadata?.optimist_summary || rawAnalyses.optimist.overall_assessment,
+    skeptic_conclusion: analysisMetadata?.skeptic_summary || rawAnalyses.skeptic.overall_assessment,
+  } : null;
+
+  const { data: translatedRawAnalyses, isLoading: translatingRawAnalyses } = useTranslateContent(
+    language === 'en' && rawAnalysesForTranslation ? rawAnalysesForTranslation : null,
+    { cacheKey: analysis ? `raw-analyses-${analysis.trend_id}` : undefined }
+  );
+
+  // Computed translated raw analyses
+  const displayOptimistPains = rawAnalyses.optimist?.pains ? (
+    language === 'en' && translatedRawAnalyses?.optimist_pains
+      ? rawAnalyses.optimist.pains.map((p, i) => ({
+          ...p,
+          pain: (translatedRawAnalyses.optimist_pains as Array<{pain: string; reasoning: string}>)[i]?.pain || p.pain,
+          reasoning: (translatedRawAnalyses.optimist_pains as Array<{pain: string; reasoning: string}>)[i]?.reasoning || p.reasoning,
+        }))
+      : rawAnalyses.optimist.pains
+  ) : [];
+
+  const displaySkepticPains = rawAnalyses.skeptic?.pains ? (
+    language === 'en' && translatedRawAnalyses?.skeptic_pains
+      ? rawAnalyses.skeptic.pains.map((p, i) => ({
+          ...p,
+          pain: (translatedRawAnalyses.skeptic_pains as Array<{pain: string; reasoning: string}>)[i]?.pain || p.pain,
+          reasoning: (translatedRawAnalyses.skeptic_pains as Array<{pain: string; reasoning: string}>)[i]?.reasoning || p.reasoning,
+        }))
+      : rawAnalyses.skeptic.pains
+  ) : [];
+
+  const displayOptimistConclusion = language === 'en' && translatedRawAnalyses?.optimist_conclusion
+    ? (translatedRawAnalyses.optimist_conclusion as string)
+    : (analysisMetadata?.optimist_summary || rawAnalyses.optimist?.overall_assessment || '');
+
+  const displaySkepticConclusion = language === 'en' && translatedRawAnalyses?.skeptic_conclusion
+    ? (translatedRawAnalyses.skeptic_conclusion as string)
+    : (analysisMetadata?.skeptic_summary || rawAnalyses.skeptic?.overall_assessment || '');
 
   // New data states
   const [competition, setCompetition] = useState<CompetitionData | null>(null);
@@ -322,6 +426,219 @@ export default function TrendPage() {
   const [recommendedRound, setRecommendedRound] = useState<string | null>(null);
   const [keyInvestors, setKeyInvestors] = useState<string[]>([]);
 
+  // Translation hooks for competition data
+  const competitionForTranslation = competition ? {
+    competitors: competition.competitors.map(c => ({ description: c.description })),
+    opportunity_areas: competition.opportunity_areas,
+  } : null;
+
+  const { data: translatedCompetition, isLoading: translatingCompetition } = useTranslateContent(
+    language === 'en' && competition ? competitionForTranslation : null,
+    { cacheKey: analysis ? `competition-${analysis.trend_id}` : undefined }
+  );
+
+  // Translation hooks for venture data
+  const ventureForTranslation = ventureData ? {
+    market_signals: ventureData.market_signals,
+  } : null;
+
+  const { data: translatedVenture, isLoading: translatingVenture } = useTranslateContent(
+    language === 'en' && ventureData ? ventureForTranslation : null,
+    { cacheKey: analysis ? `venture-${analysis.trend_id}` : undefined }
+  );
+
+  // Translation hooks for pitch deck
+  const pitchForTranslation = pitchDeck ? {
+    tagline: pitchDeck.tagline,
+    slides: pitchDeck.slides.map(s => ({
+      title: s.title,
+      content: s.content,
+      speaker_notes: s.speaker_notes,
+      visual_suggestion: s.visual_suggestion,
+    })),
+  } : null;
+
+  const { data: translatedPitch, isLoading: translatingPitch } = useTranslateContent(
+    language === 'en' && pitchDeck ? pitchForTranslation : null,
+    { cacheKey: analysis ? `pitch-${analysis.trend_id}` : undefined }
+  );
+
+  // Translation hooks for leads data
+  const leadsForTranslation = leadsData ? {
+    companies: leadsData.companies.map(c => ({
+      pain_match: c.pain_match,
+    })),
+    search_tips: leadsData.search_tips,
+    directories: leadsData.directories?.map(d => ({
+      description: d.description,
+    })),
+  } : null;
+
+  const { data: translatedLeads, isLoading: translatingLeads } = useTranslateContent(
+    language === 'en' && leadsData ? leadsForTranslation : null,
+    { cacheKey: analysis ? `leads-${analysis.trend_id}` : undefined }
+  );
+
+  // Computed translated leads values
+  const displayCompanies = leadsData?.companies ? (
+    language === 'en' && translatedLeads?.companies
+      ? leadsData.companies.map((c, i) => ({
+          ...c,
+          pain_match: (translatedLeads.companies as Array<{pain_match: string}>)[i]?.pain_match || c.pain_match,
+        }))
+      : leadsData.companies
+  ) : [];
+
+  const displaySearchTips = leadsData?.search_tips ? (
+    language === 'en'
+      ? ((translatedLeads?.search_tips as string[]) || leadsData.search_tips)
+      : leadsData.search_tips
+  ) : [];
+
+  const displayDirectories = leadsData?.directories ? (
+    language === 'en' && translatedLeads?.directories
+      ? leadsData.directories.map((d, i) => ({
+          ...d,
+          description: (translatedLeads.directories as Array<{description: string}>)[i]?.description || d.description,
+        }))
+      : leadsData.directories
+  ) : [];
+
+  // Computed translated competition values
+  const displayCompetitors = competition?.competitors ? (
+    language === 'en' && translatedCompetition?.competitors
+      ? competition.competitors.map((c, i) => ({
+          ...c,
+          description: (translatedCompetition.competitors as Array<{description: string}>)[i]?.description || c.description,
+        }))
+      : competition.competitors
+  ) : [];
+
+  const displayOpportunityAreas = competition?.opportunity_areas ? (
+    language === 'en'
+      ? ((translatedCompetition?.opportunity_areas as string[]) || competition.opportunity_areas)
+      : competition.opportunity_areas
+  ) : [];
+
+  // Computed translated venture values
+  const displayMarketSignals = ventureData?.market_signals ? (
+    language === 'en'
+      ? ((translatedVenture?.market_signals as string[]) || ventureData.market_signals)
+      : ventureData.market_signals
+  ) : [];
+
+  // Computed translated pitch values
+  const displayPitchTagline = pitchDeck ? (
+    language === 'en'
+      ? ((translatedPitch?.tagline as string) || pitchDeck.tagline)
+      : pitchDeck.tagline
+  ) : '';
+
+  const displayPitchSlides = pitchDeck?.slides ? (
+    language === 'en' && translatedPitch?.slides
+      ? pitchDeck.slides.map((s, i) => ({
+          ...s,
+          title: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.title || s.title,
+          content: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.content || s.content,
+          speaker_notes: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.speaker_notes || s.speaker_notes,
+          visual_suggestion: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.visual_suggestion || s.visual_suggestion,
+        }))
+      : pitchDeck.slides
+  ) : [];
+
+  // Translation hooks for sources synthesis
+  const sourcesForTranslation = sourcesSynthesis ? {
+    key_insights: sourcesSynthesis.key_insights,
+    sentiment_summary: sourcesSynthesis.sentiment_summary,
+    content_gaps: sourcesSynthesis.content_gaps,
+    recommended_angles: sourcesSynthesis.recommended_angles,
+  } : null;
+
+  const { data: translatedSources, isLoading: translatingSources } = useTranslateContent(
+    language === 'en' && sourcesSynthesis ? sourcesForTranslation : null,
+    { cacheKey: analysis ? `sources-${analysis.trend_id}` : undefined }
+  );
+
+  // Translation hooks for strategic data
+  const strategicForTranslation = (strategicPositioning || differentiationOpportunities.length > 0) ? {
+    strategic_positioning: strategicPositioning,
+    differentiation_opportunities: differentiationOpportunities,
+  } : null;
+
+  const { data: translatedStrategic, isLoading: translatingStrategic } = useTranslateContent(
+    language === 'en' && strategicForTranslation ? strategicForTranslation : null,
+    { cacheKey: analysis ? `strategic-${analysis.trend_id}` : undefined }
+  );
+
+  // Translation hooks for investment data
+  const investmentForTranslation = (investmentThesis || recommendedRound || keyInvestors.length > 0) ? {
+    investment_thesis: investmentThesis,
+    recommended_round: recommendedRound,
+    key_investors: keyInvestors,
+  } : null;
+
+  const { data: translatedInvestment, isLoading: translatingInvestment } = useTranslateContent(
+    language === 'en' && investmentForTranslation ? investmentForTranslation : null,
+    { cacheKey: analysis ? `investment-${analysis.trend_id}` : undefined }
+  );
+
+  // Computed translated sources values
+  const displayKeyInsights = sourcesSynthesis?.key_insights ? (
+    language === 'en'
+      ? ((translatedSources?.key_insights as string[]) || sourcesSynthesis.key_insights)
+      : sourcesSynthesis.key_insights
+  ) : [];
+
+  const displaySentimentSummary = sourcesSynthesis?.sentiment_summary ? (
+    language === 'en'
+      ? ((translatedSources?.sentiment_summary as string) || sourcesSynthesis.sentiment_summary)
+      : sourcesSynthesis.sentiment_summary
+  ) : '';
+
+  const displayContentGaps = sourcesSynthesis?.content_gaps ? (
+    language === 'en'
+      ? ((translatedSources?.content_gaps as string[]) || sourcesSynthesis.content_gaps)
+      : sourcesSynthesis.content_gaps
+  ) : [];
+
+  const displayRecommendedAngles = sourcesSynthesis?.recommended_angles ? (
+    language === 'en'
+      ? ((translatedSources?.recommended_angles as string[]) || sourcesSynthesis.recommended_angles)
+      : sourcesSynthesis.recommended_angles
+  ) : [];
+
+  // Computed translated strategic values
+  const displayStrategicPositioning = strategicPositioning ? (
+    language === 'en'
+      ? ((translatedStrategic?.strategic_positioning as string) || strategicPositioning)
+      : strategicPositioning
+  ) : '';
+
+  const displayDifferentiationOpportunities = differentiationOpportunities.length > 0 ? (
+    language === 'en'
+      ? ((translatedStrategic?.differentiation_opportunities as string[]) || differentiationOpportunities)
+      : differentiationOpportunities
+  ) : [];
+
+  // Computed translated investment values
+  const displayInvestmentThesis = investmentThesis ? (
+    language === 'en'
+      ? ((translatedInvestment?.investment_thesis as string) || investmentThesis)
+      : investmentThesis
+  ) : '';
+
+  const displayRecommendedRound = recommendedRound ? (
+    language === 'en'
+      ? ((translatedInvestment?.recommended_round as string) || recommendedRound)
+      : recommendedRound
+  ) : '';
+
+  const displayKeyInvestors = keyInvestors.length > 0 ? (
+    language === 'en'
+      ? ((translatedInvestment?.key_investors as string[]) || keyInvestors)
+      : keyInvestors
+  ) : [];
+
   // Состояние для проекта (META-агент)
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [loadingProject, setLoadingProject] = useState(false);
@@ -347,6 +664,221 @@ export default function TrendPage() {
   const [vercelDeployed, setVercelDeployed] = useState(false);
   const [vercelUrl, setVercelUrl] = useState<string | null>(null);
   const [hasAutoSelectedType, setHasAutoSelectedType] = useState(false);
+
+  // Translation hooks for project data
+  const projectForTranslation = projectData ? {
+    problem_statement: projectData.problem_statement,
+    solution_overview: projectData.solution_overview,
+    one_liner: projectData.one_liner,
+    core_features: projectData.mvp_specification?.core_features?.map(f => ({
+      name: f.name,
+      description: f.description,
+      user_story: f.user_story,
+    })) || [],
+    tech_stack: projectData.mvp_specification?.tech_stack?.map(t => ({
+      recommendation: t.recommendation,
+      reasoning: t.reasoning,
+    })) || [],
+    roadmap_mvp_goals: projectData.roadmap?.mvp?.goals || [],
+    roadmap_mvp_deliverables: projectData.roadmap?.mvp?.deliverables || [],
+    roadmap_mvp_success_metrics: projectData.roadmap?.mvp?.success_metrics || [],
+    roadmap_alpha_goals: projectData.roadmap?.alpha?.goals || [],
+    roadmap_alpha_deliverables: projectData.roadmap?.alpha?.deliverables || [],
+    roadmap_alpha_success_metrics: projectData.roadmap?.alpha?.success_metrics || [],
+    roadmap_beta_goals: projectData.roadmap?.beta?.goals || [],
+    roadmap_beta_deliverables: projectData.roadmap?.beta?.deliverables || [],
+    roadmap_beta_success_metrics: projectData.roadmap?.beta?.success_metrics || [],
+    roadmap_production_goals: projectData.roadmap?.production?.goals || [],
+    roadmap_production_deliverables: projectData.roadmap?.production?.deliverables || [],
+    roadmap_production_success_metrics: projectData.roadmap?.production?.success_metrics || [],
+    enhancements: projectData.enhancement_recommendations?.map(e => ({
+      area: e.area,
+      current_state: e.current_state,
+      recommended_improvement: e.recommended_improvement,
+      expected_impact: e.expected_impact,
+    })) || [],
+    key_kpis: projectData.business_metrics?.key_kpis || [],
+  } : null;
+
+  const { data: translatedProject, isLoading: translatingProject } = useTranslateContent(
+    language === 'en' && projectData ? projectForTranslation : null,
+    { cacheKey: projectData ? `project-${projectData.project_name}` : undefined }
+  );
+
+  // Computed translated project values
+  const displayProblemStatement = projectData?.problem_statement ? (
+    language === 'en'
+      ? ((translatedProject?.problem_statement as string) || projectData.problem_statement)
+      : projectData.problem_statement
+  ) : '';
+
+  const displaySolutionOverview = projectData?.solution_overview ? (
+    language === 'en'
+      ? ((translatedProject?.solution_overview as string) || projectData.solution_overview)
+      : projectData.solution_overview
+  ) : '';
+
+  const displayOneLiner = projectData?.one_liner ? (
+    language === 'en'
+      ? ((translatedProject?.one_liner as string) || projectData.one_liner)
+      : projectData.one_liner
+  ) : '';
+
+  const displayCoreFeatures = projectData?.mvp_specification?.core_features ? (
+    language === 'en' && translatedProject?.core_features
+      ? projectData.mvp_specification.core_features.map((f, i) => ({
+          ...f,
+          name: (translatedProject.core_features as Array<{name: string; description: string; user_story?: string}>)[i]?.name || f.name,
+          description: (translatedProject.core_features as Array<{name: string; description: string; user_story?: string}>)[i]?.description || f.description,
+          user_story: (translatedProject.core_features as Array<{name: string; description: string; user_story?: string}>)[i]?.user_story || f.user_story,
+        }))
+      : projectData.mvp_specification.core_features
+  ) : [];
+
+  const displayTechStack = projectData?.mvp_specification?.tech_stack ? (
+    language === 'en' && translatedProject?.tech_stack
+      ? projectData.mvp_specification.tech_stack.map((t, i) => ({
+          ...t,
+          recommendation: (translatedProject.tech_stack as Array<{recommendation: string; reasoning?: string}>)[i]?.recommendation || t.recommendation,
+          reasoning: (translatedProject.tech_stack as Array<{recommendation: string; reasoning?: string}>)[i]?.reasoning || t.reasoning,
+        }))
+      : projectData.mvp_specification.tech_stack
+  ) : [];
+
+  const displayRoadmapMvpGoals = projectData?.roadmap?.mvp?.goals ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_mvp_goals as string[]) || projectData.roadmap.mvp.goals)
+      : projectData.roadmap.mvp.goals
+  ) : [];
+
+  const displayRoadmapMvpDeliverables = projectData?.roadmap?.mvp?.deliverables ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_mvp_deliverables as string[]) || projectData.roadmap.mvp.deliverables)
+      : projectData.roadmap.mvp.deliverables
+  ) : [];
+
+  const displayRoadmapAlphaGoals = projectData?.roadmap?.alpha?.goals ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_alpha_goals as string[]) || projectData.roadmap.alpha.goals)
+      : projectData.roadmap.alpha.goals
+  ) : [];
+
+  const displayRoadmapAlphaDeliverables = projectData?.roadmap?.alpha?.deliverables ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_alpha_deliverables as string[]) || projectData.roadmap.alpha.deliverables)
+      : projectData.roadmap.alpha.deliverables
+  ) : [];
+
+  const displayRoadmapBetaGoals = projectData?.roadmap?.beta?.goals ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_beta_goals as string[]) || projectData.roadmap.beta.goals)
+      : projectData.roadmap.beta.goals
+  ) : [];
+
+  const displayRoadmapBetaDeliverables = projectData?.roadmap?.beta?.deliverables ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_beta_deliverables as string[]) || projectData.roadmap.beta.deliverables)
+      : projectData.roadmap.beta.deliverables
+  ) : [];
+
+  const displayRoadmapProductionGoals = projectData?.roadmap?.production?.goals ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_production_goals as string[]) || projectData.roadmap.production.goals)
+      : projectData.roadmap.production.goals
+  ) : [];
+
+  const displayRoadmapProductionDeliverables = projectData?.roadmap?.production?.deliverables ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_production_deliverables as string[]) || projectData.roadmap.production.deliverables)
+      : projectData.roadmap.production.deliverables
+  ) : [];
+
+  const displayRoadmapMvpSuccessMetrics = projectData?.roadmap?.mvp?.success_metrics ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_mvp_success_metrics as string[]) || projectData.roadmap.mvp.success_metrics)
+      : projectData.roadmap.mvp.success_metrics
+  ) : [];
+
+  const displayRoadmapAlphaSuccessMetrics = projectData?.roadmap?.alpha?.success_metrics ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_alpha_success_metrics as string[]) || projectData.roadmap.alpha.success_metrics)
+      : projectData.roadmap.alpha.success_metrics
+  ) : [];
+
+  const displayRoadmapBetaSuccessMetrics = projectData?.roadmap?.beta?.success_metrics ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_beta_success_metrics as string[]) || projectData.roadmap.beta.success_metrics)
+      : projectData.roadmap.beta.success_metrics
+  ) : [];
+
+  const displayRoadmapProductionSuccessMetrics = projectData?.roadmap?.production?.success_metrics ? (
+    language === 'en'
+      ? ((translatedProject?.roadmap_production_success_metrics as string[]) || projectData.roadmap.production.success_metrics)
+      : projectData.roadmap.production.success_metrics
+  ) : [];
+
+  const displayEnhancements = projectData?.enhancement_recommendations ? (
+    language === 'en' && translatedProject?.enhancements
+      ? projectData.enhancement_recommendations.map((e, i) => ({
+          ...e,
+          area: (translatedProject.enhancements as Array<{area: string; current_state: string; recommended_improvement: string; expected_impact: string}>)[i]?.area || e.area,
+          current_state: (translatedProject.enhancements as Array<{area: string; current_state: string; recommended_improvement: string; expected_impact: string}>)[i]?.current_state || e.current_state,
+          recommended_improvement: (translatedProject.enhancements as Array<{area: string; current_state: string; recommended_improvement: string; expected_impact: string}>)[i]?.recommended_improvement || e.recommended_improvement,
+          expected_impact: (translatedProject.enhancements as Array<{area: string; current_state: string; recommended_improvement: string; expected_impact: string}>)[i]?.expected_impact || e.expected_impact,
+        }))
+      : projectData.enhancement_recommendations
+  ) : [];
+
+  const displayKeyKpis = projectData?.business_metrics?.key_kpis ? (
+    language === 'en'
+      ? ((translatedProject?.key_kpis as string[]) || projectData.business_metrics.key_kpis)
+      : projectData.business_metrics.key_kpis
+  ) : [];
+
+  // Translation hooks for generated email
+  const emailForTranslation = generatedEmail ? {
+    subject: generatedEmail.subject,
+    body: generatedEmail.body,
+    follow_up_subject: generatedEmail.follow_up_subject,
+    follow_up_body: generatedEmail.follow_up_body,
+    tips: generatedEmail.tips,
+  } : null;
+
+  const { data: translatedEmail, isLoading: translatingEmail } = useTranslateContent(
+    language === 'en' && generatedEmail ? emailForTranslation : null,
+    { cacheKey: selectedCompany ? `email-${selectedCompany.name}` : undefined }
+  );
+
+  // Computed translated email values
+  const displayEmailSubject = generatedEmail?.subject ? (
+    language === 'en'
+      ? ((translatedEmail?.subject as string) || generatedEmail.subject)
+      : generatedEmail.subject
+  ) : '';
+
+  const displayEmailBody = generatedEmail?.body ? (
+    language === 'en'
+      ? ((translatedEmail?.body as string) || generatedEmail.body)
+      : generatedEmail.body
+  ) : '';
+
+  const displayFollowUpSubject = generatedEmail?.follow_up_subject ? (
+    language === 'en'
+      ? ((translatedEmail?.follow_up_subject as string) || generatedEmail.follow_up_subject)
+      : generatedEmail.follow_up_subject
+  ) : '';
+
+  const displayFollowUpBody = generatedEmail?.follow_up_body ? (
+    language === 'en'
+      ? ((translatedEmail?.follow_up_body as string) || generatedEmail.follow_up_body)
+      : generatedEmail.follow_up_body
+  ) : '';
+
+  const displayEmailTips = generatedEmail?.tips ? (
+    language === 'en'
+      ? ((translatedEmail?.tips as string[]) || generatedEmail.tips)
+      : generatedEmail.tips
+  ) : [];
 
   // Рекомендация типа продукта на основе анализа тренда
   const productRecommendation = useMemo(() => {
@@ -418,10 +950,32 @@ export default function TrendPage() {
       });
     } else if (tabParam && !authSuccess) {
       // Обработка tab параметра при прямой загрузке страницы
-      const validTabs: FlowStep[] = ['overview', 'analysis', 'sources', 'competition', 'venture', 'leads', 'pitch-deck', 'project'];
-      if (validTabs.includes(tabParam as FlowStep)) {
+      // Маппинг старых табов на новые
+      const tabMapping: Record<string, { step: FlowStep; subTab?: ResearchSubTab | BusinessSubTab }> = {
+        'overview': { step: 'overview' },
+        'analysis': { step: 'research', subTab: 'analysis' },
+        'sources': { step: 'research', subTab: 'sources' },
+        'competition': { step: 'research', subTab: 'competition' },
+        'venture': { step: 'business', subTab: 'venture' },
+        'leads': { step: 'business', subTab: 'leads' },
+        'pitch-deck': { step: 'business', subTab: 'pitch' },
+        'project': { step: 'project' },
+        // Новые табы
+        'research': { step: 'research' },
+        'business': { step: 'business' },
+      };
+
+      const mapping = tabMapping[tabParam];
+      if (mapping) {
         tabSetFromUrlRef.current = true;
-        setCurrentStep(tabParam as FlowStep);
+        setCurrentStep(mapping.step);
+        if (mapping.subTab) {
+          if (['analysis', 'sources', 'competition'].includes(mapping.subTab)) {
+            setResearchSubTab(mapping.subTab as ResearchSubTab);
+          } else {
+            setBusinessSubTab(mapping.subTab as BusinessSubTab);
+          }
+        }
       }
     }
   }, [searchParams, checkGithubAuth, router]);
@@ -534,9 +1088,11 @@ export default function TrendPage() {
           // НО не перезаписываем если tab был установлен из URL (после GitHub auth)
           if (!tabSetFromUrlRef.current) {
             if (analysisData.analyses[trendId].real_sources) {
-              setCurrentStep('sources');
+              setCurrentStep('research');
+              setResearchSubTab('sources');
             } else {
-              setCurrentStep('analysis');
+              setCurrentStep('research');
+              setResearchSubTab('analysis');
             }
           }
         }
@@ -650,7 +1206,14 @@ export default function TrendPage() {
           setAnalysisMetadata(data.analysis.analysis_metadata);
         }
 
-        setCurrentStep('analysis');
+        setCurrentStep('research');
+        setResearchSubTab('analysis');
+
+        // Автоматически генерируем ProductSpec после анализа болей
+        // Это позволяет иметь спецификацию продукта раньше в flow
+        setTimeout(() => {
+          fetchProductSpec();
+        }, 500);
       }
     } catch (error) {
       console.error('Error running analysis:', error);
@@ -695,7 +1258,8 @@ export default function TrendPage() {
         } as TrendAnalysis;
 
         setAnalysis(updatedAnalysis);
-        setCurrentStep('sources');
+        setCurrentStep('research');
+        setResearchSubTab('sources');
 
         // Save to API
         await fetch('/api/trends/analyze', {
@@ -718,7 +1282,7 @@ export default function TrendPage() {
   // Fetch Product Specification (AI гипотезы о продукте) - вызывается перед созданием проекта
   const fetchProductSpec = async (): Promise<ProductSpecification | null> => {
     if (!trend || !analysis?.main_pain) {
-      setProductSpecError('Необходим анализ болей перед созданием спецификации');
+      setProductSpecError(language === 'ru' ? 'Необходим анализ болей перед созданием спецификации' : 'Pain analysis required before creating specification');
       return null;
     }
 
@@ -752,12 +1316,12 @@ export default function TrendPage() {
         console.log('[ProductSpec] Generated:', data.metadata);
         return data.product_spec;
       } else {
-        setProductSpecError(data.error || 'Не удалось создать спецификацию');
+        setProductSpecError(data.error || (language === 'ru' ? 'Не удалось создать спецификацию' : 'Failed to create specification'));
         return null;
       }
     } catch (error) {
       console.error('Error fetching product spec:', error);
-      setProductSpecError('Ошибка при создании спецификации продукта');
+      setProductSpecError(language === 'ru' ? 'Ошибка при создании спецификации продукта' : 'Error creating product specification');
       return null;
     } finally {
       setLoadingProductSpec(false);
@@ -1046,11 +1610,11 @@ export default function TrendPage() {
           console.error('Error saving project to localStorage:', storageError);
         }
       } else {
-        setProjectError(data.error || 'Не удалось создать проект');
+        setProjectError(data.error || (language === 'ru' ? 'Не удалось создать проект' : 'Failed to create project'));
       }
     } catch (error) {
       console.error('Error creating project:', error);
-      setProjectError('Ошибка при создании проекта');
+      setProjectError(language === 'ru' ? 'Ошибка при создании проекта' : 'Error creating project');
     } finally {
       setLoadingProject(false);
     }
@@ -1097,11 +1661,11 @@ export default function TrendPage() {
           console.error('Error updating project in localStorage:', storageError);
         }
       } else {
-        setProjectError('Не удалось создать репозиторий. Проверьте авторизацию в GitHub.');
+        setProjectError(language === 'ru' ? 'Не удалось создать репозиторий. Проверьте авторизацию в GitHub.' : 'Failed to create repository. Check your GitHub authorization.');
       }
     } catch (error) {
       console.error('Error creating GitHub repo:', error);
-      setProjectError('Ошибка при создании репозитория');
+      setProjectError(language === 'ru' ? 'Ошибка при создании репозитория' : 'Error creating repository');
     } finally {
       setCreatingGithubRepo(false);
     }
@@ -1111,11 +1675,11 @@ export default function TrendPage() {
   const resetProject = () => {
     if (!trend?.id) return;
 
-    const confirmed = window.confirm(
-      'Вы уверены, что хотите сбросить проект?\n\n' +
-      'Это удалит данные проекта из браузера и позволит запустить анализ заново.\n' +
-      'GitHub репозиторий НЕ будет удалён автоматически.'
-    );
+    const confirmMessage = language === 'ru'
+      ? 'Вы уверены, что хотите сбросить проект?\n\nЭто удалит данные проекта из браузера и позволит запустить анализ заново.\nGitHub репозиторий НЕ будет удалён автоматически.'
+      : 'Are you sure you want to reset the project?\n\nThis will delete project data from browser and allow you to run analysis again.\nGitHub repository will NOT be deleted automatically.';
+
+    const confirmed = window.confirm(confirmMessage);
 
     if (!confirmed) return;
 
@@ -1140,33 +1704,49 @@ export default function TrendPage() {
 
     } catch (error) {
       console.error('Error resetting project:', error);
-      setProjectError('Ошибка при сбросе проекта');
+      setProjectError(language === 'ru' ? 'Ошибка при сбросе проекта' : 'Error resetting project');
     }
   };
 
-  // Auto-fetch data when switching to relevant tabs
+  // Auto-fetch data when switching to relevant tabs/subtabs
   useEffect(() => {
-    if (currentStep === 'competition' && !competition && !loadingCompetition) {
+    // Research subtabs
+    if (currentStep === 'research' && researchSubTab === 'competition' && !competition && !loadingCompetition) {
       fetchCompetition();
-    } else if (currentStep === 'venture' && !ventureData && !loadingVenture) {
-      fetchVentureData();
-    } else if (currentStep === 'leads' && !leadsData && !loadingLeads && analysis?.main_pain) {
-      fetchLeads();
-    } else if (currentStep === 'pitch-deck' && !pitchDeck && !loadingPitch) {
-      generatePitchDeck();
+    }
+    // Business subtabs
+    if (currentStep === 'business') {
+      if (businessSubTab === 'venture' && !ventureData && !loadingVenture) {
+        fetchVentureData();
+      } else if (businessSubTab === 'leads' && !leadsData && !loadingLeads && analysis?.main_pain) {
+        fetchLeads();
+      } else if (businessSubTab === 'pitch' && !pitchDeck && !loadingPitch) {
+        generatePitchDeck();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep]);
+  }, [currentStep, researchSubTab, businessSubTab]);
 
+  // Оптимизированный flow: 4 основных шага
   const flowSteps = [
-    { id: 'overview', label: t.trendDetail.tabs.overview, icon: '📊' },
+    { id: 'overview', label: t.trendDetail.tabs.overview, icon: '📊', description: language === 'ru' ? 'Обзор тренда' : 'Trend Overview' },
+    { id: 'research', label: language === 'ru' ? 'Исследование' : 'Research', icon: '🔬', description: language === 'ru' ? 'Анализ, источники, конкуренты' : 'Analysis, Sources, Competition' },
+    { id: 'business', label: language === 'ru' ? 'Бизнес' : 'Business', icon: '💼', description: language === 'ru' ? 'Инвестиции, клиенты, питч' : 'Venture, Leads, Pitch' },
+    { id: 'project', label: t.trendDetail.tabs.project, icon: '🚀', description: language === 'ru' ? 'Создать проект' : 'Create Project' },
+  ];
+
+  // Подразделы для Research
+  const researchSubTabs = [
     { id: 'analysis', label: t.trendDetail.tabs.analysis, icon: '🔍' },
     { id: 'sources', label: t.trendDetail.tabs.sources, icon: '📚' },
     { id: 'competition', label: t.trendDetail.tabs.competition, icon: '🏆' },
+  ];
+
+  // Подразделы для Business
+  const businessSubTabs = [
     { id: 'venture', label: t.trendDetail.tabs.venture, icon: '💰' },
     { id: 'leads', label: t.trendDetail.tabs.leads, icon: '👥' },
-    { id: 'pitch-deck', label: t.trendDetail.tabs.pitchDeck, icon: '📑' },
-    { id: 'project', label: t.trendDetail.tabs.project, icon: '🚀' },
+    { id: 'pitch', label: t.trendDetail.tabs.pitchDeck, icon: '📑' },
   ];
 
   if (loading) {
@@ -1194,32 +1774,31 @@ export default function TrendPage() {
     <div>
         {/* Breadcrumbs */}
         <div className="px-6 py-4 border-b border-zinc-800/50">
-          <div className="flex items-center gap-2 text-sm">
-            <Link href="/" className="text-zinc-500 hover:text-white transition-colors">
-              {t.trendDetail.breadcrumbs.home}
-            </Link>
-            <span className="text-zinc-600">/</span>
-            <Link href="/" className="text-zinc-500 hover:text-white transition-colors">
-              {t.trendDetail.breadcrumbs.trends}
-            </Link>
-            <span className="text-zinc-600">/</span>
-            <span className="text-white truncate max-w-[300px]">{trend.title}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Link href="/" className="text-zinc-500 hover:text-white transition-colors">
+                {t.trendDetail.breadcrumbs.home}
+              </Link>
+              <span className="text-zinc-600">/</span>
+              <Link href="/" className="text-zinc-500 hover:text-white transition-colors">
+                {t.trendDetail.breadcrumbs.trends}
+              </Link>
+              <span className="text-zinc-600">/</span>
+              <span className="text-white truncate max-w-[300px]">{trend.title}</span>
+            </div>
+            <LanguageSwitcher />
           </div>
         </div>
 
-        {/* Flow Steps */}
+        {/* Flow Steps - Оптимизированная навигация */}
         <div className="px-6 py-4 border-b border-zinc-800/50 bg-zinc-900/30">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
             {flowSteps.map((step, index) => {
               const isActive = step.id === currentStep;
               const isPast = flowSteps.findIndex(s => s.id === currentStep) > index;
               const isClickable = isPast || step.id === 'overview' ||
-                (step.id === 'analysis' && analysis) ||
-                (step.id === 'sources' && analysis?.real_sources) ||
-                (step.id === 'competition' && analysis?.real_sources) ||
-                (step.id === 'venture' && analysis?.real_sources) ||
-                (step.id === 'leads' && analysis?.main_pain) ||
-                (step.id === 'pitch-deck' && analysis) ||
+                (step.id === 'research' && analysis) ||
+                (step.id === 'business' && analysis?.real_sources) ||
                 (step.id === 'project' && analysis?.real_sources);
 
               return (
@@ -1227,9 +1806,9 @@ export default function TrendPage() {
                   <button
                     onClick={() => isClickable && setCurrentStep(step.id as FlowStep)}
                     disabled={!isClickable}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    className={`flex flex-col items-center gap-1 px-5 py-3 rounded-xl transition-all ${
                       isActive
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
                         : isPast
                         ? 'bg-zinc-800 text-white'
                         : isClickable
@@ -1237,16 +1816,56 @@ export default function TrendPage() {
                         : 'bg-zinc-900/50 text-zinc-600 cursor-not-allowed'
                     }`}
                   >
-                    <span>{step.icon}</span>
-                    <span className="whitespace-nowrap">{step.label}</span>
+                    <span className="text-xl">{step.icon}</span>
+                    <span className="whitespace-nowrap font-medium">{step.label}</span>
                   </button>
                   {index < flowSteps.length - 1 && (
-                    <div className={`w-8 h-0.5 mx-1 ${isPast ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
+                    <div className={`w-12 h-0.5 mx-2 ${isPast ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
                   )}
                 </div>
               );
             })}
           </div>
+
+          {/* Подразделы для Research */}
+          {currentStep === 'research' && (
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-800/50">
+              {researchSubTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setResearchSubTab(tab.id as ResearchSubTab)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
+                    researchSubTab === tab.id
+                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Подразделы для Business */}
+          {currentStep === 'business' && (
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-800/50">
+              {businessSubTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setBusinessSubTab(tab.id as BusinessSubTab)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
+                    businessSubTab === tab.id
+                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -1263,7 +1882,12 @@ export default function TrendPage() {
                 </span>
               </div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-3">{trend.title}</h1>
-              <p className="text-zinc-400 max-w-2xl">{trend.why_trending}</p>
+              <p className="text-zinc-400 max-w-2xl">
+                {translatingTrend && (
+                  <span className="inline-block w-4 h-4 mr-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                )}
+                {displayWhyTrending}
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -1292,22 +1916,59 @@ export default function TrendPage() {
               {/* Metrics */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: t.trendDetail.overview.opportunity, value: trend.opportunity_score, icon: '🎯', color: 'indigo' },
-                  { label: t.trendDetail.overview.painLevel, value: trend.pain_score, icon: '🔥', color: 'red' },
-                  { label: t.trendDetail.overview.feasibility, value: trend.feasibility_score, icon: '⚡', color: 'amber' },
-                  { label: t.trendDetail.overview.potential, value: trend.profit_potential, icon: '💰', color: 'emerald' },
+                  {
+                    label: t.trendDetail.overview.opportunity,
+                    value: trend.opportunity_score,
+                    icon: '🎯',
+                    colorClass: 'bg-indigo-500',
+                    description: language === 'ru'
+                      ? 'Оценка рыночных возможностей: размер рынка, растущий спрос, незанятые ниши'
+                      : 'Market opportunity: market size, growing demand, untapped niches'
+                  },
+                  {
+                    label: t.trendDetail.overview.painLevel,
+                    value: trend.pain_score,
+                    icon: '🔥',
+                    colorClass: 'bg-red-500',
+                    description: language === 'ru'
+                      ? 'Острота боли: насколько сильно проблема беспокоит пользователей'
+                      : 'Pain severity: how strongly the problem affects users'
+                  },
+                  {
+                    label: t.trendDetail.overview.feasibility,
+                    value: trend.feasibility_score,
+                    icon: '⚡',
+                    colorClass: 'bg-amber-500',
+                    description: language === 'ru'
+                      ? 'Выполнимость: техническая сложность, доступность ресурсов, время до MVP'
+                      : 'Feasibility: technical complexity, resource availability, time to MVP'
+                  },
+                  {
+                    label: t.trendDetail.overview.potential,
+                    value: trend.profit_potential,
+                    icon: '💰',
+                    colorClass: 'bg-emerald-500',
+                    description: language === 'ru'
+                      ? 'Потенциальная выгода: готовность платить, LTV, маржинальность'
+                      : 'Profit potential: willingness to pay, LTV, profit margins'
+                  },
                 ].map((metric) => (
-                  <div key={metric.label} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                  <div key={metric.label} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 group relative">
                     <div className="flex items-center gap-2 mb-2">
                       <span>{metric.icon}</span>
                       <span className="text-sm text-zinc-400">{metric.label}</span>
+                      <span className="text-zinc-600 cursor-help" title={metric.description}>ⓘ</span>
                     </div>
                     <div className="text-2xl font-bold text-white">{metric.value}</div>
                     <div className="mt-2 h-2 bg-zinc-800 rounded-full overflow-hidden">
                       <div
-                        className={`h-full bg-${metric.color}-500 rounded-full`}
+                        className={`h-full ${metric.colorClass} rounded-full transition-all`}
                         style={{ width: `${metric.value * 10}%` }}
                       />
+                    </div>
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 w-[220px] text-center">
+                      {metric.description}
                     </div>
                   </div>
                 ))}
@@ -1366,7 +2027,44 @@ export default function TrendPage() {
             </div>
           )}
 
-          {currentStep === 'analysis' && analysis && (
+          {/* Research - Analysis subtab: No analysis yet */}
+          {currentStep === 'research' && researchSubTab === 'analysis' && !analysis && (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-6">
+                <span className="text-4xl">🔍</span>
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {language === 'ru' ? 'Анализ ещё не выполнен' : 'Analysis not performed yet'}
+              </h3>
+              <p className="text-zinc-400 text-center max-w-md mb-6">
+                {t.trendDetail.overview.runAnalysisDescription}
+              </p>
+              <button
+                onClick={runAnalysis}
+                disabled={analyzing}
+                className={`px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                  analyzing
+                    ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                }`}
+              >
+                {analyzing ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                    {t.trendDetail.overview.analyzing}
+                  </>
+                ) : (
+                  <>
+                    <span>🔍</span>
+                    {t.trendDetail.overview.runAnalysis}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Research - Analysis subtab: Has analysis */}
+          {currentStep === 'research' && researchSubTab === 'analysis' && analysis && (
             <div className="space-y-6">
               {/* Analysis Type Badge */}
               {analysis.analysis_type === 'deep' && (
@@ -1388,6 +2086,9 @@ export default function TrendPage() {
                   <div className="p-4 border-b border-zinc-800 bg-zinc-800/30">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                       <span>⚔️</span> {t.trendDetail.analysis.aiDebate}
+                      {translatingRawAnalyses && (
+                        <span className="inline-block w-4 h-4 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      )}
                     </h3>
                     <p className="text-sm text-zinc-400 mt-1">{t.trendDetail.analysis.aiDebateDescription}</p>
                   </div>
@@ -1404,7 +2105,7 @@ export default function TrendPage() {
                       </div>
 
                       <div className="space-y-3">
-                        {rawAnalyses.optimist.pains.slice(0, 3).map((pain, i) => (
+                        {displayOptimistPains.slice(0, 3).map((pain, i) => (
                           <div key={i} className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
                             <div className="text-sm font-medium text-white mb-1">{pain.pain}</div>
                             <div className="text-xs text-zinc-400">{pain.reasoning}</div>
@@ -1423,7 +2124,7 @@ export default function TrendPage() {
 
                       <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg">
                         <div className="text-xs text-zinc-500 mb-1">{t.trendDetail.analysis.optimistConclusion}:</div>
-                        <div className="text-sm text-emerald-300">{analysisMetadata?.optimist_summary || rawAnalyses.optimist.overall_assessment}</div>
+                        <div className="text-sm text-emerald-300">{displayOptimistConclusion}</div>
                       </div>
                     </div>
 
@@ -1438,7 +2139,7 @@ export default function TrendPage() {
                       </div>
 
                       <div className="space-y-3">
-                        {rawAnalyses.skeptic.pains.slice(0, 3).map((pain, i) => (
+                        {displaySkepticPains.slice(0, 3).map((pain, i) => (
                           <div key={i} className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
                             <div className="text-sm font-medium text-white mb-1">{pain.pain}</div>
                             <div className="text-xs text-zinc-400">{pain.reasoning}</div>
@@ -1457,7 +2158,7 @@ export default function TrendPage() {
 
                       <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg">
                         <div className="text-xs text-zinc-500 mb-1">{t.trendDetail.analysis.skepticConclusion}:</div>
-                        <div className="text-sm text-red-300">{analysisMetadata?.skeptic_summary || rawAnalyses.skeptic.overall_assessment}</div>
+                        <div className="text-sm text-red-300">{displaySkepticConclusion}</div>
                       </div>
                     </div>
                   </div>
@@ -1483,17 +2184,25 @@ export default function TrendPage() {
                 <div className="p-4 bg-zinc-800/50 rounded-lg mb-4">
                   <div className="text-xs text-purple-400 mb-1 flex items-center gap-1">
                     <span>🔥</span> {t.trendDetail.analysis.mainPain}
+                    {translatingAnalysis && (
+                      <span className="inline-block w-3 h-3 ml-2 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    )}
                   </div>
-                  <p className="text-xl text-white">{analysis.main_pain}</p>
+                  <p className="text-xl text-white">{displayMainPain}</p>
                 </div>
               </div>
 
               {/* Key Pain Points */}
-              {analysis.key_pain_points && analysis.key_pain_points.length > 0 && (
+              {displayKeyPainPoints && displayKeyPainPoints.length > 0 && (
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.analysis.keyPainPoints}</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">
+                    {t.trendDetail.analysis.keyPainPoints}
+                    {translatingAnalysis && (
+                      <span className="inline-block w-3 h-3 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </h3>
                   <div className="space-y-3">
-                    {analysis.key_pain_points.map((pain, index) => (
+                    {displayKeyPainPoints.map((pain, index) => (
                       <div key={index} className="flex items-start gap-3 p-3 bg-zinc-800/50 rounded-lg">
                         <span className="text-red-400">•</span>
                         <span className="text-zinc-300">{typeof pain === 'string' ? pain : (pain as { pain?: string }).pain || JSON.stringify(pain)}</span>
@@ -1504,11 +2213,16 @@ export default function TrendPage() {
               )}
 
               {/* Target Audience */}
-              {analysis.target_audience?.segments && analysis.target_audience.segments.length > 0 && (
+              {displayTargetSegments && displayTargetSegments.length > 0 && (
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.analysis.targetAudience}</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">
+                    {t.trendDetail.analysis.targetAudience}
+                    {translatingAnalysis && (
+                      <span className="inline-block w-3 h-3 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </h3>
                   <div className="grid md:grid-cols-2 gap-4">
-                    {analysis.target_audience.segments.map((segment, index) => (
+                    {displayTargetSegments.map((segment, index) => (
                       <div key={index} className="p-4 bg-zinc-800/50 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div className="font-medium text-white">{segment.name}</div>
@@ -1527,6 +2241,44 @@ export default function TrendPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ProductSpec Status */}
+              {(loadingProductSpec || productSpec) && (
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                  <div className="flex items-center gap-3">
+                    {loadingProductSpec ? (
+                      <>
+                        <div className="animate-spin w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full" />
+                        <div>
+                          <h3 className="text-sm font-medium text-white">
+                            {language === 'ru' ? 'Генерация спецификации продукта...' : 'Generating product specification...'}
+                          </h3>
+                          <p className="text-xs text-zinc-500">
+                            {language === 'ru' ? 'Это может занять 10-15 секунд' : 'This may take 10-15 seconds'}
+                          </p>
+                        </div>
+                      </>
+                    ) : productSpec && (
+                      <>
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                          <span className="text-emerald-400">✓</span>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-white">
+                            {language === 'ru' ? 'Спецификация продукта готова' : 'Product specification ready'}
+                          </h3>
+                          <p className="text-xs text-zinc-500">
+                            {productSpec.generation_approach} • {productSpec.mvp_complexity}
+                          </p>
+                        </div>
+                        <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded">
+                          {language === 'ru' ? 'Готово для проекта' : 'Ready for project'}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -1562,7 +2314,7 @@ export default function TrendPage() {
             </div>
           )}
 
-          {currentStep === 'sources' && analysis?.real_sources && (
+          {currentStep === 'research' && researchSubTab === 'sources' && analysis?.real_sources && (
             <div className="space-y-6">
               {/* Google Trends */}
               {analysis.real_sources.google_trends && (
@@ -1670,12 +2422,12 @@ export default function TrendPage() {
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <span>💬</span> Reddit
                     <span className="text-sm font-normal text-zinc-400">
-                      ({analysis.real_sources.reddit.posts.length} постов)
+                      ({analysis.real_sources.reddit.posts.length} {language === 'ru' ? 'постов' : 'posts'})
                     </span>
                   </h3>
 
-                  <div className="space-y-3">
-                    {analysis.real_sources.reddit.posts.slice(0, 5).map((post, index) => (
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                    {analysis.real_sources.reddit.posts.map((post, index) => (
                       <a
                         key={index}
                         href={post.url}
@@ -1688,8 +2440,11 @@ export default function TrendPage() {
                             <div className="text-white font-medium mb-1 line-clamp-2">{post.title}</div>
                             <div className="flex items-center gap-3 text-sm text-zinc-400">
                               <span className="text-orange-400">r/{post.subreddit}</span>
-                              <span>⬆️ {post.score}</span>
-                              <span>💬 {post.num_comments}</span>
+                              {post.score > 0 && <span>⬆️ {post.score}</span>}
+                              {post.num_comments > 0 && <span>💬 {post.num_comments}</span>}
+                              {post.score === 0 && post.num_comments === 0 && (
+                                <span className="text-zinc-500 text-xs">{language === 'ru' ? 'Метрики недоступны через поиск' : 'Metrics unavailable via search'}</span>
+                              )}
                             </div>
                           </div>
                           <svg className="w-5 h-5 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1702,7 +2457,7 @@ export default function TrendPage() {
 
                   {analysis.real_sources.reddit.communities.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-zinc-700">
-                      <div className="text-sm text-zinc-400 mb-2">Активные сообщества:</div>
+                      <div className="text-sm text-zinc-400 mb-2">{language === 'ru' ? 'Активные сообщества:' : 'Active communities:'}</div>
                       <div className="flex flex-wrap gap-2">
                         {analysis.real_sources.reddit.communities.map((community, i) => (
                           <a
@@ -1727,12 +2482,12 @@ export default function TrendPage() {
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <span>🎬</span> YouTube
                     <span className="text-sm font-normal text-zinc-400">
-                      ({analysis.real_sources.youtube.videos.length} видео)
+                      ({analysis.real_sources.youtube.videos.length} {language === 'ru' ? 'видео' : 'videos'})
                     </span>
                   </h3>
 
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {analysis.real_sources.youtube.videos.slice(0, 6).map((video, index) => (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[800px] overflow-y-auto">
+                    {analysis.real_sources.youtube.videos.map((video, index) => (
                       <a
                         key={index}
                         href={video.url}
@@ -1757,12 +2512,12 @@ export default function TrendPage() {
 
               {/* Next Step */}
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Следующий шаг</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.analysis.nextStep}</h3>
                 <p className="text-zinc-400 mb-4">
-                  Изучите конкурентов и инвестиционный ландшафт.
+                  {t.trendDetail.analysis.collectSourcesDescription}
                 </p>
                 <button
-                  onClick={() => setCurrentStep('competition')}
+                  onClick={() => setResearchSubTab('competition')}
                   className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                 >
                   <span>🏆</span>
@@ -1772,8 +2527,39 @@ export default function TrendPage() {
             </div>
           )}
 
+          {/* Sources Empty State */}
+          {currentStep === 'research' && researchSubTab === 'sources' && !analysis?.real_sources && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+                <span className="text-3xl">🔗</span>
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {language === 'ru' ? 'Источники не собраны' : 'Sources not collected'}
+              </h3>
+              <p className="text-zinc-400 mb-6 max-w-md">
+                {language === 'ru'
+                  ? 'Сначала запустите сбор источников, чтобы получить данные из Google Trends, Reddit и YouTube.'
+                  : 'Run source collection first to get data from Google Trends, Reddit and YouTube.'}
+              </p>
+              {collectingSources ? (
+                <div className="flex items-center gap-3 text-zinc-400">
+                  <div className="animate-spin w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                  <span>{language === 'ru' ? 'Сбор источников...' : 'Collecting sources...'}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={collectSources}
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium flex items-center gap-2"
+                >
+                  <span>🔍</span>
+                  {language === 'ru' ? 'Собрать источники' : 'Collect Sources'}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Competition Tab */}
-          {currentStep === 'competition' && (
+          {currentStep === 'research' && researchSubTab === 'competition' && (
             <div className="space-y-6">
               {loadingCompetition ? (
                 <div className="flex flex-col items-center justify-center py-20">
@@ -1814,10 +2600,13 @@ export default function TrendPage() {
                   {/* Competitors */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-4">
-                      {t.trendDetail.competition.competitors} ({competition.competitors.length})
+                      {t.trendDetail.competition.competitors} ({displayCompetitors.length})
+                      {translatingCompetition && (
+                        <span className="inline-block w-4 h-4 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      )}
                     </h3>
                     <div className="space-y-3">
-                      {competition.competitors.map((comp, index) => (
+                      {displayCompetitors.map((comp, index) => (
                         <a
                           key={index}
                           href={comp.website}
@@ -1843,13 +2632,13 @@ export default function TrendPage() {
                   </div>
 
                   {/* Opportunity Areas */}
-                  {competition.opportunity_areas.length > 0 && (
+                  {displayOpportunityAreas.length > 0 && (
                     <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <span>💡</span> {t.trendDetail.competition.opportunityAreas}
                       </h3>
                       <div className="space-y-2">
-                        {competition.opportunity_areas.map((area, index) => (
+                        {displayOpportunityAreas.map((area, index) => (
                           <div key={index} className="flex items-start gap-2 text-emerald-300">
                             <span>•</span>
                             <span>{area}</span>
@@ -1887,7 +2676,7 @@ export default function TrendPage() {
                       {t.trendDetail.competition.ventureDescription}
                     </p>
                     <button
-                      onClick={() => setCurrentStep('venture')}
+                      onClick={() => { setCurrentStep('business'); setBusinessSubTab('venture'); }}
                       className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                     >
                       <span>💰</span>
@@ -1904,7 +2693,7 @@ export default function TrendPage() {
           )}
 
           {/* Venture Tab */}
-          {currentStep === 'venture' && (
+          {currentStep === 'business' && businessSubTab === 'venture' && (
             <div className="space-y-6">
               {loadingVenture ? (
                 <div className="flex flex-col items-center justify-center py-20">
@@ -1958,7 +2747,7 @@ export default function TrendPage() {
                               <div>
                                 <div className="text-white font-medium">{round.company}</div>
                                 <div className="text-sm text-zinc-400">
-                                  {round.round_type} • {round.date}
+                                  {round.round_type} • {round.date === 'DATE_UNKNOWN' ? t.trendDetail.venture.dateUnknown : round.date}
                                   {round.investors.length > 0 && (
                                     <span> • {round.investors.join(', ')}</span>
                                   )}
@@ -2017,13 +2806,16 @@ export default function TrendPage() {
                   )}
 
                   {/* Market Signals */}
-                  {ventureData.market_signals.length > 0 && (
+                  {displayMarketSignals.length > 0 && (
                     <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <span>📡</span> {t.trendDetail.venture.marketSignals}
+                        {translatingVenture && (
+                          <span className="inline-block w-4 h-4 ml-2 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                        )}
                       </h3>
                       <div className="space-y-2">
-                        {ventureData.market_signals.map((signal, index) => (
+                        {displayMarketSignals.map((signal, index) => (
                           <div key={index} className="flex items-start gap-2 text-amber-300">
                             <span>•</span>
                             <span>{signal}</span>
@@ -2056,54 +2848,54 @@ export default function TrendPage() {
 
                   {/* Next Step */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Следующий шаг</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.venture.nextStep}</h3>
                     <p className="text-zinc-400 mb-4">
-                      Найдите потенциальных клиентов с контактами для outreach.
+                      {t.trendDetail.venture.findLeadsDescription}
                     </p>
                     <button
-                      onClick={() => setCurrentStep('leads')}
+                      onClick={() => setBusinessSubTab('leads')}
                       className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                     >
                       <span>👥</span>
-                      Найти клиентов
+                      {language === 'ru' ? 'Найти клиентов' : 'Find Clients'}
                     </button>
                   </div>
                 </>
               ) : (
                 <div className="text-center py-20 text-zinc-400">
-                  Не удалось загрузить венчурные данные
+                  {language === 'ru' ? 'Не удалось загрузить венчурные данные' : 'Failed to load venture data'}
                 </div>
               )}
             </div>
           )}
 
           {/* Leads Tab */}
-          {currentStep === 'leads' && (
+          {currentStep === 'business' && businessSubTab === 'leads' && (
             <div className="space-y-6">
               {loadingLeads ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
-                  <p className="text-zinc-400">Ищем потенциальных клиентов...</p>
+                  <p className="text-zinc-400">{t.trendDetail.leads.searchingClients}</p>
                 </div>
               ) : leadsData && leadsData.companies.length > 0 ? (
                 <>
                   {/* Overview */}
                   <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-6">
                     <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                      <span>👥</span> Потенциальные клиенты
+                      <span>👥</span> {t.trendDetail.leads.title}
                     </h2>
                     <p className="text-zinc-400">
-                      Найдено {leadsData.companies.length} компаний, которые могут быть заинтересованы в решении проблемы &quot;{analysis?.main_pain}&quot;
+                      {t.trendDetail.leads.foundCompanies} {leadsData.companies.length}, {t.trendDetail.leads.interestedInSolving} &quot;{displayMainPain || analysis?.main_pain}&quot;
                     </p>
                   </div>
 
                   {/* Companies List */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-4">
-                      Компании ({leadsData.companies.length})
+                      {t.trendDetail.leads.companies} ({leadsData.companies.length})
                     </h3>
                     <div className="space-y-4">
-                      {leadsData.companies.map((company, index) => (
+                      {displayCompanies.map((company, index) => (
                         <div key={index} className="p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
@@ -2114,7 +2906,8 @@ export default function TrendPage() {
                                   company.relevance_score >= 6 ? 'bg-amber-500/20 text-amber-300' :
                                   'bg-zinc-500/20 text-zinc-300'
                                 }`}>
-                                  {company.relevance_score}/10 релевантность
+                                  {company.relevance_score}/10 {t.trendDetail.leads.relevance}
+                                  {translatingLeads && <span className="inline-block w-3 h-3 ml-1 border border-indigo-500 border-t-transparent rounded-full animate-spin" />}
                                 </span>
                               </div>
                               <p className="text-sm text-zinc-400 mb-3">{company.pain_match}</p>
@@ -2143,7 +2936,7 @@ export default function TrendPage() {
                                   rel="noopener noreferrer"
                                   className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                                 >
-                                  🌐 Сайт
+                                  🌐 {t.trendDetail.leads.website}
                                 </a>
                                 <a
                                   href={`mailto:${company.email}`}
@@ -2166,7 +2959,7 @@ export default function TrendPage() {
                               {/* Decision Makers */}
                               {company.decision_makers && company.decision_makers.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-zinc-700">
-                                  <div className="text-xs text-zinc-500 mb-1">ЛПР для связи:</div>
+                                  <div className="text-xs text-zinc-500 mb-1">{t.trendDetail.leads.decisionMakers}:</div>
                                   <div className="flex flex-wrap gap-2">
                                     {company.decision_makers.map((dm, i) => (
                                       <span key={i} className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs">
@@ -2186,7 +2979,7 @@ export default function TrendPage() {
                               }}
                               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                             >
-                              ✉️ Письмо
+                              ✉️ {language === 'ru' ? 'Письмо' : 'Email'}
                             </button>
                           </div>
                         </div>
@@ -2198,7 +2991,7 @@ export default function TrendPage() {
                   {leadsData.linkedin_queries && leadsData.linkedin_queries.length > 0 && (
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <span>💼</span> Запросы для LinkedIn Sales Navigator
+                        <span>💼</span> {t.trendDetail.leads.linkedinQueries}
                       </h3>
                       <div className="space-y-2">
                         {leadsData.linkedin_queries.map((query, index) => (
@@ -2217,13 +3010,13 @@ export default function TrendPage() {
                   )}
 
                   {/* Directories */}
-                  {leadsData.directories && leadsData.directories.length > 0 && (
+                  {displayDirectories.length > 0 && (
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <span>📂</span> Каталоги для поиска
+                        <span>📂</span> {t.trendDetail.leads.directories}
                       </h3>
                       <div className="grid md:grid-cols-2 gap-3">
-                        {leadsData.directories.map((dir, index) => (
+                        {displayDirectories.map((dir, index) => (
                           <a
                             key={index}
                             href={dir.url}
@@ -2240,13 +3033,13 @@ export default function TrendPage() {
                   )}
 
                   {/* Search Tips */}
-                  {leadsData.search_tips && leadsData.search_tips.length > 0 && (
+                  {displaySearchTips.length > 0 && (
                     <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <span>💡</span> Советы по поиску
+                        <span>💡</span> {t.trendDetail.leads.searchTips}
                       </h3>
                       <div className="space-y-2">
-                        {leadsData.search_tips.map((tip, index) => (
+                        {displaySearchTips.map((tip, index) => (
                           <div key={index} className="flex items-start gap-2 text-amber-300">
                             <span>•</span>
                             <span>{tip}</span>
@@ -2258,16 +3051,16 @@ export default function TrendPage() {
 
                   {/* Next Step */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Следующий шаг</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.leads.nextStep}</h3>
                     <p className="text-zinc-400 mb-4">
-                      Сгенерируйте Pitch Deck на 10 слайдов для презентации инвесторам.
+                      {t.trendDetail.leads.generatePitchDescription}
                     </p>
                     <button
-                      onClick={() => setCurrentStep('pitch-deck')}
+                      onClick={() => setBusinessSubTab('pitch')}
                       className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                     >
                       <span>📑</span>
-                      Создать Pitch Deck
+                      {t.trendDetail.leads.createPitchDeck}
                     </button>
                   </div>
                 </>
@@ -2275,15 +3068,15 @@ export default function TrendPage() {
                 <div className="text-center py-20">
                   <p className="text-zinc-400 mb-4">
                     {!analysis?.main_pain
-                      ? 'Сначала запустите анализ тренда для выявления болей'
-                      : 'Не удалось найти потенциальных клиентов'}
+                      ? (language === 'ru' ? 'Сначала запустите анализ тренда для выявления болей' : 'First run trend analysis to identify pain points')
+                      : (language === 'ru' ? 'Не удалось найти потенциальных клиентов' : 'Could not find potential clients')}
                   </p>
                   {!analysis?.main_pain && (
                     <button
-                      onClick={() => setCurrentStep('overview')}
+                      onClick={() => { setCurrentStep('research'); setResearchSubTab('analysis'); }}
                       className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg"
                     >
-                      Перейти к анализу
+                      {language === 'ru' ? 'Перейти к анализу' : 'Go to analysis'}
                     </button>
                   )}
                 </div>
@@ -2298,7 +3091,7 @@ export default function TrendPage() {
                 <div className="p-6 border-b border-zinc-800">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-bold text-white">
-                      Письмо для {selectedCompany.name}
+                      {language === 'ru' ? 'Письмо для' : 'Email for'} {selectedCompany.name}
                     </h3>
                     <button
                       onClick={() => setShowEmailModal(false)}
@@ -2313,35 +3106,35 @@ export default function TrendPage() {
                   {/* Sender Info */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-zinc-400 mb-1">Ваше имя *</label>
+                      <label className="block text-sm text-zinc-400 mb-1">{language === 'ru' ? 'Ваше имя *' : 'Your Name *'}</label>
                       <input
                         type="text"
                         value={senderName}
                         onChange={(e) => setSenderName(e.target.value)}
                         className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-                        placeholder="Иван Иванов"
+                        placeholder={language === 'ru' ? 'Иван Иванов' : 'John Doe'}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-zinc-400 mb-1">Компания</label>
+                      <label className="block text-sm text-zinc-400 mb-1">{language === 'ru' ? 'Компания' : 'Company'}</label>
                       <input
                         type="text"
                         value={senderCompany}
                         onChange={(e) => setSenderCompany(e.target.value)}
                         className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-                        placeholder="Название вашей компании"
+                        placeholder={language === 'ru' ? 'Название вашей компании' : 'Your company name'}
                       />
                     </div>
                   </div>
 
                   {/* Tone Selection */}
                   <div>
-                    <label className="block text-sm text-zinc-400 mb-2">Тон письма</label>
+                    <label className="block text-sm text-zinc-400 mb-2">{language === 'ru' ? 'Тон письма' : 'Email Tone'}</label>
                     <div className="flex gap-2">
                       {[
-                        { id: 'formal', label: 'Формальный', icon: '👔' },
-                        { id: 'professional', label: 'Профессиональный', icon: '💼' },
-                        { id: 'friendly', label: 'Дружелюбный', icon: '😊' },
+                        { id: 'formal', label: language === 'ru' ? 'Формальный' : 'Formal', icon: '👔' },
+                        { id: 'professional', label: language === 'ru' ? 'Профессиональный' : 'Professional', icon: '💼' },
+                        { id: 'friendly', label: language === 'ru' ? 'Дружелюбный' : 'Friendly', icon: '😊' },
                       ].map((tone) => (
                         <button
                           key={tone.id}
@@ -2386,60 +3179,60 @@ export default function TrendPage() {
                       {/* Subject */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-sm text-zinc-400">Тема письма</label>
+                          <label className="text-sm text-zinc-400">{language === 'ru' ? 'Тема письма' : 'Email Subject'}</label>
                           <button
-                            onClick={() => navigator.clipboard.writeText(generatedEmail.subject)}
+                            onClick={() => navigator.clipboard.writeText(displayEmailSubject)}
                             className="text-xs text-indigo-400 hover:text-indigo-300"
                           >
-                            Копировать
+                            {language === 'ru' ? 'Копировать' : 'Copy'}
                           </button>
                         </div>
                         <div className="p-3 bg-zinc-800 rounded-lg text-white">
-                          {generatedEmail.subject}
+                          {displayEmailSubject}
                         </div>
                       </div>
 
                       {/* Body */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-sm text-zinc-400">Текст письма</label>
+                          <label className="text-sm text-zinc-400">{language === 'ru' ? 'Текст письма' : 'Email Body'}</label>
                           <button
-                            onClick={() => navigator.clipboard.writeText(generatedEmail.body)}
+                            onClick={() => navigator.clipboard.writeText(displayEmailBody)}
                             className="text-xs text-indigo-400 hover:text-indigo-300"
                           >
-                            Копировать
+                            {language === 'ru' ? 'Копировать' : 'Copy'}
                           </button>
                         </div>
                         <div className="p-3 bg-zinc-800 rounded-lg text-zinc-300 whitespace-pre-wrap text-sm">
-                          {generatedEmail.body}
+                          {displayEmailBody}
                         </div>
                       </div>
 
                       {/* Follow-up */}
-                      {generatedEmail.follow_up_body && (
+                      {displayFollowUpBody && (
                         <div className="pt-4 border-t border-zinc-700">
-                          <h4 className="text-sm font-medium text-white mb-3">Follow-up письмо (через 3-5 дней)</h4>
+                          <h4 className="text-sm font-medium text-white mb-3">{language === 'ru' ? 'Follow-up письмо (через 3-5 дней)' : 'Follow-up email (in 3-5 days)'}</h4>
                           <div className="mb-2">
-                            <label className="text-xs text-zinc-500">Тема:</label>
+                            <label className="text-xs text-zinc-500">{language === 'ru' ? 'Тема:' : 'Subject:'}</label>
                             <div className="p-2 bg-zinc-800/50 rounded text-zinc-300 text-sm">
-                              {generatedEmail.follow_up_subject}
+                              {displayFollowUpSubject}
                             </div>
                           </div>
                           <div>
-                            <label className="text-xs text-zinc-500">Текст:</label>
+                            <label className="text-xs text-zinc-500">{language === 'ru' ? 'Текст:' : 'Body:'}</label>
                             <div className="p-2 bg-zinc-800/50 rounded text-zinc-400 text-sm whitespace-pre-wrap">
-                              {generatedEmail.follow_up_body}
+                              {displayFollowUpBody}
                             </div>
                           </div>
                         </div>
                       )}
 
                       {/* Tips */}
-                      {generatedEmail.tips && generatedEmail.tips.length > 0 && (
+                      {displayEmailTips.length > 0 && (
                         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                          <div className="text-xs text-amber-400 mb-2">💡 Советы по отправке:</div>
+                          <div className="text-xs text-amber-400 mb-2">💡 {language === 'ru' ? 'Советы по отправке:' : 'Sending tips:'}</div>
                           <div className="space-y-1">
-                            {generatedEmail.tips.map((tip, i) => (
+                            {displayEmailTips.map((tip, i) => (
                               <div key={i} className="text-sm text-amber-300">• {tip}</div>
                             ))}
                           </div>
@@ -2449,18 +3242,18 @@ export default function TrendPage() {
                       {/* Action Buttons */}
                       <div className="flex gap-3">
                         <a
-                          href={`mailto:${selectedCompany.email}?subject=${encodeURIComponent(generatedEmail.subject)}&body=${encodeURIComponent(generatedEmail.body)}`}
+                          href={`mailto:${selectedCompany.email}?subject=${encodeURIComponent(displayEmailSubject)}&body=${encodeURIComponent(displayEmailBody)}`}
                           className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-center font-medium transition-colors"
                         >
-                          📧 Открыть в почте
+                          📧 {language === 'ru' ? 'Открыть в почте' : 'Open in Mail'}
                         </a>
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(`Тема: ${generatedEmail.subject}\n\n${generatedEmail.body}`);
+                            navigator.clipboard.writeText(`${language === 'ru' ? 'Тема' : 'Subject'}: ${displayEmailSubject}\n\n${displayEmailBody}`);
                           }}
                           className="flex-1 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg font-medium transition-colors"
                         >
-                          📋 Копировать всё
+                          📋 {language === 'ru' ? 'Копировать всё' : 'Copy All'}
                         </button>
                       </div>
                     </div>
@@ -2471,26 +3264,31 @@ export default function TrendPage() {
           )}
 
           {/* Pitch Deck Tab */}
-          {currentStep === 'pitch-deck' && (
+          {currentStep === 'business' && businessSubTab === 'pitch' && (
             <div className="space-y-6">
               {loadingPitch ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
-                  <p className="text-zinc-400">Генерируем Pitch Deck...</p>
+                  <p className="text-zinc-400">{t.trendDetail.pitch.generating}</p>
                 </div>
               ) : pitchDeck ? (
                 <>
                   {/* Header */}
                   <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-6">
-                    <h2 className="text-2xl font-bold text-white mb-2">{pitchDeck.title}</h2>
-                    <p className="text-zinc-400">{pitchDeck.tagline}</p>
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                      {pitchDeck.title}
+                      {translatingPitch && (
+                        <span className="inline-block w-4 h-4 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      )}
+                    </h2>
+                    <p className="text-zinc-400">{displayPitchTagline}</p>
                   </div>
 
                   {/* Slide Viewer */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
                     {/* Slide Navigation */}
                     <div className="flex items-center gap-1 p-2 border-b border-zinc-800 overflow-x-auto">
-                      {pitchDeck.slides.map((slide, index) => (
+                      {displayPitchSlides.map((slide, index) => (
                         <button
                           key={index}
                           onClick={() => setCurrentSlide(index)}
@@ -2509,17 +3307,17 @@ export default function TrendPage() {
                     <div className="p-8">
                       <div className="max-w-2xl mx-auto">
                         <div className="text-xs text-zinc-500 mb-2">
-                          Слайд {pitchDeck.slides[currentSlide].number} / {pitchDeck.slides.length}
+                          {t.trendDetail.pitch.slide} {displayPitchSlides[currentSlide]?.number || 1} / {displayPitchSlides.length}
                           <span className="ml-2 px-2 py-0.5 bg-zinc-800 rounded">
-                            {pitchDeck.slides[currentSlide].type}
+                            {displayPitchSlides[currentSlide]?.type}
                           </span>
                         </div>
                         <h3 className="text-2xl font-bold text-white mb-6">
-                          {pitchDeck.slides[currentSlide].title}
+                          {displayPitchSlides[currentSlide]?.title}
                         </h3>
 
                         <div className="space-y-3 mb-8">
-                          {pitchDeck.slides[currentSlide].content.map((point, index) => (
+                          {displayPitchSlides[currentSlide]?.content?.map((point, index) => (
                             <div key={index} className="flex items-start gap-3 text-lg text-zinc-300">
                               <span className="text-indigo-400 mt-1">•</span>
                               <span>{point}</span>
@@ -2529,14 +3327,14 @@ export default function TrendPage() {
 
                         {/* Speaker Notes */}
                         <div className="p-4 bg-zinc-800/50 rounded-lg mb-4">
-                          <div className="text-xs text-zinc-500 mb-1">📝 Заметки спикера:</div>
-                          <p className="text-sm text-zinc-400">{pitchDeck.slides[currentSlide].speaker_notes}</p>
+                          <div className="text-xs text-zinc-500 mb-1">📝 {t.trendDetail.pitch.speakerNotes}:</div>
+                          <p className="text-sm text-zinc-400">{displayPitchSlides[currentSlide]?.speaker_notes}</p>
                         </div>
 
                         {/* Visual Suggestion */}
                         <div className="p-4 bg-zinc-800/50 rounded-lg">
-                          <div className="text-xs text-zinc-500 mb-1">🎨 Рекомендация по визуалу:</div>
-                          <p className="text-sm text-zinc-400">{pitchDeck.slides[currentSlide].visual_suggestion}</p>
+                          <div className="text-xs text-zinc-500 mb-1">🎨 {t.trendDetail.pitch.visualRecommendation}:</div>
+                          <p className="text-sm text-zinc-400">{displayPitchSlides[currentSlide]?.visual_suggestion}</p>
                         </div>
                       </div>
                     </div>
@@ -2548,40 +3346,43 @@ export default function TrendPage() {
                         disabled={currentSlide === 0}
                         className="px-4 py-2 bg-zinc-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-700 transition-colors"
                       >
-                        ← Назад
+                        ← {t.trendDetail.pitch.back}
                       </button>
                       <span className="text-zinc-400">
-                        {currentSlide + 1} / {pitchDeck.slides.length}
+                        {currentSlide + 1} / {displayPitchSlides.length}
                       </span>
                       <button
-                        onClick={() => setCurrentSlide(prev => Math.min(pitchDeck.slides.length - 1, prev + 1))}
-                        disabled={currentSlide === pitchDeck.slides.length - 1}
+                        onClick={() => setCurrentSlide(prev => Math.min(displayPitchSlides.length - 1, prev + 1))}
+                        disabled={currentSlide === displayPitchSlides.length - 1}
                         className="px-4 py-2 bg-zinc-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-700 transition-colors"
                       >
-                        Вперёд →
+                        {t.trendDetail.pitch.next} →
                       </button>
                     </div>
                   </div>
 
                   {/* Export Options */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Экспорт презентации</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.pitch.exportPresentation}</h3>
 
                     {/* Copy/Download Actions */}
                     <div className="grid md:grid-cols-2 gap-4 mb-6">
                       <button
                         onClick={() => {
+                          const slideLabel = language === 'ru' ? 'Слайд' : 'Slide';
+                          const notesLabel = language === 'ru' ? 'Заметки' : 'Notes';
+                          const visualLabel = language === 'ru' ? 'Визуал' : 'Visual';
                           const text = pitchDeck.slides.map(slide =>
-                            `## Слайд ${slide.number}: ${slide.title}\n\n${slide.content.map(c => `• ${c}`).join('\n')}\n\n📝 Заметки: ${slide.speaker_notes}\n🎨 Визуал: ${slide.visual_suggestion}`
+                            `## ${slideLabel} ${slide.number}: ${slide.title}\n\n${slide.content.map(c => `• ${c}`).join('\n')}\n\n📝 ${notesLabel}: ${slide.speaker_notes}\n🎨 ${visualLabel}: ${slide.visual_suggestion}`
                           ).join('\n\n---\n\n');
                           navigator.clipboard.writeText(text);
-                          alert('Контент скопирован! Вставьте в любой редактор.');
+                          alert(language === 'ru' ? 'Контент скопирован! Вставьте в любой редактор.' : 'Content copied! Paste into any editor.');
                         }}
                         className="p-4 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors text-center"
                       >
                         <div className="text-2xl mb-2">📋</div>
-                        <div className="text-white font-medium">Копировать текст</div>
-                        <div className="text-xs text-indigo-200">Для вставки в редактор</div>
+                        <div className="text-white font-medium">{t.trendDetail.pitch.copyText}</div>
+                        <div className="text-xs text-indigo-200">{t.trendDetail.pitch.copyTextDescription}</div>
                       </button>
                       <button
                         onClick={() => {
@@ -2601,14 +3402,14 @@ export default function TrendPage() {
                         className="p-4 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-center"
                       >
                         <div className="text-2xl mb-2">💾</div>
-                        <div className="text-white font-medium">Скачать JSON</div>
-                        <div className="text-xs text-emerald-200">Полные данные презентации</div>
+                        <div className="text-white font-medium">{t.trendDetail.pitch.downloadJson}</div>
+                        <div className="text-xs text-emerald-200">{t.trendDetail.pitch.downloadJsonDescription}</div>
                       </button>
                     </div>
 
                     {/* Template Links */}
                     <div className="mb-4">
-                      <h4 className="text-sm text-zinc-400 mb-3">Выберите шаблон и вставьте контент:</h4>
+                      <h4 className="text-sm text-zinc-400 mb-3">{t.trendDetail.pitch.selectTemplate}</h4>
                       <div className="grid md:grid-cols-3 gap-4">
                         <a
                           href={pitchDeck.export_formats.google_slides_template}
@@ -2618,7 +3419,7 @@ export default function TrendPage() {
                         >
                           <div className="text-2xl mb-2">📊</div>
                           <div className="text-white font-medium">Google Slides</div>
-                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">Открыть шаблоны →</div>
+                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">{t.trendDetail.pitch.openTemplates}</div>
                         </a>
                         <a
                           href={pitchDeck.export_formats.figma_template}
@@ -2628,7 +3429,7 @@ export default function TrendPage() {
                         >
                           <div className="text-2xl mb-2">🎨</div>
                           <div className="text-white font-medium">Figma</div>
-                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">Открыть шаблоны →</div>
+                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">{t.trendDetail.pitch.openTemplates}</div>
                         </a>
                         <a
                           href={pitchDeck.export_formats.canva_template}
@@ -2638,7 +3439,7 @@ export default function TrendPage() {
                         >
                           <div className="text-2xl mb-2">🖼️</div>
                           <div className="text-white font-medium">Canva</div>
-                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">Открыть шаблоны →</div>
+                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">{t.trendDetail.pitch.openTemplates}</div>
                         </a>
                       </div>
                     </div>
@@ -2648,12 +3449,12 @@ export default function TrendPage() {
                       {/* Text Instructions */}
                       <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                         <div className="text-sm text-amber-300">
-                          <strong>📋 Через текст (быстро):</strong>
+                          <strong>📋 {t.trendDetail.pitch.viaTextFast}</strong>
                           <ol className="mt-2 space-y-1 list-decimal list-inside text-amber-200">
-                            <li>Нажмите &quot;Копировать текст&quot;</li>
-                            <li>Откройте шаблон (Slides/Figma/Canva)</li>
-                            <li>Создайте копию шаблона</li>
-                            <li>Вставьте контент в слайды</li>
+                            <li>{t.trendDetail.pitch.viaTextStep1}</li>
+                            <li>{t.trendDetail.pitch.viaTextStep2}</li>
+                            <li>{t.trendDetail.pitch.viaTextStep3}</li>
+                            <li>{t.trendDetail.pitch.viaTextStep4}</li>
                           </ol>
                         </div>
                       </div>
@@ -2661,12 +3462,12 @@ export default function TrendPage() {
                       {/* JSON Instructions */}
                       <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
                         <div className="text-sm text-indigo-300">
-                          <strong>📥 Через JSON (для автоматизации):</strong>
+                          <strong>📥 {t.trendDetail.pitch.viaJsonAuto}</strong>
                           <ol className="mt-2 space-y-1 list-decimal list-inside text-indigo-200">
-                            <li>Скачайте JSON файл</li>
-                            <li>Используйте с AI (ChatGPT/Claude): &quot;Создай презентацию из этого JSON&quot;</li>
-                            <li>Или импортируйте в <a href="https://gamma.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-100">Gamma.app</a>, <a href="https://tome.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-100">Tome.app</a></li>
-                            <li>Или используйте Google Slides API для автоматического создания</li>
+                            <li>{t.trendDetail.pitch.viaJsonStep1}</li>
+                            <li>{t.trendDetail.pitch.viaJsonStep2}</li>
+                            <li>{t.trendDetail.pitch.viaJsonStep3}</li>
+                            <li>{t.trendDetail.pitch.viaJsonStep4}</li>
                           </ol>
                         </div>
                       </div>
@@ -2675,7 +3476,7 @@ export default function TrendPage() {
 
                   {/* Sources */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-sm font-medium text-zinc-400 mb-3">Полезные материалы</h3>
+                    <h3 className="text-sm font-medium text-zinc-400 mb-3">{language === 'ru' ? 'Полезные материалы' : 'Useful resources'}</h3>
                     <div className="flex flex-wrap gap-2">
                       {pitchDeck.sources.map((source, index) => (
                         <a
@@ -2696,22 +3497,22 @@ export default function TrendPage() {
 
                   {/* Next Step */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Следующий шаг</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.pitch.nextStep}</h3>
                     <p className="text-zinc-400 mb-4">
-                      Создайте проект с GitHub репозиторием и планом разработки.
+                      {t.trendDetail.pitch.createProjectDescription}
                     </p>
                     <button
                       onClick={() => setCurrentStep('project')}
                       className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
                     >
                       <span>🚀</span>
-                      Перейти к созданию проекта
+                      {t.trendDetail.project.createProject}
                     </button>
                   </div>
                 </>
               ) : (
                 <div className="text-center py-20 text-zinc-400">
-                  Не удалось сгенерировать Pitch Deck
+                  {language === 'ru' ? 'Не удалось сгенерировать Pitch Deck' : 'Failed to generate Pitch Deck'}
                 </div>
               )}
             </div>
@@ -2727,11 +3528,11 @@ export default function TrendPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">🎯</span>
-                        <h3 className="text-lg font-semibold text-white">Выберите тип продукта</h3>
+                        <h3 className="text-lg font-semibold text-white">{t.trendDetail.project.selectMvpType}</h3>
                       </div>
                       {productRecommendation && (
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
-                          <span className="text-emerald-400 text-sm">✨ AI рекомендует:</span>
+                          <span className="text-emerald-400 text-sm">✨ {language === 'ru' ? 'AI рекомендует:' : 'AI recommends:'}</span>
                           <span className="text-emerald-300 text-sm font-medium">
                             {productRecommendation.recommended === 'landing' ? 'Landing' :
                              productRecommendation.recommended === 'saas' ? 'SaaS' :
@@ -2750,7 +3551,7 @@ export default function TrendPage() {
                             <p className="text-sm text-emerald-300/90">{productRecommendation.reasoning}</p>
                             {selectedProductType !== productRecommendation.recommended && (
                               <p className="text-xs text-zinc-500 mt-2">
-                                Вы выбрали другой тип — это тоже хороший выбор!
+                                {language === 'ru' ? 'Вы выбрали другой тип — это тоже хороший выбор!' : 'You chose a different type — that\'s also a good choice!'}
                               </p>
                             )}
                           </div>
@@ -2760,10 +3561,10 @@ export default function TrendPage() {
 
                     <div className="grid sm:grid-cols-2 gap-4 mb-6">
                       {[
-                        { id: 'landing' as const, name: 'Landing + Waitlist', icon: '🚀', desc: 'Лендинг со сбором email и Supabase', complexity: 'Легко', time: '1-2 дня' },
-                        { id: 'saas' as const, name: 'SaaS Dashboard', icon: '📊', desc: 'Приложение с авторизацией и дашбордом', complexity: 'Средне', time: '1-2 недели' },
-                        { id: 'ai-wrapper' as const, name: 'AI Wrapper', icon: '🤖', desc: 'Чат-интерфейс для AI с историей', complexity: 'Средне', time: '3-5 дней' },
-                        { id: 'ecommerce' as const, name: 'E-commerce Lite', icon: '🛒', desc: 'Магазин с каталогом и корзиной', complexity: 'Сложно', time: '1-2 недели' },
+                        { id: 'landing' as const, name: 'Landing + Waitlist', icon: '🚀', desc: language === 'ru' ? 'Лендинг со сбором email и Supabase' : 'Landing page with email collection and Supabase', complexity: language === 'ru' ? 'Легко' : 'Easy', time: language === 'ru' ? '1-2 дня' : '1-2 days' },
+                        { id: 'saas' as const, name: 'SaaS Dashboard', icon: '📊', desc: language === 'ru' ? 'Приложение с авторизацией и дашбордом' : 'App with auth and dashboard', complexity: language === 'ru' ? 'Средне' : 'Medium', time: language === 'ru' ? '1-2 недели' : '1-2 weeks' },
+                        { id: 'ai-wrapper' as const, name: 'AI Wrapper', icon: '🤖', desc: language === 'ru' ? 'Чат-интерфейс для AI с историей' : 'Chat interface for AI with history', complexity: language === 'ru' ? 'Средне' : 'Medium', time: language === 'ru' ? '3-5 дней' : '3-5 days' },
+                        { id: 'ecommerce' as const, name: 'E-commerce Lite', icon: '🛒', desc: language === 'ru' ? 'Магазин с каталогом и корзиной' : 'Shop with catalog and cart', complexity: language === 'ru' ? 'Сложно' : 'Hard', time: language === 'ru' ? '1-2 недели' : '1-2 weeks' },
                       ].map((type) => {
                         const isRecommended = productRecommendation?.recommended === type.id;
                         const recommendationScore = productRecommendation?.allRecommendations.find(r => r.type === type.id);
@@ -2784,7 +3585,7 @@ export default function TrendPage() {
                             {/* Бейдж рекомендации */}
                             {isRecommended && !isSelected && (
                               <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-xs font-medium rounded-full shadow-lg">
-                                Рекомендуем
+                                {language === 'ru' ? 'Рекомендуем' : 'Recommended'}
                               </div>
                             )}
 
@@ -2809,8 +3610,8 @@ export default function TrendPage() {
                             <p className="text-sm text-zinc-400 mb-2">{type.desc}</p>
                             <div className="flex items-center gap-3 text-xs">
                               <span className={`px-2 py-0.5 rounded-full ${
-                                type.complexity === 'Легко' ? 'bg-green-500/20 text-green-400' :
-                                type.complexity === 'Средне' ? 'bg-yellow-500/20 text-yellow-400' :
+                                type.complexity === 'Легко' || type.complexity === 'Easy' ? 'bg-green-500/20 text-green-400' :
+                                type.complexity === 'Средне' || type.complexity === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
                                 'bg-red-500/20 text-red-400'
                               }`}>
                                 {type.complexity}
@@ -2836,8 +3637,8 @@ export default function TrendPage() {
                         <div className="flex items-center gap-3">
                           <span className="text-xl">▲</span>
                           <div>
-                            <div className="font-medium text-white">Автодеплой на Vercel</div>
-                            <div className="text-sm text-zinc-400">Продукт будет сразу доступен онлайн</div>
+                            <div className="font-medium text-white">{language === 'ru' ? 'Автодеплой на Vercel' : 'Auto-deploy to Vercel'}</div>
+                            <div className="text-sm text-zinc-400">{language === 'ru' ? 'Продукт будет сразу доступен онлайн' : 'Product will be available online immediately'}</div>
                           </div>
                         </div>
                         <button
@@ -2908,15 +3709,15 @@ export default function TrendPage() {
 
                   {/* Что будет создано */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Что будет сгенерировано:</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{language === 'ru' ? 'Что будет сгенерировано:' : 'What will be generated:'}</h3>
                     <div className="grid md:grid-cols-2 gap-4">
                       {[
-                        { icon: '💻', title: 'Рабочий код', desc: `Полный Next.js проект для ${selectedProductType}` },
-                        { icon: '🗄️', title: 'База данных', desc: 'Supabase схема + API интеграция' },
-                        { icon: '🎨', title: 'UI компоненты', desc: 'Tailwind CSS + готовые страницы' },
-                        { icon: '🔐', title: selectedProductType === 'saas' ? 'Авторизация' : 'Интеграции', desc: selectedProductType === 'saas' ? 'Supabase Auth + OAuth' : 'API ключи и webhooks' },
-                        { icon: '📝', title: 'Документация', desc: 'README + инструкция по настройке' },
-                        { icon: autoDeploy ? '▲' : '🗺️', title: autoDeploy ? 'Live URL' : 'Roadmap', desc: autoDeploy ? 'Автоматический деплой на Vercel' : 'План развития MVP → Production' },
+                        { icon: '💻', title: language === 'ru' ? 'Рабочий код' : 'Working code', desc: language === 'ru' ? `Полный Next.js проект для ${selectedProductType}` : `Full Next.js project for ${selectedProductType}` },
+                        { icon: '🗄️', title: language === 'ru' ? 'База данных' : 'Database', desc: 'Supabase schema + API integration' },
+                        { icon: '🎨', title: 'UI components', desc: 'Tailwind CSS + ready pages' },
+                        { icon: '🔐', title: selectedProductType === 'saas' ? (language === 'ru' ? 'Авторизация' : 'Authorization') : (language === 'ru' ? 'Интеграции' : 'Integrations'), desc: selectedProductType === 'saas' ? 'Supabase Auth + OAuth' : 'API keys and webhooks' },
+                        { icon: '📝', title: language === 'ru' ? 'Документация' : 'Documentation', desc: 'README + setup instructions' },
+                        { icon: autoDeploy ? '▲' : '🗺️', title: autoDeploy ? 'Live URL' : 'Roadmap', desc: autoDeploy ? (language === 'ru' ? 'Автоматический деплой на Vercel' : 'Auto deploy to Vercel') : (language === 'ru' ? 'План развития MVP → Production' : 'Development plan MVP → Production') },
                       ].map((item, i) => (
                         <div key={i} className="flex items-start gap-3 p-4 bg-zinc-800/50 rounded-lg">
                           <span className="text-2xl">{item.icon}</span>
@@ -2935,8 +3736,8 @@ export default function TrendPage() {
               {loadingProject && (
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-12 text-center">
                   <div className="animate-spin w-12 h-12 border-3 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">META-агент работает...</h3>
-                  <p className="text-zinc-400">Анализирует данные от всех экспертов и генерирует спецификацию</p>
+                  <h3 className="text-xl font-semibold text-white mb-2">{t.trendDetail.project.generating}</h3>
+                  <p className="text-zinc-400">{language === 'ru' ? 'Анализирует данные от всех экспертов и генерирует спецификацию' : 'Analyzing data from all experts and generating specification'}</p>
                 </div>
               )}
 
@@ -2951,8 +3752,8 @@ export default function TrendPage() {
                           <span className="text-3xl">✅</span>
                           <h3 className="text-2xl font-bold text-white">{projectData.project_name}</h3>
                         </div>
-                        {projectData.one_liner && (
-                          <p className="text-zinc-300 mb-2">{projectData.one_liner}</p>
+                        {displayOneLiner && (
+                          <p className="text-zinc-300 mb-2">{displayOneLiner}</p>
                         )}
                         <div className="flex flex-wrap gap-4">
                           {projectData.github_url && (
@@ -2981,7 +3782,7 @@ export default function TrendPage() {
                           )}
                         </div>
                         {!projectData.github_url && !projectData.vercel_url && !vercelUrl && (
-                          <p className="text-zinc-500 text-sm">GitHub репозиторий не создан</p>
+                          <p className="text-zinc-500 text-sm">{language === 'ru' ? 'GitHub репозиторий не создан' : 'GitHub repository not created'}</p>
                         )}
                       </div>
                       {/* Кнопка создания GitHub репо если его нет */}
@@ -2995,7 +3796,7 @@ export default function TrendPage() {
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                               </svg>
-                              Создать GitHub репо
+                              {t.trendDetail.project.createWithGithub}
                             </button>
                           ) : (
                             <a
@@ -3005,7 +3806,7 @@ export default function TrendPage() {
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                               </svg>
-                              Войти в GitHub
+                              {language === 'ru' ? 'Войти в GitHub' : 'Login to GitHub'}
                             </a>
                           )}
                         </div>
@@ -3013,7 +3814,7 @@ export default function TrendPage() {
                       {creatingGithubRepo && (
                         <div className="flex items-center gap-2 text-zinc-400">
                           <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
-                          <span className="text-sm">Создание репо...</span>
+                          <span className="text-sm">{language === 'ru' ? 'Создание репо...' : 'Creating repo...'}</span>
                         </div>
                       )}
                     </div>
@@ -3032,24 +3833,24 @@ export default function TrendPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                        Сбросить проект
+                        {language === 'ru' ? 'Сбросить проект' : 'Reset project'}
                       </button>
                     </div>
                   </div>
 
                   {/* Problem & Solution */}
-                  {(projectData.problem_statement || projectData.solution_overview) && (
+                  {(displayProblemStatement || displaySolutionOverview) && (
                     <div className="grid md:grid-cols-2 gap-4">
-                      {projectData.problem_statement && (
+                      {displayProblemStatement && (
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                          <h4 className="text-sm text-red-400 mb-2 font-medium">Problem</h4>
-                          <p className="text-zinc-300 text-sm">{projectData.problem_statement}</p>
+                          <h4 className="text-sm text-red-400 mb-2 font-medium">{t.trendDetail.project.problemStatement}</h4>
+                          <p className="text-zinc-300 text-sm">{displayProblemStatement}</p>
                         </div>
                       )}
-                      {projectData.solution_overview && (
+                      {displaySolutionOverview && (
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                          <h4 className="text-sm text-emerald-400 mb-2 font-medium">Solution</h4>
-                          <p className="text-zinc-300 text-sm">{projectData.solution_overview}</p>
+                          <h4 className="text-sm text-emerald-400 mb-2 font-medium">{t.trendDetail.project.solutionOverview}</h4>
+                          <p className="text-zinc-300 text-sm">{displaySolutionOverview}</p>
                         </div>
                       )}
                     </div>
@@ -3062,9 +3863,9 @@ export default function TrendPage() {
                     </h3>
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="text-sm text-zinc-400 mb-2">Core Features</h4>
+                        <h4 className="text-sm text-zinc-400 mb-2">{t.trendDetail.project.coreFeatures}</h4>
                         <div className="space-y-2">
-                          {projectData.mvp_specification?.core_features?.map((f, i) => (
+                          {displayCoreFeatures.map((f, i) => (
                             <div key={i} className="p-3 bg-zinc-800/50 rounded-lg">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-white">{f.name}</span>
@@ -3083,9 +3884,9 @@ export default function TrendPage() {
                         </div>
                       </div>
                       <div>
-                        <h4 className="text-sm text-zinc-400 mb-2">Tech Stack</h4>
+                        <h4 className="text-sm text-zinc-400 mb-2">{t.trendDetail.project.techStack}</h4>
                         <div className="space-y-2">
-                          {projectData.mvp_specification?.tech_stack?.map((item, i) => (
+                          {displayTechStack.map((item, i) => (
                             <div key={i} className="p-3 bg-zinc-800/50 rounded-lg">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-zinc-500">{item.category}:</span>
@@ -3105,12 +3906,12 @@ export default function TrendPage() {
                         {projectData.mvp_specification?.architecture && (
                           <div className="mt-4 pt-4 border-t border-zinc-700">
                             <div className="text-sm">
-                              <span className="text-zinc-400">Architecture:</span>
+                              <span className="text-zinc-400">{t.trendDetail.project.architecture}:</span>
                               <span className="text-white ml-2">{projectData.mvp_specification.architecture}</span>
                             </div>
                             {projectData.mvp_specification.estimated_complexity && (
                               <div className="text-sm mt-1">
-                                <span className="text-zinc-400">Complexity:</span>
+                                <span className="text-zinc-400">{t.trendDetail.project.complexity}:</span>
                                 <span className={`ml-2 ${
                                   projectData.mvp_specification.estimated_complexity === 'high' ? 'text-red-400' :
                                   projectData.mvp_specification.estimated_complexity === 'medium' ? 'text-amber-400' :
@@ -3127,14 +3928,14 @@ export default function TrendPage() {
                   {/* Roadmap */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <span>🗺️</span> Roadmap: MVP → Production
+                      <span>🗺️</span> {t.trendDetail.project.roadmap}
                     </h3>
                     <div className="space-y-4">
                       {[
-                        { key: 'mvp', label: 'MVP', color: 'indigo' },
-                        { key: 'alpha', label: 'Alpha', color: 'purple' },
-                        { key: 'beta', label: 'Beta', color: 'amber' },
-                        { key: 'production', label: 'Production', color: 'emerald' },
+                        { key: 'mvp', label: 'MVP', color: 'indigo', goals: displayRoadmapMvpGoals, deliverables: displayRoadmapMvpDeliverables, success_metrics: displayRoadmapMvpSuccessMetrics },
+                        { key: 'alpha', label: 'Alpha', color: 'purple', goals: displayRoadmapAlphaGoals, deliverables: displayRoadmapAlphaDeliverables, success_metrics: displayRoadmapAlphaSuccessMetrics },
+                        { key: 'beta', label: 'Beta', color: 'amber', goals: displayRoadmapBetaGoals, deliverables: displayRoadmapBetaDeliverables, success_metrics: displayRoadmapBetaSuccessMetrics },
+                        { key: 'production', label: 'Production', color: 'emerald', goals: displayRoadmapProductionGoals, deliverables: displayRoadmapProductionDeliverables, success_metrics: displayRoadmapProductionSuccessMetrics },
                       ].map((phase, i) => {
                         const phaseData = projectData.roadmap?.[phase.key as keyof ProjectRoadmap];
                         if (!phaseData) return null;
@@ -3149,9 +3950,9 @@ export default function TrendPage() {
                             </div>
                             <div className="grid md:grid-cols-3 gap-4">
                               <div>
-                                <span className="text-xs text-zinc-500">Goals:</span>
+                                <span className="text-xs text-zinc-500">{t.trendDetail.project.goals}:</span>
                                 <ul className="mt-1 space-y-1">
-                                  {phaseData.goals?.map((g, j) => (
+                                  {phase.goals.map((g, j) => (
                                     <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
                                       <span className="text-emerald-400">→</span> {g}
                                     </li>
@@ -3159,9 +3960,9 @@ export default function TrendPage() {
                                 </ul>
                               </div>
                               <div>
-                                <span className="text-xs text-zinc-500">Deliverables:</span>
+                                <span className="text-xs text-zinc-500">{t.trendDetail.project.deliverables}:</span>
                                 <ul className="mt-1 space-y-1">
-                                  {phaseData.deliverables?.map((d, j) => (
+                                  {phase.deliverables.map((d, j) => (
                                     <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
                                       <span className="text-indigo-400">✓</span> {d}
                                     </li>
@@ -3169,9 +3970,9 @@ export default function TrendPage() {
                                 </ul>
                               </div>
                               <div>
-                                <span className="text-xs text-zinc-500">Success Metrics:</span>
+                                <span className="text-xs text-zinc-500">{t.trendDetail.project.successMetrics}:</span>
                                 <ul className="mt-1 space-y-1">
-                                  {phaseData.success_metrics?.map((m, j) => (
+                                  {phase.success_metrics.map((m, j) => (
                                     <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
                                       <span className="text-amber-400">📊</span> {m}
                                     </li>
@@ -3208,11 +4009,11 @@ export default function TrendPage() {
                         <div className="text-xs text-zinc-500">Production Revenue</div>
                       </div>
                     </div>
-                    {projectData.business_metrics?.key_kpis && projectData.business_metrics.key_kpis.length > 0 && (
+                    {displayKeyKpis.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-zinc-700">
                         <span className="text-xs text-zinc-500">Key KPIs:</span>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {projectData.business_metrics.key_kpis.map((kpi, i) => (
+                          {displayKeyKpis.map((kpi, i) => (
                             <span key={i} className="px-2 py-1 bg-indigo-500/10 text-indigo-300 text-xs rounded">{kpi}</span>
                           ))}
                         </div>
@@ -3221,13 +4022,13 @@ export default function TrendPage() {
                   </div>
 
                   {/* Enhancement Recommendations */}
-                  {projectData.enhancement_recommendations?.length > 0 && (
+                  {displayEnhancements.length > 0 && (
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <span>💡</span> Enhancement Recommendations
                       </h3>
                       <div className="space-y-3">
-                        {projectData.enhancement_recommendations.map((rec, i) => (
+                        {displayEnhancements.map((rec, i) => (
                           <div key={i} className="p-4 bg-zinc-800/50 rounded-lg">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-medium text-white">{rec.area}</span>
@@ -3280,7 +4081,7 @@ export default function TrendPage() {
                       className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors inline-flex items-center gap-2"
                     >
                       <span>🚀</span>
-                      Открыть в проектах
+                      {language === 'ru' ? 'Открыть в проектах' : 'Open in Projects'}
                     </button>
                   </div>
                 </>
@@ -3302,6 +4103,7 @@ export default function TrendPage() {
             real_sources: analysis.real_sources,
           } : undefined,
         }}
+        language={language}
       />
 
       {/* MVP Type Selector Modal */}

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+import { callAIJson, isAIConfigured } from '@/lib/ai';
 
 interface GenerateEmailRequest {
   company: {
@@ -21,6 +20,14 @@ interface GenerateEmailRequest {
   language?: 'ru' | 'en';
 }
 
+interface EmailResponse {
+  subject: string;
+  body: string;
+  follow_up_subject: string;
+  follow_up_body: string;
+  tips: string[];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateEmailRequest = await request.json();
@@ -29,6 +36,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Компания, ниша, боль и имя отправителя обязательны' },
         { status: 400 }
+      );
+    }
+
+    if (!isAIConfigured()) {
+      return NextResponse.json(
+        { success: false, error: 'API ключ не настроен. Добавьте OPENAI_API_KEY в Environment Variables.' },
+        { status: 500 }
       );
     }
 
@@ -41,18 +55,7 @@ export async function POST(request: NextRequest) {
       professional: 'профессиональный стиль, сбалансированный между формальным и дружелюбным'
     };
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Ты эксперт по B2B cold email копирайтингу с 10+ лет опыта.
+    const systemPrompt = `Ты эксперт по B2B cold email копирайтингу с 10+ лет опыта.
 
 Твоя задача - написать персонализированное деловое письмо потенциальному клиенту.
 
@@ -88,11 +91,9 @@ export async function POST(request: NextRequest) {
   "follow_up_subject": "Тема для follow-up письма",
   "follow_up_body": "Текст follow-up письма (короче, 50-100 слов)",
   "tips": ["Совет по отправке 1", "Совет 2"]
-}`
-          },
-          {
-            role: 'user',
-            content: `Напиши деловое письмо для:
+}`;
+
+    const userMessage = `Напиши деловое письмо для:
 
 **Компания-получатель:**
 - Название: ${body.company.name}
@@ -112,45 +113,23 @@ ${body.company.outreach_angle ? `- Угол подхода: ${body.company.outre
 ${body.senderCompany ? `- Компания: ${body.senderCompany}` : ''}
 ${body.senderContact ? `- Контакт: ${body.senderContact}` : ''}
 
-Напиши персонализированное письмо, которое покажет понимание их бизнеса и предложит реальную ценность.`
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 2000
-      })
-    });
+Напиши персонализированное письмо, которое покажет понимание их бизнеса и предложит реальную ценность.`;
 
-    if (!response.ok) {
-      console.error('OpenAI API error');
+    const result = await callAIJson<EmailResponse>(systemPrompt, userMessage, { temperature: 0.8 });
+
+    if (!result.success || !result.data) {
       return NextResponse.json(
-        { success: false, error: 'Ошибка генерации письма' },
+        { success: false, error: result.error || 'Ошибка генерации письма' },
         { status: 500 }
       );
     }
 
-    const result = await response.json();
-    const content = result.choices?.[0]?.message?.content || '';
-
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[0]);
-
-        return NextResponse.json({
-          success: true,
-          ...data,
-          company: body.company.name,
-          timestamp: new Date().toISOString()
-        });
-      }
-    } catch (e) {
-      console.error('Failed to parse AI response:', e);
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Не удалось обработать ответ AI' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      ...result.data,
+      company: body.company.name,
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     console.error('Generate email error:', error);

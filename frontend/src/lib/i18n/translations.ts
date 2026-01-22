@@ -172,6 +172,73 @@ export interface Translations {
       activeFunds: string;
       website: string;
       marketSignals: string;
+      nextStep: string;
+      findLeadsDescription: string;
+      dateUnknown: string;
+    };
+    // Leads section
+    leads: {
+      title: string;
+      searchingClients: string;
+      foundCompanies: string;
+      interestedInSolving: string;
+      companies: string;
+      relevance: string;
+      website: string;
+      email: string;
+      linkedin: string;
+      decisionMakers: string;
+      linkedinQueries: string;
+      directories: string;
+      searchTips: string;
+      nextStep: string;
+      generatePitchDescription: string;
+      createPitchDeck: string;
+    };
+    // Pitch section
+    pitch: {
+      generating: string;
+      slide: string;
+      speakerNotes: string;
+      visualRecommendation: string;
+      back: string;
+      next: string;
+      exportPresentation: string;
+      copyText: string;
+      copyTextDescription: string;
+      downloadJson: string;
+      downloadJsonDescription: string;
+      selectTemplate: string;
+      openTemplates: string;
+      viaTextFast: string;
+      viaTextStep1: string;
+      viaTextStep2: string;
+      viaTextStep3: string;
+      viaTextStep4: string;
+      viaJsonAuto: string;
+      viaJsonStep1: string;
+      viaJsonStep2: string;
+      viaJsonStep3: string;
+      viaJsonStep4: string;
+      nextStep: string;
+      createProjectDescription: string;
+    };
+    // Project section
+    project: {
+      generating: string;
+      problemStatement: string;
+      solutionOverview: string;
+      coreFeatures: string;
+      techStack: string;
+      architecture: string;
+      complexity: string;
+      roadmap: string;
+      goals: string;
+      deliverables: string;
+      successMetrics: string;
+      createProject: string;
+      createWithGithub: string;
+      selectMvpType: string;
     };
     // Common
     low: string;
@@ -198,6 +265,72 @@ export interface Translations {
     sources: string;
     noData: string;
     error: string;
+    // Extended translations
+    describeNiche: string;
+    nicheName: string;
+    nicheNamePlaceholder: string;
+    targetAudienceLabel: string;
+    targetAudiencePlaceholder: string;
+    problemDescription: string;
+    problemDescriptionPlaceholder: string;
+    keywords: string;
+    keywordsPlaceholder: string;
+    runDeepAnalysis: string;
+    analysisIncludes: string;
+    collectingData: string;
+    expertAnalysis: string;
+    dataCollection: string;
+    backToTrends: string;
+    inFavorites: string;
+    savedToFavorites: string;
+    analysisComplete: string;
+    confidenceScore: string;
+    // Tabs
+    tabResearch: string;
+    tabBusiness: string;
+    tabSolutions: string;
+    // Results sections
+    collectedData: string;
+    postsFound: string;
+    videosFound: string;
+    yearlyGrowth: string;
+    aiSynthesis: string;
+    optimist: string;
+    skeptic: string;
+    validatedPainPoints: string;
+    forArguments: string;
+    againstArguments: string;
+    confidence: string;
+    primaryAudience: string;
+    segmentSize: string;
+    whereToFind: string;
+    willingnessToPay: string;
+    high: string;
+    medium: string;
+    low: string;
+    risks: string;
+    opportunities: string;
+    potentialRevenue: string;
+    timeToMarket: string;
+    arbiterRecommendation: string;
+    recommendedSolutions: string;
+    mvpFeatures: string;
+    monetization: string;
+    generateProductSpec: string;
+    generatingProductSpec: string;
+    analysisMetadata: string;
+    analysisDepth: string;
+    consensusReached: string;
+    yes: string;
+    partial: string;
+    usedSources: string;
+    openInFavorites: string;
+    newResearch: string;
+    fillNicheAndDescription: string;
+    productSpecError: string;
+    connectionError: string;
+    tryAgain: string;
+    productSpecHint: string;
   };
 
   // Favorites
@@ -206,6 +339,47 @@ export interface Translations {
     empty: string;
     emptyDescription: string;
     goToHome: string;
+    ideasCount: string;
+    analyzed: string;
+    addIdeas: string;
+    loadingFavorites: string;
+    selectFromLeft: string;
+    removeFromFavorites: string;
+    deepAnalysis: string;
+    analyzing3Agents: string;
+    reanalyze: string;
+    analyze: string;
+    downloadReport: string;
+    whyTrending: string;
+    analyzedOn: string;
+    deepAnalysisLabel: string;
+    optimistSkepticArbiter: string;
+    confidenceLabel: string;
+    consensus: string;
+    mainPain: string;
+    keyProblems: string;
+    keyProblemsWithArgs: string;
+    verdict: string;
+    argumentsFor: string;
+    argumentsAgainst: string;
+    targetAudience: string;
+    segmentSize: string;
+    willingnessHigh: string;
+    willingnessMedium: string;
+    willingnessLow: string;
+    whereToFind: string;
+    risks: string;
+    opportunities: string;
+    finalRecommendation: string;
+    agentPositions: string;
+    optimist: string;
+    skeptic: string;
+    realDataSources: string;
+    engagement: string;
+    videos: string;
+    noData: string;
+    requiresFacebookApi: string;
+    goToProject: string;
   };
 
   // Projects
@@ -472,6 +646,70 @@ export const translations: Record<Language, Translations> = {
         activeFunds: 'Активные фонды',
         website: 'Сайт',
         marketSignals: 'Рыночные сигналы',
+        nextStep: 'Следующий шаг',
+        findLeadsDescription: 'Найдите потенциальных клиентов с контактами для outreach.',
+        dateUnknown: 'Дата неизвестна',
+      },
+      leads: {
+        title: 'Потенциальные клиенты',
+        searchingClients: 'Ищем потенциальных клиентов...',
+        foundCompanies: 'Найдено компаний',
+        interestedInSolving: 'которые могут быть заинтересованы в решении проблемы',
+        companies: 'Компании',
+        relevance: 'релевантность',
+        website: 'Сайт',
+        email: 'Email',
+        linkedin: 'LinkedIn',
+        decisionMakers: 'ЛПР для связи',
+        linkedinQueries: 'Запросы для LinkedIn Sales Navigator',
+        directories: 'Каталоги для поиска',
+        searchTips: 'Советы по поиску',
+        nextStep: 'Следующий шаг',
+        generatePitchDescription: 'Сгенерируйте Pitch Deck на 10 слайдов для презентации инвесторам.',
+        createPitchDeck: 'Создать Pitch Deck',
+      },
+      pitch: {
+        generating: 'Генерируем Pitch Deck...',
+        slide: 'Слайд',
+        speakerNotes: 'Заметки спикера',
+        visualRecommendation: 'Рекомендация по визуалу',
+        back: 'Назад',
+        next: 'Вперёд',
+        exportPresentation: 'Экспорт презентации',
+        copyText: 'Копировать текст',
+        copyTextDescription: 'Для вставки в редактор',
+        downloadJson: 'Скачать JSON',
+        downloadJsonDescription: 'Полные данные презентации',
+        selectTemplate: 'Выберите шаблон и вставьте контент',
+        openTemplates: 'Открыть шаблоны →',
+        viaTextFast: 'Через текст (быстро):',
+        viaTextStep1: '1. Нажмите "Копировать текст"',
+        viaTextStep2: '2. Откройте шаблон (Slides/Figma/Canva)',
+        viaTextStep3: '3. Создайте копию шаблона',
+        viaTextStep4: '4. Вставьте контент в слайды',
+        viaJsonAuto: 'Через JSON (для автоматизации):',
+        viaJsonStep1: '1. Скачайте JSON файл',
+        viaJsonStep2: '2. Используйте с AI (ChatGPT/Claude): "Создай презентацию из этого JSON"',
+        viaJsonStep3: '3. Или импортируйте в Gamma.app, Tome.app',
+        viaJsonStep4: '4. Или используйте Google Slides API для автоматического создания',
+        nextStep: 'Следующий шаг',
+        createProjectDescription: 'Создайте проект с README, roadmap и GitHub репозиторием.',
+      },
+      project: {
+        generating: 'Генерируем проект...',
+        problemStatement: 'Описание проблемы',
+        solutionOverview: 'Обзор решения',
+        coreFeatures: 'Ключевые функции',
+        techStack: 'Технологии',
+        architecture: 'Архитектура',
+        complexity: 'Сложность',
+        roadmap: 'Дорожная карта: MVP → Production',
+        goals: 'Цели',
+        deliverables: 'Deliverables',
+        successMetrics: 'Метрики успеха',
+        createProject: 'Создать проект',
+        createWithGithub: 'Создать с GitHub репо',
+        selectMvpType: 'Выберите тип MVP',
       },
       low: 'Низкий',
       medium: 'Средний',
@@ -495,12 +733,119 @@ export const translations: Record<Language, Translations> = {
       sources: 'Источники данных',
       noData: 'Нет данных',
       error: 'Ошибка анализа',
+      // Extended translations
+      describeNiche: 'Опишите нишу для исследования',
+      nicheName: 'Название ниши',
+      nicheNamePlaceholder: 'Например: AI-ассистент для стоматологов',
+      targetAudienceLabel: 'Целевая аудитория (опционально)',
+      targetAudiencePlaceholder: 'Например: Частные стоматологические клиники',
+      problemDescription: 'Описание проблемы/идеи',
+      problemDescriptionPlaceholder: 'Опишите суть идеи, какую проблему решает, что хотите создать. Чем подробнее - тем точнее анализ.',
+      keywords: 'Ключевые слова для поиска (опционально)',
+      keywordsPlaceholder: 'Через запятую: dental software, appointment booking, patient management',
+      runDeepAnalysis: 'Запустить глубокий анализ',
+      analysisIncludes: 'Анализ включает сбор данных из Reddit, YouTube, Google Trends + экспертную оценку тремя AI-агентами',
+      collectingData: 'Собираем данные из Reddit, YouTube, Google Trends...',
+      expertAnalysis: 'Запускаем экспертный анализ (Оптимист → Скептик → Арбитр)...',
+      dataCollection: 'Сбор данных',
+      backToTrends: 'К трендам',
+      inFavorites: 'В избранном',
+      savedToFavorites: 'Сохранено в Избранное',
+      analysisComplete: 'Анализ завершён',
+      confidenceScore: 'Уверенность',
+      // Tabs
+      tabResearch: '📊 Исследование',
+      tabBusiness: '💼 Бизнес-анализ',
+      tabSolutions: '🚀 Решения',
+      // Results sections
+      collectedData: 'Собранные данные',
+      postsFound: 'постов найдено',
+      videosFound: 'видео найдено',
+      yearlyGrowth: 'рост за год',
+      aiSynthesis: 'AI-синтез данных',
+      optimist: 'Оптимист',
+      skeptic: 'Скептик',
+      validatedPainPoints: 'Валидированные болевые точки',
+      forArguments: 'За',
+      againstArguments: 'Против',
+      confidence: 'уверенность',
+      primaryAudience: 'Целевая аудитория',
+      segmentSize: 'Размер',
+      whereToFind: 'Где найти',
+      willingnessToPay: 'Готовность платить',
+      high: 'Высокая',
+      medium: 'Средняя',
+      low: 'Низкая',
+      risks: 'Риски',
+      opportunities: 'Возможности',
+      potentialRevenue: 'Потенциальный доход',
+      timeToMarket: 'Время до рынка',
+      arbiterRecommendation: 'Рекомендация арбитра',
+      recommendedSolutions: 'Рекомендуемые решения',
+      mvpFeatures: 'MVP фичи',
+      monetization: 'Монетизация',
+      generateProductSpec: 'Сгенерировать',
+      generatingProductSpec: 'Генерируем детальную спецификацию продукта...',
+      analysisMetadata: 'Метаданные анализа',
+      analysisDepth: 'Глубина анализа',
+      consensusReached: 'Консенсус достигнут',
+      yes: 'Да',
+      partial: 'Частично',
+      usedSources: 'Использованные источники',
+      openInFavorites: 'Открыть в Избранном',
+      newResearch: 'Новое исследование',
+      fillNicheAndDescription: 'Заполните название ниши и описание',
+      productSpecError: 'Ошибка генерации ProductSpec',
+      connectionError: 'Ошибка соединения с сервером',
+      tryAgain: 'Попробовать снова',
+      productSpecHint: 'Нажмите «Сгенерировать» для создания детальной спецификации продукта с user flow, техническими требованиями и моделью монетизации',
     },
     favorites: {
       title: 'Избранное',
       empty: 'Пока пусто',
       emptyDescription: 'Добавляйте интересные идеи в избранное, чтобы вернуться к ним позже',
       goToHome: 'Перейти к потоку идей',
+      ideasCount: 'идей',
+      analyzed: 'проанализировано',
+      addIdeas: 'Добавить идеи',
+      loadingFavorites: 'Загрузка избранного...',
+      selectFromLeft: 'Выберите идею из списка слева',
+      removeFromFavorites: 'Убрать из избранного',
+      deepAnalysis: 'Глубокий анализ',
+      analyzing3Agents: 'Глубокий анализ (3 агента)...',
+      reanalyze: 'Переанализировать',
+      analyze: 'Анализировать',
+      downloadReport: 'Скачать отчёт',
+      whyTrending: 'Почему это трендит',
+      analyzedOn: 'Проанализирован',
+      deepAnalysisLabel: 'Глубокий анализ',
+      optimistSkepticArbiter: 'Оптимист + Скептик + Арбитр',
+      confidenceLabel: 'уверенность',
+      consensus: 'Консенсус',
+      mainPain: 'Главная боль',
+      keyProblems: 'Ключевые проблемы',
+      keyProblemsWithArgs: 'Ключевые проблемы (с аргументацией)',
+      verdict: 'Вердикт',
+      argumentsFor: 'Аргументы ЗА',
+      argumentsAgainst: 'Аргументы ПРОТИВ',
+      targetAudience: 'Целевая аудитория',
+      segmentSize: 'Размер',
+      willingnessHigh: 'Высокая готовность платить',
+      willingnessMedium: 'Средняя готовность платить',
+      willingnessLow: 'Низкая готовность платить',
+      whereToFind: 'Где найти',
+      risks: 'Риски',
+      opportunities: 'Возможности',
+      finalRecommendation: 'Финальная рекомендация',
+      agentPositions: 'Позиции агентов',
+      optimist: 'Оптимист',
+      skeptic: 'Скептик',
+      realDataSources: 'Реальные источники данных',
+      engagement: 'engagement',
+      videos: 'видео',
+      noData: 'Нет данных',
+      requiresFacebookApi: 'Требуется Facebook API ключ',
+      goToProject: 'Перейти к проекту',
     },
     projects: {
       title: 'Мои проекты',
@@ -752,6 +1097,70 @@ export const translations: Record<Language, Translations> = {
         activeFunds: 'Active Funds',
         website: 'Website',
         marketSignals: 'Market Signals',
+        nextStep: 'Next Step',
+        findLeadsDescription: 'Find potential clients with contacts for outreach.',
+        dateUnknown: 'Date unknown',
+      },
+      leads: {
+        title: 'Potential Clients',
+        searchingClients: 'Searching for potential clients...',
+        foundCompanies: 'Companies found',
+        interestedInSolving: 'that may be interested in solving the problem',
+        companies: 'Companies',
+        relevance: 'relevance',
+        website: 'Website',
+        email: 'Email',
+        linkedin: 'LinkedIn',
+        decisionMakers: 'Decision makers to contact',
+        linkedinQueries: 'LinkedIn Sales Navigator queries',
+        directories: 'Directories for search',
+        searchTips: 'Search tips',
+        nextStep: 'Next Step',
+        generatePitchDescription: 'Generate a 10-slide Pitch Deck for investor presentation.',
+        createPitchDeck: 'Create Pitch Deck',
+      },
+      pitch: {
+        generating: 'Generating Pitch Deck...',
+        slide: 'Slide',
+        speakerNotes: 'Speaker notes',
+        visualRecommendation: 'Visual recommendation',
+        back: 'Back',
+        next: 'Next',
+        exportPresentation: 'Export presentation',
+        copyText: 'Copy text',
+        copyTextDescription: 'For pasting into editor',
+        downloadJson: 'Download JSON',
+        downloadJsonDescription: 'Full presentation data',
+        selectTemplate: 'Select a template and paste content',
+        openTemplates: 'Open templates →',
+        viaTextFast: 'Via text (fast):',
+        viaTextStep1: '1. Click "Copy text"',
+        viaTextStep2: '2. Open template (Slides/Figma/Canva)',
+        viaTextStep3: '3. Create a copy of the template',
+        viaTextStep4: '4. Paste content into slides',
+        viaJsonAuto: 'Via JSON (for automation):',
+        viaJsonStep1: '1. Download JSON file',
+        viaJsonStep2: '2. Use with AI (ChatGPT/Claude): "Create presentation from this JSON"',
+        viaJsonStep3: '3. Or import to Gamma.app, Tome.app',
+        viaJsonStep4: '4. Or use Google Slides API for automatic creation',
+        nextStep: 'Next Step',
+        createProjectDescription: 'Create a project with README, roadmap and GitHub repository.',
+      },
+      project: {
+        generating: 'Generating project...',
+        problemStatement: 'Problem Statement',
+        solutionOverview: 'Solution Overview',
+        coreFeatures: 'Core Features',
+        techStack: 'Tech Stack',
+        architecture: 'Architecture',
+        complexity: 'Complexity',
+        roadmap: 'Roadmap: MVP → Production',
+        goals: 'Goals',
+        deliverables: 'Deliverables',
+        successMetrics: 'Success Metrics',
+        createProject: 'Create Project',
+        createWithGithub: 'Create with GitHub repo',
+        selectMvpType: 'Select MVP type',
       },
       low: 'Low',
       medium: 'Medium',
@@ -775,12 +1184,119 @@ export const translations: Record<Language, Translations> = {
       sources: 'Data sources',
       noData: 'No data',
       error: 'Analysis error',
+      // Extended translations
+      describeNiche: 'Describe the niche to research',
+      nicheName: 'Niche name',
+      nicheNamePlaceholder: 'E.g.: AI assistant for dentists',
+      targetAudienceLabel: 'Target audience (optional)',
+      targetAudiencePlaceholder: 'E.g.: Private dental clinics',
+      problemDescription: 'Problem/idea description',
+      problemDescriptionPlaceholder: 'Describe the idea, what problem it solves, what you want to create. The more detail - the more accurate the analysis.',
+      keywords: 'Search keywords (optional)',
+      keywordsPlaceholder: 'Comma-separated: dental software, appointment booking, patient management',
+      runDeepAnalysis: 'Run deep analysis',
+      analysisIncludes: 'Analysis includes data from Reddit, YouTube, Google Trends + expert evaluation by three AI agents',
+      collectingData: 'Collecting data from Reddit, YouTube, Google Trends...',
+      expertAnalysis: 'Running expert analysis (Optimist → Skeptic → Arbiter)...',
+      dataCollection: 'Data collection',
+      backToTrends: 'Back to trends',
+      inFavorites: 'In favorites',
+      savedToFavorites: 'Saved to Favorites',
+      analysisComplete: 'Analysis complete',
+      confidenceScore: 'Confidence',
+      // Tabs
+      tabResearch: '📊 Research',
+      tabBusiness: '💼 Business Analysis',
+      tabSolutions: '🚀 Solutions',
+      // Results sections
+      collectedData: 'Collected data',
+      postsFound: 'posts found',
+      videosFound: 'videos found',
+      yearlyGrowth: 'yearly growth',
+      aiSynthesis: 'AI data synthesis',
+      optimist: 'Optimist',
+      skeptic: 'Skeptic',
+      validatedPainPoints: 'Validated pain points',
+      forArguments: 'For',
+      againstArguments: 'Against',
+      confidence: 'confidence',
+      primaryAudience: 'Target Audience',
+      segmentSize: 'Size',
+      whereToFind: 'Where to find',
+      willingnessToPay: 'Willingness to pay',
+      high: 'High',
+      medium: 'Medium',
+      low: 'Low',
+      risks: 'Risks',
+      opportunities: 'Opportunities',
+      potentialRevenue: 'Potential revenue',
+      timeToMarket: 'Time to market',
+      arbiterRecommendation: 'Arbiter recommendation',
+      recommendedSolutions: 'Recommended solutions',
+      mvpFeatures: 'MVP features',
+      monetization: 'Monetization',
+      generateProductSpec: 'Generate',
+      generatingProductSpec: 'Generating detailed product specification...',
+      analysisMetadata: 'Analysis metadata',
+      analysisDepth: 'Analysis depth',
+      consensusReached: 'Consensus reached',
+      yes: 'Yes',
+      partial: 'Partial',
+      usedSources: 'Sources used',
+      openInFavorites: 'Open in Favorites',
+      newResearch: 'New research',
+      fillNicheAndDescription: 'Fill in niche name and description',
+      productSpecError: 'ProductSpec generation error',
+      connectionError: 'Server connection error',
+      tryAgain: 'Try again',
+      productSpecHint: 'Click "Generate" to create a detailed product specification with user flow, technical requirements and monetization model',
     },
     favorites: {
       title: 'Favorites',
       empty: 'Empty',
       emptyDescription: 'Add interesting ideas to favorites to return to them later',
       goToHome: 'Go to ideas feed',
+      ideasCount: 'ideas',
+      analyzed: 'analyzed',
+      addIdeas: 'Add Ideas',
+      loadingFavorites: 'Loading favorites...',
+      selectFromLeft: 'Select an idea from the list on the left',
+      removeFromFavorites: 'Remove from favorites',
+      deepAnalysis: 'Deep Analysis',
+      analyzing3Agents: 'Deep analysis (3 agents)...',
+      reanalyze: 'Re-analyze',
+      analyze: 'Analyze',
+      downloadReport: 'Download Report',
+      whyTrending: 'Why is this trending',
+      analyzedOn: 'Analyzed on',
+      deepAnalysisLabel: 'Deep Analysis',
+      optimistSkepticArbiter: 'Optimist + Skeptic + Arbiter',
+      confidenceLabel: 'confidence',
+      consensus: 'Consensus',
+      mainPain: 'Main Pain',
+      keyProblems: 'Key Problems',
+      keyProblemsWithArgs: 'Key Problems (with arguments)',
+      verdict: 'Verdict',
+      argumentsFor: 'Arguments FOR',
+      argumentsAgainst: 'Arguments AGAINST',
+      targetAudience: 'Target Audience',
+      segmentSize: 'Size',
+      willingnessHigh: 'High willingness to pay',
+      willingnessMedium: 'Medium willingness to pay',
+      willingnessLow: 'Low willingness to pay',
+      whereToFind: 'Where to find',
+      risks: 'Risks',
+      opportunities: 'Opportunities',
+      finalRecommendation: 'Final Recommendation',
+      agentPositions: 'Agent Positions',
+      optimist: 'Optimist',
+      skeptic: 'Skeptic',
+      realDataSources: 'Real Data Sources',
+      engagement: 'engagement',
+      videos: 'videos',
+      noData: 'No data',
+      requiresFacebookApi: 'Requires Facebook API key',
+      goToProject: 'Go to Project',
     },
     projects: {
       title: 'My Projects',

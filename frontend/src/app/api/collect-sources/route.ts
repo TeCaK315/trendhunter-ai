@@ -234,10 +234,11 @@ async function fetchYouTubeVideos(query: string): Promise<{ videos: YouTubeVideo
 function generateQueryVariants(originalQuery: string): string[] {
   const variants: string[] = [];
 
-  // Clean up the original query
+  // Clean up the original query - remove AI/tech prefixes and suffixes
   const cleaned = originalQuery
-    .replace(/^AI-Powered\s+/i, '')
-    .replace(/^AI-Based\s+/i, '')
+    .replace(/^AI[- ]?Powered\s+/i, '')
+    .replace(/^AI[- ]?Based\s+/i, '')
+    .replace(/^AI\s+/i, '')
     .replace(/\s+Platform$/i, '')
     .replace(/\s+Tool$/i, '')
     .replace(/\s+App$/i, '')
@@ -245,45 +246,70 @@ function generateQueryVariants(originalQuery: string): string[] {
     .replace(/\s+Service$/i, '')
     .replace(/\s+Agent$/i, '')
     .replace(/\s+Assistant$/i, '')
+    .replace(/\s+System$/i, '')
+    .replace(/\s+Solution$/i, '')
     .trim();
 
   // Extract meaningful words
   const skipWords = [
     'the', 'and', 'for', 'with', 'app', 'tool', 'platform', 'service',
     'powered', 'based', 'intelligent', 'smart', 'automated', 'automation',
-    'ai', 'artificial', 'intelligence', 'machine', 'learning'
+    'ai', 'artificial', 'intelligence', 'machine', 'learning', 'using'
   ];
 
   const words = cleaned.split(/\s+/).filter(w =>
     w.length > 2 && !skipWords.includes(w.toLowerCase())
   );
 
-  // Core topic only
+  // Priority 1: Core topic (2-3 words)
+  if (words.length >= 3) {
+    variants.push(words.slice(0, 3).join(' '));
+  }
   if (words.length >= 2) {
     variants.push(words.slice(0, 2).join(' '));
   }
+
+  // Priority 2: Single most important word
   if (words.length >= 1) {
     variants.push(words[0]);
   }
 
-  // Add health-related variants
-  const healthTerms = ['mental', 'health', 'therapy', 'wellness', 'psychology', 'mind'];
-  const isHealthRelated = words.some(w => healthTerms.includes(w.toLowerCase()));
-  if (isHealthRelated) {
-    variants.push('mental health app');
-    variants.push('therapy app');
-    variants.push('mental wellness');
+  // Priority 3: Industry-specific variants
+  const domainMappings: Record<string, string[]> = {
+    feedback: ['customer feedback', 'feedback analysis', 'user feedback'],
+    customer: ['customer service', 'customer support', 'customer experience'],
+    health: ['mental health app', 'health tech', 'wellness app'],
+    finance: ['fintech', 'personal finance', 'financial planning'],
+    marketing: ['marketing automation', 'digital marketing'],
+    sales: ['sales automation', 'CRM software'],
+    hr: ['HR tech', 'recruiting software', 'HR automation'],
+    learning: ['e-learning', 'online education', 'LMS'],
+    analytics: ['data analytics', 'business intelligence'],
+    content: ['content creation', 'content marketing'],
+    productivity: ['productivity tools', 'task management'],
+  };
+
+  for (const [key, alternatives] of Object.entries(domainMappings)) {
+    if (originalQuery.toLowerCase().includes(key)) {
+      variants.push(...alternatives.slice(0, 2));
+    }
   }
 
-  // Original query simplified
-  if (cleaned !== originalQuery) {
+  // Priority 4: Cleaned query
+  if (cleaned !== originalQuery && cleaned.length > 0) {
     variants.push(cleaned);
+  }
+
+  // Priority 5: With "software" or "app" suffix for better matches
+  if (words.length >= 1) {
+    variants.push(`${words[0]} software`);
   }
 
   // Full original as last resort
   variants.push(originalQuery);
 
-  return [...new Set(variants)].filter(v => v.length > 0);
+  // Deduplicate and filter
+  return [...new Set(variants)].filter(v => v.length > 0 && v.length < 50);
 }
 
 // Fetch Google Trends data - NO MOCKS, real data only
@@ -351,25 +377,51 @@ function processGoogleTrendsData(data: Record<string, unknown>, usedQuery: strin
     interest_timeline.push({ date, value: Number(value) });
   }
 
-  // Calculate growth rate
+  // Calculate growth rate - compare 3-month periods for stability
   let growth_rate = 0;
-  if (interest_timeline.length >= 2) {
+  if (interest_timeline.length >= 6) {
+    // Compare average of first 3 months vs last 3 months
+    const firstHalf = interest_timeline.slice(0, Math.floor(interest_timeline.length / 2));
+    const secondHalf = interest_timeline.slice(Math.floor(interest_timeline.length / 2));
+
+    const avgOld = firstHalf.reduce((sum, p) => sum + p.value, 0) / firstHalf.length || 1;
+    const avgNew = secondHalf.reduce((sum, p) => sum + p.value, 0) / secondHalf.length || 0;
+
+    growth_rate = Math.round(((avgNew - avgOld) / avgOld) * 100);
+  } else if (interest_timeline.length >= 2) {
     const oldValue = interest_timeline[0].value || 1;
     const newValue = interest_timeline[interest_timeline.length - 1].value || 0;
     growth_rate = Math.round(((newValue - oldValue) / oldValue) * 100);
   }
 
-  // Get related queries
+  // Get related queries - try both 'top' and 'rising'
   let related_queries: Array<{ query: string; growth: string; link?: string }> = [];
-  const relatedQueriesData = data.related_queries as { top?: Array<{ query: string; extracted_value?: number; value?: string; link?: string }> } | undefined;
-  const topQueries = relatedQueriesData?.top || [];
+  const relatedQueriesData = data.related_queries as {
+    top?: Array<{ query: string; extracted_value?: number; value?: string; link?: string }>;
+    rising?: Array<{ query: string; extracted_value?: number; value?: string; link?: string }>;
+  } | undefined;
 
-  if (topQueries.length > 0) {
-    related_queries = topQueries.slice(0, 10).map(item => ({
-      query: item.query,
-      growth: `${item.extracted_value || item.value || 0}`,
-      link: item.link,
-    }));
+  // Combine top and rising queries
+  const topQueries = relatedQueriesData?.top || [];
+  const risingQueries = relatedQueriesData?.rising || [];
+  const allQueries = [...topQueries, ...risingQueries];
+
+  if (allQueries.length > 0) {
+    // Deduplicate by query text
+    const seen = new Set<string>();
+    related_queries = allQueries
+      .filter(item => {
+        const key = item.query.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 10)
+      .map(item => ({
+        query: item.query,
+        growth: item.value === 'Breakout' ? 'Breakout' : `${item.extracted_value || item.value || 0}`,
+        link: item.link,
+      }));
   }
 
   // Get the Google Trends URL

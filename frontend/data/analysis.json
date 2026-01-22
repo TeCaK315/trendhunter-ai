@@ -3862,54 +3862,54 @@
     "trend-1768776365163-0": {
       "trend_id": "trend-1768776365163-0",
       "trend_title": "AI Customer Feedback Analyzer",
-      "main_pain": "Недостаточная скорость и точность анализа отзывов клиентов",
+      "main_pain": "Недостаточный анализ отзывов клиентов приводит к упущенным возможностям улучшения продуктов.",
       "key_pain_points": [
-        "Недостаточная скорость и точность анализа отзывов клиентов",
-        "Недостаток интеграции с существующими системами",
-        "Проблема конфиденциальности данных и соблюдения регуляций"
+        "Недостаточный анализ отзывов клиентов приводит к упущенным возможностям улучшения продуктов.",
+        "Низкая скорость обработки отзывов приводит к медленным изменениям в продуктах.",
+        "Трудности в выявлении ключевых тем и настроений в отзывах."
       ],
       "target_audience": {
         "segments": [
           {
-            "name": "Менеджеры по продукту и владельцы малых и средних бизнесов",
-            "size": "Крупный рынок, так как многие компании ищут способы оптимизации анализа отзывов.",
+            "name": "Малые и средние компании",
+            "size": "Достаточно большой рынок, так как многие компании активно работают с клиентами.",
             "willingness_to_pay": "high",
-            "where_to_find": "Профессиональные сообщества, форумы SaaS, мероприятия по обмену опытом.",
+            "where_to_find": "Форумы малых бизнесов, профессиональные сообщества, социальные сети.",
             "confidence": 8
           },
           {
-            "name": "IT-менеджеры и маркетологи",
-            "size": "Средний рынок с возможностью роста.",
+            "name": "Крупные корпорации",
+            "size": "Огромный рынок, но требует высокой точности и интеграции.",
             "willingness_to_pay": "medium",
-            "where_to_find": "Семинары, конференции по IT и маркетингу.",
+            "where_to_find": "Конференции, выставки, специализированные отраслевые мероприятия.",
             "confidence": 7.5
           }
         ]
       },
       "sentiment_score": 8.5,
       "status": "sources_collected",
-      "analyzed_at": "2026-01-20T22:20:55.284Z",
+      "analyzed_at": "2026-01-22T21:46:28.781Z",
       "analysis_type": "deep",
       "real_sources": {
         "reddit": {
           "posts": [
-            {
-              "title": "AI for customer feedback insight",
-              "subreddit": "ProductManagement",
-              "score": 0,
-              "num_comments": 0,
-              "url": "https://www.reddit.com/r/ProductManagement/comments/1bnthbc/ai_for_customer_feedback_insight/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "AI can indeed streamline the process of generating insights from customer feedback. We use HiFivestar to collect data from web forms, surveys, ..."
-            },
             {
               "title": "Need help automating customer feedback analysis using AI",
               "subreddit": "nocode",
               "score": 0,
               "num_comments": 0,
               "url": "https://www.reddit.com/r/nocode/comments/1cmxou3/need_help_automating_customer_feedback_analysis/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "I'm using AI to process customer feedback for my company, which I get through email and social media. The AI summarizes the feedback and creates a task list of ..."
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "I run an online review and feedback tool called localyser.com that automatically fetches reviews from across the Web and analyzes them using AI."
+            },
+            {
+              "title": "AI for customer feedback insight",
+              "subreddit": "ProductManagement",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ProductManagement/comments/1bnthbc/ai_for_customer_feedback_insight/",
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "AI can indeed streamline the process of generating insights from customer feedback. We use HiFivestar to collect data from web forms, surveys, ..."
             },
             {
               "title": "Analyzing Customer Feedback at Scale",
@@ -3917,8 +3917,26 @@
               "score": 0,
               "num_comments": 0,
               "url": "https://www.reddit.com/r/ProductManagement/comments/1klawf2/analyzing_customer_feedback_at_scale/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "We set up a single portal that everyone (customers + internal teams) uses to submit and track feedback. Makes it way easier to spot real ..."
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "Is there any AI system that can, for a lot of customer interactions, live in all of my data sources (emails, transcribe any user interviews, gong, jira, slack, ..."
+            },
+            {
+              "title": "How AI helped us managing User feedback probably 10 ...",
+              "subreddit": "ProductManagement",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ProductManagement/comments/1avf0jd/how_ai_helped_us_managing_user_feedback_probably/",
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "We have a feature called 'Smart Cluster' that uses AI to categorize incoming customer tickets under common themes. ... I've been working with a ..."
+            },
+            {
+              "title": "Tried 3 feedback tools. Still ended up building our own ...",
+              "subreddit": "ProductManagement",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ProductManagement/comments/1ll1ye5/tried_3_feedback_tools_still_ended_up_building/",
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "AI handles categorization, sentiment analysis, and pattern recognition. This saves us hours and makes it easy for anyone, even without a ..."
             },
             {
               "title": "AI Augmented Restaurant Reviews Sentiment Analysis ...",
@@ -3926,7 +3944,7 @@
               "score": 0,
               "num_comments": 0,
               "url": "https://www.reddit.com/r/PowerBI/comments/1dmpaab/ai_augmented_restaurant_reviews_sentiment/",
-              "created": "2026-01-20T22:20:48.199Z",
+              "created": "2026-01-22T21:46:18.296Z",
               "selftext": "The dashboard is designed to provide a comprehensive analysis of restaurant reviews, powered by AI and NLP (Natural Language Processing) machine learning ..."
             },
             {
@@ -3935,17 +3953,17 @@
               "score": 0,
               "num_comments": 0,
               "url": "https://www.reddit.com/r/AI_Agents/comments/1knccdg/aipowered_tool_to_automatically_evaluate_customer/",
-              "created": "2026-01-20T22:20:48.199Z",
+              "created": "2026-01-22T21:46:18.296Z",
               "selftext": "It's an AI-powered solution that automatically analyzes monthly customer support chat logs (like Zendesk chat transcripts) and generates structured performance ..."
             },
             {
-              "title": "Tried 3 feedback tools. Still ended up building our own ...",
-              "subreddit": "ProductManagement",
+              "title": "Building an AI-powered feedback analyzer for product ...",
+              "subreddit": "SideProject",
               "score": 0,
               "num_comments": 0,
-              "url": "https://www.reddit.com/r/ProductManagement/comments/1ll1ye5/tried_3_feedback_tools_still_ended_up_building/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "AI handles categorization, sentiment analysis, and pattern recognition. This saves us hours and makes it easy for anyone, even without a ..."
+              "url": "https://www.reddit.com/r/SideProject/comments/1i6hskh/building_an_aipowered_feedback_analyzer_for/",
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "Automatically categorize and tag feedback using AI. Generate priority recommendations. Visualize feedback patterns and trends. Help teams make ..."
             },
             {
               "title": "Built 12 free AI tools for entrepreneurs - would love your ...",
@@ -3953,8 +3971,8 @@
               "score": 0,
               "num_comments": 0,
               "url": "https://www.reddit.com/r/microsaas/comments/1m57mv1/built_12_free_ai_tools_for_entrepreneurs_would/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "Hey everyone! I've been building a collection of AI-powered tools to solve the everyday pain points we all face as entrepreneurs and ..."
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "After a month of development, I've launched 12 free tools and would genuinely love your feedback. What I built and why: The idea came from my ..."
             },
             {
               "title": "Is anyone using AI to analyze their product/customer ...",
@@ -3962,46 +3980,19 @@
               "score": 0,
               "num_comments": 0,
               "url": "https://www.reddit.com/r/shopify/comments/1b2x7vn/is_anyone_using_ai_to_analyze_their/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "You can identify which aspects customers respond to most positively - be it shipping speed, a particular product line or feature - and focus on ..."
-            },
-            {
-              "title": "Built a simple GEO/SEO analyzer tool - would love honest ...",
-              "subreddit": "microsaas",
-              "score": 0,
-              "num_comments": 0,
-              "url": "https://www.reddit.com/r/microsaas/comments/1pnim90/built_a_simple_geoseo_analyzer_tool_would_love/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "It uses AI to analyze your content structure and suggest optimizations for both traditional search engines and AI assistants like ChatGPT, ..."
-            },
-            {
-              "title": "Built an AI-powered content analyzer to help with Google's ...",
-              "subreddit": "SaaS",
-              "score": 0,
-              "num_comments": 0,
-              "url": "https://www.reddit.com/r/SaaS/comments/1n8a5ym/built_an_aipowered_content_analyzer_to_help_with/",
-              "created": "2026-01-20T22:20:48.199Z",
-              "selftext": "I recently launched a tool called Rankora – it analyzes content and compares it against competitors to see how ready it is for Google's new AI ..."
-            },
-            {
-              "title": "Начинаешь новую работу в SAP? Задавай здесь ...",
-              "subreddit": "SAP",
-              "score": 0,
-              "num_comments": 0,
-              "url": "https://www.reddit.com/r/SAP/comments/16r29hf/starting_a_new_job_in_sap_post_here_for_questions/?tl=ru",
-              "created": "2026-01-20T22:20:47.704Z",
-              "selftext": "Начинаешь новую работу в SAP? Задавай здесь вопросы о советах для новичков, сертификации, зарплате, выборе технологического направления и других ..."
+              "created": "2026-01-22T21:46:18.296Z",
+              "selftext": "I think analyzing all of your product reviews def provides valuable insights into customer preferences. You can identify which aspects customers respond to ..."
             }
           ],
           "communities": [
-            "ProductManagement",
             "nocode",
+            "ProductManagement",
             "PowerBI",
             "AI_Agents",
-            "microsaas",
-            "SAP"
+            "SideProject"
           ],
-          "engagement": 0
+          "engagement": 0,
+          "error": "SerpAPI: Google hasn't returned any results for this query."
         },
         "youtube": {
           "videos": [
@@ -4033,15 +4024,6 @@
               "thumbnail": "https://i.ytimg.com/vi/u0hIsxJImB8/hqdefault.jpg"
             },
             {
-              "title": "📊 AI Feedback Analyzer Demo | Turn Customer Feedback into Actionable Insights",
-              "channel": "Credifly",
-              "description": "See how our AI-powered app transforms raw customer feedback into actionable business improvements. In this demo, you'll ...",
-              "videoId": "QGigpnFq13Y",
-              "url": "https://www.youtube.com/watch?v=QGigpnFq13Y",
-              "publishedAt": "2025-09-03T06:47:47Z",
-              "thumbnail": "https://i.ytimg.com/vi/QGigpnFq13Y/hqdefault.jpg"
-            },
-            {
               "title": "Customer Audio Feedback AI Analyzer DEMO (using OpenAI + Hugging Face)",
               "channel": "DATA JARVIS",
               "description": "Customer feedback is often gathered using survey forms. However, this method can be inefficient as response rates are typically ...",
@@ -4049,6 +4031,15 @@
               "url": "https://www.youtube.com/watch?v=IhwZNMFTOAQ",
               "publishedAt": "2024-10-05T09:00:14Z",
               "thumbnail": "https://i.ytimg.com/vi/IhwZNMFTOAQ/hqdefault.jpg"
+            },
+            {
+              "title": "📊 AI Feedback Analyzer Demo | Turn Customer Feedback into Actionable Insights",
+              "channel": "Credifly",
+              "description": "See how our AI-powered app transforms raw customer feedback into actionable business improvements. In this demo, you'll ...",
+              "videoId": "QGigpnFq13Y",
+              "url": "https://www.youtube.com/watch?v=QGigpnFq13Y",
+              "publishedAt": "2025-09-03T06:47:47Z",
+              "thumbnail": "https://i.ytimg.com/vi/QGigpnFq13Y/hqdefault.jpg"
             },
             {
               "title": "AI Analyzes Customer Feedback: Turn Data into Gold!",
@@ -4100,66 +4091,66 @@
             "Beyond Boundaries",
             "Marketing Migration",
             "DataCamp",
-            "Credifly",
-            "DATA JARVIS"
+            "DATA JARVIS",
+            "Credifly"
           ]
         },
         "google_trends": {
-          "growth_rate": -40,
+          "growth_rate": -11,
           "related_queries": [],
           "interest_timeline": [
             {
               "date": "Oct 26 – Nov 1, 2025",
-              "value": 48
-            },
-            {
-              "date": "Nov 2 – 8, 2025",
-              "value": 54
-            },
-            {
-              "date": "Nov 9 – 15, 2025",
-              "value": 55
-            },
-            {
-              "date": "Nov 16 – 22, 2025",
-              "value": 63
-            },
-            {
-              "date": "Nov 23 – 29, 2025",
-              "value": 69
-            },
-            {
-              "date": "Nov 30 – Dec 6, 2025",
-              "value": 90
-            },
-            {
-              "date": "Dec 7 – 13, 2025",
-              "value": 81
-            },
-            {
-              "date": "Dec 14 – 20, 2025",
-              "value": 86
-            },
-            {
-              "date": "Dec 21 – 27, 2025",
               "value": 51
             },
             {
+              "date": "Nov 2 – 8, 2025",
+              "value": 58
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 59
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 67
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 77
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 95
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 84
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 94
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 54
+            },
+            {
               "date": "Dec 28, 2025 – Jan 3, 2026",
-              "value": 47
+              "value": 51
             },
             {
               "date": "Jan 4 – 10, 2026",
-              "value": 35
+              "value": 47
             },
             {
               "date": "Jan 11 – 17, 2026",
-              "value": 29
+              "value": 32
             }
           ],
           "search_query": "Customer Feedback",
           "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Customer+Feedback%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
-          "fetched_at": "2026-01-20T22:20:48.075Z"
+          "fetched_at": "2026-01-22T21:46:18.462Z"
         },
         "facebook": {
           "pages": [],
@@ -4762,7 +4753,299 @@
           "reach": 0
         }
       }
+    },
+    "trend-1768972048310-2": {
+      "trend_id": "trend-1768972048310-2",
+      "trend_title": "AI Personal Finance Advisor for Freelancers",
+      "main_pain": "Неопределенность в налоговых отчислениях и сложность учета доходов.",
+      "key_pain_points": [
+        "Неопределенность в налоговых отчислениях и сложность учета доходов.",
+        "Отсутствие понимания финансового планирования и накоплений.",
+        "Недостаток автоматизации в управлении финансами."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Фрилансеры с нестабильным доходом",
+            "size": "Рынок фрилансеров растет, и их число увеличивается.",
+            "willingness_to_pay": "high",
+            "where_to_find": "Форумы фрилансеров, социальные сети, платформы для фриланса.",
+            "confidence": 8
+          }
+        ]
+      },
+      "sentiment_score": 8.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-21T20:08:41.576Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Can anyone recommend an AI tool for financial planning ...",
+              "subreddit": "personalfinance",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/personalfinance/comments/1fp2kjj/can_anyone_recommend_an_ai_tool_for_financial/",
+              "created": "2026-01-21T20:08:30.522Z",
+              "selftext": "We will most likely be seeing a financial advisor soon, but I'm wondering if there are any AI tools that could also help. I'm thinking of ..."
+            },
+            {
+              "title": "Would you use an AI tool for managing freelance finances?",
+              "subreddit": "Entrepreneur",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Entrepreneur/comments/1jqtehf/would_you_use_an_ai_tool_for_managing_freelance/",
+              "created": "2026-01-21T20:08:30.522Z",
+              "selftext": "Something that connects to your bank, tracks your earnings patterns, predicts cash flow dips, and even suggests how much to save for taxes or ..."
+            },
+            {
+              "title": "I spent 1 year building an AI financial advisor",
+              "subreddit": "ProductivityApps",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ProductivityApps/comments/1pthxv6/i_spent_1_year_building_an_ai_financial_advisor/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "After a year of coding solo, I built Optivault, an AI-powered personal financial advisor. It helps you: Build a smart budget."
+            },
+            {
+              "title": "We're two Stanford undergrads building an AI-native ...",
+              "subreddit": "SideProject",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SideProject/comments/1kjo25j/were_two_stanford_undergrads_building_an_ainative/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "Pulls your real spending, savings, income data · Gives personalized, evolving recommendations based on your real life · Built with AI from the ..."
+            },
+            {
+              "title": "I spent 1 year building an AI financial advisor — giving ...",
+              "subreddit": "iosapps",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/iosapps/comments/1pthyup/i_spent_1_year_building_an_ai_financial_advisor/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "After a year of coding solo, I built Optivault, an AI-powered personal financial advisor. It helps you: Build a smart budget."
+            },
+            {
+              "title": "[MISC] Built an AI financial dashboard for UK freelancers",
+              "subreddit": "ContractorUK",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ContractorUK/comments/1mc5kk0/misc_built_an_ai_financial_dashboard_for_uk/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "An AI-powered financial dashboard designed for non-accountants who just want their UK business finances sorted automatically. Key Features: Real ..."
+            },
+            {
+              "title": "Personal AI Assistant App: Your Complete Guide to ...",
+              "subreddit": "jenova_ai",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/jenova_ai/comments/1qedkxi/personal_ai_assistant_app_your_complete_guide_to/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "Personal Financial Advisor — Comprehensive personal finance guidance for budgeting, investing, retirement planning, and tax optimization."
+            },
+            {
+              "title": "What apps do you use to analyze your personal finances? I ...",
+              "subreddit": "ProductivityApps",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ProductivityApps/comments/1m7mp6e/what_apps_do_you_use_to_analyze_your_personal/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "I currently use MoneyWiz to track all my finances — income, expenses, accounts, categories, etc. It's solid for input and tracking, but I'm ..."
+            },
+            {
+              "title": "I made an app that does my accounting for me (freelancer)",
+              "subreddit": "SideProject",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SideProject/comments/1pu1e17/i_made_an_app_that_does_my_accounting_for_me/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "[Feedback Request] I built an AI Financial Coach to fight money anxiety, but it's (currently) CSV-only. Is this actually useful for you?"
+            },
+            {
+              "title": "Working on an AI tool to merge & sort bank statements",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1lxe1cv/working_on_an_ai_tool_to_merge_sort_bank/",
+              "created": "2026-01-21T20:08:30.523Z",
+              "selftext": "Our AI auto-detects the format (SBI, HDFC, ICICI, etc.) It parses and extracts transactions. Then it sorts everything by date, no matter which ..."
+            }
+          ],
+          "communities": [
+            "personalfinance",
+            "Entrepreneur",
+            "ProductivityApps",
+            "SideProject",
+            "iosapps"
+          ],
+          "engagement": 0,
+          "error": "SerpAPI: Google hasn't returned any results for this query."
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Tech Freedom Playbook: 3 Money Moves for Builders",
+              "channel": "FlexYourKnowledge",
+              "description": "A concise guide for tech lovers to turn skills into steady income with AI, no-code SaaS, and robo investing. #TechFinance ...",
+              "videoId": "YPsGQkD2UFo",
+              "url": "https://www.youtube.com/watch?v=YPsGQkD2UFo",
+              "publishedAt": "2025-09-10T00:00:43Z",
+              "thumbnail": "https://i.ytimg.com/vi/YPsGQkD2UFo/hqdefault.jpg"
+            },
+            {
+              "title": "Her Financial Advisor Is CHAT GPT?",
+              "channel": "Caleb Hammer",
+              "description": "FREE BONUS EPISODES* - I am personally paying for your Hammer *ELITE* subscription for the first month ...",
+              "videoId": "NqXTibCEHnw",
+              "url": "https://www.youtube.com/watch?v=NqXTibCEHnw",
+              "publishedAt": "2025-07-04T16:00:42Z",
+              "thumbnail": "https://i.ytimg.com/vi/NqXTibCEHnw/hqdefault.jpg"
+            },
+            {
+              "title": "These 5 Ways to Use AI Will Make You $1M (Anyone Can Start)",
+              "channel": "Dan Martell",
+              "description": "Get access to your FREE AI Company Operating System: http://go.danmartell.com/47lWhEJ Social Sweep: ...",
+              "videoId": "OV6TpMNSXFk",
+              "url": "https://www.youtube.com/watch?v=OV6TpMNSXFk",
+              "publishedAt": "2025-10-24T13:00:50Z",
+              "thumbnail": "https://i.ytimg.com/vi/OV6TpMNSXFk/hqdefault.jpg"
+            },
+            {
+              "title": "You Can Change Your Finances in 3 Months (Here’s How)",
+              "channel": "Humphrey Yang",
+              "description": "In this video, I'll teach you my 12-week plan to RESET your finances. This should take you about 90 days. Let me know if you ...",
+              "videoId": "gH0iNMgFC7Q",
+              "url": "https://www.youtube.com/watch?v=gH0iNMgFC7Q",
+              "publishedAt": "2025-03-17T18:00:35Z",
+              "thumbnail": "https://i.ytimg.com/vi/gH0iNMgFC7Q/hqdefault.jpg"
+            },
+            {
+              "title": "Do we need accountants anymore?",
+              "channel": "Alex Hormozi",
+              "description": "Want to SCALE your business? Go here: https://acquisition.com Want to START a business? Go here: https://skool.com/games If ...",
+              "videoId": "2JIkYMZVHPw",
+              "url": "https://www.youtube.com/watch?v=2JIkYMZVHPw",
+              "publishedAt": "2023-02-13T18:00:01Z",
+              "thumbnail": "https://i.ytimg.com/vi/2JIkYMZVHPw/hqdefault.jpg"
+            },
+            {
+              "title": "These 5 AI Agents Will Make You $1M With Zero Employees",
+              "channel": "Dan Martell",
+              "description": "Building an AI-first software company? Partner with Martell Ventures: https://bit.ly/44PDbXR ▸▸ Subscribe to The Martell Method ...",
+              "videoId": "sIugzOQz7Vk",
+              "url": "https://www.youtube.com/watch?v=sIugzOQz7Vk",
+              "publishedAt": "2025-03-22T15:01:09Z",
+              "thumbnail": "https://i.ytimg.com/vi/sIugzOQz7Vk/hqdefault.jpg"
+            },
+            {
+              "title": "Financial Advisor Career - What They DON&#39;T Tell You",
+              "channel": "Streamline My Practice: For Financial Advisors",
+              "description": "Financial Advisors Join thousands of advisors and get video access not available anywhere else.",
+              "videoId": "DCAVGN50E5s",
+              "url": "https://www.youtube.com/watch?v=DCAVGN50E5s",
+              "publishedAt": "2023-04-21T15:52:50Z",
+              "thumbnail": "https://i.ytimg.com/vi/DCAVGN50E5s/hqdefault.jpg"
+            },
+            {
+              "title": "How I Sold These 4 AI Agents for $23,000 (as a beginner)",
+              "channel": "Nate Herk | AI Automation",
+              "description": "Full courses + unlimited support: https://www.skool.com/ai-automation-society-plus/about All my FREE resources: ...",
+              "videoId": "HNKlFTd1maM",
+              "url": "https://www.youtube.com/watch?v=HNKlFTd1maM",
+              "publishedAt": "2025-08-31T14:00:23Z",
+              "thumbnail": "https://i.ytimg.com/vi/HNKlFTd1maM/hqdefault.jpg"
+            },
+            {
+              "title": "How to Answer &quot;What Do You Do?&quot; Financial Advisor Tip for Marketing &amp; Communication",
+              "channel": "Streamline My Practice: For Financial Advisors",
+              "description": "Advisors, What do you say when someone asks you \"So, What do you do?\" I used to want to have a compelling response but then ...",
+              "videoId": "iaZduy748Xc",
+              "url": "https://www.youtube.com/watch?v=iaZduy748Xc",
+              "publishedAt": "2022-08-10T21:00:19Z",
+              "thumbnail": "https://i.ytimg.com/vi/iaZduy748Xc/hqdefault.jpg"
+            },
+            {
+              "title": "How AI Transformed Sarah&#39;s Freelance Finances: A Success Story",
+              "channel": "StockMaven",
+              "description": "AI tools simplify personal finance management. #AIFinance #SmartBudgeting #RoboAdvisor #FinanceRevolution #AIWealth.",
+              "videoId": "0LounrOSTpI",
+              "url": "https://www.youtube.com/watch?v=0LounrOSTpI",
+              "publishedAt": "2024-12-11T22:02:40Z",
+              "thumbnail": "https://i.ytimg.com/vi/0LounrOSTpI/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "FlexYourKnowledge",
+            "Caleb Hammer",
+            "Dan Martell",
+            "Humphrey Yang",
+            "Alex Hormozi"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -45,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Oct 26 – Nov 1, 2025",
+              "value": 73
+            },
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 77
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 73
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 77
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 82
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 100
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 88
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 93
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 65
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 74
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 59
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 40
+            }
+          ],
+          "search_query": "Personal Finance",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Personal+Finance%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-21T20:08:31.238Z"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      }
     }
   },
-  "lastUpdated": "2026-01-20T22:20:55.319Z"
+  "lastUpdated": "2026-01-22T21:46:28.879Z"
 }

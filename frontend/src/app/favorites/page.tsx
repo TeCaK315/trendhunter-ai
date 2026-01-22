@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getItem, setItem } from '@/lib/storage';
+import { useTranslations, useLanguage, useTranslateContent } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface Trend {
   id: string;
@@ -158,7 +160,24 @@ function getScoreColor(score: number): string {
   return 'from-red-500 to-rose-500';
 }
 
+// Компонент для отображения названия с переводом
+function TranslatedTrendTitle({ trend }: { trend: Trend }) {
+  const { language } = useLanguage();
+  const { data: translated } = useTranslateContent(
+    { title: trend.title },
+    { cacheKey: `trend-title-${trend.id}`, fields: ['title'] }
+  );
+
+  // Для русского языка или пока грузится - показываем оригинал
+  if (language === 'ru' || !translated) {
+    return <>{trend.title}</>;
+  }
+
+  return <>{translated.title}</>;
+}
+
 export default function FavoritesPage() {
+  const t = useTranslations();
   const [favorites, setFavorites] = useState<Trend[]>([]);
   const [analyses, setAnalyses] = useState<Record<string, TrendAnalysis>>({});
   const [loading, setLoading] = useState(true);
@@ -390,20 +409,23 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-white">Избранное</h1>
+                <h1 className="text-2xl font-bold text-white">{t.favorites.title}</h1>
                 <p className="text-sm text-zinc-500 mt-1">
-                  {favorites.length} идей • {analyzedCount} проанализировано
+                  {favorites.length} {t.favorites.ideasCount} • {analyzedCount} {t.favorites.analyzed}
                 </p>
               </div>
-              <Link
-                href="/"
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm text-white transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Добавить идеи
-              </Link>
+              <div className="flex items-center gap-3">
+                <LanguageSwitcher />
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm text-white transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  {t.favorites.addIdeas}
+                </Link>
+              </div>
             </div>
           </div>
         </header>
@@ -417,7 +439,7 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>Загрузка избранного...</span>
+                <span>{t.favorites.loadingFavorites}</span>
               </div>
             </div>
           ) : favorites.length === 0 ? (
@@ -425,9 +447,9 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
               <div className="w-24 h-24 bg-zinc-800/50 rounded-full flex items-center justify-center mb-6">
                 <span className="text-5xl">⭐</span>
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Пока пусто</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">{t.favorites.empty}</h2>
               <p className="text-zinc-400 max-w-md mb-6">
-                Добавьте интересные идеи в избранное, чтобы анализировать их и создавать проекты
+                {t.favorites.emptyDescription}
               </p>
               <Link
                 href="/"
@@ -436,7 +458,7 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Смотреть идеи
+                {t.favorites.goToHome}
               </Link>
             </div>
           ) : (
@@ -476,20 +498,20 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
                                 handleRemoveFavorite(trend.id);
                               }}
                               className="text-yellow-400 hover:text-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Убрать из избранного"
+                              title={t.favorites.removeFromFavorites}
                             >
                               ★
                             </button>
                           </div>
                         </div>
-                        <h3 className="text-sm font-medium text-white line-clamp-2 mb-2">{trend.title}</h3>
+                        <h3 className="text-sm font-medium text-white line-clamp-2 mb-2"><TranslatedTrendTitle trend={trend} /></h3>
                         <div className="flex items-center gap-2">
                           {hasAnalysis ? (
                             <span className={`badge text-xs ${analyses[trend.id]?.analysis_type === 'deep' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'badge-success'}`}>
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              {analyses[trend.id]?.analysis_type === 'deep' ? 'Глубокий анализ' : 'Проанализирован'}
+                              {analyses[trend.id]?.analysis_type === 'deep' ? t.favorites.deepAnalysis : t.favorites.analyzed}
                             </span>
                           ) : isAnalyzing ? (
                             <span className="badge bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs animate-pulse">
@@ -497,7 +519,7 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                               </svg>
-                              3 агента...
+                              {t.favorites.analyzing3Agents}
                             </span>
                           ) : (
                             <button
@@ -507,7 +529,7 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
                               }}
                               className="text-xs px-2.5 py-1 bg-purple-500/10 text-purple-300 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 transition-all"
                             >
-                              Глубокий анализ
+                              {t.favorites.deepAnalysis}
                             </button>
                           )}
                         </div>
@@ -530,7 +552,7 @@ ${analysis.target_audience.segments.map(s => `- **${s.name}** (${s.size}) - Го
                 ) : (
                   <div className="flex flex-col items-center justify-center h-96 text-center border border-dashed border-zinc-800 rounded-2xl">
                     <span className="text-4xl mb-4">👈</span>
-                    <p className="text-zinc-400">Выберите идею из списка слева</p>
+                    <p className="text-zinc-400">{t.favorites.selectFromLeft}</p>
                   </div>
                 )}
               </div>
@@ -554,14 +576,54 @@ function TrendDetailView({
   onAnalyze: () => void;
   onDownload: () => void;
 }) {
+  const t = useTranslations();
+  const { language } = useLanguage();
   const overallScore = getOverallScore(trend);
   const config = categoryConfig[trend.category] || { icon: '📌', color: 'from-zinc-500/20 to-zinc-600/20' };
 
+  // Перевод контента тренда
+  const trendContent = {
+    title: trend.title,
+    why_trending: trend.why_trending,
+  };
+  const { data: translatedTrend, isLoading: trendLoading } = useTranslateContent(trendContent, {
+    cacheKey: `trend-${trend.id}`,
+    fields: ['title', 'why_trending']
+  });
+
+  // Перевод анализа (если есть)
+  const analysisContent = analysis ? {
+    main_pain: analysis.main_pain,
+    key_pain_points: analysis.key_pain_points,
+    final_recommendation: analysis.deep_analysis?.final_recommendation || '',
+    optimist_summary: analysis.deep_analysis?.analysis_metadata?.optimist_summary || '',
+    skeptic_summary: analysis.deep_analysis?.analysis_metadata?.skeptic_summary || '',
+    risks: analysis.deep_analysis?.risks || [],
+    opportunities: analysis.deep_analysis?.opportunities || [],
+  } : null;
+  const { data: translatedAnalysis, isLoading: analysisLoading } = useTranslateContent(analysisContent, {
+    cacheKey: `analysis-${trend.id}`,
+    fields: ['main_pain', 'key_pain_points', 'final_recommendation', 'optimist_summary', 'skeptic_summary', 'risks', 'opportunities']
+  });
+
+  // Используем переведённые данные или оригинал
+  const displayTitle = translatedTrend?.title || trend.title;
+  const displayWhyTrending = translatedTrend?.why_trending || trend.why_trending;
+  const displayMainPain = translatedAnalysis?.main_pain || analysis?.main_pain || '';
+  const displayKeyPainPoints = (translatedAnalysis?.key_pain_points as string[]) || analysis?.key_pain_points || [];
+  const displayFinalRec = translatedAnalysis?.final_recommendation || analysis?.deep_analysis?.final_recommendation || '';
+  const displayOptimist = translatedAnalysis?.optimist_summary || analysis?.deep_analysis?.analysis_metadata?.optimist_summary || '';
+  const displaySkeptic = translatedAnalysis?.skeptic_summary || analysis?.deep_analysis?.analysis_metadata?.skeptic_summary || '';
+  const displayRisks = (translatedAnalysis?.risks as string[]) || analysis?.deep_analysis?.risks || [];
+  const displayOpportunities = (translatedAnalysis?.opportunities as string[]) || analysis?.deep_analysis?.opportunities || [];
+
+  const isTranslating = trendLoading || analysisLoading;
+
   const metrics = [
-    { label: 'Возможность', value: trend.opportunity_score, icon: '🎯' },
-    { label: 'Боль', value: trend.pain_score, icon: '🔥' },
-    { label: 'Выполнимость', value: trend.feasibility_score, icon: '⚡' },
-    { label: 'Выгода', value: trend.profit_potential, icon: '💰' },
+    { label: t.trendCard.opportunity, value: trend.opportunity_score, icon: '🎯' },
+    { label: t.trendCard.pain, value: trend.pain_score, icon: '🔥' },
+    { label: t.trendCard.feasibility, value: trend.feasibility_score, icon: '⚡' },
+    { label: t.trendCard.profit, value: trend.profit_potential, icon: '💰' },
   ];
 
   return (
@@ -575,11 +637,14 @@ function TrendDetailView({
               <span className="text-sm text-zinc-400">{trend.category}</span>
               {analysis && (
                 <span className="badge badge-success ml-2">
-                  Проанализирован {new Date(analysis.analyzed_at).toLocaleDateString('ru-RU')}
+                  {t.favorites.analyzedOn} {new Date(analysis.analyzed_at).toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US')}
                 </span>
               )}
             </div>
-            <h2 className="text-2xl font-bold text-white">{trend.title}</h2>
+            <h2 className="text-2xl font-bold text-white">
+              {isTranslating && language === 'en' && <span className="inline-block w-4 h-4 mr-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
+              {displayTitle}
+            </h2>
           </div>
           <div className={`score-badge bg-gradient-to-br ${getScoreColor(overallScore)} text-white text-3xl`}>
             {overallScore}
@@ -598,7 +663,7 @@ function TrendDetailView({
               }`}
             >
               <span>🔍</span>
-              <span>{analysis ? 'Переанализировать' : 'Анализировать'}</span>
+              <span>{analysis ? t.favorites.reanalyze : t.favorites.analyze}</span>
             </button>
           )}
           {isAnalyzing && (
@@ -607,7 +672,7 @@ function TrendDetailView({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <span>Глубокий анализ (3 агента)...</span>
+              <span>{t.favorites.analyzing3Agents}</span>
             </div>
           )}
           <button
@@ -615,7 +680,7 @@ function TrendDetailView({
             className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/50 hover:bg-zinc-700/50 rounded-xl text-sm font-medium text-white transition-all"
           >
             <span>📥</span>
-            <span>Скачать отчёт</span>
+            <span>{t.favorites.downloadReport}</span>
           </button>
         </div>
       </div>
@@ -635,9 +700,9 @@ function TrendDetailView({
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
         <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
           <span>💡</span>
-          Почему это трендит
+          {t.favorites.whyTrending}
         </h3>
-        <p className="text-zinc-400">{trend.why_trending}</p>
+        <p className="text-zinc-400">{displayWhyTrending}</p>
       </div>
 
       {/* AI Analysis Results */}
@@ -650,17 +715,17 @@ function TrendDetailView({
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🧠</span>
                   <div>
-                    <div className="text-white font-semibold">Глубокий анализ</div>
-                    <div className="text-xs text-zinc-400">Оптимист + Скептик + Арбитр</div>
+                    <div className="text-white font-semibold">{t.favorites.deepAnalysisLabel}</div>
+                    <div className="text-xs text-zinc-400">{t.favorites.optimistSkepticArbiter}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="text-right">
                     <div className="text-2xl font-bold text-white">{analysis.deep_analysis.confidence.toFixed(1)}</div>
-                    <div className="text-xs text-zinc-500">уверенность</div>
+                    <div className="text-xs text-zinc-500">{t.favorites.confidenceLabel}</div>
                   </div>
                   {analysis.deep_analysis.analysis_metadata.consensus_reached && (
-                    <span className="badge badge-success">✓ Консенсус</span>
+                    <span className="badge badge-success">✓ {t.favorites.consensus}</span>
                   )}
                 </div>
               </div>
@@ -672,7 +737,7 @@ function TrendDetailView({
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-red-400 font-semibold flex items-center gap-2">
                 <span>🎯</span>
-                Главная боль
+                {t.favorites.mainPain}
               </h3>
               {analysis.deep_analysis && (
                 <div className="flex items-center gap-2">
@@ -686,7 +751,7 @@ function TrendDetailView({
                 </div>
               )}
             </div>
-            <p className="text-white">{analysis.main_pain}</p>
+            <p className="text-white">{displayMainPain}</p>
           </div>
 
           {/* Deep Analysis: Pain Points with Arguments */}
@@ -694,7 +759,7 @@ function TrendDetailView({
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
               <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
                 <span>⚡</span>
-                Ключевые проблемы (с аргументацией)
+                {t.favorites.keyProblemsWithArgs}
               </h3>
               <div className="space-y-4">
                 {analysis.deep_analysis.key_pain_points.map((painPoint, idx) => (
@@ -720,7 +785,7 @@ function TrendDetailView({
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3">
                         <div className="text-xs text-green-400 font-medium mb-2 flex items-center gap-1">
-                          <span>✓</span> Аргументы ЗА
+                          <span>✓</span> {t.favorites.argumentsFor}
                         </div>
                         <ul className="space-y-1">
                           {painPoint.arguments_for.map((arg, argIdx) => (
@@ -730,7 +795,7 @@ function TrendDetailView({
                       </div>
                       <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
                         <div className="text-xs text-red-400 font-medium mb-2 flex items-center gap-1">
-                          <span>✗</span> Аргументы ПРОТИВ
+                          <span>✗</span> {t.favorites.argumentsAgainst}
                         </div>
                         <ul className="space-y-1">
                           {painPoint.arguments_against.map((arg, argIdx) => (
@@ -747,7 +812,7 @@ function TrendDetailView({
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
               <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
                 <span>⚡</span>
-                Ключевые проблемы
+                {t.favorites.keyProblems}
               </h3>
               <div className="space-y-2">
                 {analysis.key_pain_points.map((pain, idx) => (
@@ -764,7 +829,7 @@ function TrendDetailView({
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
               <span>👥</span>
-              Целевая аудитория
+              {t.favorites.targetAudience}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               {analysis.target_audience.segments.map((segment, idx) => (
@@ -775,13 +840,13 @@ function TrendDetailView({
                       <span className="text-xs text-zinc-500">{segment.confidence}/10</span>
                     )}
                   </div>
-                  <div className="text-xs text-zinc-500 mb-2">Размер: {segment.size}</div>
+                  <div className="text-xs text-zinc-500 mb-2">{t.favorites.segmentSize}: {segment.size}</div>
                   <div className="flex flex-wrap gap-2">
                     <span className={`badge ${
                       segment.willingness_to_pay === 'high' ? 'badge-success' :
                       segment.willingness_to_pay === 'medium' ? 'badge-warning' : 'badge-info'
                     }`}>
-                      {segment.willingness_to_pay === 'high' ? 'Высокая' : segment.willingness_to_pay === 'medium' ? 'Средняя' : 'Низкая'} готовность платить
+                      {segment.willingness_to_pay === 'high' ? t.favorites.willingnessHigh : segment.willingness_to_pay === 'medium' ? t.favorites.willingnessMedium : t.favorites.willingnessLow}
                     </span>
                   </div>
                   {segment.where_to_find && (
@@ -798,10 +863,10 @@ function TrendDetailView({
               <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-5">
                 <h3 className="text-red-400 font-semibold mb-4 flex items-center gap-2">
                   <span>⚠️</span>
-                  Риски
+                  {t.favorites.risks}
                 </h3>
                 <ul className="space-y-2">
-                  {analysis.deep_analysis.risks.map((risk, idx) => (
+                  {displayRisks.map((risk, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm text-zinc-300">
                       <span className="text-red-400 mt-0.5">•</span>
                       {risk}
@@ -812,10 +877,10 @@ function TrendDetailView({
               <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-5">
                 <h3 className="text-green-400 font-semibold mb-4 flex items-center gap-2">
                   <span>🚀</span>
-                  Возможности
+                  {t.favorites.opportunities}
                 </h3>
                 <ul className="space-y-2">
-                  {analysis.deep_analysis.opportunities.map((opp, idx) => (
+                  {displayOpportunities.map((opp, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm text-zinc-300">
                       <span className="text-green-400 mt-0.5">•</span>
                       {opp}
@@ -831,9 +896,9 @@ function TrendDetailView({
             <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 rounded-xl p-5">
               <h3 className="text-indigo-400 font-semibold mb-3 flex items-center gap-2">
                 <span>💡</span>
-                Финальная рекомендация
+                {t.favorites.finalRecommendation}
               </h3>
-              <p className="text-white">{analysis.deep_analysis.final_recommendation}</p>
+              <p className="text-white">{displayFinalRec}</p>
             </div>
           )}
 
@@ -842,22 +907,22 @@ function TrendDetailView({
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
               <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
                 <span>🎭</span>
-                Позиции агентов
+                {t.favorites.agentPositions}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xl">😊</span>
-                    <span className="text-green-400 font-medium">Оптимист</span>
+                    <span className="text-green-400 font-medium">{t.favorites.optimist}</span>
                   </div>
-                  <p className="text-sm text-zinc-400">{analysis.deep_analysis.analysis_metadata.optimist_summary}</p>
+                  <p className="text-sm text-zinc-400">{displayOptimist}</p>
                 </div>
                 <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xl">🤔</span>
-                    <span className="text-red-400 font-medium">Скептик</span>
+                    <span className="text-red-400 font-medium">{t.favorites.skeptic}</span>
                   </div>
-                  <p className="text-sm text-zinc-400">{analysis.deep_analysis.analysis_metadata.skeptic_summary}</p>
+                  <p className="text-sm text-zinc-400">{displaySkeptic}</p>
                 </div>
               </div>
             </div>
@@ -867,14 +932,14 @@ function TrendDetailView({
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
               <span>🌐</span>
-              Реальные источники данных
+              {t.favorites.realDataSources}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               {/* Reddit */}
               <SourceCard
                 icon="🔴"
                 title="Reddit"
-                subtitle={`${analysis.real_sources.reddit.engagement} engagement`}
+                subtitle={`${analysis.real_sources.reddit.engagement} ${t.favorites.engagement}`}
                 items={analysis.real_sources.reddit.posts.slice(0, 3).map(p => ({
                   title: p.title,
                   url: p.url,
@@ -882,18 +947,20 @@ function TrendDetailView({
                 }))}
                 tags={analysis.real_sources.reddit.communities.map(c => `r/${c}`)}
                 tagColor="bg-orange-500/20 text-orange-300"
+                noDataText={t.favorites.noData}
               />
 
               {/* YouTube */}
               <SourceCard
                 icon="📺"
                 title="YouTube"
-                subtitle={`${analysis.real_sources.youtube.videos.length} видео`}
+                subtitle={`${analysis.real_sources.youtube.videos.length} ${t.favorites.videos}`}
                 items={analysis.real_sources.youtube.videos.slice(0, 3).map(v => ({
                   title: v.title,
                   url: v.url,
                   meta: v.channel
                 }))}
+                noDataText={t.favorites.noData}
               />
 
               {/* Google Trends */}
@@ -920,13 +987,13 @@ function TrendDetailView({
               <SourceCard
                 icon="📘"
                 title="Facebook"
-                subtitle={`${analysis.real_sources.facebook.reach.toLocaleString()} охват`}
+                subtitle={`${analysis.real_sources.facebook.reach.toLocaleString()} reach`}
                 items={analysis.real_sources.facebook.pages.slice(0, 3).map(p => ({
                   title: p.name,
                   url: p.url,
                   meta: `${p.category} • 👥 ${p.fan_count.toLocaleString()}`
                 }))}
-                emptyMessage="Требуется Facebook API ключ"
+                emptyMessage={t.favorites.requiresFacebookApi}
               />
             </div>
           </div>
@@ -940,7 +1007,7 @@ function TrendDetailView({
           className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
         >
           <span>🚀</span>
-          <span>Перейти к проекту</span>
+          <span>{t.favorites.goToProject}</span>
         </Link>
       </div>
     </div>
@@ -955,6 +1022,7 @@ function SourceCard({
   tags,
   tagColor = 'bg-zinc-700 text-zinc-300',
   emptyMessage,
+  noDataText = 'No data',
 }: {
   icon: string;
   title: string;
@@ -963,6 +1031,7 @@ function SourceCard({
   tags?: string[];
   tagColor?: string;
   emptyMessage?: string;
+  noDataText?: string;
 }) {
   return (
     <div className="bg-zinc-800/30 rounded-xl p-4">
@@ -999,7 +1068,7 @@ function SourceCard({
         </div>
       ) : (
         <div className="text-center py-4 text-xs text-zinc-500">
-          {emptyMessage || 'Нет данных'}
+          {emptyMessage || noDataText}
         </div>
       )}
     </div>

@@ -36,6 +36,7 @@ type AgentType = 'general' | 'developer' | 'marketing' | 'sales' | 'designer';
 interface TrendChatProps {
   trendContext: TrendContext;
   className?: string;
+  language?: 'ru' | 'en';
 }
 
 const agents: { id: AgentType; label: string; icon: string; description: string }[] = [
@@ -84,7 +85,7 @@ const quickPromptsByAgent: Record<AgentType, { text: string; icon: string }[]> =
 const getStorageKey = (trendTitle: string, agentId: AgentType) =>
   `chat_${trendTitle.replace(/\s+/g, '_')}_${agentId}`;
 
-export default function TrendChat({ trendContext, className = '' }: TrendChatProps) {
+export default function TrendChat({ trendContext, className = '', language = 'ru' }: TrendChatProps) {
   // Отдельная история для каждого агента
   const [messagesByAgent, setMessagesByAgent] = useState<Record<AgentType, Message[]>>({
     general: [],
@@ -217,7 +218,7 @@ export default function TrendChat({ trendContext, className = '' }: TrendChatPro
         className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl shadow-lg shadow-indigo-500/30 transition-all hover:scale-105 ${className}`}
       >
         <span className="text-xl">💬</span>
-        <span className="font-medium">Чат с AI</span>
+        <span className="font-medium">{language === 'en' ? 'AI Chat' : 'Чат с AI'}</span>
       </button>
     );
   }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import OnboardingTour from '../OnboardingTour';
-import HelpButton from '../HelpButton';
 import { LanguageProvider } from '@/lib/i18n';
 import { SidebarProvider, useSidebar } from '@/lib/SidebarContext';
 
@@ -30,9 +29,6 @@ function LayoutContent({ children }: ClientLayoutProps) {
 
       {/* Onboarding tour - shows automatically on first visit */}
       {mounted && <OnboardingTour />}
-
-      {/* Help button with ? - always visible */}
-      {mounted && <HelpButton />}
     </>
   );
 }

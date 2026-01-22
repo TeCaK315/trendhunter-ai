@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+import { callAIJson, isAIConfigured } from '@/lib/ai';
 
 interface GenerateImprovementsRequest {
   trend_title: string;
@@ -22,18 +21,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Ты Senior Product Manager и Full-Stack Developer с 15+ лет опыта создания успешных стартапов.
+    if (!isAIConfigured()) {
+      return NextResponse.json(
+        { success: false, error: 'API ключ не настроен. Добавьте OPENAI_API_KEY в Environment Variables.' },
+        { status: 500 }
+      );
+    }
+
+    const systemPrompt = `Ты Senior Product Manager и Full-Stack Developer с 15+ лет опыта создания успешных стартапов.
 
 Твоя задача - создать детальный план улучшений для MVP, который можно скопировать в Claude Code для реализации.
 
@@ -110,11 +105,9 @@ export async function POST(request: NextRequest) {
     }
   ],
   "full_implementation_prompt": "Большой промпт который можно скопировать в Claude Code для полной реализации всех улучшений"
-}`
-          },
-          {
-            role: 'user',
-            content: `Создай детальный план улучшений для MVP проекта:
+}`;
+
+    const userMessage = `Создай детальный план улучшений для MVP проекта:
 
 **Название:** ${body.trend_title}
 **Категория:** ${body.trend_category}
@@ -130,45 +123,26 @@ ${body.why_trending ? `**Почему актуально:** ${body.why_trending}
 4. Технических улучшениях для масштабирования
 5. Промптах для Claude Code которые можно сразу использовать
 
-Каждый промпт должен быть детальным и готовым к использованию.`
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 6000
-      })
+Каждый промпт должен быть детальным и готовым к использованию.`;
+
+    const result = await callAIJson(systemPrompt, userMessage, {
+      temperature: 0.8,
+      maxTokens: 6000
     });
 
-    if (!response.ok) {
-      console.error('OpenAI API error');
+    if (!result.success || !result.data) {
       return NextResponse.json(
-        { success: false, error: 'Ошибка генерации плана' },
+        { success: false, error: result.error || 'Ошибка генерации плана' },
         { status: 500 }
       );
     }
 
-    const result = await response.json();
-    const content = result.choices?.[0]?.message?.content || '';
-
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[0]);
-
-        return NextResponse.json({
-          success: true,
-          improvements: data,
-          trend_title: body.trend_title,
-          timestamp: new Date().toISOString()
-        });
-      }
-    } catch (e) {
-      console.error('Failed to parse AI response:', e);
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Не удалось обработать ответ AI' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      improvements: result.data,
+      trend_title: body.trend_title,
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     console.error('Generate improvements error:', error);
