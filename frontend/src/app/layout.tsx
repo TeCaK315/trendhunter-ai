@@ -20,7 +20,7 @@ const siteConfig = {
   description: "AI-powered platform for trend analysis, niche research, and startup idea generation. Real data from Google Trends, Reddit, YouTube.",
   descriptionRu: "AI-платформа для анализа трендов, исследования ниш и генерации идей для стартапов. Реальные данные из Google Trends, Reddit, YouTube.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://trendhunter-ai.vercel.app",
-  image: "/og-image.png", // 1200x630 recommended for Open Graph
+  image: "/og-image.svg", // 1200x630 recommended for Open Graph
   twitterHandle: "@trendhunterai",
 };
 

@@ -1,0 +1,52 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#09090b"/>
+
+  <!-- Gradient overlay -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0.1" />
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1" />
+      <stop offset="100%" style="stop-color:#8b5cf6" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#grad1)"/>
+
+  <!-- Grid pattern -->
+  <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+    <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#27272a" stroke-width="1"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.5"/>
+
+  <!-- Logo icon background -->
+  <rect x="100" y="215" width="120" height="120" rx="24" fill="url(#iconGrad)"/>
+
+  <!-- Lightning bolt icon -->
+  <path d="M170 255 L150 295 L165 295 L155 335 L190 285 L175 285 L185 255 Z" fill="white"/>
+
+  <!-- Title -->
+  <text x="250" y="265" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="bold" fill="white">TrendHunter AI</text>
+
+  <!-- Subtitle -->
+  <text x="250" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#a1a1aa">AI-Powered Trend Analysis Platform</text>
+
+  <!-- Features -->
+  <text x="100" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#6366f1">●</text>
+  <text x="130" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#e4e4e7">Discover emerging trends</text>
+
+  <text x="450" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#6366f1">●</text>
+  <text x="480" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#e4e4e7">AI-powered analysis</text>
+
+  <text x="750" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#6366f1">●</text>
+  <text x="780" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#e4e4e7">Generate startup ideas</text>
+
+  <!-- Data sources -->
+  <text x="100" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#71717a">Data from Google Trends, Reddit, YouTube & more</text>
+
+  <!-- URL -->
+  <text x="100" y="580" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#6366f1">trendhunter-ai.vercel.app</text>
+</svg>
