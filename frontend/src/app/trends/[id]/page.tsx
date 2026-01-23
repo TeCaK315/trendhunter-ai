@@ -1084,17 +1084,8 @@ export default function TrendPage() {
         const analysisData = await analysisRes.json();
         if (analysisData.analyses?.[trendId]) {
           setAnalysis(analysisData.analyses[trendId]);
-          // If analysis exists, we can show more steps
-          // НО не перезаписываем если tab был установлен из URL (после GitHub auth)
-          if (!tabSetFromUrlRef.current) {
-            if (analysisData.analyses[trendId].real_sources) {
-              setCurrentStep('research');
-              setResearchSubTab('sources');
-            } else {
-              setCurrentStep('research');
-              setResearchSubTab('analysis');
-            }
-          }
+          // Данные анализа загружены, но не меняем текущую вкладку
+          // Пользователь должен всегда видеть "Обзор" при открытии страницы
         }
 
         // Check if favorite
