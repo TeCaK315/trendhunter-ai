@@ -1,0 +1,251 @@
+{
+  "name": "TrendHunter - Trend Analyzer (Real Data)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [112, 304]
+    },
+    {
+      "parameters": {},
+      "id": "manual_trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [112, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем данные из webhook или используем дефолтные\nlet webhookData = {};\ntry {\n  webhookData = $('Webhook Trigger').first()?.json?.body || {};\n} catch (e) {\n  // Webhook not available (scheduled/manual trigger)\n}\nconst inputNiches = webhookData.niches || [];\n\nlet niches;\nif (inputNiches.length > 0) {\n  niches = inputNiches;\n} else {\n  const allNiches = [\n    \"AI automation tools\", \"AI chatbot platform\", \"AI writing assistant\", \"AI image generator\",\n    \"AI voice assistant\", \"AI code assistant\", \"AI customer service\", \"AI data analysis\",\n    \"no code app builder\", \"low code platform\", \"no code automation\", \"visual programming tool\",\n    \"workflow automation\", \"project management software\", \"CRM software\", \"invoice automation\",\n    \"HR software\", \"sales automation\", \"marketing automation\", \"email automation\",\n    \"cryptocurrency trading bot\", \"personal finance app\", \"investment platform\", \"payment processing\",\n    \"online learning platform\", \"AI tutoring\", \"language learning app\", \"skill assessment tool\",\n    \"mental health app\", \"fitness tracking app\", \"telemedicine platform\", \"health monitoring\",\n    \"dropshipping automation\", \"inventory management\", \"product recommendation engine\", \"price tracking\"\n  ];\n  const shuffled = allNiches.sort(() => Math.random() - 0.5);\n  niches = shuffled.slice(0, 5);\n}\n\nreturn {\n  json: {\n    niches: JSON.stringify(niches),\n    category: webhookData.category || 'random'\n  }\n};"
+      },
+      "id": "set_niches",
+      "name": "Define Niches to Monitor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [304, 384]
+    },
+    {
+      "parameters": {
+        "jsCode": "const nichesStr = $input.first().json.niches;\nconst niches = JSON.parse(nichesStr);\nreturn niches.map(niche => ({\n  json: { niche: niche, search_query: niche.replace(/\\s+/g, '+') }\n}));"
+      },
+      "id": "split_niches",
+      "name": "Split Niches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [512, 384]
+    },
+    {
+      "parameters": {
+        "url": "=https://serpapi.com/search.json?engine=google_trends&q={{ $json.search_query }}&date=today%203-m&api_key=30d3cf5a5bcc3a40239a160366208ef640db79804ef80f01d484d9db0ea97670",
+        "options": { "timeout": 60000 }
+      },
+      "id": "google_trends_api",
+      "name": "Google Trends API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [704, 304]
+    },
+    {
+      "parameters": {
+        "url": "=https://serpapi.com/search.json?engine=google_trends_trending_now&geo=US&api_key=30d3cf5a5bcc3a40239a160366208ef640db79804ef80f01d484d9db0ea97670",
+        "options": { "timeout": 20000 }
+      },
+      "id": "trending_now_api",
+      "name": "Trending Now API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [704, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst niche = $('Split Niches').item.json.niche;\n\ntry {\n  const interestOverTime = input.interest_over_time?.timeline_data || [];\n  const relatedQueries = input.related_queries?.rising || [];\n  const relatedTopics = input.related_topics?.rising || [];\n  \n  let growthRate = 0;\n  let isEmerging = false;\n  \n  if (interestOverTime.length >= 8) {\n    const recent4 = interestOverTime.slice(-4);\n    const older4 = interestOverTime.slice(-8, -4);\n    const recentAvg = recent4.reduce((sum, d) => sum + (d.values?.[0]?.value || 0), 0) / 4;\n    const olderAvg = older4.reduce((sum, d) => sum + (d.values?.[0]?.value || 0), 0) / 4;\n    if (olderAvg > 0) {\n      growthRate = Math.round(((recentAvg - olderAvg) / olderAvg) * 100);\n    }\n    isEmerging = growthRate > 20 || recentAvg > 50;\n  }\n  \n  const values = interestOverTime.map(d => d.values?.[0]?.value || 0);\n  const peakInterest = Math.max(...values, 0);\n  const currentInterest = values[values.length - 1] || 0;\n  \n  return [{\n    json: {\n      niche: niche,\n      growth_rate: growthRate,\n      is_emerging: isEmerging,\n      current_interest: currentInterest,\n      peak_interest: peakInterest,\n      related_queries: relatedQueries.slice(0, 5).map(q => ({ query: q.query, growth: q.extracted_value || q.value })),\n      related_topics: relatedTopics.slice(0, 5).map(t => ({ topic: t.topic?.title, type: t.topic?.type })),\n      timeline_sample: interestOverTime.slice(-6).map(d => ({ date: d.date, value: d.values?.[0]?.value || 0 }))\n    }\n  }];\n} catch (e) {\n  return [{ json: { niche: niche, growth_rate: 0, is_emerging: false, error: e.message } }];\n}"
+      },
+      "id": "parse_trends",
+      "name": "Parse Trends Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [912, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\ntry {\n  const trendingSearches = input.trending_searches || [];\n  const techKeywords = ['ai', 'app', 'tech', 'software', 'automation', 'bot', 'tool', 'platform', 'startup', 'saas', 'cloud', 'digital', 'online', 'business'];\n  \n  const relevantTrends = trendingSearches\n    .filter(t => {\n      const query = (t.query || '').toLowerCase();\n      return techKeywords.some(kw => query.includes(kw));\n    })\n    .slice(0, 10)\n    .map(t => ({\n      query: t.query,\n      traffic: t.formatted_traffic || t.traffic,\n      articles: (t.articles || []).slice(0, 2).map(a => ({ title: a.title, source: a.source?.name }))\n    }));\n  \n  return [{ json: { trending_now: relevantTrends } }];\n} catch (e) {\n  return [{ json: { trending_now: [], error: e.message } }];\n}"
+      },
+      "id": "parse_trending_now",
+      "name": "Parse Trending Now",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [912, 480]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge_data",
+      "name": "Merge All Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1104, 384]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet nicheTrends = [];\nlet trendingNow = [];\n\nfor (const item of items) {\n  if (item.json.niche) {\n    nicheTrends.push(item.json);\n  }\n  if (item.json.trending_now) {\n    trendingNow = item.json.trending_now;\n  }\n}\n\nconst emergingNiches = nicheTrends\n  .filter(t => t.is_emerging || t.growth_rate > 15)\n  .sort((a, b) => b.growth_rate - a.growth_rate);\n\nconst analysisData = {\n  emerging_niches: emergingNiches,\n  trending_now_topics: trendingNow,\n  total_niches_analyzed: nicheTrends.length,\n  emerging_count: emergingNiches.length,\n  collected_at: new Date().toISOString()\n};\n\nreturn [{ json: analysisData }];"
+      },
+      "id": "aggregate_trends",
+      "name": "Aggregate All Trends",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1312, 384]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Проанализируй данные о зарождающихся трендах и выбери ТОП-5 лучших бизнес-возможностей.\n\n## Emerging Niches (растущие ниши):\n{{ JSON.stringify($json.emerging_niches, null, 2) }}\n\n## Trending Now (актуальные темы):\n{{ JSON.stringify($json.trending_now_topics, null, 2) }}\n\n## Текущее время: {{ new Date().toISOString() }}\n\nВыбери ТОП-5 УНИКАЛЬНЫХ и КОНКРЕТНЫХ бизнес-идей для создания AI/SaaS продукта.\n\nКритерии:\n1. Рост интереса > 20%\n2. Возможность автоматизации через AI\n3. Можно запустить как соло-фаундер\n4. Есть боль которую можно решить\n\nВАЖНО: Каждая идея должна быть КОНКРЕТНОЙ и УНИКАЛЬНОЙ.\n\nВерни СТРОГО JSON массив из 5 элементов без markdown:",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Ты эксперт по поиску emerging бизнес-возможностей в сфере AI/SaaS.\n\nТвоя задача - найти 5 УНИКАЛЬНЫХ и КОНКРЕТНЫХ бизнес-идей из данных Google Trends.\n\nПРАВИЛА:\n1. Каждая идея должна быть КОНКРЕТНЫМ продуктом\n2. Названия (title) должны быть на АНГЛИЙСКОМ языке\n3. Описание why_trending на РУССКОМ языке\n4. ДОБАВЬ why_trending_en - перевод на английский\n\nВерни ТОЛЬКО JSON массив:\n[\n  {\n    \"title\": \"AI Resume Optimizer for Tech Jobs\",\n    \"category\": \"AI & ML\",\n    \"popularity_score\": 75,\n    \"opportunity_score\": 8.5,\n    \"pain_score\": 7.2,\n    \"feasibility_score\": 8.1,\n    \"profit_potential\": 9.3,\n    \"growth_rate\": 45,\n    \"why_trending\": \"Описание на русском\",\n    \"why_trending_en\": \"Description in English\",\n    \"source\": \"Google Trends\"\n  }\n]"
+            }
+          ]
+        }
+      },
+      "id": "ai_analyzer",
+      "name": "AI Trend Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1504, 384]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": { "temperature": 0.5 }
+      },
+      "id": "openai_model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [1504, 608]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json.text || $input.first().json.output || '';\n\ntry {\n  const jsonMatch = aiResponse.match(/\\[.*\\]/s);\n  if (jsonMatch) {\n    const trends = JSON.parse(jsonMatch[0]);\n    return trends.map((trend, idx) => ({\n      json: {\n        id: 'trend-' + Date.now() + '-' + idx,\n        title: trend.title,\n        category: trend.category || 'Technology',\n        popularity_score: trend.popularity_score || 50,\n        opportunity_score: trend.opportunity_score || 5,\n        pain_score: trend.pain_score || 5,\n        feasibility_score: trend.feasibility_score || 5,\n        profit_potential: trend.profit_potential || 5,\n        growth_rate: trend.growth_rate || 0,\n        why_trending: trend.why_trending || 'Emerging trend',\n        why_trending_en: trend.why_trending_en || trend.why_trending || 'Emerging trend',\n        source: trend.source || 'Google Trends',\n        status: 'active',\n        first_detected_at: new Date().toISOString()\n      }\n    }));\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    id: 'trend-' + Date.now(),\n    title: 'AI Automation Tools',\n    category: 'AI & ML',\n    popularity_score: 75,\n    opportunity_score: 8,\n    pain_score: 7,\n    feasibility_score: 8,\n    profit_potential: 8,\n    growth_rate: 35,\n    why_trending: 'Растущий интерес к автоматизации бизнес-процессов с помощью AI',\n    why_trending_en: 'Growing interest in business process automation with AI',\n    source: 'Google Trends',\n    status: 'active',\n    first_detected_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse_response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 384]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "trends",
+        "options": {}
+      },
+      "id": "aggregate_final",
+      "name": "Aggregate Trends",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1904, 384]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://trendhunter-ai.vercel.app/api/trends",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.trends) }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "save_to_frontend",
+      "name": "Save to Frontend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2112, 384]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-trends",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [112, 160],
+      "webhookId": "generate-trends"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Define Niches to Monitor", "type": "main", "index": 0 }]]
+    },
+    "Manual Trigger": {
+      "main": [[{ "node": "Define Niches to Monitor", "type": "main", "index": 0 }]]
+    },
+    "Define Niches to Monitor": {
+      "main": [[{ "node": "Split Niches", "type": "main", "index": 0 }]]
+    },
+    "Split Niches": {
+      "main": [[
+        { "node": "Google Trends API", "type": "main", "index": 0 },
+        { "node": "Trending Now API", "type": "main", "index": 0 }
+      ]]
+    },
+    "Google Trends API": {
+      "main": [[{ "node": "Parse Trends Data", "type": "main", "index": 0 }]]
+    },
+    "Trending Now API": {
+      "main": [[{ "node": "Parse Trending Now", "type": "main", "index": 0 }]]
+    },
+    "Parse Trends Data": {
+      "main": [[{ "node": "Merge All Data", "type": "main", "index": 0 }]]
+    },
+    "Parse Trending Now": {
+      "main": [[{ "node": "Merge All Data", "type": "main", "index": 1 }]]
+    },
+    "Merge All Data": {
+      "main": [[{ "node": "Aggregate All Trends", "type": "main", "index": 0 }]]
+    },
+    "Aggregate All Trends": {
+      "main": [[{ "node": "AI Trend Analyzer", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Trend Analyzer", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Trend Analyzer": {
+      "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]]
+    },
+    "Parse AI Response": {
+      "main": [[{ "node": "Aggregate Trends", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Trends": {
+      "main": [[{ "node": "Save to Frontend", "type": "main", "index": 0 }]]
+    },
+    "Webhook Trigger": {
+      "main": [[{ "node": "Define Niches to Monitor", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

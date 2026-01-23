@@ -41,6 +41,8 @@ export interface Translations {
     dataUpdatesAuto: string;
     connectionError: string;
     useNicheResearch: string;
+    generateFrom: string;
+    randomCategory: string;
   };
 
   // Trend card
@@ -529,6 +531,8 @@ export const translations: Record<Language, Translations> = {
       dataUpdatesAuto: 'Данные обновляются автоматически каждые 6 часов через n8n',
       connectionError: 'Ошибка соединения',
       useNicheResearch: 'Используйте "Исследование ниш" для ручного анализа',
+      generateFrom: 'Генерировать из',
+      randomCategory: 'Случайная',
     },
     trendCard: {
       opportunity: 'Возможность',
@@ -982,6 +986,8 @@ export const translations: Record<Language, Translations> = {
       dataUpdatesAuto: 'Data updates automatically every 6 hours via n8n',
       connectionError: 'Connection error',
       useNicheResearch: 'Use "Niche Research" for manual analysis',
+      generateFrom: 'Generate from',
+      randomCategory: 'Random',
     },
     trendCard: {
       opportunity: 'Opportunity',

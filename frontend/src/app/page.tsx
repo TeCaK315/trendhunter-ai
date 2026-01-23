@@ -67,6 +67,8 @@ export default function Home() {
   const [showAll, setShowAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateCategory, setGenerateCategory] = useState<string>('random');
+  const [generateDropdownOpen, setGenerateDropdownOpen] = useState(false);
   const t = useTranslations();
 
   useEffect(() => {
@@ -84,6 +86,9 @@ export default function Home() {
       const target = event.target as HTMLElement;
       if (!target.closest('.sort-dropdown')) {
         setSortDropdownOpen(false);
+      }
+      if (!target.closest('.generate-dropdown')) {
+        setGenerateDropdownOpen(false);
       }
     };
     document.addEventListener('click', handleClickOutside);
@@ -108,15 +113,17 @@ export default function Home() {
     }
   };
 
-  const generateNewTrends = async () => {
+  const generateNewTrends = async (category?: string) => {
     setGenerating(true);
     setGenerateError(null);
+    setGenerateDropdownOpen(false);
+    const selectedCategory = category || generateCategory;
     try {
       // Используем API route вместо прямого вызова n8n webhook
       const response = await fetch('/api/generate-trends', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({ category: selectedCategory })
       });
       const data = await response.json();
 
@@ -219,21 +226,78 @@ export default function Home() {
                     {t.home.updated}: {new Date(lastUpdated).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
-                <button
-                  onClick={generateNewTrends}
-                  disabled={generating || refreshing}
-                  data-tour="generate-trends"
-                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    generating
-                      ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                  }`}
-                >
-                  <svg className={`w-4 h-4 ${generating ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <span className="hidden md:inline">{generating ? t.home.generating : t.home.newIdeas}</span>
-                </button>
+                {/* Generate Ideas Dropdown */}
+                <div className="relative generate-dropdown">
+                  <div className="flex">
+                    <button
+                      onClick={() => generateNewTrends()}
+                      disabled={generating || refreshing}
+                      data-tour="generate-trends"
+                      className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-l-xl text-sm font-medium transition-all ${
+                        generating
+                          ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
+                          : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      }`}
+                    >
+                      <svg className={`w-4 h-4 ${generating ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span className="hidden md:inline">{generating ? t.home.generating : t.home.newIdeas}</span>
+                    </button>
+                    <button
+                      onClick={() => setGenerateDropdownOpen(!generateDropdownOpen)}
+                      disabled={generating || refreshing}
+                      className={`px-2 py-2 sm:py-2.5 rounded-r-xl border-l border-indigo-500/30 text-sm font-medium transition-all ${
+                        generating
+                          ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
+                          : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {generateDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
+                      <div className="p-2">
+                        <div className="px-3 py-2 text-xs text-zinc-500 font-medium uppercase tracking-wider">
+                          {t.home.generateFrom}
+                        </div>
+                        {/* Random option */}
+                        <button
+                          onClick={() => {
+                            setGenerateCategory('random');
+                            generateNewTrends('random');
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-lg hover:bg-zinc-800 transition-colors ${
+                            generateCategory === 'random' ? 'bg-indigo-500/20 text-indigo-400' : 'text-white'
+                          }`}
+                        >
+                          <span>🎲</span>
+                          <span>{t.home.randomCategory}</span>
+                        </button>
+                        {/* Category options */}
+                        {categoriesConfig.filter(c => c.id !== 'all').map((cat) => (
+                          <button
+                            key={cat.id}
+                            onClick={() => {
+                              setGenerateCategory(cat.id);
+                              generateNewTrends(cat.id);
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-lg hover:bg-zinc-800 transition-colors ${
+                              generateCategory === cat.id ? 'bg-indigo-500/20 text-indigo-400' : 'text-white'
+                            }`}
+                          >
+                            <span>{cat.icon}</span>
+                            <span>{t.categories[cat.labelKey]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={fetchTrends}
                   disabled={refreshing || generating}
