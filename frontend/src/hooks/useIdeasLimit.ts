@@ -6,8 +6,8 @@ import { useGitHubAuth } from './useGitHubAuth';
 
 // Admin users who have unlimited access (add your email/GitHub username here)
 const ADMIN_USERS = [
-  'belousov.andrii@gmail.com',  // Google email
-  'TeCaK315',                    // GitHub username
+  'belousevgeniy315@gmail.com',  // Google email
+  'TeCaK315',                     // GitHub username
 ];
 
 const DAILY_IDEAS_LIMIT = 10;
