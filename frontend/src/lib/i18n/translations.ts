@@ -39,6 +39,8 @@ export interface Translations {
     noTrendsInCategory: string;
     resetSearch: string;
     dataUpdatesAuto: string;
+    connectionError: string;
+    useNicheResearch: string;
   };
 
   // Trend card
@@ -525,6 +527,8 @@ export const translations: Record<Language, Translations> = {
       noTrendsInCategory: 'Нет трендов в этой категории. Запустите Trend Analyzer в n8n чтобы получить свежие данные',
       resetSearch: 'Сбросить поиск',
       dataUpdatesAuto: 'Данные обновляются автоматически каждые 6 часов через n8n',
+      connectionError: 'Ошибка соединения',
+      useNicheResearch: 'Используйте "Исследование ниш" для ручного анализа',
     },
     trendCard: {
       opportunity: 'Возможность',
@@ -976,6 +980,8 @@ export const translations: Record<Language, Translations> = {
       noTrendsInCategory: 'No trends in this category. Run Trend Analyzer in n8n to get fresh data',
       resetSearch: 'Reset search',
       dataUpdatesAuto: 'Data updates automatically every 6 hours via n8n',
+      connectionError: 'Connection error',
+      useNicheResearch: 'Use "Niche Research" for manual analysis',
     },
     trendCard: {
       opportunity: 'Opportunity',
