@@ -1,0 +1,279 @@
+{
+  "name": "TrendHunter - Pain Point Detector (Real Data)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "detect-pain",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [112, 400],
+      "webhookId": "detect-pain"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "trend_id",
+              "name": "trend_id",
+              "value": "={{ $json.body?.trend_id || $json.trend_id || $json.body?.id || $json.id || 'trend-' + Date.now() }}",
+              "type": "string"
+            },
+            {
+              "id": "trend_title",
+              "name": "trend_title",
+              "value": "={{ $json.body?.title || $json.title || $json.body?.trend_title || $json.trend_title || 'AI Automation' }}",
+              "type": "string"
+            },
+            {
+              "id": "trend_category",
+              "name": "trend_category",
+              "value": "={{ $json.body?.category || $json.category || $json.body?.trend_category || $json.trend_category || 'Technology' }}",
+              "type": "string"
+            },
+            {
+              "id": "search_query",
+              "name": "search_query",
+              "value": "={{ ($json.body?.title || $json.title || $json.body?.trend_title || $json.trend_title || 'AI Automation').replace(/\\s+/g, '+') }}",
+              "type": "string"
+            },
+            {
+              "id": "google_trends_query",
+              "name": "google_trends_query",
+              "value": "={{ (() => { const title = $json.body?.title || $json.title || $json.body?.trend_title || $json.trend_title || 'AI'; const keywords = title.replace(/[^a-zA-Z0-9\\s]/g, '').split(' ').filter(w => w.length > 2).slice(0, 2); return keywords.length > 0 ? keywords.join('+') : 'AI'; })() }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "get_trend",
+      "name": "Get Trend Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [304, 400]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.reddit.com/search.json?q={{ $json.search_query }}&sort=relevance&limit=25&t=month",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "reddit_search",
+      "name": "Reddit Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [528, 208]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst trendTitle = $('Get Trend Data').first().json.trend_title;\n\ntry {\n  const posts = input.data?.children || [];\n  \n  const redditData = {\n    source: 'Reddit',\n    query: trendTitle,\n    posts: posts.slice(0, 10).map(p => ({\n      title: p.data?.title || '',\n      subreddit: p.data?.subreddit || '',\n      score: p.data?.score || 0,\n      num_comments: p.data?.num_comments || 0,\n      url: `https://reddit.com${p.data?.permalink || ''}`,\n      created: new Date((p.data?.created_utc || 0) * 1000).toISOString(),\n      selftext: (p.data?.selftext || '').substring(0, 500)\n    })),\n    communities: [...new Set(posts.map(p => p.data?.subreddit).filter(Boolean))].slice(0, 5),\n    total_engagement: posts.reduce((sum, p) => sum + (p.data?.score || 0) + (p.data?.num_comments || 0), 0),\n    avg_score: posts.length > 0 ? Math.round(posts.reduce((sum, p) => sum + (p.data?.score || 0), 0) / posts.length) : 0\n  };\n  \n  return [{ json: redditData }];\n} catch (e) {\n  return [{ json: { source: 'Reddit', error: e.message, posts: [], communities: [] } }];\n}"
+      },
+      "id": "parse_reddit",
+      "name": "Parse Reddit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 208]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/search?part=snippet&q={{ $json.search_query }}&type=video&maxResults=10&order=date&publishedAfter=2025-01-01T00:00:00Z&relevanceLanguage=en&key=AIzaSyCkDRAX-nCdcFuDpUaiApTAObyuiSD7294",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "youtube_search",
+      "name": "YouTube Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [528, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst trendTitle = $('Get Trend Data').first().json.trend_title;\n\ntry {\n  const items = input.items || [];\n  \n  const youtubeData = {\n    source: 'YouTube',\n    query: trendTitle,\n    videos: items.map(v => ({\n      title: v.snippet?.title || '',\n      channel: v.snippet?.channelTitle || '',\n      description: (v.snippet?.description || '').substring(0, 300),\n      videoId: v.id?.videoId || '',\n      url: `https://youtube.com/watch?v=${v.id?.videoId || ''}`,\n      publishedAt: v.snippet?.publishedAt || '',\n      thumbnail: v.snippet?.thumbnails?.medium?.url || ''\n    })),\n    channels: [...new Set(items.map(v => v.snippet?.channelTitle).filter(Boolean))],\n    total_videos: items.length\n  };\n  \n  return [{ json: youtubeData }];\n} catch (e) {\n  return [{ json: { source: 'YouTube', error: e.message, videos: [], channels: [] } }];\n}"
+      },
+      "id": "parse_youtube",
+      "name": "Parse YouTube",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "url": "=https://serpapi.com/search.json?engine=google_trends&q={{ $json.google_trends_query }}&date=today%203-m&api_key=30d3cf5a5bcc3a40239a160366208ef640db79804ef80f01d484d9db0ea97670",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "google_trends",
+      "name": "Google Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [528, 608]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst trendTitle = $('Get Trend Data').first().json.trend_title;\nconst trendCategory = $('Get Trend Data').first().json.trend_category;\n\ntry {\n  if (input.error || input.search_information?.organic_results_state === 'Fully empty') {\n    console.log('Google Trends returned no data, using fallback');\n    return [{ json: { \n      source: 'Google Trends', \n      query: trendTitle,\n      growth_rate: 0, \n      interest_timeline: [], \n      related_queries: [],\n      related_topics: [],\n      peak_interest: 0,\n      note: 'No data available for this specific query'\n    } }];\n  }\n\n  const interestOverTime = input.interest_over_time?.timeline_data || [];\n  const relatedQueries = input.related_queries?.rising || input.related_queries?.top || [];\n  const relatedTopics = input.related_topics?.rising || input.related_topics?.top || [];\n  \n  let growthRate = 0;\n  if (interestOverTime.length >= 2) {\n    const recentValues = interestOverTime.slice(-4);\n    const olderValues = interestOverTime.slice(0, 4);\n    \n    const recent = recentValues.reduce((sum, d) => {\n      const val = d.values?.[0]?.extracted_value || d.values?.[0]?.value || 0;\n      return sum + (typeof val === 'string' ? parseInt(val) || 0 : val);\n    }, 0) / Math.max(recentValues.length, 1);\n    \n    const older = olderValues.reduce((sum, d) => {\n      const val = d.values?.[0]?.extracted_value || d.values?.[0]?.value || 0;\n      return sum + (typeof val === 'string' ? parseInt(val) || 0 : val);\n    }, 0) / Math.max(olderValues.length, 1);\n    \n    if (older > 0) {\n      growthRate = Math.round(((recent - older) / older) * 100);\n    } else if (recent > 0) {\n      growthRate = 100;\n    }\n  }\n  \n  const googleTrendsData = {\n    source: 'Google Trends',\n    query: trendTitle,\n    growth_rate: growthRate,\n    interest_timeline: interestOverTime.slice(-12).map(d => ({\n      date: d.date || '',\n      value: d.values?.[0]?.extracted_value || d.values?.[0]?.value || 0\n    })),\n    related_queries: relatedQueries.slice(0, 10).map(q => ({\n      query: q.query || q.topic?.title || '',\n      growth: q.extracted_value || q.value || q.link ? 'Breakout' : ''\n    })),\n    related_topics: relatedTopics.slice(0, 5).map(t => ({\n      topic: t.topic?.title || t.query || '',\n      type: t.topic?.type || ''\n    })),\n    peak_interest: Math.max(...interestOverTime.map(d => {\n      const val = d.values?.[0]?.extracted_value || d.values?.[0]?.value || 0;\n      return typeof val === 'string' ? parseInt(val) || 0 : val;\n    }), 0)\n  };\n  \n  console.log('Google Trends parsed:', googleTrendsData.growth_rate, '% growth,', googleTrendsData.related_queries.length, 'queries');\n  return [{ json: googleTrendsData }];\n} catch (e) {\n  console.log('Parse Google Trends error:', e.message);\n  return [{ json: { source: 'Google Trends', error: e.message, growth_rate: 0, interest_timeline: [], related_queries: [] } }];\n}"
+      },
+      "id": "parse_google_trends",
+      "name": "Parse Google Trends",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 608]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "id": "merge_sources",
+      "name": "Merge All Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [960, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const trendData = $('Get Trend Data').first().json;\n\nlet redditData = { posts: [], communities: [], total_engagement: 0 };\ntry {\n  const reddit = $('Parse Reddit').first().json;\n  if (reddit && reddit.source === 'Reddit') {\n    redditData = reddit;\n  }\n} catch (e) {\n  console.log('No Reddit data:', e.message);\n}\n\nlet youtubeData = { videos: [], channels: [] };\ntry {\n  const youtube = $('Parse YouTube').first().json;\n  if (youtube && youtube.source === 'YouTube') {\n    youtubeData = youtube;\n  }\n} catch (e) {\n  console.log('No YouTube data:', e.message);\n}\n\nlet googleTrendsData = { growth_rate: 0, related_queries: [], interest_timeline: [] };\ntry {\n  const gtrends = $('Parse Google Trends').first().json;\n  if (gtrends && gtrends.source === 'Google Trends') {\n    googleTrendsData = gtrends;\n  }\n} catch (e) {\n  console.log('No Google Trends data:', e.message);\n}\n\nconsole.log('Reddit posts:', redditData.posts?.length || 0);\nconsole.log('YouTube videos:', youtubeData.videos?.length || 0);\nconsole.log('Google Trends growth:', googleTrendsData.growth_rate || 0);\nconsole.log('Google Trends timeline points:', googleTrendsData.interest_timeline?.length || 0);\n\nconst combinedData = {\n  trend_id: trendData.trend_id,\n  trend_title: trendData.trend_title,\n  trend_category: trendData.trend_category,\n  reddit_engagement: redditData.total_engagement || 0,\n  reddit_communities: redditData.communities || [],\n  reddit_posts: redditData.posts || [],\n  youtube_videos: youtubeData.videos || [],\n  youtube_channels: youtubeData.channels || [],\n  google_trends_growth: googleTrendsData.growth_rate || 0,\n  google_related_queries: googleTrendsData.related_queries || [],\n  google_interest_timeline: googleTrendsData.interest_timeline || [],\n  collected_at: new Date().toISOString()\n};\n\nreturn [{ json: combinedData }];"
+      },
+      "id": "aggregate_data",
+      "name": "Aggregate All Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1152, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Проанализируй данные о тренде \"{{ $json.trend_title }}\" из реальных источников и выяви болевые точки.\n\n## Данные из Reddit:\nСообщества: {{ $json.reddit_communities.join(', ') }}\nОбщий engagement: {{ $json.reddit_engagement }}\nТоп посты:\n{{ $json.reddit_posts.slice(0, 5).map(p => '- ' + p.title + ' (score: ' + p.score + ', comments: ' + p.num_comments + ')').join('\\n') }}\n\n## Данные из YouTube:\nВидео: {{ $json.youtube_videos.length }}\nКаналы: {{ $json.youtube_channels.join(', ') }}\nТоп видео:\n{{ $json.youtube_videos.slice(0, 5).map(v => '- ' + v.title + ' (' + v.channel + ')').join('\\n') }}\n\n## Данные из Google Trends:\nРост за 3 месяца: {{ $json.google_trends_growth }}%\nСвязанные запросы:\n{{ $json.google_related_queries.slice(0, 5).map(q => '- ' + q.query + ' (+' + q.growth + ')').join('\\n') }}\n\nНа основе этих РЕАЛЬНЫХ данных определи болевые точки и целевую аудиторию.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Ты эксперт по анализу рынка и выявлению болевых точек клиентов.\n\nТвоя задача на основе РЕАЛЬНЫХ данных из социальных сетей:\n1. Выявить 1-3 ГЛАВНЫХ боли - проблемы которые люди реально обсуждают\n2. Определить 5-10 сегментов целевой аудитории с конкретными размерами\n3. Указать конкретные сообщества/каналы где обитает аудитория\n4. Оценить sentiment (настроение) аудитории\n\nВерни СТРОГО JSON без markdown:\n{\n  \"main_pain\": \"главная боль на основе анализа постов\",\n  \"key_pain_points\": [\"боль1 из Reddit\", \"боль2 из YouTube комментариев\", \"боль3\"],\n  \"target_audience\": {\n    \"segments\": [\n      {\"name\": \"название сегмента\", \"size\": \"размер\", \"willingness_to_pay\": \"high/medium/low\", \"where_to_find\": \"конкретные сабреддиты или каналы\"}\n    ]\n  },\n  \"sources_analysis\": {\n    \"reddit\": {\"sentiment\": \"positive/negative/mixed\", \"key_discussions\": [\"тема1\", \"тема2\"], \"top_subreddits\": [\"r/sub1\"]},\n    \"youtube\": {\"content_type\": \"tutorials/reviews/news\", \"top_channels\": [\"channel1\"]},\n    \"google_trends\": {\"trend_direction\": \"growing/stable/declining\", \"related_topics\": [\"topic1\"]}\n  },\n  \"sentiment_score\": 0.7,\n  \"market_signals\": [\"сигнал1 из данных\", \"сигнал2\"]\n}"
+            }
+          ]
+        }
+      },
+      "id": "ai_analyzer",
+      "name": "AI Pain Point Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1344, 400]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "openai_model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [1344, 624]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json.text;\nconst aggregatedData = $('Aggregate All Data').first().json;\n\ntry {\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/s);\n  if (jsonMatch) {\n    const parsed = JSON.parse(jsonMatch[0]);\n    \n    return [{\n      json: {\n        trend_id: aggregatedData.trend_id,\n        trend_title: aggregatedData.trend_title,\n        main_pain: parsed.main_pain,\n        key_pain_points: parsed.key_pain_points || [],\n        target_audience: parsed.target_audience || { segments: [] },\n        sources_analysis: parsed.sources_analysis || {},\n        sentiment_score: parsed.sentiment_score || 0.5,\n        market_signals: parsed.market_signals || [],\n        real_sources: {\n          reddit: {\n            posts: aggregatedData.reddit_posts?.slice(0, 5) || [],\n            communities: aggregatedData.reddit_communities || [],\n            engagement: aggregatedData.reddit_engagement || 0\n          },\n          youtube: {\n            videos: aggregatedData.youtube_videos?.slice(0, 5) || [],\n            channels: aggregatedData.youtube_channels || []\n          },\n          google_trends: {\n            growth_rate: aggregatedData.google_trends_growth || 0,\n            related_queries: aggregatedData.google_related_queries?.slice(0, 5) || [],\n            interest_timeline: aggregatedData.google_interest_timeline || []\n          },\n          facebook: {\n            pages: [],\n            reach: 0\n          }\n        },\n        status: 'analyzed',\n        analyzed_at: new Date().toISOString()\n      }\n    }];\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    trend_id: aggregatedData.trend_id,\n    trend_title: aggregatedData.trend_title,\n    main_pain: 'Нехватка эффективных решений в данной области',\n    key_pain_points: ['Сложность использования существующих инструментов', 'Высокая стоимость решений', 'Недостаток автоматизации'],\n    target_audience: {\n      segments: [\n        {name: 'Малый бизнес', size: '5M+', willingness_to_pay: 'medium'},\n        {name: 'Стартапы', size: '1M+', willingness_to_pay: 'high'}\n      ]\n    },\n    real_sources: {\n      reddit: { posts: aggregatedData.reddit_posts || [], communities: aggregatedData.reddit_communities || [], engagement: aggregatedData.reddit_engagement || 0 },\n      youtube: { videos: aggregatedData.youtube_videos || [], channels: aggregatedData.youtube_channels || [] },\n      google_trends: { growth_rate: aggregatedData.google_trends_growth || 0, related_queries: aggregatedData.google_related_queries || [], interest_timeline: aggregatedData.google_interest_timeline || [] },\n      facebook: { pages: [], reach: 0 }\n    },\n    sentiment_score: 0.6,\n    status: 'analyzed',\n    analyzed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse_ai_response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://trendhunter-ai.vercel.app/api/trends/analyze",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "save_to_frontend",
+      "name": "Save Analysis to Frontend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1744, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond_webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1952, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Get Trend Data", "type": "main", "index": 0}]]
+    },
+    "Get Trend Data": {
+      "main": [[
+        {"node": "Reddit Search", "type": "main", "index": 0},
+        {"node": "YouTube Search", "type": "main", "index": 0},
+        {"node": "Google Trends", "type": "main", "index": 0}
+      ]]
+    },
+    "Reddit Search": {
+      "main": [[{"node": "Parse Reddit", "type": "main", "index": 0}]]
+    },
+    "YouTube Search": {
+      "main": [[{"node": "Parse YouTube", "type": "main", "index": 0}]]
+    },
+    "Google Trends": {
+      "main": [[{"node": "Parse Google Trends", "type": "main", "index": 0}]]
+    },
+    "Parse Reddit": {
+      "main": [[{"node": "Merge All Sources", "type": "main", "index": 0}]]
+    },
+    "Parse YouTube": {
+      "main": [[{"node": "Merge All Sources", "type": "main", "index": 1}]]
+    },
+    "Parse Google Trends": {
+      "main": [[{"node": "Merge All Sources", "type": "main", "index": 2}]]
+    },
+    "Merge All Sources": {
+      "main": [[{"node": "Aggregate All Data", "type": "main", "index": 0}]]
+    },
+    "Aggregate All Data": {
+      "main": [[{"node": "AI Pain Point Analyzer", "type": "main", "index": 0}]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{"node": "AI Pain Point Analyzer", "type": "ai_languageModel", "index": 0}]]
+    },
+    "AI Pain Point Analyzer": {
+      "main": [[{"node": "Parse AI Response", "type": "main", "index": 0}]]
+    },
+    "Parse AI Response": {
+      "main": [[{"node": "Save Analysis to Frontend", "type": "main", "index": 0}]]
+    },
+    "Save Analysis to Frontend": {
+      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,269 @@
+{
+  "name": "TrendHunter - Agent Builder (META)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-project",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Create Project",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [256, 304],
+      "webhookId": "create-project"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst systemPrompt = `Ты META-АГЕНТ TrendHunter AI. Твоя задача - НЕ решать проблему напрямую, а СКОНСТРУИРОВАТЬ план проекта для решения выявленной боли.\n\nНа основе данных о тренде, болях и целевой аудитории, создай:\n\n1. Название проекта (короткое, на английском, подходящее для GitHub repo, без пробелов, только буквы цифры и дефисы)\n2. Описание (1-2 предложения о решении)\n3. Тип решения: web_app | automation | bot | landing | api_service\n4. Tech Stack (рекомендация для бюджета $0-100/мес)\n5. README.md содержимое (полный markdown с разделами: Overview, Problem, Solution, Features, Tech Stack, Getting Started, 4-Week Plan, Contributing, License)\n6. Структура файлов (основные файлы для MVP)\n7. План на 4 недели (по 2-3 задачи на неделю)\n\nВАЖНО: readme_content должен быть ДЕТАЛЬНЫМ - минимум 50 строк markdown с полным описанием проекта!\n\nОтвечай ТОЛЬКО валидным JSON без markdown блоков:\n{\n  \"project_name\": \"string\",\n  \"description\": \"string\",\n  \"solution_type\": \"web_app\",\n  \"tech_stack\": [\"string\"],\n  \"readme_content\": \"string с полным README\",\n  \"file_structure\": [\"string\"],\n  \"weekly_plan\": [{\"week\": 1, \"tasks\": [\"string\"]}]\n}`;\n\nconst userPrompt = `Создай проект для решения следующей проблемы:\n\nТренд: ${body.trend_title}\nКатегория: ${body.trend_category}\nПочему актуально: ${body.why_trending}\n\nГлавная боль:\n${body.main_pain}\n\nКлючевые проблемы:\n${body.key_pain_points}\n\nЦелевая аудитория:\n${body.target_audience}\n\nРыночные сигналы:\n${body.market_signals}\n\nСоздай детальный план проекта в формате JSON. README должен быть ПОЛНЫМ и ДЕТАЛЬНЫМ!`;\n\nreturn {\n  openai_api_key: body.openai_api_key,\n  github_token: body.github_token,\n  github_username: body.github_username,\n  trend_id: body.trend_id,\n  trend_title: body.trend_title,\n  request_body: {\n    model: 'gpt-4o-mini',\n    max_tokens: 4000,\n    temperature: 0.7,\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt }\n    ]\n  }\n};"
+      },
+      "id": "prepare-request",
+      "name": "Prepare OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [456, 304]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.openai_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request_body) }}",
+        "options": {}
+      },
+      "id": "openai-request",
+      "name": "OpenAI - Generate Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [656, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst prepData = $('Prepare OpenAI Request').first().json;\nconst aiContent = response.choices[0].message.content;\n\nlet projectData;\ntry {\n  const jsonMatch = aiContent.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    projectData = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error('No JSON found');\n  }\n} catch (e) {\n  projectData = {\n    project_name: 'trendhunter-project',\n    description: 'AI-generated project',\n    solution_type: 'web_app',\n    tech_stack: ['Next.js', 'TypeScript', 'Tailwind CSS'],\n    readme_content: '# Project\\n\\nAI-generated project from TrendHunter.',\n    file_structure: ['src/', 'package.json', 'README.md'],\n    weekly_plan: [{ week: 1, tasks: ['Setup project'] }]\n  };\n}\n\nreturn {\n  ...projectData,\n  project_name: projectData.project_name.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),\n  trend_id: prepData.trend_id,\n  trend_title: prepData.trend_title,\n  github_token: prepData.github_token,\n  github_username: prepData.github_username\n};"
+      },
+      "id": "parse-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [856, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nreturn {\n  ...data,\n  create_repo_body: JSON.stringify({\n    name: data.project_name,\n    description: data.description,\n    private: false,\n    auto_init: true\n  })\n};"
+      },
+      "id": "prepare-repo",
+      "name": "Prepare Repo Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1006, 304]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/user/repos",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.github_token }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "TrendHunter-AI"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.create_repo_body }}",
+        "options": {}
+      },
+      "id": "create-repo",
+      "name": "GitHub - Create Repo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1156, 304]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "wait-for-repo",
+      "name": "Wait 3 seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1306, 304],
+      "webhookId": "715cee38-84a5-47ac-884e-31504a708288"
+    },
+    {
+      "parameters": {
+        "jsCode": "const repoData = $input.first().json;\nconst projectData = $('Prepare Repo Request').first().json;\n\nreturn {\n  github_token: projectData.github_token,\n  github_username: projectData.github_username,\n  project_name: projectData.project_name,\n  project_data: projectData,\n  repo_data: repoData\n};"
+      },
+      "id": "prepare-get-readme",
+      "name": "Prepare Get README",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1456, 304]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $json.github_username }}/{{ $json.project_name }}/contents/README.md",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.github_token }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "TrendHunter-AI"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "get-readme-sha",
+      "name": "GitHub - Get README SHA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1606, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const readmeResponse = $input.first().json;\nconst prevData = $('Prepare Get README').first().json;\nconst projectData = prevData.project_data;\n\nconst sha = readmeResponse.sha || null;\n\nconst readmeContent = projectData.readme_content || '# Project';\nconst base64Content = Buffer.from(readmeContent).toString('base64');\n\nconst bodyObj = {\n  message: 'Add comprehensive README with project plan',\n  content: base64Content\n};\n\nif (sha) {\n  bodyObj.sha = sha;\n}\n\nreturn {\n  github_token: prevData.github_token,\n  github_username: prevData.github_username,\n  project_name: prevData.project_name,\n  readme_body: JSON.stringify(bodyObj),\n  project_data: projectData,\n  repo_data: prevData.repo_data\n};"
+      },
+      "id": "prepare-readme",
+      "name": "Prepare README Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1756, 304]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/{{ $json.github_username }}/{{ $json.project_name }}/contents/README.md",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.github_token }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "TrendHunter-AI"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.readme_body }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "create-readme",
+      "name": "GitHub - Update README",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1906, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepData = $('Prepare README Request').first().json;\nconst projectData = prepData.project_data;\nconst repoData = prepData.repo_data;\n\nreturn {\n  success: true,\n  project: {\n    name: projectData.project_name,\n    description: projectData.description,\n    solution_type: projectData.solution_type,\n    tech_stack: projectData.tech_stack,\n    weekly_plan: projectData.weekly_plan,\n    trend_id: projectData.trend_id\n  },\n  github: {\n    repo_url: repoData.html_url,\n    clone_url: repoData.clone_url,\n    full_name: repoData.full_name\n  },\n  next_steps: [\n    'Clone repository: git clone ' + repoData.clone_url,\n    'Open in VS Code and start Claude Code',\n    'Follow the weekly plan in README'\n  ]\n};"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2056, 304]
+    }
+  ],
+  "connections": {
+    "Webhook - Create Project": {
+      "main": [[{"node": "Prepare OpenAI Request", "type": "main", "index": 0}]]
+    },
+    "Prepare OpenAI Request": {
+      "main": [[{"node": "OpenAI - Generate Project", "type": "main", "index": 0}]]
+    },
+    "OpenAI - Generate Project": {
+      "main": [[{"node": "Parse AI Response", "type": "main", "index": 0}]]
+    },
+    "Parse AI Response": {
+      "main": [[{"node": "Prepare Repo Request", "type": "main", "index": 0}]]
+    },
+    "Prepare Repo Request": {
+      "main": [[{"node": "GitHub - Create Repo", "type": "main", "index": 0}]]
+    },
+    "GitHub - Create Repo": {
+      "main": [[{"node": "Wait 3 seconds", "type": "main", "index": 0}]]
+    },
+    "Wait 3 seconds": {
+      "main": [[{"node": "Prepare Get README", "type": "main", "index": 0}]]
+    },
+    "Prepare Get README": {
+      "main": [[{"node": "GitHub - Get README SHA", "type": "main", "index": 0}]]
+    },
+    "GitHub - Get README SHA": {
+      "main": [[{"node": "Prepare README Request", "type": "main", "index": 0}]]
+    },
+    "Prepare README Request": {
+      "main": [[{"node": "GitHub - Update README", "type": "main", "index": 0}]]
+    },
+    "GitHub - Update README": {
+      "main": [[{"node": "Format Response", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  }
+}

@@ -89,8 +89,7 @@ function normalizeCategory(category: string): string {
 
   const validCategories = [
     'AI & ML', 'SaaS', 'FinTech', 'EdTech', 'HealthTech',
-    'E-commerce', 'Technology', 'Business', 'Healthcare',
-    'Finance', 'Education', 'Mobile Apps'
+    'E-commerce', 'Technology', 'Business', 'Mobile Apps'
   ];
 
   const parts = category.split(/[|,]/);
@@ -110,6 +109,8 @@ function normalizeCategory(category: string): string {
     'ml': 'AI & ML',
     'artificial intelligence': 'AI & ML',
     'machine learning': 'AI & ML',
+    'ai/ml': 'AI & ML',
+    'ai & ml': 'AI & ML',
     'saas': 'SaaS',
     'software': 'SaaS',
     'fintech': 'FinTech',
@@ -129,6 +130,7 @@ function normalizeCategory(category: string): string {
     'retail': 'E-commerce',
     'mobile': 'Mobile Apps',
     'app': 'Mobile Apps',
+    'mobile apps': 'Mobile Apps',
     'business': 'Business',
     'enterprise': 'Business',
     'tech': 'Technology',

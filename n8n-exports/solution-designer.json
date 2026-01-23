@@ -1,0 +1,163 @@
+{
+  "name": "TrendHunter - Solution Designer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "design-solution",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [256, 304],
+      "webhookId": "design-solution"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "trend_id",
+              "name": "trend_id",
+              "value": "={{ $json.trend_id }}",
+              "type": "string"
+            },
+            {
+              "id": "trend_title",
+              "name": "trend_title",
+              "value": "={{ $json.trend_title || 'AI Automation' }}",
+              "type": "string"
+            },
+            {
+              "id": "main_pain",
+              "name": "main_pain",
+              "value": "={{ $json.main_pain || 'Нехватка автоматизации' }}",
+              "type": "string"
+            },
+            {
+              "id": "target_audience",
+              "name": "target_audience",
+              "value": "={{ $json.target_audience || 'SMB, Startups' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get_data",
+      "name": "Get Trend + Pain Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [464, 304]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Тренд: {{ $json.trend_title }}\nГлавная боль: {{ $json.main_pain }}\nЦелевая аудитория: {{ $json.target_audience }}\n\nСпроектируй MVP решение. Верни ответ в формате JSON.",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "Ты Senior UX Designer с 15+ лет опыта.\n\nНа основе боли предложи MVP решение:\n\n1. **Концепция**: название, tagline, value proposition\n2. **Core Features** (3-5 фич для MVP)\n3. **User Journey**: 5-7 шагов до \"aha moment\"\n4. **Монетизация**: pricing model, price points\n5. **Tech Stack** (бюджет $0-100/мес)\n6. **Конкуренты**: 3-5 решений\n7. **Риски и митигация**\n\nВерни структурированный JSON."
+            }
+          ]
+        }
+      },
+      "id": "ai_chain",
+      "name": "Solution Designer AI",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [656, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json.text;\nconst trendId = $('Get Trend + Pain Data').first().json.trend_id;\n\ntry {\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/s);\n  if (jsonMatch) {\n    const solution = JSON.parse(jsonMatch[0]);\n    return [{\n      json: {\n        trend_id: trendId,\n        solution: solution,\n        ai_recommendations: aiResponse,\n        confidence_score: 0.85,\n        analyzed_at: new Date().toISOString()\n      }\n    }];\n  }\n} catch (e) {\n  console.log('Parse error:', e);\n}\n\nreturn [{\n  json: {\n    trend_id: trendId,\n    solution: {\n      concept: {\n        name: 'AutoBot AI',\n        tagline: 'AI автоматизация для малого бизнеса',\n        value_proposition: 'Снизьте затраты на 50% с AI автоматизацией'\n      },\n      features: ['AI чат-бот', 'Авто-ответы', 'Аналитика'],\n      pricing: 'Freemium, $29/мес Pro',\n      tech_stack: ['Next.js', 'n8n', 'OpenAI']\n    },\n    ai_recommendations: aiResponse,\n    confidence_score: 0.85,\n    analyzed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse_response",
+      "name": "Parse Solution",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [912, 304]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "openai_model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [656, 512]
+    },
+    {
+      "id": "call_agent_builder",
+      "name": "Call Agent Builder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1056, 304],
+      "parameters": {
+        "method": "POST",
+        "url": "https://tecak315.app.n8n.cloud/webhook/create-project",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "trend_id",
+              "value": "={{ $json.trend_id }}"
+            },
+            {
+              "name": "solution_data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond_webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 304]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Get Trend + Pain Data", "type": "main", "index": 0}]]
+    },
+    "Get Trend + Pain Data": {
+      "main": [[{"node": "Solution Designer AI", "type": "main", "index": 0}]]
+    },
+    "Solution Designer AI": {
+      "main": [[{"node": "Parse Solution", "type": "main", "index": 0}]]
+    },
+    "Parse Solution": {
+      "main": [[{"node": "Call Agent Builder", "type": "main", "index": 0}]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{"node": "Solution Designer AI", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Call Agent Builder": {
+      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
