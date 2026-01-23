@@ -81,7 +81,7 @@ export default function MobileNav() {
 
           {/* Right side: User menu + Hamburger */}
           <div className="flex items-center gap-2">
-            <UserMenu />
+            <UserMenu compact />
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-800/50 text-white"

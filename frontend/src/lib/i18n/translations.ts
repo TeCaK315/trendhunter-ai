@@ -14,6 +14,7 @@ export interface Translations {
   auth: {
     signIn: string;
     signOut: string;
+    signInWith: string;
     signInWithGoogle: string;
     myAccount: string;
     settings: string;
@@ -21,6 +22,10 @@ export interface Translations {
     generationsLeft: string;
     unlimited: string;
     upgradeToPro: string;
+    connectedAccounts: string;
+    connected: string;
+    connect: string;
+    githubProfile: string;
   };
 
   // Home page
@@ -517,6 +522,7 @@ export const translations: Record<Language, Translations> = {
     auth: {
       signIn: 'Войти',
       signOut: 'Выйти',
+      signInWith: 'Войти через',
       signInWithGoogle: 'Войти через Google',
       myAccount: 'Мой аккаунт',
       settings: 'Настройки',
@@ -524,6 +530,10 @@ export const translations: Record<Language, Translations> = {
       generationsLeft: 'Осталось генераций',
       unlimited: 'Безлимит',
       upgradeToPro: 'Улучшить до Pro',
+      connectedAccounts: 'Подключённые аккаунты',
+      connected: 'Подключён',
+      connect: 'Подключить',
+      githubProfile: 'Профиль GitHub',
     },
     home: {
       searchPlaceholder: 'Поиск идей...',
@@ -983,6 +993,7 @@ export const translations: Record<Language, Translations> = {
     auth: {
       signIn: 'Sign In',
       signOut: 'Sign Out',
+      signInWith: 'Sign in with',
       signInWithGoogle: 'Sign in with Google',
       myAccount: 'My Account',
       settings: 'Settings',
@@ -990,6 +1001,10 @@ export const translations: Record<Language, Translations> = {
       generationsLeft: 'Generations left',
       unlimited: 'Unlimited',
       upgradeToPro: 'Upgrade to Pro',
+      connectedAccounts: 'Connected accounts',
+      connected: 'Connected',
+      connect: 'Connect',
+      githubProfile: 'GitHub Profile',
     },
     home: {
       searchPlaceholder: 'Search ideas...',

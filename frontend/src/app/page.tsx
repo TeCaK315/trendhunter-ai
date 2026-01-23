@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import TrendCard from '@/components/TrendCard';
-import GitHubAuth from '@/components/GitHubAuth';
+import UserMenu from '@/components/auth/UserMenu';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTranslations } from '@/lib/i18n';
 
@@ -315,9 +315,7 @@ export default function Home() {
                 <div className="hidden sm:block">
                   <LanguageSwitcher compact />
                 </div>
-                <div className="hidden md:block">
-                  <GitHubAuth compact />
-                </div>
+                <UserMenu />
               </div>
             </div>
           </div>
