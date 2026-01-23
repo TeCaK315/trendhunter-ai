@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from '@/lib/i18n';
 import { useSidebar } from '@/lib/SidebarContext';
 import OnboardingTour, { resetOnboardingTour } from '@/components/OnboardingTour';
+import UserMenu from '@/components/auth/UserMenu';
 
 interface NavItemConfig {
   href: string;
@@ -134,8 +135,13 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer: Help, Discord, Collapse */}
+      {/* Footer: User menu, Help, Discord, Collapse */}
       <div className="p-3 border-t border-zinc-800/50 space-y-2">
+        {/* User menu */}
+        <div className={`${collapsed ? 'flex justify-center' : ''}`}>
+          <UserMenu />
+        </div>
+
         {/* Help button */}
         <div className="relative">
           <button

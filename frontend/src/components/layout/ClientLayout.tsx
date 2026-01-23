@@ -6,6 +6,7 @@ import MobileNav from './MobileNav';
 import OnboardingTour from '../OnboardingTour';
 import { LanguageProvider } from '@/lib/i18n';
 import { SidebarProvider, useSidebar } from '@/lib/SidebarContext';
+import SessionProvider from '@/components/providers/SessionProvider';
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -47,10 +48,12 @@ function LayoutContent({ children }: ClientLayoutProps) {
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
-    <LanguageProvider>
-      <SidebarProvider>
-        <LayoutContent>{children}</LayoutContent>
-      </SidebarProvider>
-    </LanguageProvider>
+    <SessionProvider>
+      <LanguageProvider>
+        <SidebarProvider>
+          <LayoutContent>{children}</LayoutContent>
+        </SidebarProvider>
+      </LanguageProvider>
+    </SessionProvider>
   );
 }

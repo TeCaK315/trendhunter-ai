@@ -10,6 +10,19 @@ export interface Translations {
     collapse: string;
   };
 
+  // Auth
+  auth: {
+    signIn: string;
+    signOut: string;
+    signInWithGoogle: string;
+    myAccount: string;
+    settings: string;
+    generationsToday: string;
+    generationsLeft: string;
+    unlimited: string;
+    upgradeToPro: string;
+  };
+
   // Home page
   home: {
     searchPlaceholder: string;
@@ -501,6 +514,17 @@ export const translations: Record<Language, Translations> = {
       projects: 'Проекты',
       collapse: 'Свернуть',
     },
+    auth: {
+      signIn: 'Войти',
+      signOut: 'Выйти',
+      signInWithGoogle: 'Войти через Google',
+      myAccount: 'Мой аккаунт',
+      settings: 'Настройки',
+      generationsToday: 'Генераций сегодня',
+      generationsLeft: 'Осталось генераций',
+      unlimited: 'Безлимит',
+      upgradeToPro: 'Улучшить до Pro',
+    },
     home: {
       searchPlaceholder: 'Поиск идей...',
       updated: 'Обновлено',
@@ -955,6 +979,17 @@ export const translations: Record<Language, Translations> = {
       favorites: 'Favorites',
       projects: 'Projects',
       collapse: 'Collapse',
+    },
+    auth: {
+      signIn: 'Sign In',
+      signOut: 'Sign Out',
+      signInWithGoogle: 'Sign in with Google',
+      myAccount: 'My Account',
+      settings: 'Settings',
+      generationsToday: 'Generations today',
+      generationsLeft: 'Generations left',
+      unlimited: 'Unlimited',
+      upgradeToPro: 'Upgrade to Pro',
     },
     home: {
       searchPlaceholder: 'Search ideas...',
