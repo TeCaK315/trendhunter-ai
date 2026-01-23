@@ -1,8 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'trends.json');
 
 export interface Trend {
   id: string;
@@ -24,6 +20,14 @@ interface TrendsData {
   trends: Trend[];
   lastUpdated: string | null;
 }
+
+// In-memory storage for Vercel serverless
+// Note: This will reset on cold starts, but works for demo purposes
+// For production, use Vercel KV, Supabase, or another database
+let trendsStorage: TrendsData = {
+  trends: [],
+  lastUpdated: null,
+};
 
 // Normalize title for comparison (lowercase, trim, remove extra spaces)
 function normalizeTitle(title: string): string {
@@ -47,143 +51,6 @@ function isDuplicate(newTrend: Trend, existingTrend: Trend): boolean {
   }
 
   return false;
-}
-
-// GET - Read trends from JSON
-export async function GET() {
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf-8');
-    const trendsData: TrendsData = JSON.parse(data);
-    return NextResponse.json(trendsData);
-  } catch (error) {
-    console.error('Error reading trends:', error);
-    return NextResponse.json({ trends: [], lastUpdated: null });
-  }
-}
-
-// POST - Save new trends from n8n (merges with existing, no duplicates)
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    // Handle both single trend and array of trends
-    const newTrends: Trend[] = Array.isArray(body) ? body : [body];
-
-    // Read existing data
-    let existingData: TrendsData = { trends: [], lastUpdated: null };
-    try {
-      const data = await fs.readFile(DATA_FILE, 'utf-8');
-      existingData = JSON.parse(data);
-    } catch {
-      // File doesn't exist or is empty, use default
-    }
-
-    // Add IDs if missing
-    const trendsWithIds = newTrends.map((trend, index) => ({
-      ...trend,
-      id: trend.id || `trend-${Date.now()}-${index}`,
-      // Normalize category - take only first category if multiple are provided
-      category: normalizeCategory(trend.category),
-    }));
-
-    // Filter out duplicates - keep existing trends, only add truly new ones
-    const uniqueNewTrends = trendsWithIds.filter(newTrend => {
-      const isDup = existingData.trends.some(existing => isDuplicate(newTrend, existing));
-      if (isDup) {
-        console.log(`Skipping duplicate: "${newTrend.title}"`);
-      }
-      return !isDup;
-    });
-
-    // Merge: existing trends + new unique trends
-    const mergedTrends = [...existingData.trends, ...uniqueNewTrends];
-
-    // Sort by first_detected_at (newest first)
-    mergedTrends.sort((a, b) => {
-      return new Date(b.first_detected_at).getTime() - new Date(a.first_detected_at).getTime();
-    });
-
-    const updatedData: TrendsData = {
-      trends: mergedTrends,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    // Write back to file
-    await fs.writeFile(DATA_FILE, JSON.stringify(updatedData, null, 2));
-
-    return NextResponse.json({
-      success: true,
-      count: uniqueNewTrends.length,
-      total: mergedTrends.length,
-      duplicatesSkipped: trendsWithIds.length - uniqueNewTrends.length,
-      message: `Added ${uniqueNewTrends.length} new trends (${trendsWithIds.length - uniqueNewTrends.length} duplicates skipped). Total: ${mergedTrends.length}`
-    });
-  } catch (error) {
-    console.error('Error saving trends:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to save trends' },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE - Remove a specific trend or clear all
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const trendId = searchParams.get('id');
-    const clearAll = searchParams.get('clear') === 'true';
-
-    if (clearAll) {
-      // Clear all trends
-      const updatedData: TrendsData = {
-        trends: [],
-        lastUpdated: new Date().toISOString(),
-      };
-      await fs.writeFile(DATA_FILE, JSON.stringify(updatedData, null, 2));
-      return NextResponse.json({ success: true, message: 'All trends cleared' });
-    }
-
-    if (!trendId) {
-      return NextResponse.json(
-        { success: false, error: 'Trend ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Read existing data
-    const data = await fs.readFile(DATA_FILE, 'utf-8');
-    const existingData: TrendsData = JSON.parse(data);
-
-    // Filter out the trend to delete
-    const filteredTrends = existingData.trends.filter(t => t.id !== trendId);
-
-    if (filteredTrends.length === existingData.trends.length) {
-      return NextResponse.json(
-        { success: false, error: 'Trend not found' },
-        { status: 404 }
-      );
-    }
-
-    const updatedData: TrendsData = {
-      trends: filteredTrends,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    await fs.writeFile(DATA_FILE, JSON.stringify(updatedData, null, 2));
-
-    return NextResponse.json({
-      success: true,
-      message: `Trend ${trendId} deleted`,
-      remaining: filteredTrends.length
-    });
-  } catch (error) {
-    console.error('Error deleting trend:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete trend' },
-      { status: 500 }
-    );
-  }
 }
 
 // Normalize category - extract single valid category
@@ -250,4 +117,121 @@ function normalizeCategory(category: string): string {
   }
 
   return 'Technology';
+}
+
+// GET - Read trends from memory
+export async function GET() {
+  try {
+    return NextResponse.json(trendsStorage);
+  } catch (error) {
+    console.error('Error reading trends:', error);
+    return NextResponse.json({ trends: [], lastUpdated: null });
+  }
+}
+
+// POST - Save new trends to memory (merges with existing, no duplicates)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // Handle both single trend and array of trends
+    const newTrends: Trend[] = Array.isArray(body) ? body : [body];
+
+    // Add IDs if missing
+    const trendsWithIds = newTrends.map((trend, index) => ({
+      ...trend,
+      id: trend.id || `trend-${Date.now()}-${index}`,
+      // Normalize category - take only first category if multiple are provided
+      category: normalizeCategory(trend.category),
+    }));
+
+    // Filter out duplicates - keep existing trends, only add truly new ones
+    const uniqueNewTrends = trendsWithIds.filter(newTrend => {
+      const isDup = trendsStorage.trends.some(existing => isDuplicate(newTrend, existing));
+      if (isDup) {
+        console.log(`Skipping duplicate: "${newTrend.title}"`);
+      }
+      return !isDup;
+    });
+
+    // Merge: existing trends + new unique trends
+    const mergedTrends = [...trendsStorage.trends, ...uniqueNewTrends];
+
+    // Sort by first_detected_at (newest first)
+    mergedTrends.sort((a, b) => {
+      return new Date(b.first_detected_at).getTime() - new Date(a.first_detected_at).getTime();
+    });
+
+    // Update in-memory storage
+    trendsStorage = {
+      trends: mergedTrends,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    return NextResponse.json({
+      success: true,
+      count: uniqueNewTrends.length,
+      total: mergedTrends.length,
+      duplicatesSkipped: trendsWithIds.length - uniqueNewTrends.length,
+      message: `Added ${uniqueNewTrends.length} new trends (${trendsWithIds.length - uniqueNewTrends.length} duplicates skipped). Total: ${mergedTrends.length}`
+    });
+  } catch (error) {
+    console.error('Error saving trends:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to save trends' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Remove a specific trend or clear all
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const trendId = searchParams.get('id');
+    const clearAll = searchParams.get('clear') === 'true';
+
+    if (clearAll) {
+      // Clear all trends
+      trendsStorage = {
+        trends: [],
+        lastUpdated: new Date().toISOString(),
+      };
+      return NextResponse.json({ success: true, message: 'All trends cleared' });
+    }
+
+    if (!trendId) {
+      return NextResponse.json(
+        { success: false, error: 'Trend ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Filter out the trend to delete
+    const filteredTrends = trendsStorage.trends.filter(t => t.id !== trendId);
+
+    if (filteredTrends.length === trendsStorage.trends.length) {
+      return NextResponse.json(
+        { success: false, error: 'Trend not found' },
+        { status: 404 }
+      );
+    }
+
+    trendsStorage = {
+      trends: filteredTrends,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    return NextResponse.json({
+      success: true,
+      message: `Trend ${trendId} deleted`,
+      remaining: filteredTrends.length
+    });
+  } catch (error) {
+    console.error('Error deleting trend:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete trend' },
+      { status: 500 }
+    );
+  }
 }
