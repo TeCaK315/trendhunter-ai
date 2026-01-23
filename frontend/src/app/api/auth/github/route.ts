@@ -2,14 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
 
+// Production callback URL - must match exactly what's in GitHub OAuth App settings
+const PRODUCTION_CALLBACK_URL = 'https://trendhunter-ai.vercel.app/api/auth/github/callback';
+
 // GET /api/auth/github - Redirect to GitHub OAuth
 export async function GET(request: NextRequest) {
   const scope = 'repo user:email';
 
-  // Динамически определяем redirect_uri на основе текущего хоста
+  // Определяем redirect_uri
   const host = request.headers.get('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const redirectUri = `${protocol}://${host}/api/auth/github/callback`;
+  const isProduction = !host.includes('localhost');
+  const redirectUri = isProduction
+    ? PRODUCTION_CALLBACK_URL
+    : `http://${host}/api/auth/github/callback`;
 
   // Сохраняем URL для возврата после авторизации
   const returnUrl = request.nextUrl.searchParams.get('returnUrl') || '/';
