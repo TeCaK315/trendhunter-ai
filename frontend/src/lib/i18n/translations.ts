@@ -26,6 +26,12 @@ export interface Translations {
     connected: string;
     connect: string;
     githubProfile: string;
+    ideasToday: string;
+    unlimitedAccess: string;
+    loginRequired: string;
+    loginToGenerate: string;
+    limitReached: string;
+    limitReachedDescription: string;
   };
 
   // Home page
@@ -534,6 +540,12 @@ export const translations: Record<Language, Translations> = {
       connected: 'Подключён',
       connect: 'Подключить',
       githubProfile: 'Профиль GitHub',
+      ideasToday: 'Идей сегодня',
+      unlimitedAccess: 'Безлимитный доступ',
+      loginRequired: 'Требуется авторизация',
+      loginToGenerate: 'Войдите, чтобы генерировать идеи и получить доступ ко всем функциям платформы',
+      limitReached: 'Лимит исчерпан',
+      limitReachedDescription: 'Вы достигли дневного лимита в 10 идей. Лимит сбросится в полночь.',
     },
     home: {
       searchPlaceholder: 'Поиск идей...',
@@ -1005,6 +1017,12 @@ export const translations: Record<Language, Translations> = {
       connected: 'Connected',
       connect: 'Connect',
       githubProfile: 'GitHub Profile',
+      ideasToday: 'Ideas today',
+      unlimitedAccess: 'Unlimited access',
+      loginRequired: 'Login required',
+      loginToGenerate: 'Sign in to generate ideas and access all platform features',
+      limitReached: 'Limit reached',
+      limitReachedDescription: 'You have reached your daily limit of 10 ideas. The limit resets at midnight.',
     },
     home: {
       searchPlaceholder: 'Search ideas...',

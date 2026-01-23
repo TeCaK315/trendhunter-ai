@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import { useTranslations } from '@/lib/i18n';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
+import { useIdeasLimit } from '@/hooks/useIdeasLimit';
 
 interface UserMenuProps {
   compact?: boolean;
@@ -13,6 +14,7 @@ interface UserMenuProps {
 export default function UserMenu({ compact = false }: UserMenuProps) {
   const { data: session, status } = useSession();
   const { authenticated: githubAuth, user: githubUser, login: githubLogin, logout: githubLogout } = useGitHubAuth();
+  const { ideasUsed, ideasRemaining, ideasLimit, usagePercent, isAdmin } = useIdeasLimit();
   const [isOpen, setIsOpen] = useState(false);
   const [showProviders, setShowProviders] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -234,12 +236,31 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
           {/* Usage stats */}
           <div className="p-3 border-b border-zinc-800">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">{t.auth.generationsToday}</span>
-              <span className="text-white font-medium">0 / 10</span>
+              <span className="text-zinc-400">{t.auth.ideasToday || 'Идей сегодня'}</span>
+              {isAdmin ? (
+                <span className="text-amber-400 font-medium flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+                  </svg>
+                  ∞
+                </span>
+              ) : (
+                <span className="text-white font-medium">{ideasUsed} / {ideasLimit}</span>
+              )}
             </div>
-            <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-600 rounded-full" style={{ width: '0%' }} />
-            </div>
+            {!isAdmin && (
+              <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${usagePercent >= 80 ? 'bg-amber-500' : 'bg-indigo-600'}`}
+                  style={{ width: `${usagePercent}%` }}
+                />
+              </div>
+            )}
+            {isAdmin && (
+              <div className="mt-1 text-xs text-amber-400/70">
+                {t.auth.unlimitedAccess || 'Безлимитный доступ'}
+              </div>
+            )}
           </div>
 
           {/* Menu items */}
