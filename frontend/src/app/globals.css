@@ -64,6 +64,23 @@ body {
   display: none;  /* Chrome, Safari and Opera */
 }
 
+/* Safe area for mobile devices with notch */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile-first responsive card */
+@media (max-width: 640px) {
+  .trend-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .trend-card:hover {
+    transform: none;
+  }
+}
+
 /* Card styles */
 .trend-card {
   background: var(--bg-card);

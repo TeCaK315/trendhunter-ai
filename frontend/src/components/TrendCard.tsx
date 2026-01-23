@@ -265,28 +265,30 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
       {/* Modal */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fadeIn"
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-[#16161a] border border-zinc-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            className="bg-[#16161a] border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className={`p-6 border-b border-zinc-800 bg-gradient-to-br ${config.color}`}>
+            <div className={`p-4 sm:p-6 border-b border-zinc-800 bg-gradient-to-br ${config.color}`}>
+              {/* Mobile drag handle */}
+              <div className="w-12 h-1 bg-zinc-600 rounded-full mx-auto mb-4 sm:hidden" />
               <div className="flex justify-between items-start">
-                <div>
-                  <div className="category-pill inline-flex items-center gap-1.5 mb-3">
-                    <span className="text-base">{config.icon}</span>
-                    <span>{trend.category}</span>
+                <div className="flex-1 min-w-0 pr-4">
+                  <div className="category-pill inline-flex items-center gap-1.5 mb-2 sm:mb-3">
+                    <span className="text-sm sm:text-base">{config.icon}</span>
+                    <span className="text-xs sm:text-sm">{trend.category}</span>
                   </div>
-                  <h2 className="text-2xl font-bold text-white">{displayTitle}</h2>
+                  <h2 className="text-lg sm:text-2xl font-bold text-white truncate">{displayTitle}</h2>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all"
+                  className="w-8 sm:w-10 h-8 sm:h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -294,16 +296,16 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Score Section */}
-              <div className="flex items-center gap-6 p-4 bg-zinc-900/50 rounded-xl">
-                <div className={`score-badge bg-gradient-to-br ${getScoreColor(overallScore)} text-white text-3xl`}>
+              <div className="flex items-center gap-4 sm:gap-6 p-3 sm:p-4 bg-zinc-900/50 rounded-xl">
+                <div className={`score-badge bg-gradient-to-br ${getScoreColor(overallScore)} text-white text-2xl sm:text-3xl`}>
                   {overallScore}
                 </div>
-                <div>
-                  <div className="text-zinc-400 text-sm mb-1">{t.trendCard.overallRating}</div>
-                  <div className="text-white font-semibold text-lg">{getScoreLabelLocalized(overallScore)} {t.trendCard.potential}</div>
-                  <div className="text-xs text-zinc-500 mt-1">
+                <div className="flex-1 min-w-0">
+                  <div className="text-zinc-400 text-xs sm:text-sm mb-1">{t.trendCard.overallRating}</div>
+                  <div className="text-white font-semibold text-sm sm:text-lg">{getScoreLabelLocalized(overallScore)} {t.trendCard.potential}</div>
+                  <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">
                     {t.trendCard.basedOnMetrics}
                   </div>
                 </div>
@@ -361,11 +363,11 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-zinc-800 flex gap-3">
+            <div className="p-4 sm:p-6 border-t border-zinc-800 flex flex-col sm:flex-row gap-2 sm:gap-3">
               {/* Индикатор завершённого проекта */}
               {isProjectCompleted && (
-                <div className="flex-1 py-3.5 rounded-xl font-medium bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 flex items-center justify-center gap-2">
-                  <span className="text-xl">★</span>
+                <div className="flex-1 py-3 sm:py-3.5 rounded-xl font-medium bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 flex items-center justify-center gap-2 text-sm sm:text-base">
+                  <span className="text-lg sm:text-xl">★</span>
                   <span>{t.trendCard.projectCreated}</span>
                 </div>
               )}
@@ -374,7 +376,7 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
                   setShowModal(false);
                   router.push(`/trends/${trend.id}`);
                 }}
-                className="flex-1 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
+                className="flex-1 py-3 sm:py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 text-sm sm:text-base"
               >
                 <span>🚀</span>
                 <span>{t.trendCard.openDetails}</span>

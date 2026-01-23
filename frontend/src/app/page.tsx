@@ -182,17 +182,17 @@ export default function Home() {
   // Stats calculation (mostPopularCategory available for future use)
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20 lg:pb-0">
       {/* Main Content */}
       <div className="min-h-screen">
         {/* Top Bar */}
         <header className="sticky top-0 z-30 glass border-b border-zinc-800/50">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between gap-4">
+          <div className="px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
               {/* Search */}
               <div className="flex-1 max-w-xl">
                 <div className="relative">
-                  <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <input
@@ -200,15 +200,15 @@ export default function Home() {
                     placeholder={t.home.searchPlaceholder}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-sm sm:text-base text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                   />
                 </div>
               </div>
 
               {/* Right side */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 {lastUpdated && (
-                  <span className="hidden md:block text-xs text-zinc-500 bg-zinc-800/50 px-3 py-1.5 rounded-lg">
+                  <span className="hidden lg:block text-xs text-zinc-500 bg-zinc-800/50 px-3 py-1.5 rounded-lg">
                     {t.home.updated}: {new Date(lastUpdated).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
@@ -216,7 +216,7 @@ export default function Home() {
                   onClick={generateNewTrends}
                   disabled={generating || refreshing}
                   data-tour="generate-trends"
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium transition-all ${
                     generating
                       ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white'
@@ -225,12 +225,12 @@ export default function Home() {
                   <svg className={`w-4 h-4 ${generating ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  <span className="hidden sm:inline">{generating ? t.home.generating : t.home.newIdeas}</span>
+                  <span className="hidden md:inline">{generating ? t.home.generating : t.home.newIdeas}</span>
                 </button>
                 <button
                   onClick={fetchTrends}
                   disabled={refreshing || generating}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium transition-all ${
                     refreshing
                       ? 'bg-zinc-800 text-zinc-500 cursor-wait'
                       : 'bg-zinc-800 hover:bg-zinc-700 text-white'
@@ -239,81 +239,87 @@ export default function Home() {
                   <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span className="hidden sm:inline">{refreshing ? t.home.refreshing : t.home.refresh}</span>
+                  <span className="hidden lg:inline">{refreshing ? t.home.refreshing : t.home.refresh}</span>
                 </button>
-                <LanguageSwitcher compact />
-                <GitHubAuth compact />
+                <div className="hidden sm:block">
+                  <LanguageSwitcher compact />
+                </div>
+                <div className="hidden md:block">
+                  <GitHubAuth compact />
+                </div>
               </div>
             </div>
           </div>
         </header>
 
         {/* Hero Section */}
-        <div className="relative px-6 py-12 hero-gradient">
+        <div className="relative px-4 sm:px-6 py-8 sm:py-12 hero-gradient overflow-hidden">
           <div className="max-w-4xl">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="badge badge-info">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                 {t.home.liveData}
               </span>
-              <span className="text-sm text-zinc-500">{t.home.updatesEvery6Hours}</span>
+              <span className="text-xs sm:text-sm text-zinc-500">{t.home.updatesEvery6Hours}</span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
-              {t.home.heroTitle1} <span className="gradient-text">{t.home.heroTitle2}</span><br />
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
+              {t.home.heroTitle1} <span className="gradient-text">{t.home.heroTitle2}</span>
+              <span className="hidden sm:inline"><br /></span>
+              <span className="sm:hidden"> </span>
               {t.home.heroTitle3}
             </h1>
 
-            <p className="text-lg text-zinc-400 mb-8 max-w-2xl">
+            <p className="text-sm sm:text-lg text-zinc-400 mb-6 sm:mb-8 max-w-2xl">
               {t.home.heroDescription}
             </p>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 max-w-lg">
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">{totalIdeas}</div>
-                <div className="text-xs text-zinc-500 mt-1">{t.home.ideas}</div>
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-lg">
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 sm:p-4 text-center">
+                <div className="text-xl sm:text-2xl font-bold text-white">{totalIdeas}</div>
+                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.ideas}</div>
               </div>
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold gradient-text">{avgScore}</div>
-                <div className="text-xs text-zinc-500 mt-1">{t.home.avgRating}</div>
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 sm:p-4 text-center">
+                <div className="text-xl sm:text-2xl font-bold gradient-text">{avgScore}</div>
+                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.avgRating}</div>
               </div>
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">{categoriesConfig.length - 1}</div>
-                <div className="text-xs text-zinc-500 mt-1">{t.home.categories}</div>
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 sm:p-4 text-center">
+                <div className="text-xl sm:text-2xl font-bold text-white">{categoriesConfig.length - 1}</div>
+                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.categories}</div>
               </div>
             </div>
           </div>
 
-          {/* Decorative elements */}
-          <div className="absolute right-10 top-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute right-40 bottom-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          {/* Decorative elements - hidden on mobile */}
+          <div className="hidden sm:block absolute right-10 top-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="hidden sm:block absolute right-40 bottom-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
         </div>
 
         {/* Filters Section */}
-        <div className="sticky top-[73px] z-20 glass border-b border-zinc-800/50 px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="sticky top-0 lg:top-[73px] z-20 glass border-b border-zinc-800/50 px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             {/* Category filters */}
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
               {categoriesConfig.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`filter-chip whitespace-nowrap flex items-center gap-2 ${
+                  className={`filter-chip whitespace-nowrap flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm ${
                     selectedCategory === cat.id ? 'active' : ''
                   }`}
                 >
                   <span>{cat.icon}</span>
-                  <span>{t.categories[cat.labelKey]}</span>
+                  <span className="hidden xs:inline">{t.categories[cat.labelKey]}</span>
                 </button>
               ))}
             </div>
 
             {/* Sort dropdown */}
-            <div className="relative sort-dropdown">
+            <div className="relative sort-dropdown flex-shrink-0">
               <button
                 onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-sm text-white transition-all"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-xs sm:text-sm text-white transition-all"
               >
                 <span>{currentSortOption?.icon}</span>
                 <span className="hidden sm:inline">{currentSortOption ? t.sort[currentSortOption.labelKey] : ''}</span>
@@ -326,16 +332,16 @@ export default function Home() {
                   title={sortDirection === 'desc' ? t.sort.highToLow : t.sort.lowToHigh}
                 >
                   {sortDirection === 'desc' ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   )}
                 </button>
-                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 sm:w-4 h-3 sm:h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -368,9 +374,9 @@ export default function Home() {
         </div>
 
         {/* Main content */}
-        <main className="px-6 py-8">
+        <main className="px-4 sm:px-6 py-6 sm:py-8">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="trend-card">
                   <div className="flex justify-between items-start mb-4">
@@ -422,7 +428,7 @@ export default function Home() {
               </div>
 
               {/* Trends Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 stagger-children">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 stagger-children">
                 {displayedTrends.map((trend, index) => (
                   <TrendCard
                     key={trend.id}
@@ -461,8 +467,8 @@ export default function Home() {
           )}
         </main>
 
-        {/* Footer */}
-        <footer className="px-6 py-6 border-t border-zinc-800/50">
+        {/* Footer - hidden on mobile (bottom nav takes its place) */}
+        <footer className="hidden lg:block px-6 py-6 border-t border-zinc-800/50">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>

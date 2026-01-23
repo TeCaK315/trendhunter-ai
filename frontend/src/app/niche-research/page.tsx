@@ -335,48 +335,50 @@ export default function NicheResearchPage() {
   };
 
   return (
-    <div>
+    <div className="pb-20 lg:pb-0">
       {/* Header */}
       <header className="sticky top-0 z-30 glass border-b border-[var(--border-color)]">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t.nicheResearch.title}</h1>
-              <p className="text-sm text-[var(--text-muted)] mt-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">{t.nicheResearch.title}</h1>
+              <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
                 {step === 'form' && t.nicheResearch.subtitle}
                 {step === 'collecting' && t.nicheResearch.collectingData}
                 {step === 'analyzing' && t.nicheResearch.expertAnalysis}
                 {step === 'results' && `${t.nicheResearch.analysisComplete}${savedToFavorites ? ` • ${t.nicheResearch.savedToFavorites}` : ''}`}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="hidden sm:block">
+                <LanguageSwitcher />
+              </div>
               {savedToFavorites && (
                 <Link
                   href="/favorites"
-                  className="flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-xl text-sm text-green-400"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-xl text-xs sm:text-sm text-green-400"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  {t.nicheResearch.inFavorites}
+                  <span className="hidden sm:inline">{t.nicheResearch.inFavorites}</span>
                 </Link>
               )}
               <Link
                 href="/"
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-secondary)] transition-all"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-color)] rounded-xl text-xs sm:text-sm text-[var(--text-secondary)] transition-all"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                {t.nicheResearch.backToTrends}
+                <span className="hidden sm:inline">{t.nicheResearch.backToTrends}</span>
               </Link>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Progress indicator */}
         {(step === 'collecting' || step === 'analyzing') && (
           <div className="mb-8 trend-card">
@@ -535,7 +537,7 @@ export default function NicheResearchPage() {
                       <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-sm">📡</span>
                       {t.nicheResearch.collectedData}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                       {/* Reddit */}
                       <div className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-color)]">
                         <div className="flex items-center gap-2 mb-2">
@@ -633,7 +635,7 @@ export default function NicheResearchPage() {
 
                 {/* Expert Opinions */}
                 {rawAnalyses && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     {/* Optimist */}
                     <div className="trend-card border-green-500/30">
                       <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
@@ -735,7 +737,7 @@ export default function NicheResearchPage() {
                     <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-sm">👥</span>
                     {t.nicheResearch.primaryAudience}: {deepAnalysis.target_audience.primary}
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                     {deepAnalysis.target_audience.segments.map((segment, idx) => (
                       <div key={idx} className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-color)]">
                         <div className="flex items-start justify-between mb-2">
@@ -767,7 +769,7 @@ export default function NicheResearchPage() {
                 </div>
 
                 {/* Risks & Opportunities */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="trend-card border-red-500/30">
                     <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
                       <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-sm">⚠️</span>
@@ -940,10 +942,10 @@ export default function NicheResearchPage() {
             )}
 
             {/* Actions */}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Link
                 href="/favorites"
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl text-white font-medium transition-all"
+                className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl text-white font-medium transition-all text-sm sm:text-base"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -952,7 +954,7 @@ export default function NicheResearchPage() {
               </Link>
               <button
                 onClick={resetForm}
-                className="px-6 py-4 bg-[var(--bg-secondary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-color)] rounded-xl text-[var(--text-secondary)] font-medium transition-all"
+                className="px-4 sm:px-6 py-3 sm:py-4 bg-[var(--bg-secondary)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-color)] rounded-xl text-[var(--text-secondary)] font-medium transition-all text-sm sm:text-base"
               >
                 {t.nicheResearch.newResearch}
               </button>
