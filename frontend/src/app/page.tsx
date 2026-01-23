@@ -144,8 +144,9 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success) {
-        // Record usage (5 ideas per generation)
-        recordGeneration();
+        // Record usage with generated ideas data
+        const generatedIdeas = data.data?.trends || data.data || [];
+        recordGeneration(Array.isArray(generatedIdeas) ? generatedIdeas : []);
         await fetchTrends();
       } else if (data.error) {
         console.error('Error generating trends:', data.error);

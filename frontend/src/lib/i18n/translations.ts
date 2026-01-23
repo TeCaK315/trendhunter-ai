@@ -32,6 +32,7 @@ export interface Translations {
     loginToGenerate: string;
     limitReached: string;
     limitReachedDescription: string;
+    adminPanel: string;
   };
 
   // Home page
@@ -546,6 +547,7 @@ export const translations: Record<Language, Translations> = {
       loginToGenerate: 'Войдите, чтобы генерировать идеи и получить доступ ко всем функциям платформы',
       limitReached: 'Лимит исчерпан',
       limitReachedDescription: 'Вы достигли дневного лимита в 10 идей. Лимит сбросится в полночь.',
+      adminPanel: 'Админ-панель',
     },
     home: {
       searchPlaceholder: 'Поиск идей...',
@@ -1023,6 +1025,7 @@ export const translations: Record<Language, Translations> = {
       loginToGenerate: 'Sign in to generate ideas and access all platform features',
       limitReached: 'Limit reached',
       limitReachedDescription: 'You have reached your daily limit of 10 ideas. The limit resets at midnight.',
+      adminPanel: 'Admin Panel',
     },
     home: {
       searchPlaceholder: 'Search ideas...',

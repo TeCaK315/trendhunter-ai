@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useTranslations } from '@/lib/i18n';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
 import { useIdeasLimit } from '@/hooks/useIdeasLimit';
@@ -265,6 +266,20 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
 
           {/* Menu items */}
           <div className="p-2">
+            {/* Admin Panel Link */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                {t.auth.adminPanel || 'Админ-панель'}
+              </Link>
+            )}
+
             {githubAuth && githubUser && (
               <a
                 href={githubUser.html_url}

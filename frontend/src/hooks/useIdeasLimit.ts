@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useGitHubAuth } from './useGitHubAuth';
 
@@ -17,6 +17,13 @@ const STORAGE_KEY = 'trendhunter_ideas_usage';
 interface UsageData {
   ideasGenerated: number;
   lastReset: string; // ISO date string
+}
+
+interface TrendIdea {
+  id?: string;
+  title: string;
+  category?: string;
+  [key: string]: unknown;
 }
 
 function getStoredUsage(): UsageData {
@@ -62,15 +69,45 @@ export function useIdeasLimit() {
 
   const [usage, setUsage] = useState<UsageData>({ ideasGenerated: 0, lastReset: new Date().toISOString() });
   const [mounted, setMounted] = useState(false);
+  const userRegistered = useRef(false);
+
+  // Get user identifiers
+  const userEmail = session?.user?.email || null;
+  const userName = session?.user?.name || githubUser?.name || null;
+  const userAvatar = session?.user?.image || githubUser?.avatar_url || null;
+  const userGithub = githubUser?.login || null;
 
   // Check if user is authenticated
   const isAuthenticated = !!session || githubAuth;
 
   // Check if user is admin
   const isAdmin = !!(
-    (session?.user?.email && ADMIN_USERS.includes(session.user.email)) ||
-    (githubUser?.login && ADMIN_USERS.includes(githubUser.login))
+    (userEmail && ADMIN_USERS.includes(userEmail)) ||
+    (userGithub && ADMIN_USERS.includes(userGithub))
   );
+
+  // Register user in database on first auth
+  useEffect(() => {
+    if (!isAuthenticated || userRegistered.current) return;
+    if (!userEmail && !userGithub) return;
+
+    userRegistered.current = true;
+
+    // Register/update user in background (don't block UI)
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: userEmail,
+        githubUsername: userGithub,
+        name: userName,
+        avatarUrl: userAvatar,
+        provider: userEmail ? 'google' : 'github',
+      }),
+    }).catch(err => {
+      console.error('Failed to register user:', err);
+    });
+  }, [isAuthenticated, userEmail, userGithub, userName, userAvatar]);
 
   // Load usage on mount
   useEffect(() => {
@@ -86,26 +123,44 @@ export function useIdeasLimit() {
   // Calculate how many generations are left
   const generationsRemaining = isAdmin ? Infinity : Math.floor(ideasRemaining / IDEAS_PER_GENERATION);
 
-  // Record a generation (5 ideas)
-  const recordGeneration = useCallback(() => {
-    if (isAdmin) return true; // Admins don't track usage
-
+  // Record a generation (5 ideas) - also sends to server
+  const recordGeneration = useCallback((ideas?: TrendIdea[]) => {
+    // Update local storage
     const currentUsage = getStoredUsage();
     const newIdeasCount = currentUsage.ideasGenerated + IDEAS_PER_GENERATION;
 
-    if (newIdeasCount > DAILY_IDEAS_LIMIT && currentUsage.ideasGenerated < DAILY_IDEAS_LIMIT) {
-      // This would exceed the limit
-      const newData = { ...currentUsage, ideasGenerated: DAILY_IDEAS_LIMIT };
-      setStoredUsage(newData);
-      setUsage(newData);
-      return true; // Still allow this last generation
+    if (!isAdmin) {
+      if (newIdeasCount > DAILY_IDEAS_LIMIT && currentUsage.ideasGenerated < DAILY_IDEAS_LIMIT) {
+        // This would exceed the limit
+        const newData = { ...currentUsage, ideasGenerated: DAILY_IDEAS_LIMIT };
+        setStoredUsage(newData);
+        setUsage(newData);
+      } else {
+        const newData = { ...currentUsage, ideasGenerated: newIdeasCount };
+        setStoredUsage(newData);
+        setUsage(newData);
+      }
     }
 
-    const newData = { ...currentUsage, ideasGenerated: newIdeasCount };
-    setStoredUsage(newData);
-    setUsage(newData);
+    // Send to server for tracking (don't block UI)
+    if (userEmail || userGithub) {
+      fetch('/api/users/usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          githubUsername: userGithub,
+          type: 'ideas',
+          amount: IDEAS_PER_GENERATION,
+          ideaData: ideas,
+        }),
+      }).catch(err => {
+        console.error('Failed to record usage:', err);
+      });
+    }
+
     return true;
-  }, [isAdmin]);
+  }, [isAdmin, userEmail, userGithub]);
 
   // Get time until reset
   const getTimeUntilReset = useCallback(() => {
