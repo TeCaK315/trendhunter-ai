@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { kv } from '@vercel/kv';
 
 export interface Trend {
   id: string;
@@ -21,15 +22,47 @@ interface TrendsData {
   lastUpdated: string | null;
 }
 
-// In-memory storage for Vercel serverless
-// Note: This will reset on cold starts, but works for demo purposes
-// For production, use Vercel KV, Supabase, or another database
-let trendsStorage: TrendsData = {
+const TRENDS_KEY = 'trendhunter:trends';
+
+// Fallback in-memory storage for local development
+let localTrendsStorage: TrendsData = {
   trends: [],
   lastUpdated: null,
 };
 
-// Normalize title for comparison (lowercase, trim, remove extra spaces)
+// Check if Vercel KV is configured
+const isKVConfigured = () => {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+};
+
+// Get trends from storage (KV or local)
+async function getTrendsData(): Promise<TrendsData> {
+  if (isKVConfigured()) {
+    try {
+      const data = await kv.get<TrendsData>(TRENDS_KEY);
+      return data || { trends: [], lastUpdated: null };
+    } catch (error) {
+      console.error('KV read error:', error);
+      return { trends: [], lastUpdated: null };
+    }
+  }
+  return localTrendsStorage;
+}
+
+// Save trends to storage (KV or local)
+async function saveTrendsData(data: TrendsData): Promise<void> {
+  if (isKVConfigured()) {
+    try {
+      await kv.set(TRENDS_KEY, data);
+    } catch (error) {
+      console.error('KV write error:', error);
+    }
+  } else {
+    localTrendsStorage = data;
+  }
+}
+
+// Normalize title for comparison
 function normalizeTitle(title: string): string {
   return title.toLowerCase().trim().replace(/\s+/g, ' ');
 }
@@ -39,12 +72,9 @@ function isDuplicate(newTrend: Trend, existingTrend: Trend): boolean {
   const newTitle = normalizeTitle(newTrend.title);
   const existingTitle = normalizeTitle(existingTrend.title);
 
-  // Exact match
   if (newTitle === existingTitle) return true;
 
-  // One contains the other (for similar titles like "AI Automation" and "AI Automation Tools")
   if (newTitle.includes(existingTitle) || existingTitle.includes(newTitle)) {
-    // Only if similarity is high enough (at least 70% of characters match)
     const shorter = newTitle.length < existingTitle.length ? newTitle : existingTitle;
     const longer = newTitle.length < existingTitle.length ? existingTitle : newTitle;
     if (shorter.length / longer.length > 0.7) return true;
@@ -53,23 +83,20 @@ function isDuplicate(newTrend: Trend, existingTrend: Trend): boolean {
   return false;
 }
 
-// Normalize category - extract single valid category
+// Normalize category
 function normalizeCategory(category: string): string {
   if (!category) return 'Technology';
 
-  // Valid categories
   const validCategories = [
     'AI & ML', 'SaaS', 'FinTech', 'EdTech', 'HealthTech',
     'E-commerce', 'Technology', 'Business', 'Healthcare',
     'Finance', 'Education', 'Mobile Apps'
   ];
 
-  // If category contains multiple values separated by | or ,
   const parts = category.split(/[|,]/);
 
   for (const part of parts) {
     const trimmed = part.trim();
-    // Find matching valid category
     const match = validCategories.find(vc =>
       vc.toLowerCase() === trimmed.toLowerCase() ||
       trimmed.toLowerCase().includes(vc.toLowerCase()) ||
@@ -78,7 +105,6 @@ function normalizeCategory(category: string): string {
     if (match) return match;
   }
 
-  // Default mapping for common variations
   const categoryMap: Record<string, string> = {
     'ai': 'AI & ML',
     'ml': 'AI & ML',
@@ -119,61 +145,59 @@ function normalizeCategory(category: string): string {
   return 'Technology';
 }
 
-// GET - Read trends from memory
+// GET - Read trends
 export async function GET() {
   try {
-    return NextResponse.json(trendsStorage);
+    const data = await getTrendsData();
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error reading trends:', error);
     return NextResponse.json({ trends: [], lastUpdated: null });
   }
 }
 
-// POST - Save new trends to memory (merges with existing, no duplicates)
+// POST - Save new trends (merges with existing, no duplicates)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Handle both single trend and array of trends
     const newTrends: Trend[] = Array.isArray(body) ? body : [body];
 
-    // Add IDs if missing
+    const existingData = await getTrendsData();
+
     const trendsWithIds = newTrends.map((trend, index) => ({
       ...trend,
       id: trend.id || `trend-${Date.now()}-${index}`,
-      // Normalize category - take only first category if multiple are provided
       category: normalizeCategory(trend.category),
     }));
 
-    // Filter out duplicates - keep existing trends, only add truly new ones
     const uniqueNewTrends = trendsWithIds.filter(newTrend => {
-      const isDup = trendsStorage.trends.some(existing => isDuplicate(newTrend, existing));
+      const isDup = existingData.trends.some(existing => isDuplicate(newTrend, existing));
       if (isDup) {
         console.log(`Skipping duplicate: "${newTrend.title}"`);
       }
       return !isDup;
     });
 
-    // Merge: existing trends + new unique trends
-    const mergedTrends = [...trendsStorage.trends, ...uniqueNewTrends];
+    const mergedTrends = [...existingData.trends, ...uniqueNewTrends];
 
-    // Sort by first_detected_at (newest first)
     mergedTrends.sort((a, b) => {
       return new Date(b.first_detected_at).getTime() - new Date(a.first_detected_at).getTime();
     });
 
-    // Update in-memory storage
-    trendsStorage = {
+    const updatedData: TrendsData = {
       trends: mergedTrends,
       lastUpdated: new Date().toISOString(),
     };
+
+    await saveTrendsData(updatedData);
 
     return NextResponse.json({
       success: true,
       count: uniqueNewTrends.length,
       total: mergedTrends.length,
       duplicatesSkipped: trendsWithIds.length - uniqueNewTrends.length,
-      message: `Added ${uniqueNewTrends.length} new trends (${trendsWithIds.length - uniqueNewTrends.length} duplicates skipped). Total: ${mergedTrends.length}`
+      storage: isKVConfigured() ? 'vercel-kv' : 'in-memory',
+      message: `Added ${uniqueNewTrends.length} new trends. Total: ${mergedTrends.length}`
     });
   } catch (error) {
     console.error('Error saving trends:', error);
@@ -184,7 +208,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE - Remove a specific trend or clear all
+// DELETE - Remove trends
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -192,11 +216,10 @@ export async function DELETE(request: NextRequest) {
     const clearAll = searchParams.get('clear') === 'true';
 
     if (clearAll) {
-      // Clear all trends
-      trendsStorage = {
+      await saveTrendsData({
         trends: [],
         lastUpdated: new Date().toISOString(),
-      };
+      });
       return NextResponse.json({ success: true, message: 'All trends cleared' });
     }
 
@@ -207,20 +230,20 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Filter out the trend to delete
-    const filteredTrends = trendsStorage.trends.filter(t => t.id !== trendId);
+    const existingData = await getTrendsData();
+    const filteredTrends = existingData.trends.filter(t => t.id !== trendId);
 
-    if (filteredTrends.length === trendsStorage.trends.length) {
+    if (filteredTrends.length === existingData.trends.length) {
       return NextResponse.json(
         { success: false, error: 'Trend not found' },
         { status: 404 }
       );
     }
 
-    trendsStorage = {
+    await saveTrendsData({
       trends: filteredTrends,
       lastUpdated: new Date().toISOString(),
-    };
+    });
 
     return NextResponse.json({
       success: true,
