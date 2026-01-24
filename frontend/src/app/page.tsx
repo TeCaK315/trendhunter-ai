@@ -430,34 +430,33 @@ export default function Home() {
 
             {/* Sort dropdown */}
             <div className="relative sort-dropdown flex-shrink-0">
-              <button
-                onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-xs sm:text-sm text-white transition-all"
-              >
-                <span>{currentSortOption?.icon}</span>
-                <span className="hidden sm:inline">{currentSortOption ? t.sort[currentSortOption.labelKey] : ''}</span>
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleSortDirection();
-                  }}
-                  className="ml-1 p-1 hover:bg-zinc-700 rounded transition-colors"
+                  onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-l-xl text-xs sm:text-sm text-white transition-all"
+                >
+                  <span className="text-sm">{currentSortOption?.icon}</span>
+                  <span className="hidden sm:inline whitespace-nowrap">{currentSortOption ? t.sort[currentSortOption.labelKey] : ''}</span>
+                  <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={toggleSortDirection}
+                  className="flex items-center justify-center px-2 py-2 sm:py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 border-l-0 rounded-r-xl text-white transition-all"
                   title={sortDirection === 'desc' ? t.sort.highToLow : t.sort.lowToHigh}
                 >
                   {sortDirection === 'desc' ? (
-                    <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                     </svg>
                   ) : (
-                    <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   )}
                 </button>
-                <svg className="w-3 sm:w-4 h-3 sm:h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+              </div>
 
               {sortDropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">

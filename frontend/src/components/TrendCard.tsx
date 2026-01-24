@@ -189,9 +189,13 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
           </div>
 
           {/* Category */}
-          <div className="category-pill inline-flex items-center gap-1.5 mb-3">
+          <div className="category-pill inline-flex items-center gap-1.5 mb-3 group/cat" title={trend.category}>
             <span className="text-base">{config.icon}</span>
-            <span>{trend.category}</span>
+            <span className="hidden xs:inline">{trend.category}</span>
+            {/* Tooltip for mobile - show category name on hover */}
+            <span className="xs:hidden absolute left-0 -bottom-6 text-[10px] bg-zinc-800 px-2 py-0.5 rounded opacity-0 group-hover/cat:opacity-100 transition-opacity whitespace-nowrap z-10">
+              {trend.category}
+            </span>
           </div>
 
           {/* Title */}
@@ -304,7 +308,7 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-zinc-400 text-xs sm:text-sm mb-1">{t.trendCard.overallRating}</div>
-                  <div className="text-white font-semibold text-sm sm:text-lg">{getScoreLabelLocalized(overallScore)} {t.trendCard.potential}</div>
+                  <div className="text-white font-semibold text-sm sm:text-lg">{t.trendCard.potential}: {getScoreLabelLocalized(overallScore)}</div>
                   <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">
                     {t.trendCard.basedOnMetrics}
                   </div>
