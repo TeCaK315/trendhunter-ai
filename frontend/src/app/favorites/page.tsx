@@ -326,7 +326,7 @@ ${trend.why_trending}
 
 ## Метрики
 - Возможность рынка: ${trend.opportunity_score}/10
-- Острота боли: ${trend.pain_score}/10
+- Потребность: ${trend.pain_score}/10
 - Выполнимость: ${trend.feasibility_score}/10
 - Потенциальная выгода: ${trend.profit_potential}/10
 `;

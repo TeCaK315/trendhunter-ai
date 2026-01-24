@@ -1783,7 +1783,7 @@ export default function ProjectPage() {
                 </div>
                 <div className="bg-[var(--bg-secondary)] rounded-xl p-4 text-center border border-[var(--border-color)] hover:border-red-500/30 transition-all">
                   <div className="text-2xl font-bold text-red-400">{trend.pain_score}/10</div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">Острота боли</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">Потребность</div>
                 </div>
                 <div className="bg-[var(--bg-secondary)] rounded-xl p-4 text-center border border-[var(--border-color)] hover:border-green-500/30 transition-all">
                   <div className="text-2xl font-bold text-green-400">{trend.feasibility_score}/10</div>

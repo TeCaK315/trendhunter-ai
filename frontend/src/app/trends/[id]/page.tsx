@@ -1922,8 +1922,8 @@ export default function TrendPage() {
                     icon: '🔥',
                     colorClass: 'bg-red-500',
                     description: language === 'ru'
-                      ? 'Острота боли: насколько сильно проблема беспокоит пользователей'
-                      : 'Pain severity: how strongly the problem affects users'
+                      ? 'Потребность: насколько сильно пользователи нуждаются в решении'
+                      : 'Need: how strongly users need a solution'
                   },
                   {
                     label: t.trendDetail.overview.feasibility,
