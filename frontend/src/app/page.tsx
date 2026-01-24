@@ -420,6 +420,7 @@ export default function Home() {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
+                  title={t.categories[cat.labelKey]}
                   className={`filter-chip whitespace-nowrap flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm ${
                     selectedCategory === cat.id ? 'active' : ''
                   }`}
@@ -471,10 +472,10 @@ export default function Home() {
                           sortField === option.id ? 'bg-indigo-500/20 text-indigo-400' : 'text-white'
                         }`}
                       >
-                        <span>{option.icon}</span>
-                        <span>{t.sort[option.labelKey]}</span>
+                        <span className="w-5 text-center">{option.icon}</span>
+                        <span className="flex-1">{t.sort[option.labelKey]}</span>
                         {sortField === option.id && (
-                          <span className="ml-auto text-xs opacity-60">
+                          <span className="text-xs opacity-60">
                             {sortDirection === 'desc' ? '↓' : '↑'}
                           </span>
                         )}
