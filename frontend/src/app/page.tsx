@@ -222,9 +222,9 @@ export default function Home() {
         <header className="sticky top-0 z-30 glass border-b border-zinc-800/50">
           <div className="px-4 sm:px-6 py-3 sm:py-4">
             <div className="flex items-center justify-between gap-2 sm:gap-4">
-              {/* Search */}
-              <div className="flex-1 max-w-xl">
-                <div className="relative">
+              {/* Search + Live badge */}
+              <div className="flex-1 flex items-center gap-3 max-w-xl">
+                <div className="relative flex-1">
                   <svg className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -235,6 +235,11 @@ export default function Home() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-sm sm:text-base text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                   />
+                </div>
+                {/* Live data badge */}
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 rounded-lg">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  <span className="text-xs text-zinc-400">{t.home.liveData}</span>
                 </div>
               </div>
 
@@ -370,15 +375,7 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="relative px-4 sm:px-6 py-8 sm:py-12 hero-gradient overflow-hidden">
-          <div className="max-w-4xl">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="badge badge-info">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                {t.home.liveData}
-              </span>
-              <span className="text-xs sm:text-sm text-zinc-500">{t.home.updatesEvery6Hours}</span>
-            </div>
-
+          <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
               {t.home.heroTitle1} <span className="gradient-text">{t.home.heroTitle2}</span>
               <span className="hidden sm:inline"><br /></span>
@@ -386,21 +383,23 @@ export default function Home() {
               {t.home.heroTitle3}
             </h1>
 
-            <p className="text-sm sm:text-lg text-zinc-400 mb-6 sm:mb-8 max-w-2xl">
+            <p className="text-sm sm:text-lg text-zinc-400 mb-6 sm:mb-8 max-w-xl mx-auto">
               {t.home.heroDescription}
             </p>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-lg">
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 sm:p-4 text-center">
+            {/* Stats - horizontal with dividers */}
+            <div className="flex items-center justify-center gap-4 sm:gap-8 text-center">
+              <div>
                 <div className="text-xl sm:text-2xl font-bold text-white">{totalIdeas}</div>
                 <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.ideas}</div>
               </div>
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 sm:p-4 text-center">
+              <div className="w-px h-10 bg-zinc-700"></div>
+              <div>
                 <div className="text-xl sm:text-2xl font-bold gradient-text">{avgScore}</div>
                 <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.avgRating}</div>
               </div>
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 sm:p-4 text-center">
+              <div className="w-px h-10 bg-zinc-700"></div>
+              <div>
                 <div className="text-xl sm:text-2xl font-bold text-white">{categoriesConfig.length - 1}</div>
                 <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.categories}</div>
               </div>
