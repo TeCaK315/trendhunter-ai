@@ -467,6 +467,7 @@ export interface Translations {
     documentation: string;
     githubRepo: string;
     version: string;
+    hintText: string;
   };
 
   // Common
@@ -954,6 +955,7 @@ export const translations: Record<Language, Translations> = {
       documentation: 'Документация',
       githubRepo: 'GitHub репозиторий',
       version: 'Версия',
+      hintText: 'Нужна помощь? Нажми сюда для обзора функций',
     },
     common: {
       loading: 'Загрузка...',
@@ -1432,6 +1434,7 @@ export const translations: Record<Language, Translations> = {
       documentation: 'Documentation',
       githubRepo: 'GitHub repository',
       version: 'Version',
+      hintText: 'Need help? Click here for a feature tour',
     },
     common: {
       loading: 'Loading...',

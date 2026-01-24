@@ -75,14 +75,8 @@ export default function OnboardingTour({ forceShow = false, onComplete }: Onboar
       return;
     }
 
-    const completed = localStorage.getItem(STORAGE_KEY);
-    if (!completed) {
-      // Small delay to let page render
-      const timer = setTimeout(() => {
-        setIsActive(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
+    // Don't auto-start tour anymore - user will click help button
+    // Tour only starts when forceShow is true (from HelpButton)
   }, [forceShow]);
 
   // Update target element position

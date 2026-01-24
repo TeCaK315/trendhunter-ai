@@ -1,18 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import OnboardingTour, { resetOnboardingTour } from './OnboardingTour';
 import { useTranslations } from '@/lib/i18n';
+
+const HINT_STORAGE_KEY = 'trendhunter_help_hint_shown';
 
 export default function HelpButton() {
   const [showTour, setShowTour] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const t = useTranslations();
+
+  // Show hint for first-time users
+  useEffect(() => {
+    setMounted(true);
+    const hintShown = localStorage.getItem(HINT_STORAGE_KEY);
+    if (!hintShown) {
+      // Show hint after a short delay
+      const timer = setTimeout(() => {
+        setShowHint(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const dismissHint = () => {
+    setShowHint(false);
+    localStorage.setItem(HINT_STORAGE_KEY, 'true');
+  };
 
   const handleStartTour = () => {
     setShowMenu(false);
+    setShowHint(false);
+    localStorage.setItem(HINT_STORAGE_KEY, 'true');
     resetOnboardingTour();
     setShowTour(true);
+  };
+
+  const handleOpenMenu = () => {
+    setShowMenu(!showMenu);
+    if (showHint) {
+      dismissHint();
+    }
   };
 
   const handleTourComplete = () => {
@@ -71,12 +102,35 @@ export default function HelpButton() {
             </div>
           )}
 
+          {/* Hint bubble for first-time users */}
+          {mounted && showHint && !showMenu && (
+            <div className="absolute bottom-full right-0 mb-3 animate-fadeIn">
+              <div className="relative bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-lg max-w-[220px]">
+                <button
+                  onClick={dismissHint}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-zinc-800 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <p className="text-sm font-medium">
+                  {t.help.hintText || 'Нужна помощь? Нажми сюда для обзора функций'}
+                </p>
+                {/* Arrow pointing down */}
+                <div className="absolute -bottom-2 right-4 w-4 h-4 bg-indigo-600 rotate-45" />
+              </div>
+            </div>
+          )}
+
           {/* Button */}
           <button
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={handleOpenMenu}
             className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
               showMenu
                 ? 'bg-zinc-700 text-white'
+                : showHint
+                ? 'bg-indigo-600 text-white animate-pulse'
                 : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-105'
             }`}
             aria-label={t.help.title}
