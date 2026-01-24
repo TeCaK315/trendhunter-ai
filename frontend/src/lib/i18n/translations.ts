@@ -940,11 +940,11 @@ export const translations: Record<Language, Translations> = {
         },
         generate: {
           title: 'Генерация трендов',
-          content: 'Нажмите эту кнопку для запуска автоматического сбора трендов через n8n. Требуется настроенный N8N_WEBHOOK_URL.',
+          content: 'Нажмите эту кнопку для генерации новых бизнес-идей на основе актуальных трендов.',
         },
         trendCard: {
           title: 'Карточка тренда',
-          content: 'Каждая карточка содержит оценки: популярность, острота боли, выполнимость, потенциал. Нажмите для детального анализа.',
+          content: 'Каждая карточка содержит оценки: популярность, потребность, выполнимость, потенциал. Нажмите для детального анализа.',
         },
       },
     },
@@ -1419,11 +1419,11 @@ export const translations: Record<Language, Translations> = {
         },
         generate: {
           title: 'Generate Trends',
-          content: 'Click this button to start automatic trend collection via n8n. Requires configured N8N_WEBHOOK_URL.',
+          content: 'Click this button to generate new business ideas based on current trends.',
         },
         trendCard: {
           title: 'Trend Card',
-          content: 'Each card contains scores: popularity, pain severity, feasibility, potential. Click for detailed analysis.',
+          content: 'Each card contains scores: popularity, need, feasibility, potential. Click for detailed analysis.',
         },
       },
     },
