@@ -334,7 +334,10 @@ export default function Home() {
                 <div className="hidden sm:block">
                   <LanguageSwitcher compact />
                 </div>
-                <UserMenu />
+                {/* Hide UserMenu login button on mobile when not authenticated (main content has login screen) */}
+                <div className={!isAuthenticated ? 'hidden sm:block' : ''}>
+                  <UserMenu />
+                </div>
               </div>
             </div>
           </div>
