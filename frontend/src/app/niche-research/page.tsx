@@ -708,20 +708,20 @@ export default function NicheResearchPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                          <div className="p-2 bg-green-500/10 rounded-lg">
-                            <p className="text-green-400 font-medium mb-1">{t.nicheResearch.forArguments}:</p>
-                            <ul className="space-y-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          <div className="p-3 bg-green-500/10 rounded-lg">
+                            <p className="text-green-400 font-medium mb-2">{t.nicheResearch.forArguments}:</p>
+                            <ul className="space-y-1.5">
                               {pain.arguments_for.slice(0, 2).map((arg, i) => (
-                                <li key={i} className="text-[var(--text-secondary)]">• {arg}</li>
+                                <li key={i} className="text-[var(--text-secondary)] leading-relaxed">• {arg}</li>
                               ))}
                             </ul>
                           </div>
-                          <div className="p-2 bg-red-500/10 rounded-lg">
-                            <p className="text-red-400 font-medium mb-1">{t.nicheResearch.againstArguments}:</p>
-                            <ul className="space-y-1">
+                          <div className="p-3 bg-red-500/10 rounded-lg">
+                            <p className="text-red-400 font-medium mb-2">{t.nicheResearch.againstArguments}:</p>
+                            <ul className="space-y-1.5">
                               {pain.arguments_against.slice(0, 2).map((arg, i) => (
-                                <li key={i} className="text-[var(--text-secondary)]">• {arg}</li>
+                                <li key={i} className="text-[var(--text-secondary)] leading-relaxed">• {arg}</li>
                               ))}
                             </ul>
                           </div>
@@ -740,9 +740,9 @@ export default function NicheResearchPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                     {deepAnalysis.target_audience.segments.map((segment, idx) => (
                       <div key={idx} className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-color)]">
-                        <div className="flex items-start justify-between mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
                           <h4 className="font-medium text-[var(--text-primary)]">{segment.name}</h4>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
+                          <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap self-start ${
                             segment.willingness_to_pay === 'high' ? 'bg-green-500/20 text-green-400' :
                             segment.willingness_to_pay === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
                             'bg-zinc-500/20 text-zinc-400'
@@ -751,8 +751,8 @@ export default function NicheResearchPage() {
                           </span>
                         </div>
                         <div className="space-y-2 text-sm">
-                          <p className="text-[var(--text-muted)]">{t.nicheResearch.segmentSize}: {segment.size}</p>
-                          <p className="text-[var(--text-muted)]">{t.nicheResearch.whereToFind}: {segment.where_to_find}</p>
+                          <p className="text-[var(--text-muted)]"><span className="text-[var(--text-secondary)]">{t.nicheResearch.segmentSize}:</span> {segment.size}</p>
+                          <p className="text-[var(--text-muted)]"><span className="text-[var(--text-secondary)]">{t.nicheResearch.whereToFind}:</span> {segment.where_to_find}</p>
                           {segment.communication_channels && segment.communication_channels.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               {segment.communication_channels.map((channel, i) => (
