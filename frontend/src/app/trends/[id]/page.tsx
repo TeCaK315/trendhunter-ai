@@ -9,6 +9,11 @@ import { recommendProductType, type ProductType } from '@/lib/productRecommendat
 import { MVPType, MVPGenerationContext, ProductSpecification } from '@/lib/mvp-templates';
 import { useLanguage, useTranslateContent } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import RealProblemBlock from '@/components/blocks/RealProblemBlock';
+import DemandGrowthBlock from '@/components/blocks/DemandGrowthBlock';
+import MarketSellabilityBlock from '@/components/blocks/MarketSellabilityBlock';
+import MarketOccupationBlock from '@/components/blocks/MarketOccupationBlock';
+import UnitEconomicsBlock from '@/components/blocks/UnitEconomicsBlock';
 
 interface Trend {
   id: string;
@@ -83,30 +88,22 @@ interface TrendAnalysis {
 
 // Оптимизированный flow: 4 основных шага вместо 8
 // Каждый шаг содержит подразделы с полным контентом
-type FlowStep = 'overview' | 'research' | 'business' | 'project';
+type FlowStep = 'overview' | 'evidence' | 'research' | 'business' | 'project';
 
 // Подразделы внутри каждого шага
-type ResearchSubTab = 'analysis' | 'sources' | 'competition';
-type BusinessSubTab = 'venture' | 'leads' | 'pitch';
-
-interface DecisionMaker {
-  role: string;
-  likely_email_format: string;
-}
+type ResearchSubTab = 'analysis' | 'competition';
+type BusinessSubTab = 'venture' | 'leads';
+type EvidenceSubTab = 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics';
 
 interface PotentialCompany {
   name: string;
   website: string;
-  email: string;
-  email_pattern?: string;
-  industry: string;
-  size?: string;
-  location?: string;
-  relevance_score: number;
-  pain_match: string;
-  decision_makers?: DecisionMaker[];
+  description?: string;
+  linkedin_url?: string;
+  source?: string;
+  source_url?: string;
+  pain_match?: string;
   outreach_angle?: string;
-  linkedin_search_query?: string;
 }
 
 interface LeadsData {
@@ -168,27 +165,6 @@ interface VentureData {
   investment_hotness: number;
   market_signals: string[];
   sources: Array<{ name: string; url: string; accessed_at: string }>;
-}
-
-interface PitchSlide {
-  number: number;
-  title: string;
-  type: string;
-  content: string[];
-  speaker_notes: string;
-  visual_suggestion: string;
-}
-
-interface PitchDeck {
-  title: string;
-  tagline: string;
-  slides: PitchSlide[];
-  sources: Array<{ name: string; url: string }>;
-  export_formats: {
-    google_slides_template: string;
-    figma_template: string;
-    canva_template: string;
-  };
 }
 
 // Интерфейсы для данных проекта (META-агент)
@@ -272,7 +248,14 @@ export default function TrendPage() {
   const [currentStep, setCurrentStep] = useState<FlowStep>('overview');
   const [researchSubTab, setResearchSubTab] = useState<ResearchSubTab>('analysis');
   const [businessSubTab, setBusinessSubTab] = useState<BusinessSubTab>('venture');
+  const [evidenceSubTab, setEvidenceSubTab] = useState<EvidenceSubTab>('problem');
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Evidence block data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [evidenceData, setEvidenceData] = useState<Record<string, any>>({});
+  const [evidenceLoading, setEvidenceLoading] = useState<Record<string, boolean>>({});
+  const [evidenceErrors, setEvidenceErrors] = useState<Record<string, string>>({});
 
   // Translation hooks for dynamic content
   const trendForTranslation = trend ? {
@@ -397,10 +380,6 @@ export default function TrendPage() {
   const [loadingCompetition, setLoadingCompetition] = useState(false);
   const [ventureData, setVentureData] = useState<VentureData | null>(null);
   const [loadingVenture, setLoadingVenture] = useState(false);
-  const [pitchDeck, setPitchDeck] = useState<PitchDeck | null>(null);
-  const [loadingPitch, setLoadingPitch] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-
   // Leads & Email states
   const [leadsData, setLeadsData] = useState<LeadsData | null>(null);
   const [loadingLeads, setLoadingLeads] = useState(false);
@@ -445,22 +424,6 @@ export default function TrendPage() {
   const { data: translatedVenture, isLoading: translatingVenture } = useTranslateContent(
     language === 'en' && ventureData ? ventureForTranslation : null,
     { cacheKey: analysis ? `venture-${analysis.trend_id}` : undefined }
-  );
-
-  // Translation hooks for pitch deck
-  const pitchForTranslation = pitchDeck ? {
-    tagline: pitchDeck.tagline,
-    slides: pitchDeck.slides.map(s => ({
-      title: s.title,
-      content: s.content,
-      speaker_notes: s.speaker_notes,
-      visual_suggestion: s.visual_suggestion,
-    })),
-  } : null;
-
-  const { data: translatedPitch, isLoading: translatingPitch } = useTranslateContent(
-    language === 'en' && pitchDeck ? pitchForTranslation : null,
-    { cacheKey: analysis ? `pitch-${analysis.trend_id}` : undefined }
   );
 
   // Translation hooks for leads data
@@ -527,38 +490,6 @@ export default function TrendPage() {
       : ventureData.market_signals
   ) : [];
 
-  // Computed translated pitch values
-  const displayPitchTagline = pitchDeck ? (
-    language === 'en'
-      ? ((translatedPitch?.tagline as string) || pitchDeck.tagline)
-      : pitchDeck.tagline
-  ) : '';
-
-  const displayPitchSlides = pitchDeck?.slides ? (
-    language === 'en' && translatedPitch?.slides
-      ? pitchDeck.slides.map((s, i) => ({
-          ...s,
-          title: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.title || s.title,
-          content: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.content || s.content,
-          speaker_notes: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.speaker_notes || s.speaker_notes,
-          visual_suggestion: (translatedPitch.slides as Array<{title: string; content: string[]; speaker_notes: string; visual_suggestion: string}>)[i]?.visual_suggestion || s.visual_suggestion,
-        }))
-      : pitchDeck.slides
-  ) : [];
-
-  // Translation hooks for sources synthesis
-  const sourcesForTranslation = sourcesSynthesis ? {
-    key_insights: sourcesSynthesis.key_insights,
-    sentiment_summary: sourcesSynthesis.sentiment_summary,
-    content_gaps: sourcesSynthesis.content_gaps,
-    recommended_angles: sourcesSynthesis.recommended_angles,
-  } : null;
-
-  const { data: translatedSources, isLoading: translatingSources } = useTranslateContent(
-    language === 'en' && sourcesSynthesis ? sourcesForTranslation : null,
-    { cacheKey: analysis ? `sources-${analysis.trend_id}` : undefined }
-  );
-
   // Translation hooks for strategic data
   const strategicForTranslation = (strategicPositioning || differentiationOpportunities.length > 0) ? {
     strategic_positioning: strategicPositioning,
@@ -581,31 +512,6 @@ export default function TrendPage() {
     language === 'en' && investmentForTranslation ? investmentForTranslation : null,
     { cacheKey: analysis ? `investment-${analysis.trend_id}` : undefined }
   );
-
-  // Computed translated sources values
-  const displayKeyInsights = sourcesSynthesis?.key_insights ? (
-    language === 'en'
-      ? ((translatedSources?.key_insights as string[]) || sourcesSynthesis.key_insights)
-      : sourcesSynthesis.key_insights
-  ) : [];
-
-  const displaySentimentSummary = sourcesSynthesis?.sentiment_summary ? (
-    language === 'en'
-      ? ((translatedSources?.sentiment_summary as string) || sourcesSynthesis.sentiment_summary)
-      : sourcesSynthesis.sentiment_summary
-  ) : '';
-
-  const displayContentGaps = sourcesSynthesis?.content_gaps ? (
-    language === 'en'
-      ? ((translatedSources?.content_gaps as string[]) || sourcesSynthesis.content_gaps)
-      : sourcesSynthesis.content_gaps
-  ) : [];
-
-  const displayRecommendedAngles = sourcesSynthesis?.recommended_angles ? (
-    language === 'en'
-      ? ((translatedSources?.recommended_angles as string[]) || sourcesSynthesis.recommended_angles)
-      : sourcesSynthesis.recommended_angles
-  ) : [];
 
   // Computed translated strategic values
   const displayStrategicPositioning = strategicPositioning ? (
@@ -664,6 +570,33 @@ export default function TrendPage() {
   const [vercelDeployed, setVercelDeployed] = useState(false);
   const [vercelUrl, setVercelUrl] = useState<string | null>(null);
   const [hasAutoSelectedType, setHasAutoSelectedType] = useState(false);
+
+  // Маркетинговая стратегия
+  const [marketingBudget, setMarketingBudget] = useState<string>('');
+  const [marketingStrategy, setMarketingStrategy] = useState<{
+    channels: Array<{ name: string; budget: string; roi: string; priority: string; tactics?: string[] }>;
+    timeline: string;
+    keyMetrics: string[];
+    recommendations: string[];
+    totalBudget?: string;
+    expectedResults?: string;
+  } | null>(null);
+  const [loadingMarketing, setLoadingMarketing] = useState(false);
+
+  // Выбор стиля/дизайна проекта
+  const [selectedStyle, setSelectedStyle] = useState<string>('');
+  const [customStylePrompt, setCustomStylePrompt] = useState<string>('');
+  const [generatedTheme, setGeneratedTheme] = useState<{
+    name: string;
+    cssVariables: Record<string, string>;
+    preview: { primary: string; secondary: string; accent: string; background: string; text: string };
+  } | null>(null);
+  const [loadingTheme, setLoadingTheme] = useState(false);
+
+  // Генерация кода через Claude API
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [codeGenerationError, setCodeGenerationError] = useState<string | null>(null);
+  const [generatedCodeFiles, setGeneratedCodeFiles] = useState<string[]>([]);
 
   // Translation hooks for project data
   const projectForTranslation = projectData ? {
@@ -898,12 +831,9 @@ export default function TrendPage() {
           segments: analysis.target_audience.segments,
         } : undefined,
       } : undefined,
-      pitchDeck ? {
-        company_name: pitchDeck.title,
-        tagline: pitchDeck.tagline,
-      } : undefined
+      undefined
     );
-  }, [trend, analysis, pitchDeck]);
+  }, [trend, analysis]);
 
   // Автоматически устанавливаем рекомендуемый тип при первом расчёте
   useEffect(() => {
@@ -954,15 +884,15 @@ export default function TrendPage() {
       const tabMapping: Record<string, { step: FlowStep; subTab?: ResearchSubTab | BusinessSubTab }> = {
         'overview': { step: 'overview' },
         'analysis': { step: 'research', subTab: 'analysis' },
-        'sources': { step: 'research', subTab: 'sources' },
         'competition': { step: 'research', subTab: 'competition' },
         'venture': { step: 'business', subTab: 'venture' },
         'leads': { step: 'business', subTab: 'leads' },
-        'pitch-deck': { step: 'business', subTab: 'pitch' },
+
         'project': { step: 'project' },
         // Новые табы
         'research': { step: 'research' },
         'business': { step: 'business' },
+        'evidence': { step: 'evidence' },
       };
 
       const mapping = tabMapping[tabParam];
@@ -970,7 +900,7 @@ export default function TrendPage() {
         tabSetFromUrlRef.current = true;
         setCurrentStep(mapping.step);
         if (mapping.subTab) {
-          if (['analysis', 'sources', 'competition'].includes(mapping.subTab)) {
+          if (['analysis', 'competition'].includes(mapping.subTab)) {
             setResearchSubTab(mapping.subTab as ResearchSubTab);
           } else {
             setBusinessSubTab(mapping.subTab as BusinessSubTab);
@@ -1047,15 +977,6 @@ export default function TrendPage() {
         companies: leadsData.companies,
         linkedin_queries: leadsData.linkedin_queries,
         directories: leadsData.directories,
-      };
-    }
-
-    // Добавляем pitch deck
-    if (pitchDeck) {
-      context.pitch = {
-        company_name: pitchDeck.title,
-        tagline: pitchDeck.tagline,
-        slides: pitchDeck.slides,
       };
     }
 
@@ -1250,7 +1171,7 @@ export default function TrendPage() {
 
         setAnalysis(updatedAnalysis);
         setCurrentStep('research');
-        setResearchSubTab('sources');
+        setResearchSubTab('competition');
 
         // Save to API
         await fetch('/api/trends/analyze', {
@@ -1393,42 +1314,6 @@ export default function TrendPage() {
       console.error('Error fetching venture data:', error);
     } finally {
       setLoadingVenture(false);
-    }
-  };
-
-  // Generate pitch deck
-  const generatePitchDeck = async () => {
-    if (!trend || pitchDeck) return;
-    setLoadingPitch(true);
-
-    try {
-      // Строим ПОЛНЫЙ контекст от всех предыдущих экспертов
-      const context = buildAnalysisContext();
-
-      const response = await fetch('/api/pitch-deck', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          trend_data: {
-            title: trend.title,
-            category: trend.category,
-            why_trending: trend.why_trending,
-            key_pain_points: analysis?.key_pain_points,
-            target_audience: analysis?.target_audience?.segments?.map(s => s.name).join(', '),
-            competitors: competition?.competitors,
-          },
-          context, // Передаём полный накопленный контекст от всех экспертов
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success && data.data) {
-        setPitchDeck(data.data);
-      }
-    } catch (error) {
-      console.error('Error generating pitch deck:', error);
-    } finally {
-      setLoadingPitch(false);
     }
   };
 
@@ -1699,6 +1584,122 @@ export default function TrendPage() {
     }
   };
 
+  // Генерация рабочего кода через Claude API
+  const generateCode = async () => {
+    if (!projectData || generatingCode) return;
+    setGeneratingCode(true);
+    setCodeGenerationError(null);
+
+    try {
+      // Формируем спецификацию для Claude
+      const spec = {
+        project_name: projectData.project_name,
+        one_liner: projectData.one_liner || '',
+        problem_statement: projectData.problem_statement || '',
+        solution_overview: projectData.solution_overview || '',
+        target_audience: analysis?.target_audience?.segments?.[0]?.name || '',
+        main_pain: analysis?.main_pain || projectData.problem_statement || '',
+        mvp_specification: projectData.mvp_specification,
+      };
+
+      const response = await fetch('/api/generate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spec,
+          github_repo: projectData.github_url, // Если есть - добавляем файлы туда
+          auto_deploy: autoDeploy && isVercelAuthenticated,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setGeneratedCodeFiles(data.files_list || []);
+
+        // Обновляем URL'ы если были созданы
+        if (data.github_url && !projectData.github_url) {
+          setProjectData(prev => prev ? { ...prev, github_url: data.github_url } : null);
+          setGithubCreated(true);
+        }
+        if (data.vercel_url) {
+          setVercelUrl(data.vercel_url);
+          setVercelDeployed(true);
+        }
+
+        // Показываем успех
+        alert(language === 'ru'
+          ? `✅ Код сгенерирован! ${data.files_generated} файлов создано.${data.github_url ? `\n\nGitHub: ${data.github_url}` : ''}${data.vercel_url ? `\nVercel: ${data.vercel_url}` : ''}`
+          : `✅ Code generated! ${data.files_generated} files created.${data.github_url ? `\n\nGitHub: ${data.github_url}` : ''}${data.vercel_url ? `\nVercel: ${data.vercel_url}` : ''}`
+        );
+      } else {
+        setCodeGenerationError(data.error || (language === 'ru' ? 'Не удалось сгенерировать код' : 'Failed to generate code'));
+      }
+    } catch (error) {
+      console.error('Error generating code:', error);
+      setCodeGenerationError(language === 'ru' ? 'Ошибка при генерации кода' : 'Error generating code');
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
+  // Генерация маркетинговой стратегии на основе бюджета
+  const generateMarketingStrategy = async () => {
+    if (!marketingBudget || !projectData || loadingMarketing) return;
+
+    setLoadingMarketing(true);
+    try {
+      const response = await fetch('/api/marketing-strategy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          budget: parseInt(marketingBudget) || 0,
+          project_name: projectData.project_name,
+          target_audience: analysis?.target_audience?.segments?.[0]?.name || '',
+          segments: analysis?.target_audience?.segments || [],
+          main_pain: analysis?.main_pain || '',
+          competitors: competition?.competitors?.slice(0, 3) || [],
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.strategy) {
+        setMarketingStrategy(data.strategy);
+      }
+    } catch (error) {
+      console.error('Error generating marketing strategy:', error);
+    } finally {
+      setLoadingMarketing(false);
+    }
+  };
+
+  // Генерация цветовой темы на основе стиля
+  const generateTheme = async (styleInput: string) => {
+    if (!styleInput || loadingTheme) return;
+
+    setLoadingTheme(true);
+    try {
+      const response = await fetch('/api/generate-theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          style: styleInput,
+          project_name: projectData?.project_name || trend?.title || 'MVP Project',
+          target_audience: analysis?.target_audience?.segments?.[0]?.name || '',
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.theme) {
+        setGeneratedTheme(data.theme);
+      }
+    } catch (error) {
+      console.error('Error generating theme:', error);
+    } finally {
+      setLoadingTheme(false);
+    }
+  };
+
   // Auto-fetch data when switching to relevant tabs/subtabs
   useEffect(() => {
     // Research subtabs
@@ -1711,8 +1712,6 @@ export default function TrendPage() {
         fetchVentureData();
       } else if (businessSubTab === 'leads' && !leadsData && !loadingLeads && analysis?.main_pain) {
         fetchLeads();
-      } else if (businessSubTab === 'pitch' && !pitchDeck && !loadingPitch) {
-        generatePitchDeck();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1721,15 +1720,15 @@ export default function TrendPage() {
   // Оптимизированный flow: 4 основных шага
   const flowSteps = [
     { id: 'overview', label: t.trendDetail.tabs.overview, icon: '📊', description: language === 'ru' ? 'Обзор тренда' : 'Trend Overview' },
-    { id: 'research', label: language === 'ru' ? 'Исследование' : 'Research', icon: '🔬', description: language === 'ru' ? 'Анализ, источники, конкуренты' : 'Analysis, Sources, Competition' },
-    { id: 'business', label: language === 'ru' ? 'Бизнес' : 'Business', icon: '💼', description: language === 'ru' ? 'Инвестиции, клиенты, питч' : 'Venture, Leads, Pitch' },
+    { id: 'evidence', label: language === 'ru' ? 'Доказательства' : 'Evidence', icon: '🔎', description: language === 'ru' ? '5 блоков проверки реальными данными' : '5 evidence-based analysis blocks' },
+    { id: 'research', label: language === 'ru' ? 'Исследование' : 'Research', icon: '🔬', description: language === 'ru' ? 'Анализ и конкуренты' : 'Analysis & Competition' },
+    { id: 'business', label: language === 'ru' ? 'Бизнес' : 'Business', icon: '💼', description: language === 'ru' ? 'Инвестиции и клиенты' : 'Venture & Leads' },
     { id: 'project', label: t.trendDetail.tabs.project, icon: '🚀', description: language === 'ru' ? 'Создать проект' : 'Create Project' },
   ];
 
   // Подразделы для Research
   const researchSubTabs = [
     { id: 'analysis', label: t.trendDetail.tabs.analysis, icon: '🔍' },
-    { id: 'sources', label: t.trendDetail.tabs.sources, icon: '📚' },
     { id: 'competition', label: t.trendDetail.tabs.competition, icon: '🏆' },
   ];
 
@@ -1737,7 +1736,6 @@ export default function TrendPage() {
   const businessSubTabs = [
     { id: 'venture', label: t.trendDetail.tabs.venture, icon: '💰' },
     { id: 'leads', label: t.trendDetail.tabs.leads, icon: '👥' },
-    { id: 'pitch', label: t.trendDetail.tabs.pitchDeck, icon: '📑' },
   ];
 
   if (loading) {
@@ -1788,9 +1786,10 @@ export default function TrendPage() {
               const isActive = step.id === currentStep;
               const isPast = flowSteps.findIndex(s => s.id === currentStep) > index;
               const isClickable = isPast || step.id === 'overview' ||
+                step.id === 'evidence' ||
                 (step.id === 'research' && analysis) ||
-                (step.id === 'business' && analysis?.real_sources) ||
-                (step.id === 'project' && analysis?.real_sources);
+                (step.id === 'business' && analysis) ||
+                (step.id === 'project' && analysis);
 
               return (
                 <div key={step.id} className="flex items-center">
@@ -1857,6 +1856,35 @@ export default function TrendPage() {
               ))}
             </div>
           )}
+
+          {/* Подразделы для Evidence */}
+          {currentStep === 'evidence' && (
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-800/50 overflow-x-auto scrollbar-hide">
+              {[
+                { id: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
+                { id: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
+                { id: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
+                { id: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
+                { id: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setEvidenceSubTab(tab.id as EvidenceSubTab)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all whitespace-nowrap ${
+                    evidenceSubTab === tab.id
+                      ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                  {evidenceData[tab.id] && (
+                    <span className="w-2 h-2 bg-green-400 rounded-full" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -1900,6 +1928,107 @@ export default function TrendPage() {
               </div>
             </div>
           </div>
+
+          {/* Evidence Content */}
+          {currentStep === 'evidence' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    {language === 'ru' ? 'Evidence-Based анализ' : 'Evidence-Based Analysis'}
+                  </h2>
+                  <p className="text-zinc-400 text-sm mt-1">
+                    {language === 'ru'
+                      ? 'Все данные из реальных источников. Каждый score рассчитан по формуле.'
+                      : 'All data from real sources. Every score calculated by formula.'}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const blockEndpoints: Record<string, string> = {
+                      problem: '/api/evidence/real-problem',
+                      demand: '/api/evidence/demand-growth',
+                      sellability: '/api/evidence/market-sellability',
+                      occupation: '/api/evidence/market-occupation',
+                      economics: '/api/evidence/unit-economics',
+                    };
+
+                    const endpoint = blockEndpoints[evidenceSubTab];
+                    if (!endpoint) return;
+
+                    setEvidenceLoading(prev => ({ ...prev, [evidenceSubTab]: true }));
+                    setEvidenceErrors(prev => ({ ...prev, [evidenceSubTab]: '' }));
+
+                    try {
+                      const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          query: trend.title,
+                          context: buildAnalysisContext(),
+                        }),
+                      });
+
+                      const data = await res.json();
+                      if (data.success) {
+                        setEvidenceData(prev => ({ ...prev, [evidenceSubTab]: data.data }));
+                      } else {
+                        setEvidenceErrors(prev => ({ ...prev, [evidenceSubTab]: data.error || 'Error' }));
+                      }
+                    } catch (e) {
+                      setEvidenceErrors(prev => ({ ...prev, [evidenceSubTab]: (e as Error).message }));
+                    } finally {
+                      setEvidenceLoading(prev => ({ ...prev, [evidenceSubTab]: false }));
+                    }
+                  }}
+                  disabled={evidenceLoading[evidenceSubTab]}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  {evidenceLoading[evidenceSubTab] && (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {language === 'ru' ? 'Анализировать' : 'Analyze'}
+                </button>
+              </div>
+
+              {/* Evidence block content */}
+              {evidenceSubTab === 'problem' && (
+                <RealProblemBlock
+                  data={evidenceData.problem}
+                  loading={evidenceLoading.problem}
+                  error={evidenceErrors.problem}
+                />
+              )}
+              {evidenceSubTab === 'demand' && (
+                <DemandGrowthBlock
+                  data={evidenceData.demand}
+                  loading={evidenceLoading.demand}
+                  error={evidenceErrors.demand}
+                />
+              )}
+              {evidenceSubTab === 'sellability' && (
+                <MarketSellabilityBlock
+                  data={evidenceData.sellability}
+                  loading={evidenceLoading.sellability}
+                  error={evidenceErrors.sellability}
+                />
+              )}
+              {evidenceSubTab === 'occupation' && (
+                <MarketOccupationBlock
+                  data={evidenceData.occupation}
+                  loading={evidenceLoading.occupation}
+                  error={evidenceErrors.occupation}
+                />
+              )}
+              {evidenceSubTab === 'economics' && (
+                <UnitEconomicsBlock
+                  data={evidenceData.economics}
+                  loading={evidenceLoading.economics}
+                  error={evidenceErrors.economics}
+                />
+              )}
+            </div>
+          )}
 
           {/* Step Content */}
           {currentStep === 'overview' && (
@@ -2305,250 +2434,6 @@ export default function TrendPage() {
             </div>
           )}
 
-          {currentStep === 'research' && researchSubTab === 'sources' && analysis?.real_sources && (
-            <div className="space-y-6">
-              {/* Google Trends */}
-              {analysis.real_sources.google_trends && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <span>📈</span> Google Trends
-                      {analysis.real_sources.google_trends.is_mock_data && (
-                        <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                          {t.trendDetail.sources.simulation}
-                        </span>
-                      )}
-                    </h3>
-                    {analysis.real_sources.google_trends.google_trends_url && (
-                      <a
-                        href={analysis.real_sources.google_trends.google_trends_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                      >
-                        {t.trendDetail.sources.openInGoogleTrends}
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4 mb-4">
-                    <div className="p-4 bg-zinc-800/50 rounded-lg">
-                      <div className="text-sm text-zinc-400 mb-1">{t.trendDetail.sources.yearlyGrowth}</div>
-                      <div className={`text-2xl font-bold ${
-                        analysis.real_sources.google_trends.growth_rate >= 0 ? 'text-emerald-400' : 'text-red-400'
-                      }`}>
-                        {analysis.real_sources.google_trends.growth_rate >= 0 ? '+' : ''}
-                        {analysis.real_sources.google_trends.growth_rate}%
-                      </div>
-                    </div>
-                    <div className="p-4 bg-zinc-800/50 rounded-lg">
-                      <div className="text-sm text-zinc-400 mb-1">{t.trendDetail.sources.relatedQueries}</div>
-                      <div className="text-lg text-white">
-                        {analysis.real_sources.google_trends.related_queries?.length || 0}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Related Queries */}
-                  {analysis.real_sources.google_trends.related_queries &&
-                   analysis.real_sources.google_trends.related_queries.length > 0 && (
-                    <div>
-                      <div className="text-sm text-zinc-400 mb-3">{t.trendDetail.sources.relatedQueries}:</div>
-                      <div className="space-y-2">
-                        {analysis.real_sources.google_trends.related_queries.slice(0, 8).map((q, i) => {
-                          // Parse growth value - can be "100", "+150%", "Breakout", etc.
-                          const growthValue = q.growth || '0';
-                          const isBreakout = growthValue.toLowerCase() === 'breakout';
-                          const numValue = parseInt(growthValue.replace(/[^0-9-]/g, '')) || 0;
-
-                          return (
-                            <a
-                              key={i}
-                              href={q.link || `https://trends.google.com/trends/explore?q=${encodeURIComponent(q.query)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors group"
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="text-zinc-500 text-sm w-6">{i + 1}.</span>
-                                <span className="text-zinc-200 group-hover:text-white">{q.query}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {isBreakout ? (
-                                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-xs font-medium">
-                                    🔥 Взрыв
-                                  </span>
-                                ) : numValue > 0 ? (
-                                  <div className="flex items-center gap-1">
-                                    <div className="w-16 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                                      <div
-                                        className="h-full bg-emerald-500 rounded-full"
-                                        style={{ width: `${Math.min(100, numValue)}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-emerald-400 text-xs w-8">{numValue}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-zinc-500 text-xs">{growthValue}</span>
-                                )}
-                                <svg className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                </svg>
-                              </div>
-                            </a>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Reddit */}
-              {analysis.real_sources.reddit && analysis.real_sources.reddit.posts.length > 0 && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <span>💬</span> Reddit
-                    <span className="text-sm font-normal text-zinc-400">
-                      ({analysis.real_sources.reddit.posts.length} {language === 'ru' ? 'постов' : 'posts'})
-                    </span>
-                  </h3>
-
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {analysis.real_sources.reddit.posts.map((post, index) => (
-                      <a
-                        key={index}
-                        href={post.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="text-white font-medium mb-1 line-clamp-2">{post.title}</div>
-                            <div className="flex items-center gap-3 text-sm text-zinc-400">
-                              <span className="text-orange-400">r/{post.subreddit}</span>
-                              {post.score > 0 && <span>⬆️ {post.score}</span>}
-                              {post.num_comments > 0 && <span>💬 {post.num_comments}</span>}
-                              {post.score === 0 && post.num_comments === 0 && (
-                                <span className="text-zinc-500 text-xs">{language === 'ru' ? 'Метрики недоступны через поиск' : 'Metrics unavailable via search'}</span>
-                              )}
-                            </div>
-                          </div>
-                          <svg className="w-5 h-5 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-
-                  {analysis.real_sources.reddit.communities.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-zinc-700">
-                      <div className="text-sm text-zinc-400 mb-2">{language === 'ru' ? 'Активные сообщества:' : 'Active communities:'}</div>
-                      <div className="flex flex-wrap gap-2">
-                        {analysis.real_sources.reddit.communities.map((community, i) => (
-                          <a
-                            key={i}
-                            href={`https://reddit.com/r/${community}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-orange-500/20 text-orange-300 rounded-lg text-sm hover:bg-orange-500/30 transition-colors"
-                          >
-                            r/{community}
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* YouTube */}
-              {analysis.real_sources.youtube && analysis.real_sources.youtube.videos.length > 0 && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <span>🎬</span> YouTube
-                    <span className="text-sm font-normal text-zinc-400">
-                      ({analysis.real_sources.youtube.videos.length} {language === 'ru' ? 'видео' : 'videos'})
-                    </span>
-                  </h3>
-
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[800px] overflow-y-auto">
-                    {analysis.real_sources.youtube.videos.map((video, index) => (
-                      <a
-                        key={index}
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block bg-zinc-800/50 rounded-lg overflow-hidden hover:bg-zinc-800 transition-colors"
-                      >
-                        <img
-                          src={video.thumbnail}
-                          alt={video.title}
-                          className="w-full aspect-video object-cover"
-                        />
-                        <div className="p-3">
-                          <div className="text-white text-sm font-medium line-clamp-2 mb-1">{video.title}</div>
-                          <div className="text-zinc-400 text-xs">{video.channel}</div>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Next Step */}
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.analysis.nextStep}</h3>
-                <p className="text-zinc-400 mb-4">
-                  {t.trendDetail.analysis.collectSourcesDescription}
-                </p>
-                <button
-                  onClick={() => setResearchSubTab('competition')}
-                  className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
-                >
-                  <span>🏆</span>
-                  {t.trendDetail.competition.analyzeCompetitors}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Sources Empty State */}
-          {currentStep === 'research' && researchSubTab === 'sources' && !analysis?.real_sources && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
-                <span className="text-3xl">🔗</span>
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                {language === 'ru' ? 'Источники не собраны' : 'Sources not collected'}
-              </h3>
-              <p className="text-zinc-400 mb-6 max-w-md">
-                {language === 'ru'
-                  ? 'Сначала запустите сбор источников, чтобы получить данные из Google Trends, Reddit и YouTube.'
-                  : 'Run source collection first to get data from Google Trends, Reddit and YouTube.'}
-              </p>
-              {collectingSources ? (
-                <div className="flex items-center gap-3 text-zinc-400">
-                  <div className="animate-spin w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full" />
-                  <span>{language === 'ru' ? 'Сбор источников...' : 'Collecting sources...'}</span>
-                </div>
-              ) : (
-                <button
-                  onClick={collectSources}
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium flex items-center gap-2"
-                >
-                  <span>🔍</span>
-                  {language === 'ru' ? 'Собрать источники' : 'Collect Sources'}
-                </button>
-              )}
-            </div>
-          )}
-
           {/* Competition Tab */}
           {currentStep === 'research' && researchSubTab === 'competition' && (
             <div className="space-y-6">
@@ -2888,39 +2773,32 @@ export default function TrendPage() {
                     <div className="space-y-4">
                       {displayCompanies.map((company, index) => (
                         <div key={index} className="p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-white font-medium text-lg">{company.name}</span>
-                                <span className={`px-2 py-0.5 rounded text-xs ${
-                                  company.relevance_score >= 8 ? 'bg-emerald-500/20 text-emerald-300' :
-                                  company.relevance_score >= 6 ? 'bg-amber-500/20 text-amber-300' :
-                                  'bg-zinc-500/20 text-zinc-300'
-                                }`}>
-                                  {company.relevance_score}/10 {t.trendDetail.leads.relevance}
-                                  {translatingLeads && <span className="inline-block w-3 h-3 ml-1 border border-indigo-500 border-t-transparent rounded-full animate-spin" />}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-white font-medium text-lg">{company.name}</span>
+                              {company.source && (
+                                <span className="px-2 py-0.5 rounded text-xs bg-zinc-500/20 text-zinc-300">
+                                  {company.source.replace('_', ' ')}
                                 </span>
-                              </div>
-                              <p className="text-sm text-zinc-400 mb-3">{company.pain_match}</p>
+                              )}
+                            </div>
+                            {company.description && (
+                              <p className="text-sm text-zinc-400 mb-3">{company.description}</p>
+                            )}
+                            {company.pain_match && (
+                              <p className="text-sm text-zinc-300 mb-3">
+                                <span className="text-zinc-500">{language === 'ru' ? 'Совпадение боли:' : 'Pain match:'}</span> {company.pain_match}
+                              </p>
+                            )}
+                            {company.outreach_angle && (
+                              <p className="text-sm text-zinc-300 mb-3">
+                                <span className="text-zinc-500">{language === 'ru' ? 'Подход:' : 'Approach:'}</span> {company.outreach_angle}
+                              </p>
+                            )}
 
-                              <div className="flex flex-wrap gap-2 mb-3">
-                                <span className="px-2 py-1 bg-zinc-700 text-zinc-300 rounded text-xs">
-                                  {company.industry}
-                                </span>
-                                {company.size && (
-                                  <span className="px-2 py-1 bg-zinc-700 text-zinc-300 rounded text-xs">
-                                    {company.size}
-                                  </span>
-                                )}
-                                {company.location && (
-                                  <span className="px-2 py-1 bg-zinc-700 text-zinc-300 rounded text-xs">
-                                    📍 {company.location}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Contact Info */}
-                              <div className="flex flex-wrap gap-3 text-sm">
+                            {/* Links */}
+                            <div className="flex flex-wrap gap-3 text-sm">
+                              {company.website && (
                                 <a
                                   href={company.website}
                                   target="_blank"
@@ -2929,49 +2807,28 @@ export default function TrendPage() {
                                 >
                                   🌐 {t.trendDetail.leads.website}
                                 </a>
+                              )}
+                              {company.linkedin_url && (
                                 <a
-                                  href={`mailto:${company.email}`}
+                                  href={company.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                   className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                                 >
-                                  ✉️ {company.email}
+                                  💼 LinkedIn
                                 </a>
-                                {company.linkedin_search_query && (
-                                  <a
-                                    href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company.linkedin_search_query)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                                  >
-                                    💼 LinkedIn
-                                  </a>
-                                )}
-                              </div>
-
-                              {/* Decision Makers */}
-                              {company.decision_makers && company.decision_makers.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-zinc-700">
-                                  <div className="text-xs text-zinc-500 mb-1">{t.trendDetail.leads.decisionMakers}:</div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {company.decision_makers.map((dm, i) => (
-                                      <span key={i} className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs">
-                                        {dm.role}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
+                              )}
+                              {company.source_url && company.source_url !== company.website && (
+                                <a
+                                  href={company.source_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                                >
+                                  🔗 {language === 'ru' ? 'Источник' : 'Source'}
+                                </a>
                               )}
                             </div>
-
-                            <button
-                              onClick={() => {
-                                setSelectedCompany(company);
-                                setGeneratedEmail(null);
-                                setShowEmailModal(true);
-                              }}
-                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                            >
-                              ✉️ {language === 'ru' ? 'Письмо' : 'Email'}
-                            </button>
                           </div>
                         </div>
                       ))}
@@ -3040,20 +2897,6 @@ export default function TrendPage() {
                     </div>
                   )}
 
-                  {/* Next Step */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.leads.nextStep}</h3>
-                    <p className="text-zinc-400 mb-4">
-                      {t.trendDetail.leads.generatePitchDescription}
-                    </p>
-                    <button
-                      onClick={() => setBusinessSubTab('pitch')}
-                      className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
-                    >
-                      <span>📑</span>
-                      {t.trendDetail.leads.createPitchDeck}
-                    </button>
-                  </div>
                 </>
               ) : (
                 <div className="text-center py-20">
@@ -3233,7 +3076,7 @@ export default function TrendPage() {
                       {/* Action Buttons */}
                       <div className="flex gap-3">
                         <a
-                          href={`mailto:${selectedCompany.email}?subject=${encodeURIComponent(displayEmailSubject)}&body=${encodeURIComponent(displayEmailBody)}`}
+                          href={`mailto:?subject=${encodeURIComponent(displayEmailSubject)}&body=${encodeURIComponent(displayEmailBody)}`}
                           className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-center font-medium transition-colors"
                         >
                           📧 {language === 'ru' ? 'Открыть в почте' : 'Open in Mail'}
@@ -3251,261 +3094,6 @@ export default function TrendPage() {
                   )}
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Pitch Deck Tab */}
-          {currentStep === 'business' && businessSubTab === 'pitch' && (
-            <div className="space-y-6">
-              {loadingPitch ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
-                  <p className="text-zinc-400">{t.trendDetail.pitch.generating}</p>
-                </div>
-              ) : pitchDeck ? (
-                <>
-                  {/* Header */}
-                  <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-6">
-                    <h2 className="text-2xl font-bold text-white mb-2">
-                      {pitchDeck.title}
-                      {translatingPitch && (
-                        <span className="inline-block w-4 h-4 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                      )}
-                    </h2>
-                    <p className="text-zinc-400">{displayPitchTagline}</p>
-                  </div>
-
-                  {/* Slide Viewer */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-                    {/* Slide Navigation */}
-                    <div className="flex items-center gap-1 p-2 border-b border-zinc-800 overflow-x-auto">
-                      {displayPitchSlides.map((slide, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentSlide(index)}
-                          className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
-                            currentSlide === index
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          {slide.number}. {slide.title.substring(0, 15)}...
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Current Slide */}
-                    <div className="p-8">
-                      <div className="max-w-2xl mx-auto">
-                        <div className="text-xs text-zinc-500 mb-2">
-                          {t.trendDetail.pitch.slide} {displayPitchSlides[currentSlide]?.number || 1} / {displayPitchSlides.length}
-                          <span className="ml-2 px-2 py-0.5 bg-zinc-800 rounded">
-                            {displayPitchSlides[currentSlide]?.type}
-                          </span>
-                        </div>
-                        <h3 className="text-2xl font-bold text-white mb-6">
-                          {displayPitchSlides[currentSlide]?.title}
-                        </h3>
-
-                        <div className="space-y-3 mb-8">
-                          {displayPitchSlides[currentSlide]?.content?.map((point, index) => (
-                            <div key={index} className="flex items-start gap-3 text-lg text-zinc-300">
-                              <span className="text-indigo-400 mt-1">•</span>
-                              <span>{point}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Speaker Notes */}
-                        <div className="p-4 bg-zinc-800/50 rounded-lg mb-4">
-                          <div className="text-xs text-zinc-500 mb-1">📝 {t.trendDetail.pitch.speakerNotes}:</div>
-                          <p className="text-sm text-zinc-400">{displayPitchSlides[currentSlide]?.speaker_notes}</p>
-                        </div>
-
-                        {/* Visual Suggestion */}
-                        <div className="p-4 bg-zinc-800/50 rounded-lg">
-                          <div className="text-xs text-zinc-500 mb-1">🎨 {t.trendDetail.pitch.visualRecommendation}:</div>
-                          <p className="text-sm text-zinc-400">{displayPitchSlides[currentSlide]?.visual_suggestion}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Navigation */}
-                    <div className="flex items-center justify-between p-4 border-t border-zinc-800">
-                      <button
-                        onClick={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
-                        disabled={currentSlide === 0}
-                        className="px-4 py-2 bg-zinc-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-700 transition-colors"
-                      >
-                        ← {t.trendDetail.pitch.back}
-                      </button>
-                      <span className="text-zinc-400">
-                        {currentSlide + 1} / {displayPitchSlides.length}
-                      </span>
-                      <button
-                        onClick={() => setCurrentSlide(prev => Math.min(displayPitchSlides.length - 1, prev + 1))}
-                        disabled={currentSlide === displayPitchSlides.length - 1}
-                        className="px-4 py-2 bg-zinc-800 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-700 transition-colors"
-                      >
-                        {t.trendDetail.pitch.next} →
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Export Options */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.pitch.exportPresentation}</h3>
-
-                    {/* Copy/Download Actions */}
-                    <div className="grid md:grid-cols-2 gap-4 mb-6">
-                      <button
-                        onClick={() => {
-                          const slideLabel = language === 'ru' ? 'Слайд' : 'Slide';
-                          const notesLabel = language === 'ru' ? 'Заметки' : 'Notes';
-                          const visualLabel = language === 'ru' ? 'Визуал' : 'Visual';
-                          const text = pitchDeck.slides.map(slide =>
-                            `## ${slideLabel} ${slide.number}: ${slide.title}\n\n${slide.content.map(c => `• ${c}`).join('\n')}\n\n📝 ${notesLabel}: ${slide.speaker_notes}\n🎨 ${visualLabel}: ${slide.visual_suggestion}`
-                          ).join('\n\n---\n\n');
-                          navigator.clipboard.writeText(text);
-                          alert(language === 'ru' ? 'Контент скопирован! Вставьте в любой редактор.' : 'Content copied! Paste into any editor.');
-                        }}
-                        className="p-4 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors text-center"
-                      >
-                        <div className="text-2xl mb-2">📋</div>
-                        <div className="text-white font-medium">{t.trendDetail.pitch.copyText}</div>
-                        <div className="text-xs text-indigo-200">{t.trendDetail.pitch.copyTextDescription}</div>
-                      </button>
-                      <button
-                        onClick={() => {
-                          const data = {
-                            title: pitchDeck.title,
-                            tagline: pitchDeck.tagline,
-                            slides: pitchDeck.slides,
-                            generated_at: new Date().toISOString()
-                          };
-                          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `pitch-deck-${pitchDeck.title.toLowerCase().replace(/\s+/g, '-')}.json`;
-                          a.click();
-                        }}
-                        className="p-4 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-center"
-                      >
-                        <div className="text-2xl mb-2">💾</div>
-                        <div className="text-white font-medium">{t.trendDetail.pitch.downloadJson}</div>
-                        <div className="text-xs text-emerald-200">{t.trendDetail.pitch.downloadJsonDescription}</div>
-                      </button>
-                    </div>
-
-                    {/* Template Links */}
-                    <div className="mb-4">
-                      <h4 className="text-sm text-zinc-400 mb-3">{t.trendDetail.pitch.selectTemplate}</h4>
-                      <div className="grid md:grid-cols-3 gap-4">
-                        <a
-                          href={pitchDeck.export_formats.google_slides_template}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors text-center group"
-                        >
-                          <div className="text-2xl mb-2">📊</div>
-                          <div className="text-white font-medium">Google Slides</div>
-                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">{t.trendDetail.pitch.openTemplates}</div>
-                        </a>
-                        <a
-                          href={pitchDeck.export_formats.figma_template}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors text-center group"
-                        >
-                          <div className="text-2xl mb-2">🎨</div>
-                          <div className="text-white font-medium">Figma</div>
-                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">{t.trendDetail.pitch.openTemplates}</div>
-                        </a>
-                        <a
-                          href={pitchDeck.export_formats.canva_template}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors text-center group"
-                        >
-                          <div className="text-2xl mb-2">🖼️</div>
-                          <div className="text-white font-medium">Canva</div>
-                          <div className="text-xs text-zinc-400 group-hover:text-zinc-300">{t.trendDetail.pitch.openTemplates}</div>
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Instructions - Two columns */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {/* Text Instructions */}
-                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <div className="text-sm text-amber-300">
-                          <strong>📋 {t.trendDetail.pitch.viaTextFast}</strong>
-                          <ol className="mt-2 space-y-1 list-decimal list-inside text-amber-200">
-                            <li>{t.trendDetail.pitch.viaTextStep1}</li>
-                            <li>{t.trendDetail.pitch.viaTextStep2}</li>
-                            <li>{t.trendDetail.pitch.viaTextStep3}</li>
-                            <li>{t.trendDetail.pitch.viaTextStep4}</li>
-                          </ol>
-                        </div>
-                      </div>
-
-                      {/* JSON Instructions */}
-                      <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
-                        <div className="text-sm text-indigo-300">
-                          <strong>📥 {t.trendDetail.pitch.viaJsonAuto}</strong>
-                          <ol className="mt-2 space-y-1 list-decimal list-inside text-indigo-200">
-                            <li>{t.trendDetail.pitch.viaJsonStep1}</li>
-                            <li>{t.trendDetail.pitch.viaJsonStep2}</li>
-                            <li>{t.trendDetail.pitch.viaJsonStep3}</li>
-                            <li>{t.trendDetail.pitch.viaJsonStep4}</li>
-                          </ol>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sources */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-sm font-medium text-zinc-400 mb-3">{language === 'ru' ? 'Полезные материалы' : 'Useful resources'}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {pitchDeck.sources.map((source, index) => (
-                        <a
-                          key={index}
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded-lg text-sm hover:bg-zinc-700 transition-colors flex items-center gap-1"
-                        >
-                          {source.name}
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Next Step */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.pitch.nextStep}</h3>
-                    <p className="text-zinc-400 mb-4">
-                      {t.trendDetail.pitch.createProjectDescription}
-                    </p>
-                    <button
-                      onClick={() => setCurrentStep('project')}
-                      className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
-                    >
-                      <span>🚀</span>
-                      {t.trendDetail.project.createProject}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-20 text-zinc-400">
-                  {language === 'ru' ? 'Не удалось сгенерировать Pitch Deck' : 'Failed to generate Pitch Deck'}
-                </div>
-              )}
             </div>
           )}
 
@@ -3663,21 +3251,49 @@ export default function TrendPage() {
                     )}
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                       <button
-                        onClick={() => handleOpenMVPSelector(false)}
-                        className="px-8 py-4 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl font-medium transition-all inline-flex items-center gap-2"
+                        onClick={() => createProject(false)}
+                        disabled={loadingProject}
+                        className={`px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 ${
+                          loadingProject
+                            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                            : 'bg-zinc-700 hover:bg-zinc-600 text-white'
+                        }`}
                       >
-                        <span>📋</span>
-                        {language === 'ru' ? 'Только спецификация' : 'Specification Only'}
+                        {loadingProject ? (
+                          <>
+                            <div className="animate-spin w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full" />
+                            {language === 'ru' ? 'Генерируем спецификацию...' : 'Generating specification...'}
+                          </>
+                        ) : (
+                          <>
+                            <span>📋</span>
+                            {language === 'ru' ? 'Только спецификация' : 'Specification Only'}
+                          </>
+                        )}
                       </button>
                       {isGithubAuthenticated ? (
                         <button
                           onClick={() => handleOpenMVPSelector(true)}
-                          className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25"
+                          disabled={loadingProject}
+                          className={`px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 ${
+                            loadingProject
+                              ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25'
+                          }`}
                         >
-                          <span>🚀</span>
-                          {autoDeploy
-                            ? (language === 'ru' ? 'Создать + GitHub + Deploy' : 'Create + GitHub + Deploy')
-                            : (language === 'ru' ? 'Создать + GitHub репо' : 'Create + GitHub Repo')}
+                          {loadingProject ? (
+                            <>
+                              <div className="animate-spin w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full" />
+                              {language === 'ru' ? 'Генерируем проект...' : 'Generating project...'}
+                            </>
+                          ) : (
+                            <>
+                              <span>🚀</span>
+                              {autoDeploy
+                                ? (language === 'ru' ? 'Создать + GitHub + Deploy' : 'Create + GitHub + Deploy')
+                                : (language === 'ru' ? 'Создать + GitHub репо' : 'Create + GitHub Repo')}
+                            </>
+                          )}
                         </button>
                       ) : (
                         <a
@@ -3814,6 +3430,85 @@ export default function TrendPage() {
                         {projectError}
                       </div>
                     )}
+                    {codeGenerationError && (
+                      <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                        {codeGenerationError}
+                      </div>
+                    )}
+
+                    {/* Секция генерации кода через Claude */}
+                    <div className="mt-6 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl">
+                      <h4 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                        <span>🤖</span>
+                        {language === 'ru' ? 'Генерация рабочего кода' : 'Generate Working Code'}
+                      </h4>
+                      <p className="text-zinc-400 text-sm mb-4">
+                        {language === 'ru'
+                          ? 'Claude API сгенерирует полноценный рабочий код на основе спецификации. Все фичи будут реализованы.'
+                          : 'Claude API will generate fully working code based on the specification. All features will be implemented.'}
+                      </p>
+
+                      {generatedCodeFiles.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-emerald-400">
+                            <span>✅</span>
+                            <span className="font-medium">
+                              {language === 'ru'
+                                ? `Сгенерировано ${generatedCodeFiles.length} файлов`
+                                : `Generated ${generatedCodeFiles.length} files`}
+                            </span>
+                          </div>
+                          <div className="max-h-32 overflow-y-auto bg-zinc-800/50 rounded-lg p-3">
+                            <ul className="text-sm text-zinc-400 space-y-1">
+                              {generatedCodeFiles.slice(0, 15).map((file, i) => (
+                                <li key={i} className="font-mono text-xs">📄 {file}</li>
+                              ))}
+                              {generatedCodeFiles.length > 15 && (
+                                <li className="text-zinc-500">...{language === 'ru' ? 'и ещё' : 'and'} {generatedCodeFiles.length - 15} {language === 'ru' ? 'файлов' : 'more files'}</li>
+                              )}
+                            </ul>
+                          </div>
+                          <button
+                            onClick={generateCode}
+                            disabled={generatingCode}
+                            className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm font-medium transition-all inline-flex items-center gap-2"
+                          >
+                            <span>🔄</span>
+                            {language === 'ru' ? 'Перегенерировать' : 'Regenerate'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={generateCode}
+                          disabled={generatingCode || !projectData.github_url}
+                          className={`px-6 py-3 rounded-xl font-medium transition-all inline-flex items-center gap-2 ${
+                            generatingCode || !projectData.github_url
+                              ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/25'
+                          }`}
+                        >
+                          {generatingCode ? (
+                            <>
+                              <div className="animate-spin w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full" />
+                              {language === 'ru' ? 'Claude генерирует код...' : 'Claude is generating code...'}
+                            </>
+                          ) : (
+                            <>
+                              <span>✨</span>
+                              {language === 'ru' ? 'Сгенерировать код через Claude' : 'Generate Code via Claude'}
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {!projectData.github_url && (
+                        <p className="mt-3 text-sm text-zinc-500">
+                          {language === 'ru'
+                            ? '⚠️ Сначала создайте GitHub репозиторий для сохранения кода'
+                            : '⚠️ First create a GitHub repository to save the code'}
+                        </p>
+                      )}
+                    </div>
 
                     {/* Кнопка сброса проекта */}
                     <div className="mt-4 pt-4 border-t border-zinc-700/50">
@@ -3847,7 +3542,556 @@ export default function TrendPage() {
                     </div>
                   )}
 
-                  {/* MVP Specification */}
+                  {/* === SECTION 1: Design Theme Selector === */}
+                  <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <span>🎨</span> {language === 'ru' ? 'Дизайн проекта' : 'Project Design'}
+                    </h3>
+
+                    {!generatedTheme ? (
+                      <div className="space-y-4">
+                        <p className="text-zinc-400 text-sm">
+                          {language === 'ru'
+                            ? 'Выберите стиль или опишите желаемый дизайн, и AI сгенерирует цветовую схему'
+                            : 'Choose a style or describe your desired design, and AI will generate a color scheme'}
+                        </p>
+
+                        {/* Preset styles */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                          {[
+                            { id: 'corporate', name: language === 'ru' ? 'Корпоративный' : 'Corporate', colors: ['#2563eb', '#1e40af', '#3b82f6'] },
+                            { id: 'startup', name: language === 'ru' ? 'Стартап' : 'Startup', colors: ['#8b5cf6', '#6366f1', '#a855f7'] },
+                            { id: 'dark-tech', name: language === 'ru' ? 'Тёмный тех' : 'Dark Tech', colors: ['#10b981', '#059669', '#34d399'] },
+                            { id: 'minimal', name: language === 'ru' ? 'Минимализм' : 'Minimal', colors: ['#18181b', '#27272a', '#71717a'] },
+                            { id: 'warm', name: language === 'ru' ? 'Тёплый' : 'Warm', colors: ['#f59e0b', '#d97706', '#fbbf24'] },
+                            { id: 'nature', name: language === 'ru' ? 'Природа' : 'Nature', colors: ['#16a34a', '#15803d', '#22c55e'] },
+                          ].map((style) => (
+                            <button
+                              key={style.id}
+                              onClick={() => {
+                                setSelectedStyle(style.id);
+                                generateTheme(style.id);
+                              }}
+                              disabled={loadingTheme}
+                              className={`p-3 rounded-lg border transition-all ${
+                                selectedStyle === style.id
+                                  ? 'border-cyan-500 bg-cyan-500/10'
+                                  : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
+                              }`}
+                            >
+                              <div className="flex gap-1 mb-2 justify-center">
+                                {style.colors.map((color, i) => (
+                                  <div
+                                    key={i}
+                                    className="w-4 h-4 rounded-full"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                ))}
+                              </div>
+                              <div className="text-xs text-zinc-300 text-center">{style.name}</div>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Custom prompt */}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <input
+                            type="text"
+                            value={customStylePrompt}
+                            onChange={(e) => setCustomStylePrompt(e.target.value)}
+                            placeholder={language === 'ru' ? 'Или опишите стиль: "Элегантный и современный с оттенками синего"' : 'Or describe style: "Elegant and modern with blue tones"'}
+                            className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-cyan-500 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              setSelectedStyle('custom');
+                              generateTheme(customStylePrompt);
+                            }}
+                            disabled={!customStylePrompt || loadingTheme}
+                            className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all inline-flex items-center justify-center gap-2"
+                          >
+                            {loadingTheme ? (
+                              <>
+                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                {language === 'ru' ? 'Генерируем...' : 'Generating...'}
+                              </>
+                            ) : (
+                              <>
+                                <span>✨</span>
+                                {language === 'ru' ? 'Создать' : 'Generate'}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Theme preview */}
+                        <div className="p-4 rounded-lg" style={{ backgroundColor: generatedTheme.preview.background }}>
+                          <h4 className="text-lg font-semibold mb-3" style={{ color: generatedTheme.preview.text }}>
+                            {generatedTheme.name}
+                          </h4>
+                          <div className="flex flex-wrap gap-3 mb-4">
+                            {Object.entries(generatedTheme.preview).map(([key, color]) => (
+                              <div key={key} className="text-center">
+                                <div
+                                  className="w-12 h-12 rounded-lg shadow-lg mb-1"
+                                  style={{ backgroundColor: color }}
+                                />
+                                <div className="text-xs" style={{ color: generatedTheme.preview.text }}>
+                                  {key}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              className="px-4 py-2 rounded-lg font-medium"
+                              style={{
+                                backgroundColor: generatedTheme.preview.primary,
+                                color: '#ffffff',
+                              }}
+                            >
+                              Primary Button
+                            </button>
+                            <button
+                              className="px-4 py-2 rounded-lg font-medium"
+                              style={{
+                                backgroundColor: generatedTheme.preview.secondary,
+                                color: '#ffffff',
+                              }}
+                            >
+                              Secondary
+                            </button>
+                            <button
+                              className="px-4 py-2 rounded-lg font-medium border"
+                              style={{
+                                borderColor: generatedTheme.preview.accent,
+                                color: generatedTheme.preview.accent,
+                              }}
+                            >
+                              Outline
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* CSS Variables */}
+                        <details className="bg-zinc-800/50 rounded-lg">
+                          <summary className="p-4 cursor-pointer text-sm text-zinc-400 hover:text-white transition-colors">
+                            {language === 'ru' ? 'Показать CSS переменные' : 'Show CSS Variables'}
+                          </summary>
+                          <div className="px-4 pb-4">
+                            <pre className="bg-zinc-900 p-3 rounded text-xs text-zinc-300 overflow-x-auto">
+{`:root {
+${Object.entries(generatedTheme.cssVariables).map(([key, value]) => `  ${key}: ${value};`).join('\n')}
+}`}
+                            </pre>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(`:root {\n${Object.entries(generatedTheme.cssVariables).map(([key, value]) => `  ${key}: ${value};`).join('\n')}\n}`)}
+                              className="mt-2 px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-xs rounded transition-colors"
+                            >
+                              {language === 'ru' ? 'Копировать' : 'Copy'}
+                            </button>
+                          </div>
+                        </details>
+
+                        {/* Reset button */}
+                        <button
+                          onClick={() => {
+                            setGeneratedTheme(null);
+                            setSelectedStyle('');
+                            setCustomStylePrompt('');
+                          }}
+                          className="text-sm text-zinc-500 hover:text-cyan-400 transition-colors"
+                        >
+                          {language === 'ru' ? '↻ Выбрать другой стиль' : '↻ Choose different style'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* === SECTION 2: Deploy Guide === */}
+                  <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <span>🚀</span> {language === 'ru' ? 'Как запустить проект' : 'How to Deploy'}
+                      </h3>
+                    </div>
+
+                    {/* Если нет GitHub репо - показываем кнопку создания */}
+                    {!projectData.github_url && (
+                      <div className="mb-6 p-4 bg-zinc-800/50 rounded-lg border border-amber-500/20">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">⚠️</span>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-amber-400 mb-1">
+                              {language === 'ru' ? 'Шаг 1: Создайте GitHub репозиторий' : 'Step 1: Create GitHub Repository'}
+                            </h4>
+                            <p className="text-sm text-zinc-400 mb-3">
+                              {language === 'ru'
+                                ? 'Для деплоя на Vercel сначала нужно загрузить код в GitHub'
+                                : 'To deploy on Vercel, you first need to upload the code to GitHub'}
+                            </p>
+                            {isGithubAuthenticated ? (
+                              <button
+                                onClick={createGithubRepoForProject}
+                                disabled={creatingGithubRepo}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all inline-flex items-center gap-2"
+                              >
+                                {creatingGithubRepo ? (
+                                  <>
+                                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                    {language === 'ru' ? 'Создаём...' : 'Creating...'}
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                                    </svg>
+                                    {language === 'ru' ? 'Загрузить на GitHub' : 'Upload to GitHub'}
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <a
+                                href={`/api/auth/github?returnUrl=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}?tab=project` : `/trends/${params.id}?tab=project`)}`}
+                                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm font-medium transition-all inline-flex items-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                                </svg>
+                                {language === 'ru' ? 'Войти в GitHub' : 'Login to GitHub'}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Инструкция по деплою на Vercel */}
+                    <div className="space-y-4">
+                      <div className={`p-4 rounded-lg ${projectData.github_url ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-zinc-800/50'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${projectData.github_url ? 'bg-emerald-500 text-white' : 'bg-zinc-700 text-zinc-400'}`}>
+                            {projectData.github_url ? '✓' : '1'}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className={`font-medium mb-1 ${projectData.github_url ? 'text-emerald-400' : 'text-zinc-400'}`}>
+                              {language === 'ru' ? 'GitHub репозиторий' : 'GitHub Repository'}
+                            </h4>
+                            {projectData.github_url ? (
+                              <a href={projectData.github_url} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-400 hover:text-indigo-300 underline">
+                                {projectData.github_url}
+                              </a>
+                            ) : (
+                              <p className="text-sm text-zinc-500">{language === 'ru' ? 'Создайте репозиторий выше' : 'Create repository above'}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-4 rounded-lg ${projectData.github_url ? 'bg-zinc-800/50' : 'bg-zinc-900/50 opacity-50'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-sm font-bold text-zinc-400">2</div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-white mb-1">{language === 'ru' ? 'Откройте Vercel' : 'Open Vercel'}</h4>
+                            <p className="text-sm text-zinc-400 mb-2">
+                              {language === 'ru'
+                                ? 'Перейдите на vercel.com и нажмите "Add New Project"'
+                                : 'Go to vercel.com and click "Add New Project"'}
+                            </p>
+                            <a
+                              href="https://vercel.com/new"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300"
+                            >
+                              <span>▲</span> vercel.com/new
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-4 rounded-lg ${projectData.github_url ? 'bg-zinc-800/50' : 'bg-zinc-900/50 opacity-50'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-sm font-bold text-zinc-400">3</div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-white mb-1">{language === 'ru' ? 'Импортируйте репозиторий' : 'Import Repository'}</h4>
+                            <p className="text-sm text-zinc-400">
+                              {language === 'ru'
+                                ? 'Выберите ваш GitHub репозиторий из списка и нажмите "Import"'
+                                : 'Select your GitHub repository from the list and click "Import"'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-4 rounded-lg ${projectData.github_url ? 'bg-zinc-800/50' : 'bg-zinc-900/50 opacity-50'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-sm font-bold text-zinc-400">4</div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-white mb-1">{language === 'ru' ? 'Настройте переменные окружения' : 'Configure Environment Variables'}</h4>
+                            <p className="text-sm text-zinc-400 mb-2">
+                              {language === 'ru'
+                                ? 'В разделе "Environment Variables" добавьте необходимые ключи:'
+                                : 'In the "Environment Variables" section, add the required keys:'}
+                            </p>
+                            <div className="bg-zinc-900 rounded p-2 text-xs text-zinc-400 font-mono space-y-1">
+                              <div>NEXT_PUBLIC_SUPABASE_URL=your_supabase_url</div>
+                              <div>NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key</div>
+                              <div>OPENAI_API_KEY=your_openai_key</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-4 rounded-lg ${projectData.github_url ? 'bg-zinc-800/50' : 'bg-zinc-900/50 opacity-50'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-sm font-bold text-zinc-400">5</div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-white mb-1">{language === 'ru' ? 'Деплой!' : 'Deploy!'}</h4>
+                            <p className="text-sm text-zinc-400">
+                              {language === 'ru'
+                                ? 'Нажмите "Deploy" и через 1-2 минуты ваш проект будет доступен онлайн!'
+                                : 'Click "Deploy" and in 1-2 minutes your project will be live!'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Если Vercel уже задеплоен */}
+                    {(projectData.vercel_url || vercelUrl) && (
+                      <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">✅</span>
+                          <div>
+                            <h4 className="font-medium text-emerald-400">{language === 'ru' ? 'Проект уже онлайн!' : 'Project is live!'}</h4>
+                            <a
+                              href={projectData.vercel_url || vercelUrl || ''}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-emerald-300 hover:text-emerald-200 underline"
+                            >
+                              {projectData.vercel_url || vercelUrl}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* === SECTION 3: Marketing Strategy === */}
+                  <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <span>📣</span> {language === 'ru' ? 'Маркетинговая стратегия' : 'Marketing Strategy'}
+                    </h3>
+
+                    {!marketingStrategy ? (
+                      <div className="space-y-4">
+                        <p className="text-zinc-400 text-sm">
+                          {language === 'ru'
+                            ? 'Введите ваш месячный бюджет на маркетинг, и AI сгенерирует стратегию с конкретными каналами и тактиками'
+                            : 'Enter your monthly marketing budget, and AI will generate a strategy with specific channels and tactics'}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
+                            <input
+                              type="number"
+                              value={marketingBudget}
+                              onChange={(e) => setMarketingBudget(e.target.value)}
+                              placeholder={language === 'ru' ? 'Бюджет в месяц' : 'Monthly budget'}
+                              className="w-full pl-8 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none"
+                              min="0"
+                              step="50"
+                            />
+                          </div>
+                          <button
+                            onClick={generateMarketingStrategy}
+                            disabled={!marketingBudget || loadingMarketing}
+                            className="px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all inline-flex items-center justify-center gap-2"
+                          >
+                            {loadingMarketing ? (
+                              <>
+                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                {language === 'ru' ? 'Генерируем...' : 'Generating...'}
+                              </>
+                            ) : (
+                              <>
+                                <span>✨</span>
+                                {language === 'ru' ? 'Создать стратегию' : 'Generate Strategy'}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          {['100', '300', '500', '1000', '2000'].map((amount) => (
+                            <button
+                              key={amount}
+                              onClick={() => setMarketingBudget(amount)}
+                              className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-full transition-colors"
+                            >
+                              ${amount}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Общий бюджет и результаты */}
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="p-4 bg-zinc-800/50 rounded-lg">
+                            <div className="text-2xl font-bold text-purple-400">{marketingStrategy.totalBudget}</div>
+                            <div className="text-xs text-zinc-500">{language === 'ru' ? 'Общий бюджет' : 'Total Budget'}</div>
+                          </div>
+                          <div className="p-4 bg-zinc-800/50 rounded-lg">
+                            <div className="text-sm text-zinc-300">{marketingStrategy.expectedResults}</div>
+                            <div className="text-xs text-zinc-500">{language === 'ru' ? 'Ожидаемые результаты' : 'Expected Results'}</div>
+                          </div>
+                        </div>
+
+                        {/* Каналы */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-zinc-400">{language === 'ru' ? 'Рекомендуемые каналы:' : 'Recommended Channels:'}</h4>
+                          {marketingStrategy.channels.map((channel, i) => (
+                            <div key={i} className="p-4 bg-zinc-800/50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-white">{channel.name}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    channel.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                                    channel.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                    'bg-zinc-700 text-zinc-400'
+                                  }`}>
+                                    {channel.priority}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm">
+                                  <span className="text-purple-400">{channel.budget}</span>
+                                  <span className="text-emerald-400">ROI: {channel.roi}</span>
+                                </div>
+                              </div>
+                              {channel.tactics && channel.tactics.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {channel.tactics.map((tactic, j) => (
+                                    <span key={j} className="text-xs px-2 py-1 bg-zinc-700/50 text-zinc-400 rounded">
+                                      {tactic}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Timeline */}
+                        <div className="p-4 bg-zinc-800/50 rounded-lg">
+                          <h4 className="text-sm font-medium text-zinc-400 mb-2">{language === 'ru' ? 'Временная шкала:' : 'Timeline:'}</h4>
+                          <p className="text-sm text-zinc-300">{marketingStrategy.timeline}</p>
+                        </div>
+
+                        {/* Key Metrics */}
+                        {marketingStrategy.keyMetrics && marketingStrategy.keyMetrics.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-zinc-400 mb-2">{language === 'ru' ? 'Ключевые метрики:' : 'Key Metrics:'}</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {marketingStrategy.keyMetrics.map((metric, i) => (
+                                <span key={i} className="px-3 py-1 bg-purple-500/10 text-purple-300 text-sm rounded-full">
+                                  {metric}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Recommendations */}
+                        {marketingStrategy.recommendations && marketingStrategy.recommendations.length > 0 && (
+                          <div className="p-4 bg-zinc-800/50 rounded-lg">
+                            <h4 className="text-sm font-medium text-zinc-400 mb-2">{language === 'ru' ? 'Рекомендации:' : 'Recommendations:'}</h4>
+                            <ul className="space-y-1">
+                              {marketingStrategy.recommendations.map((rec, i) => (
+                                <li key={i} className="text-sm text-zinc-300 flex items-start gap-2">
+                                  <span className="text-purple-400">→</span> {rec}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Пересоздать */}
+                        <button
+                          onClick={() => setMarketingStrategy(null)}
+                          className="text-sm text-zinc-500 hover:text-purple-400 transition-colors"
+                        >
+                          {language === 'ru' ? '↻ Изменить бюджет и пересоздать' : '↻ Change budget and regenerate'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* === SECTION 4: Roadmap === */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <span>🗺️</span> {t.trendDetail.project.roadmap}
+                    </h3>
+                    <div className="space-y-4">
+                      {[
+                        { key: 'mvp', label: 'MVP', color: 'indigo', goals: displayRoadmapMvpGoals, deliverables: displayRoadmapMvpDeliverables, success_metrics: displayRoadmapMvpSuccessMetrics },
+                        { key: 'alpha', label: 'Alpha', color: 'purple', goals: displayRoadmapAlphaGoals, deliverables: displayRoadmapAlphaDeliverables, success_metrics: displayRoadmapAlphaSuccessMetrics },
+                        { key: 'beta', label: 'Beta', color: 'amber', goals: displayRoadmapBetaGoals, deliverables: displayRoadmapBetaDeliverables, success_metrics: displayRoadmapBetaSuccessMetrics },
+                        { key: 'production', label: 'Production', color: 'emerald', goals: displayRoadmapProductionGoals, deliverables: displayRoadmapProductionDeliverables, success_metrics: displayRoadmapProductionSuccessMetrics },
+                      ].map((phase, i) => {
+                        const phaseData = projectData.roadmap?.[phase.key as keyof ProjectRoadmap];
+                        if (!phaseData) return null;
+                        return (
+                          <div key={i} className="relative pl-8 pb-4 border-l-2 border-indigo-500/30 last:border-l-transparent">
+                            <div className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-${phase.color}-500`} style={{backgroundColor: phase.color === 'indigo' ? '#6366f1' : phase.color === 'purple' ? '#a855f7' : phase.color === 'amber' ? '#f59e0b' : '#10b981'}} />
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-semibold text-white">{phase.label}</h4>
+                              {phaseData.duration && (
+                                <span className="text-xs px-2 py-1 bg-zinc-800 text-zinc-400 rounded">{phaseData.duration}</span>
+                              )}
+                            </div>
+                            <div className="grid md:grid-cols-3 gap-4">
+                              <div>
+                                <span className="text-xs text-zinc-500">{t.trendDetail.project.goals}:</span>
+                                <ul className="mt-1 space-y-1">
+                                  {phase.goals.map((g, j) => (
+                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
+                                      <span className="text-emerald-400">→</span> {g}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <span className="text-xs text-zinc-500">{t.trendDetail.project.deliverables}:</span>
+                                <ul className="mt-1 space-y-1">
+                                  {phase.deliverables.map((d, j) => (
+                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
+                                      <span className="text-indigo-400">✓</span> {d}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <span className="text-xs text-zinc-500">{t.trendDetail.project.successMetrics}:</span>
+                                <ul className="mt-1 space-y-1">
+                                  {phase.success_metrics.map((m, j) => (
+                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
+                                      <span className="text-amber-400">📊</span> {m}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* === SECTION 5: MVP Specification === */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                       <span>⚙️</span> MVP Specification
@@ -3916,102 +4160,6 @@ export default function TrendPage() {
                     </div>
                   </div>
 
-                  {/* Roadmap */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <span>🗺️</span> {t.trendDetail.project.roadmap}
-                    </h3>
-                    <div className="space-y-4">
-                      {[
-                        { key: 'mvp', label: 'MVP', color: 'indigo', goals: displayRoadmapMvpGoals, deliverables: displayRoadmapMvpDeliverables, success_metrics: displayRoadmapMvpSuccessMetrics },
-                        { key: 'alpha', label: 'Alpha', color: 'purple', goals: displayRoadmapAlphaGoals, deliverables: displayRoadmapAlphaDeliverables, success_metrics: displayRoadmapAlphaSuccessMetrics },
-                        { key: 'beta', label: 'Beta', color: 'amber', goals: displayRoadmapBetaGoals, deliverables: displayRoadmapBetaDeliverables, success_metrics: displayRoadmapBetaSuccessMetrics },
-                        { key: 'production', label: 'Production', color: 'emerald', goals: displayRoadmapProductionGoals, deliverables: displayRoadmapProductionDeliverables, success_metrics: displayRoadmapProductionSuccessMetrics },
-                      ].map((phase, i) => {
-                        const phaseData = projectData.roadmap?.[phase.key as keyof ProjectRoadmap];
-                        if (!phaseData) return null;
-                        return (
-                          <div key={i} className="relative pl-8 pb-4 border-l-2 border-indigo-500/30 last:border-l-transparent">
-                            <div className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-${phase.color}-500`} style={{backgroundColor: phase.color === 'indigo' ? '#6366f1' : phase.color === 'purple' ? '#a855f7' : phase.color === 'amber' ? '#f59e0b' : '#10b981'}} />
-                            <div className="flex items-center gap-3 mb-2">
-                              <h4 className="font-semibold text-white">{phase.label}</h4>
-                              {phaseData.duration && (
-                                <span className="text-xs px-2 py-1 bg-zinc-800 text-zinc-400 rounded">{phaseData.duration}</span>
-                              )}
-                            </div>
-                            <div className="grid md:grid-cols-3 gap-4">
-                              <div>
-                                <span className="text-xs text-zinc-500">{t.trendDetail.project.goals}:</span>
-                                <ul className="mt-1 space-y-1">
-                                  {phase.goals.map((g, j) => (
-                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
-                                      <span className="text-emerald-400">→</span> {g}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <span className="text-xs text-zinc-500">{t.trendDetail.project.deliverables}:</span>
-                                <ul className="mt-1 space-y-1">
-                                  {phase.deliverables.map((d, j) => (
-                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
-                                      <span className="text-indigo-400">✓</span> {d}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <span className="text-xs text-zinc-500">{t.trendDetail.project.successMetrics}:</span>
-                                <ul className="mt-1 space-y-1">
-                                  {phase.success_metrics.map((m, j) => (
-                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
-                                      <span className="text-amber-400">📊</span> {m}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Business Metrics */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <span>💰</span> Business Metrics
-                    </h3>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
-                        <div className="text-lg font-bold text-zinc-300">{projectData.business_metrics?.target_users_mvp || 'TBD'}</div>
-                        <div className="text-xs text-zinc-500">MVP Users</div>
-                      </div>
-                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
-                        <div className="text-lg font-bold text-zinc-300">{projectData.business_metrics?.target_revenue_mvp || 'TBD'}</div>
-                        <div className="text-xs text-zinc-500">MVP Revenue</div>
-                      </div>
-                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
-                        <div className="text-lg font-bold text-emerald-400">{projectData.business_metrics?.target_users_production || 'TBD'}</div>
-                        <div className="text-xs text-zinc-500">Production Users</div>
-                      </div>
-                      <div className="p-4 bg-zinc-800/50 rounded-lg text-center">
-                        <div className="text-lg font-bold text-emerald-400">{projectData.business_metrics?.target_revenue_production || 'TBD'}</div>
-                        <div className="text-xs text-zinc-500">Production Revenue</div>
-                      </div>
-                    </div>
-                    {displayKeyKpis.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-zinc-700">
-                        <span className="text-xs text-zinc-500">Key KPIs:</span>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {displayKeyKpis.map((kpi, i) => (
-                            <span key={i} className="px-2 py-1 bg-indigo-500/10 text-indigo-300 text-xs rounded">{kpi}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Enhancement Recommendations */}
                   {displayEnhancements.length > 0 && (
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
@@ -4038,24 +4186,29 @@ export default function TrendPage() {
                     </div>
                   )}
 
-                  {/* README Preview */}
+                  {/* README Preview - скрытый, можно раскрыть */}
                   {projectData.readme_content && (
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <details className="bg-zinc-900/50 border border-zinc-800 rounded-xl">
+                      <summary className="p-6 cursor-pointer hover:bg-zinc-800/50 transition-colors rounded-xl">
+                        <span className="text-lg font-semibold text-white inline-flex items-center gap-2">
                           <span>📝</span> README.md
-                        </h3>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(projectData.readme_content)}
-                          className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded text-sm transition-colors"
-                        >
-                          Copy
-                        </button>
+                          <span className="text-xs text-zinc-500 font-normal ml-2">{language === 'ru' ? '(нажмите чтобы раскрыть)' : '(click to expand)'}</span>
+                        </span>
+                      </summary>
+                      <div className="px-6 pb-6">
+                        <div className="flex justify-end mb-2">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(projectData.readme_content)}
+                            className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded text-sm transition-colors"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto max-h-80 whitespace-pre-wrap">
+                          {projectData.readme_content}
+                        </pre>
                       </div>
-                      <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto max-h-80 whitespace-pre-wrap">
-                        {projectData.readme_content}
-                      </pre>
-                    </div>
+                    </details>
                   )}
 
                   {/* Action Buttons */}
@@ -4111,10 +4264,6 @@ export default function TrendPage() {
               main_pain: analysis.main_pain,
               key_pain_points: analysis.key_pain_points,
               target_audience: analysis.target_audience,
-            } : undefined,
-            pitch: pitchDeck ? {
-              company_name: pitchDeck.title,
-              tagline: pitchDeck.tagline,
             } : undefined,
             // NEW: Передаём productSpec если уже есть
             productSpec: productSpec || undefined,

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import fs from 'fs';
+import path from 'path';
 
 export interface Trend {
   id: string;
@@ -24,11 +26,23 @@ interface TrendsData {
 
 const TRENDS_KEY = 'trendhunter:trends';
 
-// Fallback in-memory storage for local development
-let localTrendsStorage: TrendsData = {
-  trends: [],
-  lastUpdated: null,
-};
+// Load seed data from file for local development
+function loadSeedData(): TrendsData {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'trends.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (parsed.trends && Array.isArray(parsed.trends)) {
+      return { trends: parsed.trends, lastUpdated: parsed.lastUpdated || new Date().toISOString() };
+    }
+  } catch (e) {
+    console.warn('Could not load seed trends from data/trends.json:', e);
+  }
+  return { trends: [], lastUpdated: null };
+}
+
+// Fallback in-memory storage for local development (seeded from file)
+let localTrendsStorage: TrendsData = loadSeedData();
 
 // Check if Vercel KV is configured
 const isKVConfigured = () => {

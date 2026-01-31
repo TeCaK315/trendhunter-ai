@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
+import { calcInvestmentHotness, calcTotalFunding, calcFundingTrend, parseFundingAmount } from '@/lib/evidence-calculations';
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -407,135 +408,89 @@ async function searchActiveFunds(query: string): Promise<{ funds: ActiveFund[]; 
   return { funds: funds.slice(0, 8) };
 }
 
-// AI analysis of venture landscape
-async function analyzeVentureLandscape(
-  query: string,
+// Venture landscape analysis — ФОРМУЛЫ вместо GPT для числовых данных
+function analyzeVentureLandscapeWithFormulas(
   rounds: FundingRound[],
   funds: ActiveFund[],
-  context?: PreviousContext
-): Promise<Partial<VentureData> & {
-  investment_thesis?: string;
-  recommended_round?: string;
-  key_investors_to_target?: string[];
-}> {
-  if (!OPENAI_API_KEY) {
-    return {
-      ...getDefaultAnalysis(rounds, funds),
-      error: 'OPENAI_API_KEY не настроен. AI-анализ недоступен.'
-    };
-  }
+): {
+  total_funding_last_year: string;
+  average_round_size: string;
+  funding_trend: 'growing' | 'stable' | 'declining';
+  investment_hotness: number;
+  market_signals: string[];
+  recommended_round: string | null;
+  key_investors_to_target: string[];
+  score_metadata: Record<string, { data_type: string; formula: string }>;
+} {
+  // ФОРМУЛА: total funding — сумма реальных раундов
+  const amounts = rounds.map(r => r.amount);
+  const totalFunding = calcTotalFunding(amounts);
+  const totalMillions = totalFunding.totalMillions;
 
+  // ФОРМУЛА: average round size
+  const validAmounts = amounts.map(parseFundingAmount).filter(a => a > 0);
+  const avgRoundSize = validAmounts.length > 0
+    ? `$${(validAmounts.reduce((s, v) => s + v, 0) / validAmounts.length).toFixed(1)}M`
+    : 'Нет данных';
+
+  // ФОРМУЛА: funding trend
+  const roundDates = rounds.map(r => r.date).filter(d => d !== 'DATE_UNKNOWN');
+  const trend = calcFundingTrend(roundDates);
+
+  // ФОРМУЛА: investment hotness
+  const hotness = calcInvestmentHotness(rounds.length, totalMillions);
+
+  // Market signals — шаблонные на основе реальных данных
+  const signals: string[] = [];
+  if (rounds.length > 0) {
+    signals.push(`${rounds.length} раундов финансирования найдено в нише`);
+  }
+  if (totalMillions > 0) {
+    signals.push(`Общий объём финансирования: ${totalFunding.formatted}`);
+  }
+  if (funds.length > 0) {
+    signals.push(`${funds.length} активных инвесторов в нише`);
+  }
+  if (trend.trend === 'growing') {
+    signals.push('Тренд финансирования растёт');
+  } else if (trend.trend === 'declining') {
+    signals.push('Тренд финансирования снижается');
+  }
   if (rounds.length === 0 && funds.length === 0) {
-    return {
-      total_funding_last_year: 'Нет данных',
-      average_round_size: 'Нет данных',
-      funding_trend: 'stable',
-      investment_hotness: 0,
-      market_signals: ['Недостаточно данных для анализа инвестиционной активности'],
-    };
+    signals.push('Недостаточно данных о финансировании в нише');
   }
 
-  try {
-    let contextSection = '';
-
-    if (context?.analysis) {
-      contextSection += `
-## Контекст от эксперта по анализу:
-- Главная боль: ${context.analysis.main_pain}
-- Целевая аудитория: ${context.analysis.target_audience?.primary || 'не определена'}
-- Возможности: ${context.analysis.opportunities?.join(', ') || 'не определены'}
-- Готовность рынка: ${context.analysis.market_readiness || 'не оценена'}/10
-`;
+  // Recommended round — на основе данных
+  let recommendedRound: string | null = null;
+  if (rounds.length > 0) {
+    const roundTypes = rounds.map(r => r.round_type.toLowerCase());
+    if (roundTypes.some(r => r.includes('series'))) {
+      recommendedRound = 'Seed или Series A (рынок validated)';
+    } else if (roundTypes.some(r => r.includes('seed'))) {
+      recommendedRound = 'Pre-seed или Seed (ранняя стадия)';
+    } else {
+      recommendedRound = 'Seed (рынок развивается)';
     }
-
-    if (context?.sources?.google_trends) {
-      contextSection += `- Рост интереса по Google Trends: ${context.sources.google_trends.growth_rate}%
-`;
-    }
-
-    if (context?.competition) {
-      contextSection += `
-## Контекст от эксперта по конкурентам:
-- Насыщенность рынка: ${context.competition.market_saturation}
-- Blue Ocean Score: ${context.competition.blue_ocean_score}/10
-- Позиционирование: ${context.competition.strategic_positioning || 'не определено'}
-- Конкуренты с финансированием: ${context.competition.competitors.filter(c => c.funding).map(c => `${c.name} (${c.funding})`).join(', ') || 'нет данных'}
-`;
-    }
-
-    const prompt = `Ты эксперт по венчурным инвестициям. Проанализируй инвестиционный ландшафт для "${query}".
-${contextSection}
-## Найденные раунды финансирования:
-${rounds.length > 0 ? rounds.map(r => `- ${r.company}: ${r.amount} (${r.round_type})`).join('\n') : 'Нет данных о раундах'}
-
-## Активные инвесторы: ${funds.length > 0 ? funds.map(f => f.name).join(', ') : 'Не найдены'}
-
-ВАЖНО: Учитывай контекст от предыдущих экспертов:
-- Если боль острая и рынок растёт - это сильный сигнал для инвесторов
-- Если Blue Ocean Score высокий - меньше конкуренции за инвестиции
-- Если есть финансированные конкуренты - значит рынок validated
-
-Верни JSON:
-{
-  "total_funding_estimate": "$XXM-$XXM в нише за последний год",
-  "average_round_size": "$XM",
-  "funding_trend": "growing" | "stable" | "declining",
-  "investment_hotness": 0-10,
-  "market_signals": ["сигнал для инвесторов 1", "сигнал 2"],
-  "investment_thesis": "Краткий тезис почему инвесторы вкладывают в эту нишу",
-  "recommended_round": "Рекомендуемый тип раунда для стартапа в этой нише",
-  "key_investors_to_target": ["Инвестор 1", "Инвестор 2", "Инвестор 3"]
-}`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.4,
-        max_tokens: 800,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('OpenAI API error:', response.status, errorData);
-      return {
-        ...getDefaultAnalysis(rounds, funds),
-        error: `Ошибка OpenAI API (${response.status}): ${errorData.error?.message || 'Не удалось выполнить анализ'}`
-      };
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        total_funding_last_year: parsed.total_funding_estimate || 'Unknown',
-        average_round_size: parsed.average_round_size || 'Unknown',
-        funding_trend: parsed.funding_trend || 'stable',
-        investment_hotness: parsed.investment_hotness || 5,
-        market_signals: parsed.market_signals || [],
-        investment_thesis: parsed.investment_thesis,
-        recommended_round: parsed.recommended_round,
-        key_investors_to_target: parsed.key_investors_to_target || [],
-      };
-    }
-  } catch (error) {
-    console.error('AI analysis error:', error);
-    return {
-      ...getDefaultAnalysis(rounds, funds),
-      error: `Ошибка AI-анализа: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
   }
 
-  return getDefaultAnalysis(rounds, funds);
+  // Key investors — реальные из найденных фондов
+  const keyInvestors = funds.slice(0, 5).map(f => f.name);
+
+  return {
+    total_funding_last_year: totalFunding.formatted,
+    average_round_size: avgRoundSize,
+    funding_trend: trend.trend,
+    investment_hotness: hotness.value,
+    market_signals: signals,
+    recommended_round: recommendedRound,
+    key_investors_to_target: keyInvestors,
+    score_metadata: {
+      total_funding: { data_type: 'calculated', formula: 'SUM(parsed_amounts)' },
+      average_round_size: { data_type: 'calculated', formula: 'AVG(parsed_amounts)' },
+      funding_trend: { data_type: 'calculated', formula: trend.formula },
+      investment_hotness: { data_type: 'calculated', formula: hotness.formula || 'min(10, rounds*1.5 + funding_M*0.1)' },
+    },
+  };
 }
 
 // Helper functions
@@ -609,20 +564,7 @@ function getVCWebsite(vcName: string): string {
   return websites[vcName] || `https://www.google.com/search?q=${encodeURIComponent(vcName)}`;
 }
 
-function getDefaultAnalysis(rounds: FundingRound[], funds: ActiveFund[]): Partial<VentureData> {
-  const roundCount = rounds.length;
-  return {
-    total_funding_last_year: roundCount > 5 ? '$100M+' : roundCount > 2 ? '$20M-$100M' : roundCount > 0 ? '$5M-$20M' : 'Нет данных',
-    average_round_size: roundCount > 0 ? '$5M-$15M' : 'Нет данных',
-    funding_trend: roundCount > 5 ? 'growing' : 'stable',
-    investment_hotness: Math.min(10, roundCount + funds.length),
-    market_signals: roundCount > 0 || funds.length > 0 ? [
-      'Активный интерес инвесторов',
-      'Объявлены раунды финансирования',
-      'Растущий сегмент рынка',
-    ] : ['Недостаточно данных для выводов'],
-  };
-}
+// getDefaultAnalysis removed — replaced by analyzeVentureLandscapeWithFormulas
 
 export async function POST(request: NextRequest) {
   try {
@@ -657,26 +599,25 @@ export async function POST(request: NextRequest) {
       searchActiveFunds(searchQuery),
     ]);
 
-    // AI analysis with full context
-    const analysis = await analyzeVentureLandscape(
-      searchQuery,
+    // ФОРМУЛЫ вместо GPT для числовых данных
+    const analysis = analyzeVentureLandscapeWithFormulas(
       roundsResult.rounds,
       fundsResult.funds,
-      previousContext
     );
 
     const result = {
       niche: searchQuery,
-      total_funding_last_year: analysis.total_funding_last_year || 'Нет данных',
-      average_round_size: analysis.average_round_size || 'Нет данных',
-      funding_trend: analysis.funding_trend || 'stable',
+      total_funding_last_year: analysis.total_funding_last_year,
+      average_round_size: analysis.average_round_size,
+      funding_trend: analysis.funding_trend,
       recent_rounds: roundsResult.rounds,
       active_funds: fundsResult.funds,
-      investment_hotness: analysis.investment_hotness || 0,
-      market_signals: analysis.market_signals || [],
-      investment_thesis: analysis.investment_thesis || null,
-      recommended_round: analysis.recommended_round || null,
-      key_investors_to_target: analysis.key_investors_to_target || [],
+      investment_hotness: analysis.investment_hotness,
+      market_signals: analysis.market_signals,
+      investment_thesis: null, // Убрано — было GPT-галлюцинацией
+      recommended_round: analysis.recommended_round,
+      key_investors_to_target: analysis.key_investors_to_target,
+      score_metadata: analysis.score_metadata,
       sources: [
         {
           name: 'Google News Search',
@@ -696,7 +637,7 @@ export async function POST(request: NextRequest) {
       ],
       analyzed_at: new Date().toISOString(),
       context_received: !!previousContext?.competition,
-      errors: [roundsResult.error, fundsResult.error, analysis.error].filter(Boolean),
+      errors: [roundsResult.error, fundsResult.error].filter(Boolean),
       warnings: missingKeys.length > 0 ? `Отсутствуют API ключи: ${missingKeys.join(', ')}` : undefined,
     };
 

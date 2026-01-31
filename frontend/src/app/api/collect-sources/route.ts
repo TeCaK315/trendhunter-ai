@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AnalysisData } from '@/types/analysis-context';
+import {
+  fetchReddit,
+  fetchHackerNews,
+  fetchTwitter,
+  fetchQuora,
+  fetchStackOverflow,
+  fetchYouTube,
+  fetchGoogleTrends,
+} from '@/lib/data-fetchers';
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || '';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
 // Контекст анализа, полученный от предыдущих экспертов
 interface AnalysisContext {
@@ -15,427 +24,42 @@ interface AnalysisContext {
   analysis?: AnalysisData;
 }
 
-interface RedditPost {
-  title: string;
-  subreddit: string;
-  score: number;
-  num_comments: number;
-  url: string;
-  created: string;
-  selftext?: string;
-}
-
-interface YouTubeVideo {
-  title: string;
-  channel: string;
-  description: string;
-  videoId: string;
-  url: string;
-  publishedAt: string;
-  thumbnail: string;
-}
-
-interface GoogleTrendsData {
-  growth_rate: number;
-  related_queries: Array<{ query: string; growth: string; link?: string }>;
-  interest_timeline?: Array<{ date: string; value: number }>;
-  search_query?: string;
-  google_trends_url?: string;
-  fetched_at?: string;
-  error?: string;
-}
-
 interface CollectedSources {
   reddit: {
-    posts: RedditPost[];
+    posts: Array<{ title: string; subreddit: string; score: number; num_comments: number; url: string; created: string; selftext?: string }>;
     communities: string[];
     engagement: number;
     error?: string;
   };
+  hacker_news: {
+    posts: Array<{ title: string; url: string; points: number; snippet: string }>;
+    error?: string;
+  };
+  twitter: {
+    discussions: Array<{ title: string; url: string; snippet: string }>;
+    error?: string;
+  };
+  quora: {
+    questions: Array<{ title: string; url: string; snippet: string }>;
+    error?: string;
+  };
+  stackoverflow: {
+    questions: Array<{ title: string; url: string; votes: number; answers: number; snippet: string }>;
+    error?: string;
+  };
   youtube: {
-    videos: YouTubeVideo[];
+    videos: Array<{ title: string; channel: string; description: string; videoId: string; url: string; publishedAt: string; thumbnail: string }>;
     channels: string[];
     error?: string;
   };
-  google_trends: GoogleTrendsData;
-  facebook: {
-    pages: Array<{ name: string; category: string; fan_count: number; about: string; url: string }>;
-    reach: number;
-  };
-}
-
-// Fetch Reddit posts using SerpAPI - NO MOCKS, real data only
-async function fetchRedditPosts(query: string): Promise<{ posts: RedditPost[]; communities: string[]; engagement: number; error?: string }> {
-  if (!SERPAPI_KEY) {
-    return {
-      posts: [],
-      communities: [],
-      engagement: 0,
-      error: 'SERPAPI_KEY не настроен. Добавьте ключ в .env.local для получения данных Reddit.'
-    };
-  }
-
-  try {
-    const searchUrl = `https://serpapi.com/search.json?engine=google&q=site:reddit.com+${encodeURIComponent(query)}&api_key=${SERPAPI_KEY}&num=20`;
-    const response = await fetch(searchUrl);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('SerpAPI Reddit error:', response.status, errorText);
-      return {
-        posts: [],
-        communities: [],
-        engagement: 0,
-        error: `Ошибка SerpAPI (${response.status}): Не удалось получить данные Reddit`
-      };
-    }
-
-    const data = await response.json();
-
-    // Check for API error
-    if (data.error) {
-      return {
-        posts: [],
-        communities: [],
-        engagement: 0,
-        error: `SerpAPI: ${data.error}`
-      };
-    }
-
-    const organicResults = data.organic_results || [];
-
-    const posts: RedditPost[] = [];
-    const communitiesSet = new Set<string>();
-    let totalEngagement = 0;
-
-    for (const result of organicResults) {
-      const url = result.link || '';
-      const subredditMatch = url.match(/reddit\.com\/r\/([^/]+)/);
-
-      if (subredditMatch) {
-        const subreddit = subredditMatch[1];
-        communitiesSet.add(subreddit);
-
-        // Extract engagement from snippet if available
-        const snippetText = result.snippet || '';
-        const scoreMatch = snippetText.match(/(\d+)\s*(?:points?|upvotes?)/i);
-        const commentsMatch = snippetText.match(/(\d+)\s*comments?/i);
-
-        // Only use extracted values, not random
-        const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
-        const numComments = commentsMatch ? parseInt(commentsMatch[1]) : 0;
-
-        totalEngagement += score + numComments * 2;
-
-        posts.push({
-          title: result.title?.replace(/ : .*$/, '').replace(/ - Reddit$/, '') || 'Reddit Discussion',
-          subreddit,
-          score,
-          num_comments: numComments,
-          url,
-          created: new Date().toISOString(),
-          selftext: result.snippet,
-        });
-      }
-    }
-
-    if (posts.length === 0) {
-      return {
-        posts: [],
-        communities: [],
-        engagement: 0,
-        error: `По запросу "${query}" не найдено постов на Reddit`
-      };
-    }
-
-    return {
-      posts: posts.slice(0, 10),
-      communities: Array.from(communitiesSet).slice(0, 5),
-      engagement: totalEngagement,
-    };
-  } catch (error) {
-    console.error('Error fetching Reddit posts:', error);
-    return {
-      posts: [],
-      communities: [],
-      engagement: 0,
-      error: `Ошибка сети при запросе Reddit: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
-  }
-}
-
-// Fetch YouTube videos - NO MOCKS, real data only
-async function fetchYouTubeVideos(query: string): Promise<{ videos: YouTubeVideo[]; channels: string[]; error?: string }> {
-  if (!YOUTUBE_API_KEY) {
-    return {
-      videos: [],
-      channels: [],
-      error: 'YOUTUBE_API_KEY не настроен. Добавьте ключ в .env.local для получения данных YouTube.'
-    };
-  }
-
-  try {
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
-    const response = await fetch(searchUrl);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('YouTube API error:', response.status, errorData);
-      return {
-        videos: [],
-        channels: [],
-        error: `Ошибка YouTube API (${response.status}): ${errorData.error?.message || 'Не удалось получить данные'}`
-      };
-    }
-
-    const data = await response.json();
-    const items = data.items || [];
-
-    const channelsSet = new Set<string>();
-    const videos: YouTubeVideo[] = items.map((item: { id: { videoId: string }; snippet: { title: string; channelTitle: string; description: string; publishedAt: string; thumbnails: { high: { url: string } } } }) => {
-      const videoId = item.id.videoId;
-      const snippet = item.snippet;
-      channelsSet.add(snippet.channelTitle);
-
-      return {
-        title: snippet.title,
-        channel: snippet.channelTitle,
-        description: snippet.description,
-        videoId,
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        publishedAt: snippet.publishedAt,
-        thumbnail: snippet.thumbnails?.high?.url || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      };
-    });
-
-    if (videos.length === 0) {
-      return {
-        videos: [],
-        channels: [],
-        error: `По запросу "${query}" не найдено видео на YouTube`
-      };
-    }
-
-    return {
-      videos,
-      channels: Array.from(channelsSet).slice(0, 5),
-    };
-  } catch (error) {
-    console.error('Error fetching YouTube videos:', error);
-    return {
-      videos: [],
-      channels: [],
-      error: `Ошибка сети при запросе YouTube: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
-  }
-}
-
-// Generate simplified query variants for Google Trends
-function generateQueryVariants(originalQuery: string): string[] {
-  const variants: string[] = [];
-
-  // Clean up the original query - remove AI/tech prefixes and suffixes
-  const cleaned = originalQuery
-    .replace(/^AI[- ]?Powered\s+/i, '')
-    .replace(/^AI[- ]?Based\s+/i, '')
-    .replace(/^AI\s+/i, '')
-    .replace(/\s+Platform$/i, '')
-    .replace(/\s+Tool$/i, '')
-    .replace(/\s+App$/i, '')
-    .replace(/\s+Software$/i, '')
-    .replace(/\s+Service$/i, '')
-    .replace(/\s+Agent$/i, '')
-    .replace(/\s+Assistant$/i, '')
-    .replace(/\s+System$/i, '')
-    .replace(/\s+Solution$/i, '')
-    .trim();
-
-  // Extract meaningful words
-  const skipWords = [
-    'the', 'and', 'for', 'with', 'app', 'tool', 'platform', 'service',
-    'powered', 'based', 'intelligent', 'smart', 'automated', 'automation',
-    'ai', 'artificial', 'intelligence', 'machine', 'learning', 'using'
-  ];
-
-  const words = cleaned.split(/\s+/).filter(w =>
-    w.length > 2 && !skipWords.includes(w.toLowerCase())
-  );
-
-  // Priority 1: Core topic (2-3 words)
-  if (words.length >= 3) {
-    variants.push(words.slice(0, 3).join(' '));
-  }
-  if (words.length >= 2) {
-    variants.push(words.slice(0, 2).join(' '));
-  }
-
-  // Priority 2: Single most important word
-  if (words.length >= 1) {
-    variants.push(words[0]);
-  }
-
-  // Priority 3: Industry-specific variants
-  const domainMappings: Record<string, string[]> = {
-    feedback: ['customer feedback', 'feedback analysis', 'user feedback'],
-    customer: ['customer service', 'customer support', 'customer experience'],
-    health: ['mental health app', 'health tech', 'wellness app'],
-    finance: ['fintech', 'personal finance', 'financial planning'],
-    marketing: ['marketing automation', 'digital marketing'],
-    sales: ['sales automation', 'CRM software'],
-    hr: ['HR tech', 'recruiting software', 'HR automation'],
-    learning: ['e-learning', 'online education', 'LMS'],
-    analytics: ['data analytics', 'business intelligence'],
-    content: ['content creation', 'content marketing'],
-    productivity: ['productivity tools', 'task management'],
-  };
-
-  for (const [key, alternatives] of Object.entries(domainMappings)) {
-    if (originalQuery.toLowerCase().includes(key)) {
-      variants.push(...alternatives.slice(0, 2));
-    }
-  }
-
-  // Priority 4: Cleaned query
-  if (cleaned !== originalQuery && cleaned.length > 0) {
-    variants.push(cleaned);
-  }
-
-  // Priority 5: With "software" or "app" suffix for better matches
-  if (words.length >= 1) {
-    variants.push(`${words[0]} software`);
-  }
-
-  // Full original as last resort
-  variants.push(originalQuery);
-
-  // Deduplicate and filter
-  return [...new Set(variants)].filter(v => v.length > 0 && v.length < 50);
-}
-
-// Fetch Google Trends data - NO MOCKS, real data only
-async function fetchGoogleTrends(query: string): Promise<GoogleTrendsData> {
-  if (!SERPAPI_KEY) {
-    return {
-      growth_rate: 0,
-      related_queries: [],
-      error: 'SERPAPI_KEY не настроен. Добавьте ключ в .env.local для получения данных Google Trends.'
-    };
-  }
-
-  const queryVariants = generateQueryVariants(query);
-
-  for (const currentQuery of queryVariants) {
-    try {
-      const trendsUrl = `https://serpapi.com/search.json?engine=google_trends&q=${encodeURIComponent(currentQuery)}&date=today%2012-m&api_key=${SERPAPI_KEY}`;
-      const response = await fetch(trendsUrl);
-
-      if (!response.ok) {
-        continue;
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
-        continue;
-      }
-
-      const timelineData = data.interest_over_time?.timeline_data || [];
-      if (timelineData.length === 0) {
-        continue;
-      }
-
-      // We found real data - process it
-      return processGoogleTrendsData(data, currentQuery);
-    } catch (error) {
-      console.error(`Error fetching Google Trends for "${currentQuery}":`, error);
-      continue;
-    }
-  }
-
-  // All variants failed - return honest error
-  return {
-    growth_rate: 0,
-    related_queries: [],
-    error: `Не найдено данных Google Trends для запроса "${query}" и его вариаций`
-  };
-}
-
-// Process Google Trends data from SerpAPI response
-function processGoogleTrendsData(data: Record<string, unknown>, usedQuery: string): GoogleTrendsData {
-  const interestOverTime = data.interest_over_time as { timeline_data?: Array<{ date?: string; values?: Array<{ extracted_value?: number; value?: string }> }> } | undefined;
-  const timelineData = interestOverTime?.timeline_data || [];
-
-  const interest_timeline: Array<{ date: string; value: number }> = [];
-
-  // Take last 13 points but skip the very last one (current incomplete week)
-  const completeData = timelineData.slice(-13, -1);
-
-  for (const point of completeData) {
-    const date = point.date || '';
-    const values = point.values || [];
-    const value = values[0]?.extracted_value ?? parseInt(values[0]?.value || '0') ?? 0;
-    interest_timeline.push({ date, value: Number(value) });
-  }
-
-  // Calculate growth rate - compare 3-month periods for stability
-  let growth_rate = 0;
-  if (interest_timeline.length >= 6) {
-    // Compare average of first 3 months vs last 3 months
-    const firstHalf = interest_timeline.slice(0, Math.floor(interest_timeline.length / 2));
-    const secondHalf = interest_timeline.slice(Math.floor(interest_timeline.length / 2));
-
-    const avgOld = firstHalf.reduce((sum, p) => sum + p.value, 0) / firstHalf.length || 1;
-    const avgNew = secondHalf.reduce((sum, p) => sum + p.value, 0) / secondHalf.length || 0;
-
-    growth_rate = Math.round(((avgNew - avgOld) / avgOld) * 100);
-  } else if (interest_timeline.length >= 2) {
-    const oldValue = interest_timeline[0].value || 1;
-    const newValue = interest_timeline[interest_timeline.length - 1].value || 0;
-    growth_rate = Math.round(((newValue - oldValue) / oldValue) * 100);
-  }
-
-  // Get related queries - try both 'top' and 'rising'
-  let related_queries: Array<{ query: string; growth: string; link?: string }> = [];
-  const relatedQueriesData = data.related_queries as {
-    top?: Array<{ query: string; extracted_value?: number; value?: string; link?: string }>;
-    rising?: Array<{ query: string; extracted_value?: number; value?: string; link?: string }>;
-  } | undefined;
-
-  // Combine top and rising queries
-  const topQueries = relatedQueriesData?.top || [];
-  const risingQueries = relatedQueriesData?.rising || [];
-  const allQueries = [...topQueries, ...risingQueries];
-
-  if (allQueries.length > 0) {
-    // Deduplicate by query text
-    const seen = new Set<string>();
-    related_queries = allQueries
-      .filter(item => {
-        const key = item.query.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 10)
-      .map(item => ({
-        query: item.query,
-        growth: item.value === 'Breakout' ? 'Breakout' : `${item.extracted_value || item.value || 0}`,
-        link: item.link,
-      }));
-  }
-
-  // Get the Google Trends URL
-  const searchMetadata = data.search_metadata as { google_trends_url?: string } | undefined;
-  const googleTrendsUrl = searchMetadata?.google_trends_url ||
-    `https://trends.google.com/trends/explore?q=${encodeURIComponent(usedQuery)}&date=today%2012-m`;
-
-  return {
-    growth_rate,
-    related_queries,
-    interest_timeline,
-    search_query: usedQuery,
-    google_trends_url: googleTrendsUrl,
-    fetched_at: new Date().toISOString(),
+  google_trends: {
+    growth_rate: number;
+    related_queries: Array<{ query: string; growth: string; link?: string }>;
+    interest_timeline?: Array<{ date: string; value: number }>;
+    search_query?: string;
+    google_trends_url?: string;
+    fetched_at?: string;
+    error?: string;
   };
 }
 
@@ -465,7 +89,7 @@ function generateContextualQueries(context: AnalysisContext): string[] {
   return [...new Set(queries)];
 }
 
-// Генерирует AI-синтез найденных данных
+// Генерирует AI-синтез найденных данных — с обязательными ссылками на реальные посты
 async function generateSourcesSynthesis(
   context: AnalysisContext,
   sources: CollectedSources
@@ -475,12 +99,22 @@ async function generateSourcesSynthesis(
   content_gaps: string[];
   recommended_angles: string[];
 }> {
-  // Check if we have any real data to analyze
-  const hasRedditData = sources.reddit.posts.length > 0;
-  const hasYoutubeData = sources.youtube.videos.length > 0;
-  const hasGoogleTrendsData = sources.google_trends.interest_timeline && sources.google_trends.interest_timeline.length > 0;
+  const hasReddit = sources.reddit.posts.length > 0;
+  const hasHN = sources.hacker_news.posts.length > 0;
+  const hasTwitter = sources.twitter.discussions.length > 0;
+  const hasQuora = sources.quora.questions.length > 0;
+  const hasSO = sources.stackoverflow.questions.length > 0;
+  const hasYoutube = sources.youtube.videos.length > 0;
+  const hasTrends = sources.google_trends.interest_timeline && sources.google_trends.interest_timeline.length > 0;
 
-  if (!hasRedditData && !hasYoutubeData && !hasGoogleTrendsData) {
+  const totalDataPoints = sources.reddit.posts.length +
+    sources.hacker_news.posts.length +
+    sources.twitter.discussions.length +
+    sources.quora.questions.length +
+    sources.stackoverflow.questions.length +
+    sources.youtube.videos.length;
+
+  if (totalDataPoints === 0 && !hasTrends) {
     return {
       key_insights: ['Недостаточно данных для анализа. Проверьте настройки API ключей.'],
       sentiment_summary: 'Нет данных',
@@ -508,25 +142,60 @@ async function generateSourcesSynthesis(
 - Возможности: ${context.analysis.opportunities?.join(', ')}`
       : '';
 
+    // Build data sections from ALL sources
+    let dataSections = '';
+
+    if (hasReddit) {
+      dataSections += `\nReddit (${sources.reddit.posts.length} постов, engagement: ${sources.reddit.engagement}):
+${sources.reddit.posts.slice(0, 5).map(p => `- "${p.title}" (${p.score} upvotes, r/${p.subreddit}, URL: ${p.url})`).join('\n')}`;
+    }
+
+    if (hasHN) {
+      dataSections += `\nHacker News (${sources.hacker_news.posts.length} постов):
+${sources.hacker_news.posts.slice(0, 3).map(p => `- "${p.title}" (${p.points} points, URL: ${p.url})`).join('\n')}`;
+    }
+
+    if (hasTwitter) {
+      dataSections += `\nTwitter/X (${sources.twitter.discussions.length} обсуждений):
+${sources.twitter.discussions.slice(0, 3).map(d => `- "${d.title}" (URL: ${d.url})`).join('\n')}`;
+    }
+
+    if (hasQuora) {
+      dataSections += `\nQuora (${sources.quora.questions.length} вопросов):
+${sources.quora.questions.slice(0, 3).map(q => `- "${q.title}" (URL: ${q.url})`).join('\n')}`;
+    }
+
+    if (hasSO) {
+      dataSections += `\nStack Overflow (${sources.stackoverflow.questions.length} вопросов):
+${sources.stackoverflow.questions.slice(0, 3).map(q => `- "${q.title}" (${q.votes} votes, ${q.answers} answers, URL: ${q.url})`).join('\n')}`;
+    }
+
+    if (hasTrends) {
+      dataSections += `\nGoogle Trends:
+- Рост: ${sources.google_trends.growth_rate}%
+- Связанные запросы: ${sources.google_trends.related_queries?.slice(0, 5).map(q => q.query).join(', ')}`;
+    }
+
+    if (hasYoutube) {
+      dataSections += `\nYouTube (${sources.youtube.videos.length} видео):
+${sources.youtube.videos.slice(0, 3).map(v => `- "${v.title}" (${v.channel})`).join('\n')}`;
+    }
+
     const prompt = `Проанализируй собранные данные из источников для тренда "${context.trend.title}".
 ${contextInfo}
 
-${hasRedditData ? `Данные из Reddit (${sources.reddit.posts.length} постов):
-${sources.reddit.posts.slice(0, 5).map(p => `- "${p.title}" (${p.score} upvotes, r/${p.subreddit})`).join('\n')}` : 'Reddit: нет данных'}
+РЕАЛЬНЫЕ ДАННЫЕ:
+${dataSections}
 
-${hasGoogleTrendsData ? `Данные из Google Trends:
-- Рост: ${sources.google_trends.growth_rate}%
-- Связанные запросы: ${sources.google_trends.related_queries?.slice(0, 5).map(q => q.query).join(', ')}` : 'Google Trends: нет данных'}
-
-${hasYoutubeData ? `YouTube видео (${sources.youtube.videos.length}):
-${sources.youtube.videos.slice(0, 3).map(v => `- "${v.title}" (${v.channel})`).join('\n')}` : 'YouTube: нет данных'}
+ВАЖНО: Каждый инсайт должен ссылаться на КОНКРЕТНЫЙ пост/источник из данных выше.
+НЕ выдумывай информацию, которой нет в данных.
 
 Верни JSON:
 {
-  "key_insights": ["3-5 ключевых инсайтов из РЕАЛЬНЫХ данных"],
-  "sentiment_summary": "Краткое описание настроения аудитории на основе данных",
-  "content_gaps": ["Какие темы недостаточно освещены"],
-  "recommended_angles": ["Рекомендуемые углы для контента/продукта"]
+  "key_insights": ["Инсайт со ссылкой на конкретный источник (Reddit: r/subreddit, HN, SO и т.д.)"],
+  "sentiment_summary": "Настроение аудитории на основе реальных обсуждений",
+  "content_gaps": ["Темы, которые НЕ покрыты в найденных обсуждениях"],
+  "recommended_angles": ["Углы для продукта/контента на основе реальных данных"]
 }`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -538,8 +207,8 @@ ${sources.youtube.videos.slice(0, 3).map(v => `- "${v.title}" (${v.channel})`).j
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1000,
+        temperature: 0.4,
+        max_tokens: 1200,
       }),
     });
 
@@ -592,53 +261,148 @@ export async function POST(request: NextRequest) {
     if (!YOUTUBE_API_KEY) missingKeys.push('YOUTUBE_API_KEY');
 
     const contextualQueries = generateContextualQueries(analysisContext);
+    const primaryQuery = contextualQueries[0];
+    const secondaryQuery = contextualQueries[1] || primaryQuery;
 
-    // Fetch all sources in parallel
-    const redditPromises = contextualQueries.slice(0, 2).map(q => fetchRedditPosts(q));
-    const [youtubeData, googleTrendsData, ...redditResults] = await Promise.all([
-      fetchYouTubeVideos(searchQuery),
-      fetchGoogleTrends(searchQuery),
-      ...redditPromises,
+    let totalSerpApiCalls = 0;
+
+    // Fetch ALL sources in parallel — using shared data-fetchers
+    const [
+      redditResult1,
+      redditResult2,
+      hnResult,
+      twitterResult,
+      quoraResult,
+      soResult,
+      youtubeResult,
+      trendsResult,
+    ] = await Promise.all([
+      fetchReddit(primaryQuery),
+      fetchReddit(secondaryQuery),
+      fetchHackerNews(primaryQuery),
+      fetchTwitter(primaryQuery),
+      fetchQuora(primaryQuery),
+      fetchStackOverflow(primaryQuery),
+      fetchYouTube(primaryQuery),
+      fetchGoogleTrends(primaryQuery),
     ]);
 
-    // Combine Reddit results
-    const combinedRedditPosts: RedditPost[] = [];
+    // Count SerpAPI calls
+    totalSerpApiCalls += redditResult1.serpapi_calls_used;
+    totalSerpApiCalls += redditResult2.serpapi_calls_used;
+    totalSerpApiCalls += hnResult.serpapi_calls_used;
+    totalSerpApiCalls += twitterResult.serpapi_calls_used;
+    totalSerpApiCalls += quoraResult.serpapi_calls_used;
+    totalSerpApiCalls += soResult.serpapi_calls_used;
+    totalSerpApiCalls += youtubeResult.serpapi_calls_used;
+    totalSerpApiCalls += trendsResult.serpapi_calls_used;
+
+    // Combine Reddit results (deduplicate)
+    const redditPostUrls = new Set<string>();
+    const combinedRedditPosts: Array<{ title: string; subreddit: string; score: number; num_comments: number; url: string; created: string; selftext?: string }> = [];
     const communitiesSet = new Set<string>();
     let totalEngagement = 0;
-    const redditErrors: string[] = [];
 
-    for (const result of redditResults) {
-      if (result.error) {
-        redditErrors.push(result.error);
-      }
-      for (const post of result.posts) {
-        if (!combinedRedditPosts.some(p => p.url === post.url)) {
-          combinedRedditPosts.push(post);
+    for (const result of [redditResult1, redditResult2]) {
+      for (const post of result.data) {
+        if (!redditPostUrls.has(post.url)) {
+          redditPostUrls.add(post.url);
+          combinedRedditPosts.push({
+            title: post.title,
+            subreddit: post.subreddit,
+            score: post.score,
+            num_comments: post.num_comments,
+            url: post.url,
+            created: post.date || new Date().toISOString(),
+            selftext: post.snippet,
+          });
+          communitiesSet.add(post.subreddit);
+          totalEngagement += post.score + post.num_comments * 2;
         }
       }
-      result.communities.forEach(c => communitiesSet.add(c));
-      totalEngagement += result.engagement;
     }
 
-    const redditData = {
-      posts: combinedRedditPosts.slice(0, 15),
-      communities: Array.from(communitiesSet).slice(0, 8),
-      engagement: totalEngagement,
-      error: redditErrors.length > 0 ? redditErrors[0] : undefined,
-    };
-
+    // Build sources object with all data
     const sources: CollectedSources = {
-      reddit: redditData,
-      youtube: youtubeData,
-      google_trends: googleTrendsData,
-      facebook: {
-        pages: [],
-        reach: 0,
+      reddit: {
+        posts: combinedRedditPosts.slice(0, 15),
+        communities: Array.from(communitiesSet).slice(0, 8),
+        engagement: totalEngagement,
+        error: redditResult1.error || undefined,
+      },
+      hacker_news: {
+        posts: hnResult.data.map(p => ({
+          title: p.title,
+          url: p.url,
+          points: p.points,
+          snippet: p.snippet,
+        })),
+        error: hnResult.error || undefined,
+      },
+      twitter: {
+        discussions: twitterResult.data.map(t => ({
+          title: t.title,
+          url: t.url,
+          snippet: t.snippet,
+        })),
+        error: twitterResult.error || undefined,
+      },
+      quora: {
+        questions: quoraResult.data.map(q => ({
+          title: q.title,
+          url: q.url,
+          snippet: q.snippet,
+        })),
+        error: quoraResult.error || undefined,
+      },
+      stackoverflow: {
+        questions: soResult.data.map(q => ({
+          title: q.title,
+          url: q.url,
+          votes: q.votes,
+          answers: q.answers,
+          snippet: q.snippet,
+        })),
+        error: soResult.error || undefined,
+      },
+      youtube: {
+        videos: youtubeResult.data.map(v => ({
+          title: v.title,
+          channel: v.channel,
+          description: v.description,
+          videoId: v.videoId,
+          url: v.url,
+          publishedAt: v.publishedAt,
+          thumbnail: v.thumbnail,
+        })),
+        channels: [...new Set(youtubeResult.data.map(v => v.channel))].slice(0, 5),
+        error: youtubeResult.error || undefined,
+      },
+      google_trends: {
+        growth_rate: trendsResult.data ? trendsResult.data.growth_rate : 0,
+        related_queries: trendsResult.data ? trendsResult.data.related_queries : [],
+        interest_timeline: trendsResult.data ? trendsResult.data.interest_timeline : [],
+        search_query: trendsResult.data ? trendsResult.data.search_query : primaryQuery,
+        google_trends_url: trendsResult.data ? trendsResult.data.google_trends_url : undefined,
+        fetched_at: trendsResult.data ? trendsResult.data.fetched_at : new Date().toISOString(),
+        error: trendsResult.error || undefined,
       },
     };
 
-    // Generate AI synthesis
+    // Generate AI synthesis based on ALL real data
     const synthesis = await generateSourcesSynthesis(analysisContext, sources);
+
+    // Data summary
+    const dataSummary = {
+      reddit_posts: combinedRedditPosts.length,
+      hacker_news_posts: hnResult.data.length,
+      twitter_discussions: twitterResult.data.length,
+      quora_questions: quoraResult.data.length,
+      stackoverflow_questions: soResult.data.length,
+      youtube_videos: youtubeResult.data.length,
+      google_trends_data: !!trendsResult.data,
+      total_data_points: combinedRedditPosts.length + hnResult.data.length + twitterResult.data.length + quoraResult.data.length + soResult.data.length + youtubeResult.data.length,
+    };
 
     return NextResponse.json({
       success: true,
@@ -647,6 +411,12 @@ export async function POST(request: NextRequest) {
       query: searchQuery,
       contextual_queries_used: contextualQueries,
       context_received: !!analysisContext.analysis,
+      data_summary: dataSummary,
+      serpapi_calls_used: totalSerpApiCalls,
+      data_metadata: {
+        sources: { data_type: 'real_data', note: 'Все данные из SerpAPI + YouTube API' },
+        synthesis: { data_type: 'ai_synthesis', note: 'AI-анализ на основе реальных данных с обязательными ссылками' },
+      },
       collected_at: new Date().toISOString(),
       warnings: missingKeys.length > 0 ? `Отсутствуют API ключи: ${missingKeys.join(', ')}` : undefined,
     });

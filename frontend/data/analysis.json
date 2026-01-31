@@ -5045,7 +5045,849 @@
           "reach": 0
         }
       }
+    },
+    "test-ai-invoice": {
+      "trend_id": "test-ai-invoice",
+      "trend_title": "AI Invoice Processing Automation",
+      "main_pain": "Недостаточная точность AI в обработке счетов-фактур",
+      "key_pain_points": [
+        "Долгий и трудоемкий процесс ручной обработки счетов.",
+        "Ошибки при ручной обработке счетов, приводящие к финансовым потерям.",
+        "Сложности интеграции с существующими ERP-системами."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые и средние компании",
+            "size": "Средний размер рынка, с растущим интересом к автоматизации.",
+            "willingness_to_pay": "high",
+            "where_to_find": "На форумах бухгалтеров, в специализированных сообществах и на выставках.",
+            "confidence": 8
+          },
+          {
+            "name": "Бухгалтерские фирмы",
+            "size": "Небольшой, но важный сегмент, готовый к внедрению новых технологий.",
+            "willingness_to_pay": "high",
+            "where_to_find": "Конференции по финансам и бухучету.",
+            "confidence": 7.5
+          }
+        ]
+      },
+      "sentiment_score": 8.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-25T19:55:05.020Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Looking for an AI-driven solution to automate invoice ...",
+              "subreddit": "Entrepreneur",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Entrepreneur/comments/1gvn9gh/looking_for_an_aidriven_solution_to_automate/",
+              "created": "2026-01-25T19:54:56.865Z",
+              "selftext": "You can use Docsumo to fully automate the invoice processing part of your business. Just forward incoming invoices (PDFs or scans) to Docsumo— ..."
+            },
+            {
+              "title": "Has anyone successfully automated invoice or purchase ...",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1oe8yk7/has_anyone_successfully_automated_invoice_or/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "It's an AI-powered tool that extracts data from invoices, POs, contracts, basically any document, without relying on rigid templates. It adapts ..."
+            },
+            {
+              "title": "I was tired of manually extracting data from invoices",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1kngl0y/i_was_tired_of_manually_extracting_data_from/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "An AI tool that extracts structured data from any document and sends it wherever you want. Here's how it works."
+            },
+            {
+              "title": "Automate Invoice Processing",
+              "subreddit": "msp",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/msp/comments/xokngi/automate_invoice_processing/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "Latest video out showing you how to leverage AI builder in Power Automate to automatically read and process invoices."
+            },
+            {
+              "title": "Built an AI system to process invoices automatically",
+              "subreddit": "ArtificialInteligence",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ArtificialInteligence/comments/1mjs98p/built_an_ai_system_to_process_invoices/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "I recently built a conversational AI system that processes invoices in seconds. The idea was to let company admins upload PDFs or images of ..."
+            },
+            {
+              "title": "I built an automation that summarizes my invoices for ...",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1llxkd4/i_built_an_automation_that_summarizes_my_invoices/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "Built invoice/receipt automation tool with email forwarding, OCR, AI extraction - works with any format & multiple languages. · I built an ..."
+            },
+            {
+              "title": "Invoice automation",
+              "subreddit": "Dynamics365",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Dynamics365/comments/1h5owxm/invoice_automation/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "You can use Power Automate with AI Builder to extract fields and then create invoices in Dynamics F&O, but it usually takes some setup and ..."
+            },
+            {
+              "title": "Automated Invoice Processing: From Email Inbox to ERP in ...",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1nl9tlh/automated_invoice_processing_from_email_inbox_to/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "PDF invoices are parsed by an AI-based tool that can handle complex layouts. The data is then structured by a large language model into a clean ..."
+            },
+            {
+              "title": "AI Wizardry for Invoice Management",
+              "subreddit": "rpa",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/rpa/comments/1b16zlo/ai_wizardry_for_invoice_management/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "I'm dreaming of an AI-driven solution that can effortlessly gather invoices from these varied sources, smart enough to adapt to changes in suppliers' portal ..."
+            },
+            {
+              "title": "can't keep up with my invoice processing. Is there an easy ...",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1oup6v1/cant_keep_up_with_my_invoice_processing_is_there/",
+              "created": "2026-01-25T19:54:56.867Z",
+              "selftext": "Automating invoice processing can save a lot of time. You can integrate tools like Zapier with QuickBooks to automatically process invoices from ..."
+            }
+          ],
+          "communities": [
+            "Entrepreneur",
+            "automation",
+            "SaaS",
+            "msp",
+            "ArtificialInteligence"
+          ],
+          "engagement": 0,
+          "error": "SerpAPI: Google hasn't returned any results for this query."
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "AI Invoice Processing Automation - Case Study",
+              "channel": "Mason Anderson",
+              "description": "Join Automate What Academy & get AI client #1 + all my templates   https://www.skool.com/automate-what-academy-pro Join my ...",
+              "videoId": "9jibWbrZU_A",
+              "url": "https://www.youtube.com/watch?v=9jibWbrZU_A",
+              "publishedAt": "2025-06-13T15:30:03Z",
+              "thumbnail": "https://i.ytimg.com/vi/9jibWbrZU_A/hqdefault.jpg"
+            },
+            {
+              "title": "AI Invoice Automation System (n8n Step-by-Step No Code Tutorial)",
+              "channel": "Bernard | AI Automation",
+              "description": "Tired of wasting time on manual invoice processing? In this video, I'll show you how to build a complete AI automation for invoices ...",
+              "videoId": "SQgt5pGt-yU",
+              "url": "https://www.youtube.com/watch?v=SQgt5pGt-yU",
+              "publishedAt": "2025-11-06T21:04:20Z",
+              "thumbnail": "https://i.ytimg.com/vi/SQgt5pGt-yU/hqdefault.jpg"
+            },
+            {
+              "title": "How to Automate Invoice Processing AI",
+              "channel": "Leon van Zyl",
+              "description": "Access ALL video resources & get personalized help in my community: ...",
+              "videoId": "HV__T4zGNwg",
+              "url": "https://www.youtube.com/watch?v=HV__T4zGNwg",
+              "publishedAt": "2025-03-31T15:32:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/HV__T4zGNwg/hqdefault.jpg"
+            },
+            {
+              "title": "Invoice Processing AI Agent Demo",
+              "channel": "Bizagi",
+              "description": "Procurement #AccountsPayable #AIAutomation Manual invoice processing is time-consuming and error-prone. But with ...",
+              "videoId": "lSAf4fxGhfE",
+              "url": "https://www.youtube.com/watch?v=lSAf4fxGhfE",
+              "publishedAt": "2025-09-23T16:43:36Z",
+              "thumbnail": "https://i.ytimg.com/vi/lSAf4fxGhfE/hqdefault.jpg"
+            },
+            {
+              "title": "This AI Agent Processes Your Invoices (n8n tutorial)",
+              "channel": "Bart Slodyczka",
+              "description": "Hey guys, in this n8n video I show you how to automate your invoices using n8n and chatGPT vision. Super easy automation and ...",
+              "videoId": "2QdpKxYGVF0",
+              "url": "https://www.youtube.com/watch?v=2QdpKxYGVF0",
+              "publishedAt": "2025-04-22T11:20:49Z",
+              "thumbnail": "https://i.ytimg.com/vi/2QdpKxYGVF0/hqdefault.jpg"
+            },
+            {
+              "title": "I Automated Xero Invoice Processing with OpenAI + N8N",
+              "channel": "Kris Turk",
+              "description": "First 50 members join my Skool community for FREE: https://bit.ly/KT_Community Get n8n - https://bit.ly/N8N_AUTOMATIONS In ...",
+              "videoId": "IU7-KbV25b4",
+              "url": "https://www.youtube.com/watch?v=IU7-KbV25b4",
+              "publishedAt": "2025-04-16T19:04:28Z",
+              "thumbnail": "https://i.ytimg.com/vi/IU7-KbV25b4/hqdefault.jpg"
+            },
+            {
+              "title": "We Built an n8n Invoice Processing System With AI Agents (OCR + RAG + Dashboards)",
+              "channel": "Rob Nool",
+              "description": "We'll Train Your Team For FREE   https://windgrowth.perspectivefunnel.com/education/b2b/ Join our FREE Skool ...",
+              "videoId": "XLXFmrMWH1Q",
+              "url": "https://www.youtube.com/watch?v=XLXFmrMWH1Q",
+              "publishedAt": "2025-10-14T17:28:38Z",
+              "thumbnail": "https://i.ytimg.com/vi/XLXFmrMWH1Q/hqdefault.jpg"
+            },
+            {
+              "title": "2 - Automating Invoice Processing with AI",
+              "channel": "AI Automation for Business",
+              "description": "AI automation helps businesses reduce manual work, save time, and improve operational efficiency. In this video, you'll see ...",
+              "videoId": "RiHug_TxThM",
+              "url": "https://www.youtube.com/watch?v=RiHug_TxThM",
+              "publishedAt": "2026-01-02T17:00:50Z",
+              "thumbnail": "https://i.ytimg.com/vi/RiHug_TxThM/hqdefault.jpg"
+            },
+            {
+              "title": "Built an n8n AI Agent to Read All My Invoices (Full n8n Tutorial)",
+              "channel": "Eric Tech",
+              "description": "Stop manually entering receipts and invoices. In this video, I'll show you how to build a powerful n8n AI Agent from scratch that ...",
+              "videoId": "OhTZ48lnG2c",
+              "url": "https://www.youtube.com/watch?v=OhTZ48lnG2c",
+              "publishedAt": "2025-10-26T09:36:03Z",
+              "thumbnail": "https://i.ytimg.com/vi/OhTZ48lnG2c/hqdefault.jpg"
+            },
+            {
+              "title": "Accounts Payable End-to-End Process Automation powered by Generative AI",
+              "channel": "Automation Anywhere",
+              "description": "Improve your Accounts Payable KPIs with the Automation Success Platform. This video demonstrates the End-2-End Automation ...",
+              "videoId": "gwQJY2hXsBY",
+              "url": "https://www.youtube.com/watch?v=gwQJY2hXsBY",
+              "publishedAt": "2024-04-08T07:00:17Z",
+              "thumbnail": "https://i.ytimg.com/vi/gwQJY2hXsBY/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Mason Anderson",
+            "Bernard | AI Automation",
+            "Leon van Zyl",
+            "Bizagi",
+            "Bart Slodyczka"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -36,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 88
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 91
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 96
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 94
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 100
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 99
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 92
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 64
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 58
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 75
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 35
+            },
+            {
+              "date": "Jan 18 – 24, 2026",
+              "value": 39
+            }
+          ],
+          "search_query": "Invoice Processing",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Invoice+Processing%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-25T19:54:57.036Z"
+        },
+        "facebook": {
+          "pages": [],
+          "reach": 0
+        }
+      }
+    },
+    "test-trend-evidence-001": {
+      "trend_id": "test-trend-evidence-001",
+      "trend_title": "AI-Powered Code Review Automation",
+      "main_pain": "Разработчики испытывают трудности с автоматизацией процесса ревью кода, так как существующие инструменты не обеспечивают достаточной точности и не могут полностью заменить человеческий взгляд.",
+      "key_pain_points": [
+        "Разработчики испытывают трудности с автоматизацией процесса ревью кода, так как существующие инструменты не обеспечивают достаточной точности и не могут полностью заменить человеческий взгляд.",
+        "Недостаточная интеграция AI инструментов в существующие рабочие процессы разработчиков, что затрудняет их использование.",
+        "Существующие AI инструменты не всегда могут выявить сложные ошибки или паттерны, что приводит к необходимости повторной проверки кода человеком."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Разработчики программного обеспечения",
+            "size": "Требует валидации",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/AskProgramming, HN, r/codereview",
+            "confidence": 7
+          }
+        ]
+      },
+      "sentiment_score": 7.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-27T16:37:10.604Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Is AI Code Reviews something you use?",
+              "subreddit": "AskProgramming",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/AskProgramming/comments/1bjf0ad/is_ai_code_reviews_something_you_use/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "Completely relying on AI isn't nice idea for multiple reasons including AI isn't accurate and code reviews are good learning experience :) Some ..."
+            },
+            {
+              "title": "Which is best AI code review tool that you've come across ...",
+              "subreddit": "codereview",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/codereview/comments/1ctxbw7/which_is_best_ai_code_review_tool_that_youve_come/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "HuTouch AI reviews your code just like a dev lead to reduce code smells, refactoring, memory leakage, increase performance, security issues, etc ..."
+            },
+            {
+              "title": "What's your experience with AI-based code review tools?",
+              "subreddit": "ExperiencedDevs",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ExperiencedDevs/comments/1grd2d9/whats_your_experience_with_aibased_code_review/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "In my experience, automated AI review can find and identify bad patterns or practices in code or popular SDKs, but our company's tech stack is ..."
+            },
+            {
+              "title": "Looking for feedback on a tool to help automate basic code ...",
+              "subreddit": "softwaredevelopment",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/softwaredevelopment/comments/163k1x8/looking_for_feedback_on_a_tool_to_help_automate/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "There are tools like codium.ai, an AI-powered code review tool that focuses on automating the basics."
+            },
+            {
+              "title": "What's the best AI code review tool you've used recently?",
+              "subreddit": "codereview",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/codereview/comments/1j8ouw4/whats_the_best_ai_code_review_tool_youve_used/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "Codeium – Real-time suggestions and bug-catching. · Amazon CodeWhisperer – Context-aware reviews for AWS users. · TabNine – Pair programming with ..."
+            },
+            {
+              "title": "Any AI code review tools for GitHub PRs?",
+              "subreddit": "codereview",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/codereview/comments/1gpbq93/any_ai_code_review_tools_for_github_prs/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "Hey! You might want to check out Gito AI Code Reviewer – it's an open-source AI code reviewer that auto-comments on PRs via GitHub Actions."
+            },
+            {
+              "title": "What AI functionality would you want in a code review tool?",
+              "subreddit": "codereview",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/codereview/comments/1gaj3vg/what_ai_functionality_would_you_want_in_a_code/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "AI code reviewers can help catch silly mistakes that are often easy to miss with the human eye, such as the one you showcase. It's important ..."
+            },
+            {
+              "title": "Show: AI powered Pull Request Reviewer",
+              "subreddit": "softwarearchitecture",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/softwarearchitecture/comments/15knanx/show_ai_powered_pull_request_reviewer/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "Show: AI powered Pull Request Reviewer. Our team has built an AI-driven code review tool that helps improve dev velocity and code quality."
+            },
+            {
+              "title": "Has anyone tried using AI tools for automated code ...",
+              "subreddit": "ClaudeAI",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ClaudeAI/comments/1fy3j8l/has_anyone_tried_using_ai_tools_for_automated/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "People seem to have mixed feelings—some think it's helpful, while others aren't so sure. Claude 3.5, in particular, seems to be a winner for me ..."
+            },
+            {
+              "title": "What's your honest take on AI code review tools?",
+              "subreddit": "ExperiencedDevs",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ExperiencedDevs/comments/1o1a601/whats_your_honest_take_on_ai_code_review_tools/",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "AI code review platforms can be great at flagging routine issues like unhandled exceptions or missing tests. The one I'm using is CodeRabbit and ..."
+            },
+            {
+              "title": "Are your companies actually saving money with AI? Or just ...",
+              "subreddit": "ExperiencedDevs",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ExperiencedDevs/comments/1o5d4u7/are_your_companies_actually_saving_money_with_ai/?tl=ru",
+              "created": "2026-01-27T16:37:00.656Z",
+              "selftext": "Они не могут полностью заменить поддержку клиентов, но есть много мусорных и плохих вопросов, которые LLM могут отфильтровывать без участия ..."
+            }
+          ],
+          "communities": [
+            "AskProgramming",
+            "codereview",
+            "ExperiencedDevs",
+            "softwaredevelopment",
+            "softwarearchitecture",
+            "ClaudeAI"
+          ],
+          "engagement": 0
+        },
+        "hacker_news": {
+          "posts": [
+            {
+              "title": "If you are good at code review, you will be good at using AI ...",
+              "url": "https://news.ycombinator.com/item?id=45310529",
+              "points": 0,
+              "snippet": "Code review is part of the job, but one of the least enjoyable parts. Developers like _writing_ and that gives the most job satisfaction. AI tools are helpful, ..."
+            },
+            {
+              "title": "Show HN: LlamaPReview – AI GitHub PR reviewer that ...",
+              "url": "https://news.ycombinator.com/item?id=41996859",
+              "points": 0,
+              "snippet": "I built LlamaPReview to solve a common frustration: most AI code reviewers either require complex setup or don't truly understand project ..."
+            },
+            {
+              "title": "AutoDev: Automated AI-driven development by Microsoft",
+              "url": "https://news.ycombinator.com/item?id=39724356",
+              "points": 0,
+              "snippet": "It's not autonomous enough. The examples shown in the paper are toys. It might become more capable after training LLMs against code execution, ..."
+            },
+            {
+              "title": "The new calculus of AI-based coding",
+              "url": "https://news.ycombinator.com/item?id=45723686",
+              "points": 0,
+              "snippet": "The way to code going forward with AI is Test Driven Development. The code itself no longer matters. You give the AI a set of requirements, ie."
+            },
+            {
+              "title": "Why AI will never replace human code review",
+              "url": "https://news.ycombinator.com/item?id=43402136",
+              "points": 0,
+              "snippet": "I used AI code review tools but agree It would never replace human IMO. Here is why because of 2 golden rules of Code Reviews in tech why AI can't understand ..."
+            },
+            {
+              "title": "Depends on what you do. When I'm using LLMs to ...",
+              "url": "https://news.ycombinator.com/item?id=46575079",
+              "points": 0,
+              "snippet": "I've been in this position, where I had no choice but to use AI to write code to fix bugs in another party's codebase, then PR the changes back ..."
+            },
+            {
+              "title": "An AI-powered Chrome extension to create Selenium scripts",
+              "url": "https://news.ycombinator.com/item?id=37943931",
+              "points": 0,
+              "snippet": "Autotab is a Chrome extension that writes Selenium code to mirror your actions as you navigate the browser."
+            },
+            {
+              "title": "AI is forcing us to write good code",
+              "url": "https://news.ycombinator.com/item?id=46424200",
+              "points": 0,
+              "snippet": "An AI code review is not a substitute for a deterministic result in sub-100ms to guarantee consistency. The auto-formatter is set up as a ..."
+            },
+            {
+              "title": "Ask HN: Has AI stolen the satisfaction from programming?",
+              "url": "https://news.ycombinator.com/item?id=45572130",
+              "points": 0,
+              "snippet": "The new way: The entire premise of AI coding tools is to automate the thinking, not just the typing. You're supposed to describe a problem and get a solution ..."
+            },
+            {
+              "title": "AgentLink: On-demand AI agents you can assemble into ...",
+              "url": "https://news.ycombinator.com/item?id=44101091",
+              "points": 0,
+              "snippet": "Here's what AgentLink enables: - Find agents trained for narrow tasks (e.g., code reviewers, data summarizers, lead generators) - Assemble teams instantly, like ..."
+            }
+          ]
+        },
+        "twitter": {
+          "discussions": [
+            {
+              "title": "\"Writing code may become the universal way AI ...",
+              "url": "https://x.com/manosaie/status/2005707692401459448",
+              "snippet": "\"Writing code may become the universal way AI accomplishes any task. Rather than clicking through interfaces or building separate integrations, ..."
+            },
+            {
+              "title": "Ameya Kanitkar (@aktwits) on X",
+              "url": "https://x.com/aktwits/status/2011093934551024069",
+              "snippet": "Write tests that fail first. Then let the AI write code until the tests pass. Tests provide verifiable boundaries for your AI agents. They're ..."
+            },
+            {
+              "title": "AI Lysander on X: \"Here's a list of free AI tools for coding 1. ...",
+              "url": "https://twitter.com/KHelga26373/status/1868536546770690453",
+              "snippet": "AI Code Reviewer: AI-powered code review tool that checks for code quality and readability issues. ... Rainforest QA: AI-driven test automation platform for web ..."
+            },
+            {
+              "title": "Paul Iusztin",
+              "url": "https://x.com/pauliusztin_/status/2006035399970267509",
+              "snippet": "Building AI coding agents - you build an agent that can scaffold and extend real projects, not just autocomplete lines of code. • AI for testing ..."
+            },
+            {
+              "title": "Gitar (@gitarcode) / Posts / X",
+              "url": "https://x.com/gitarcode",
+              "snippet": "Free AI code review that actually fixes your code - not just comments. ... 🏷️ Let Gitar's AI-powered code automation help you clean up the mess and keep your ..."
+            },
+            {
+              "title": "Integrating AI assistants into the daily developer workflow. ...",
+              "url": "https://x.com/e_opore/status/2007429632048398571",
+              "snippet": "Automated Code Review: Leveraging AI for static analysis and best practice enforcement. 5. Test Generation: Creating unit, integration, and ..."
+            },
+            {
+              "title": "Inspired by @eyad_khrais's insights on building automated ...",
+              "url": "https://x.com/Test_Sprite/status/2011891136282169667",
+              "snippet": "... Automate testing, log improvements, and continuously refine your AI-driven development. Stop fighting the tool, start flowing with it!"
+            },
+            {
+              "title": "Why Isn't It Working? Overview Despite rapid adoption of AI ...",
+              "url": "https://x.com/k38ryohei/status/1996716369556160835",
+              "snippet": "AI can generate more code than humans can reasonably evaluate. This creates a structural mismatch: code volume grows dramatically, while human ..."
+            },
+            {
+              "title": "Unlock the power of AI and no-code platforms ...",
+              "url": "https://x.com/n8nbazar/status/2005942823388876867",
+              "snippet": "This self-hosted, workflow automation uses deep AI content generation to detect suspicious reviews and sends instant Slack alerts for high-risk ..."
+            },
+            {
+              "title": "Leading-edge AI-powered automation workflows ...",
+              "url": "https://x.com/n8nbazar/status/2011192173685784859",
+              "snippet": "Leading-edge AI-powered automation workflows are revolutionizing document trust and fraud detection. Combining n8n's no-code platform with ..."
+            }
+          ]
+        },
+        "quora": {
+          "questions": [
+            {
+              "title": "How do open source AI code review tools work?",
+              "url": "https://www.quora.com/How-do-open-source-AI-code-review-tools-work",
+              "snippet": "AI code review tools work by sending your code to the LLM, it sends back a review of the code that you have written."
+            },
+            {
+              "title": "How to automate performance reviews in terms of code ...",
+              "url": "https://www.quora.com/How-do-I-automate-performance-reviews-in-terms-of-code-pushed-and-reviews-done",
+              "snippet": "How do I build an AI-powered code review agent using Node.js as a backend? Your first job is to send a request to OpenAI/Gemini and get the ..."
+            },
+            {
+              "title": "Which AI tool provides the most support for coding tasks?",
+              "url": "https://www.quora.com/Which-AI-tool-provides-the-most-support-for-coding-tasks",
+              "snippet": "AI models like GitHub Copilot and ChatGPT have been hugely helpful for programming. They can autocomplete code, suggest solutions, explain ..."
+            },
+            {
+              "title": "How to review and validate AI-generated code in software ...",
+              "url": "https://www.quora.com/How-do-you-review-and-validate-AI-generated-code-in-software-projects",
+              "snippet": "AI code review tools work by sending your code to the LLM, it sends back a review of the code that you have written. · This works at the core of ..."
+            },
+            {
+              "title": "What is the best tool for code automation?",
+              "url": "https://www.quora.com/What-is-the-best-tool-for-code-automation",
+              "snippet": "The best code automation tools include Jenkins for continuous integration and delivery, Ansible for infrastructure configuration management, and Selenium for ..."
+            },
+            {
+              "title": "How will AI-powered coding assistants change the role ...",
+              "url": "https://www.quora.com/How-will-AI-powered-coding-assistants-change-the-role-of-software-developers",
+              "snippet": "Instead, AI coding tools support developers by automating repetitive tasks, providing suggestions, and accelerating the development of websites, ..."
+            },
+            {
+              "title": "What AI coding tools do professional developers actually ...",
+              "url": "https://www.quora.com/What-AI-coding-tools-do-professional-developers-actually-use-in-their-daily-work",
+              "snippet": "For example GitHub Copilot. It helps with boilerplate, repetitive code, and even things like writing unit tests or suggesting logic as you type."
+            },
+            {
+              "title": "Do you use AI generated code in your company? What is ...",
+              "url": "https://www.quora.com/Do-you-use-AI-generated-code-in-your-company-What-is-your-experience-with-it",
+              "snippet": "We absolutely don't have AI's generating code for us or inserting into our codebase, bypassing all code reviews and security protocols."
+            },
+            {
+              "title": "What do software developers need to know about these ...",
+              "url": "https://www.quora.com/What-do-software-developers-need-to-know-about-these-new-AI-driven-IDEs-like-Cursor-and-Claude-Code-to-stay-ahead-in-their-field",
+              "snippet": "The AI will comprehensively document your existing code, write tests, and suggest improvements which it will cheerfully implement for you. It ..."
+            },
+            {
+              "title": "In what ways could AI-powered code writing suggestions ...",
+              "url": "https://www.quora.com/In-what-ways-could-AI-powered-code-writing-suggestions-revolutionize-software-development-processes",
+              "snippet": "AI is revolutionizing software development by automating repetitive tasks, optimizing code generation, predicting bugs, enabling smarter ..."
+            }
+          ]
+        },
+        "stackoverflow": {
+          "questions": [
+            {
+              "title": "Creating a code review automated workflow - java",
+              "url": "https://stackoverflow.com/questions/58951746/creating-a-code-review-automated-workflow",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "On doing some research wrt to code review tools, I found the working of Gerrit with GIT . Developers push their changes which then resides on ..."
+            },
+            {
+              "title": "Does code-review typically involve UAT/QA testing?",
+              "url": "https://stackoverflow.com/questions/42933147/does-code-review-typically-involve-uat-qa-testing",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Typically, no. In my experiences, code review happens after any developer-driven testing. The responsible developer would make the changes to the code."
+            },
+            {
+              "title": "How to automatically request a code review after checking ...",
+              "url": "https://stackoverflow.com/questions/52628435/how-to-automatically-request-a-code-review-after-checking-in-code-into-tfs",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "You can use Visual Studio to ask someone else from your team to review it. Your request will show up in his team explorer, in the my work page."
+            },
+            {
+              "title": "owasp automated code review tools - java",
+              "url": "https://stackoverflow.com/questions/28808582/owasp-automated-code-review-tools",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Does anyone have any guidance on automated code review tools which will check specifically for the OWASP breaches such as sql injection, ..."
+            },
+            {
+              "title": "Automated code review tool for cakephp",
+              "url": "https://stackoverflow.com/questions/43407730/automated-code-review-tool-for-cakephp",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Bring the best of human thought and AI automation together at your work. ... Automated code review tool for cakephp · Ask Question. Asked 8 ..."
+            },
+            {
+              "title": "Will OverflowAI really feature dumping AI code ...",
+              "url": "https://meta.stackoverflow.com/questions/425787/will-overflowai-really-feature-dumping-ai-code-explanations-onto-stack-overflow",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "The VS Code plugin's explain code feature is not actually going to enable people to dump code explanations from an AI as Q&A pairs to SO."
+            },
+            {
+              "title": "Automate and simplify the check-in after code review ...",
+              "url": "https://stackoverflow.com/questions/32208509/automate-and-simplify-the-check-in-after-code-review-completion-in-tfs",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "What you're looking for is called a pull request. Pull requests are not available for TFVC at the moment, but are available for Git."
+            },
+            {
+              "title": "Best tool for Code-Analyzement or Code-Review",
+              "url": "https://stackoverflow.com/questions/498457/best-tool-for-code-analyzement-or-code-review",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Reflector is very good and free. The Code Metrics add-in will give you good quality metrics. This may not give you the print-readiness you need."
+            },
+            {
+              "title": "How do you make people accept code review? [duplicate]",
+              "url": "https://stackoverflow.com/questions/1310479/how-do-you-make-people-accept-code-review",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "The best way to make sure that the code you work with is code reviewed properly is to work somewhere that treats that as the normal way of coding."
+            },
+            {
+              "title": "Why is staging work not (partially) automated?",
+              "url": "https://meta.stackoverflow.com/questions/430545/why-is-staging-work-not-partially-automated",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I think that first posting guiding and reviewing first posts can be to a certain degree automated, fully, partially, or assited with miscellaneous automations."
+            }
+          ]
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Automatic code reviews with OpenAI Codex",
+              "channel": "OpenAI",
+              "description": "Maja Trębacz and Romain Huet show you how to set up Codex to automatically review new pull requests in GitHub and in the ...",
+              "videoId": "HwbSWVg5Ln4",
+              "url": "https://www.youtube.com/watch?v=HwbSWVg5Ln4",
+              "publishedAt": "2025-11-04T17:54:28Z",
+              "thumbnail": "https://i.ytimg.com/vi/HwbSWVg5Ln4/hqdefault.jpg"
+            },
+            {
+              "title": "Best Automated Code Review Tools in 2025🔥 | AI Pull Request Review Comparison",
+              "channel": "Qodo",
+              "description": "Searching for the best Automated Code Review tools in 2025? In this video, we test and compare 4 leading AI-powered code ...",
+              "videoId": "-cjqqXGN-0E",
+              "url": "https://www.youtube.com/watch?v=-cjqqXGN-0E",
+              "publishedAt": "2025-08-21T15:54:21Z",
+              "thumbnail": "https://i.ytimg.com/vi/-cjqqXGN-0E/hqdefault.jpg"
+            },
+            {
+              "title": "I Automated My Code Reviews Using Claude Code GitHub CLI (It Actually Works!)",
+              "channel": "MLTut",
+              "description": "Automate your pull request reviews with Claude Code GitHub CLI — a complete, hands-on setup for developers who want faster, ...",
+              "videoId": "mW3ubyw9UOU",
+              "url": "https://www.youtube.com/watch?v=mW3ubyw9UOU",
+              "publishedAt": "2025-10-28T16:10:26Z",
+              "thumbnail": "https://i.ytimg.com/vi/mW3ubyw9UOU/hqdefault.jpg"
+            },
+            {
+              "title": "Introducing Rovo Dev Code Reviewer | Rovo Dev | Atlassian",
+              "channel": "Atlassian",
+              "description": "Discover Atlassian's Rovo Dev Code Reviewer, an AI-powered agent designed to transform your code review process! In this ...",
+              "videoId": "UUxUdqdoxLE",
+              "url": "https://www.youtube.com/watch?v=UUxUdqdoxLE",
+              "publishedAt": "2025-11-17T14:40:00Z",
+              "thumbnail": "https://i.ytimg.com/vi/UUxUdqdoxLE/hqdefault.jpg"
+            },
+            {
+              "title": "Automated PR Code Reviews with AI",
+              "channel": "Krish Naik",
+              "description": "Tired of manually reviewing and managing GitHub pull requests? Join Our Generative AI for EveryOne-Professionals and ...",
+              "videoId": "jKLDQbluu_A",
+              "url": "https://www.youtube.com/watch?v=jKLDQbluu_A",
+              "publishedAt": "2025-08-30T04:49:06Z",
+              "thumbnail": "https://i.ytimg.com/vi/jKLDQbluu_A/hqdefault.jpg"
+            },
+            {
+              "title": "🚨 GITGuardianAI - Automated AI Code Reviews for Performance, Security &amp; Quality 🤖",
+              "channel": "Vinay Pepakayala",
+              "description": "Try it out: vinay-pepakayala-gitguardianai.hf.space GitHub: github.com/vinay-852/gitguardianai What is GITGuardianAI?",
+              "videoId": "d5iqNlaU_GA",
+              "url": "https://www.youtube.com/watch?v=d5iqNlaU_GA",
+              "publishedAt": "2025-06-17T11:51:53Z",
+              "thumbnail": "https://i.ytimg.com/vi/d5iqNlaU_GA/hqdefault.jpg"
+            },
+            {
+              "title": "AI code reviewer is the most helpful thing out there 💕🤖 #ai #development #technology #hack",
+              "channel": "Coding Viking",
+              "description": "How to automate code reviews with AI 1. Set Up Your GitLab Project - Create a GitLab Repository 🗂️: Start a new project or ...",
+              "videoId": "OR51kLog_lw",
+              "url": "https://www.youtube.com/watch?v=OR51kLog_lw",
+              "publishedAt": "2024-05-26T10:51:04Z",
+              "thumbnail": "https://i.ytimg.com/vi/OR51kLog_lw/hqdefault.jpg"
+            },
+            {
+              "title": "Can AI Automate Code Reviews? - Learning To Code With AI",
+              "channel": "Learning To Code With AI",
+              "description": "Can AI Automate Code Reviews? In this informative video, we will discuss the role of artificial intelligence in automating code ...",
+              "videoId": "SVMwxBz0ruo",
+              "url": "https://www.youtube.com/watch?v=SVMwxBz0ruo",
+              "publishedAt": "2025-08-25T16:47:46Z",
+              "thumbnail": "https://i.ytimg.com/vi/SVMwxBz0ruo/hqdefault.jpg"
+            },
+            {
+              "title": "CodePullAI - AI-Powered Code Review Assistant (DEMO)",
+              "channel": "CodePullAI",
+              "description": "An intelligent, serverless AI Code Review assistant that automatically analyzes pull requests and provides intelligent feedback ...",
+              "videoId": "1kUNkZaaulk",
+              "url": "https://www.youtube.com/watch?v=1kUNkZaaulk",
+              "publishedAt": "2025-06-29T07:59:17Z",
+              "thumbnail": "https://i.ytimg.com/vi/1kUNkZaaulk/hqdefault.jpg"
+            },
+            {
+              "title": "Top 5 AI Code Review Tools to Boost Your Development Workflow",
+              "channel": "Tech With Sunny",
+              "description": "In this video, we explore the top AI-powered code review tools transforming software development in 2025. Discover how tools ...",
+              "videoId": "oPQFYN5aBhE",
+              "url": "https://www.youtube.com/watch?v=oPQFYN5aBhE",
+              "publishedAt": "2025-04-04T14:05:26Z",
+              "thumbnail": "https://i.ytimg.com/vi/oPQFYN5aBhE/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "OpenAI",
+            "Qodo",
+            "MLTut",
+            "Atlassian",
+            "Krish Naik"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -56,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 67
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 84
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 82
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 100
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 90
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 66
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 74
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 41
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 37
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 39
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 16
+            },
+            {
+              "date": "Jan 18 – 24, 2026",
+              "value": 9
+            }
+          ],
+          "search_query": "Code Review",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Code+Review%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-27T16:36:58.213Z"
+        }
+      }
     }
   },
-  "lastUpdated": "2026-01-22T21:46:28.879Z"
+  "lastUpdated": "2026-01-27T16:37:10.631Z"
 }

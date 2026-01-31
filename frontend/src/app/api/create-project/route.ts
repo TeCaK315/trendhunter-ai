@@ -269,8 +269,13 @@ ${fullContextPrompt}
 1. Используй РЕАЛЬНЫЕ данные от экспертов, не выдумывай
 2. MVP должен решать ГЛАВНУЮ БОЛЬ из анализа
 3. Tech stack должен быть бюджетным ($0-100/мес)
-4. Roadmap должен быть реалистичным
+4. Roadmap должен быть КОНКРЕТНЫМ и привязанным к данным анализа:
+   - MVP: фокус на решении главной боли "${context.analysis?.main_pain || 'не определена'}"
+   - Alpha: улучшения на основе фидбека от "${context.analysis?.target_audience?.primary || 'целевой аудитории'}"
+   - Beta: дифференциация от конкурентов (${context.competition?.competitors?.slice(0, 2).map(c => c.name).join(', ') || 'основных игроков'})
+   - Production: выход на рынок с учётом инвестиционной привлекательности (hotness: ${context.venture?.investment_hotness || 'N/A'}/10)
 5. Рекомендации должны учитывать конкурентов и рынок
+6. Success metrics должны быть измеримыми и привязанными к целевой аудитории
 
 Верни JSON:
 {
@@ -306,26 +311,26 @@ ${fullContextPrompt}
   "roadmap": {
     "mvp": {
       "duration": "4-6 weeks",
-      "goals": ["Цель 1"],
-      "deliverables": ["Что будет готово"],
-      "success_metrics": ["Метрика успеха"]
+      "goals": ["Конкретная цель на основе ГЛАВНОЙ БОЛИ из анализа"],
+      "deliverables": ["Конкретный функционал решающий боль ${context.analysis?.main_pain || 'основную проблему'}"],
+      "success_metrics": ["Метрика валидации - например: ${context.analysis?.target_audience?.segments?.[0]?.name || 'целевых пользователей'} протестировали продукт"]
     },
     "alpha": {
       "duration": "2-4 weeks",
-      "goals": ["Цель"],
-      "deliverables": ["Что будет готово"],
-      "success_metrics": ["Метрика"]
+      "goals": ["Цель на основе обратной связи от ${context.analysis?.target_audience?.primary || 'целевой аудитории'}"],
+      "deliverables": ["Улучшения основанные на фидбеке первых пользователей"],
+      "success_metrics": ["Метрика на основе болей: ${context.analysis?.key_pain_points?.[0] || 'уменьшение главной боли'}"]
     },
     "beta": {
       "duration": "4-8 weeks",
-      "goals": ["Цель"],
-      "deliverables": ["Что будет готово"],
-      "success_metrics": ["Метрика"]
+      "goals": ["Масштабирование и ${context.competition?.differentiation_opportunities?.[0] || 'дифференциация от конкурентов'}"],
+      "deliverables": ["Функции для опережения конкурентов: ${context.competition?.competitors?.[0]?.name || 'основного конкурента'}"],
+      "success_metrics": ["Blue Ocean метрика: ${context.competition?.blue_ocean_score ? 'улучшить blue ocean score' : 'занять свободную нишу'}"]
     },
     "production": {
-      "goals": ["Цель"],
-      "deliverables": ["Что будет готово"],
-      "success_metrics": ["Метрика"]
+      "goals": ["Публичный запуск с фокусом на ${context.venture?.investment_thesis || 'growth'}"],
+      "deliverables": ["Полный продукт готовый для ${context.venture?.recommended_round || 'привлечения инвестиций'}"],
+      "success_metrics": ["${context.venture?.investment_hotness && context.venture.investment_hotness > 7 ? 'Подготовка к раунду инвестиций' : 'Organic growth метрики'}"]
     }
   },
 

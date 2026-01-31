@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { calcBlueOceanScore, calcMarketSaturation, calcRiskLevel } from '@/lib/evidence-calculations';
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -188,130 +189,98 @@ function extractCompanyName(title: string): string {
     .substring(0, 50);
 }
 
-// Analyze competition using AI with full context
+// Analyze competition: ФОРМУЛЫ для scores, GPT ТОЛЬКО для opportunity_areas
 async function analyzeCompetition(
   query: string,
   competitors: Competitor[],
   context?: PreviousContext
 ): Promise<Partial<CompetitionData> & { strategic_positioning?: string; differentiation_opportunities?: string[] }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      ...getDefaultAnalysis(competitors),
-      error: 'OPENAI_API_KEY не настроен. AI-анализ недоступен.'
-    };
-  }
+  const count = competitors.length;
+  const fundedCount = competitors.filter(c => c.funding).length;
+
+  // ФОРМУЛЫ — не GPT
+  const saturation = calcMarketSaturation(count);
+  const blueOcean = calcBlueOceanScore(count);
+  const risk = calcRiskLevel(count, fundedCount);
 
   if (competitors.length === 0) {
     return {
-      market_saturation: 'low',
-      blue_ocean_score: 9,
-      opportunity_areas: ['Рынок свободен - конкуренты не найдены'],
-      risk_level: 'low',
+      market_saturation: saturation.level,
+      blue_ocean_score: blueOcean.value,
+      opportunity_areas: ['Конкуренты не найдены — рынок может быть свободен или слишком нишевый'],
+      risk_level: risk.level,
     };
   }
 
-  try {
-    let contextSection = '';
-    if (context?.analysis) {
-      contextSection += `
-## Контекст от эксперта по анализу болей:
-- Главная боль рынка: ${context.analysis.main_pain}
-- Ключевые боли: ${context.analysis.key_pain_points?.join(', ') || 'не определены'}
-- Целевая аудитория: ${context.analysis.target_audience?.primary || 'не определена'}
-- Выявленные возможности: ${context.analysis.opportunities?.join(', ') || 'не определены'}
-`;
-    }
+  // GPT ТОЛЬКО для opportunity_areas — с обязательными ссылками на конкурентов
+  let opportunityAreas: string[] = [];
+  let strategicPositioning: string | undefined;
+  let differentiationOpportunities: string[] = [];
 
-    if (context?.sources?.synthesis) {
-      contextSection += `
-## Контекст от эксперта по источникам:
-- Ключевые инсайты: ${context.sources.synthesis.key_insights?.join('; ') || 'нет данных'}
-- Пробелы в контенте: ${context.sources.synthesis.content_gaps?.join('; ') || 'нет данных'}
-`;
-    }
+  if (OPENAI_API_KEY) {
+    try {
+      let contextSection = '';
+      if (context?.analysis) {
+        contextSection += `\n- Главная боль: ${context.analysis.main_pain}`;
+        contextSection += `\n- Целевая аудитория: ${context.analysis.target_audience?.primary || 'не определена'}`;
+      }
 
-    if (context?.sources?.google_trends) {
-      contextSection += `- Рост интереса: ${context.sources.google_trends.growth_rate}%
-`;
-    }
-
-    const prompt = `Ты эксперт по конкурентному анализу. Проанализируй конкурентный ландшафт для "${query}".
+      const prompt = `Ты эксперт по конкурентному анализу. Вот РЕАЛЬНЫЕ конкуренты для "${query}":
+${competitors.map((c, i) => `${i + 1}. ${c.name} (${c.source}): ${c.description}`).join('\n')}
 ${contextSection}
-## Найденные конкуренты:
-${competitors.map((c, i) => `${i + 1}. ${c.name}: ${c.description}`).join('\n')}
 
-ВАЖНО: Учитывай контекст от предыдущих экспертов для более глубокого анализа.
-Определи, какие боли конкуренты НЕ решают, и где есть возможности для дифференциации.
+ВАЖНО: Опирайся ТОЛЬКО на данные о конкурентах выше. Для каждой возможности укажи, КАКОЙ конкурент её не покрывает.
 
 Верни JSON:
 {
-  "market_saturation": "low" | "medium" | "high",
-  "blue_ocean_score": 0-10 (выше = меньше конкуренции),
-  "opportunity_areas": ["конкретная возможность 1", "возможность 2", "возможность 3"],
-  "risk_level": "low" | "medium" | "high",
-  "strategic_positioning": "Рекомендуемое позиционирование на основе анализа болей и конкурентов",
-  "differentiation_opportunities": ["Как отличиться от конкурента 1", "Как отличиться от конкурента 2"],
-  "unserved_pain_points": ["Боль которую никто не решает 1", "Боль 2"]
-}
+  "opportunity_areas": ["Конкурент X не покрывает Y — возможность для...", "..."],
+  "strategic_positioning": "Позиционирование на основе слабостей конкурентов",
+  "differentiation_opportunities": ["Отличие от X: ...", "Отличие от Y: ..."]
+}`;
 
-Будь конкретен. Опирайся на данные от предыдущих экспертов.`;
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.4,
+          max_tokens: 800,
+        }),
+      });
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.4,
-        max_tokens: 1000,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('OpenAI API error:', response.status, errorData);
-      return {
-        ...getDefaultAnalysis(competitors),
-        error: `Ошибка OpenAI API (${response.status}): ${errorData.error?.message || 'Не удалось выполнить анализ'}`
-      };
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '';
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          opportunityAreas = parsed.opportunity_areas || [];
+          strategicPositioning = parsed.strategic_positioning;
+          differentiationOpportunities = parsed.differentiation_opportunities || [];
+        }
+      }
+    } catch (error) {
+      console.error('AI opportunity analysis error:', error);
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        market_saturation: parsed.market_saturation || 'medium',
-        blue_ocean_score: parsed.blue_ocean_score || 5,
-        opportunity_areas: parsed.opportunity_areas || [],
-        risk_level: parsed.risk_level || 'medium',
-        strategic_positioning: parsed.strategic_positioning,
-        differentiation_opportunities: parsed.differentiation_opportunities || [],
-      };
-    }
-  } catch (error) {
-    console.error('AI analysis error:', error);
-    return {
-      ...getDefaultAnalysis(competitors),
-      error: `Ошибка AI-анализа: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
   }
 
-  return getDefaultAnalysis(competitors);
-}
+  if (opportunityAreas.length === 0) {
+    opportunityAreas = count > 0
+      ? ['Требуется анализ слабостей конкурентов', 'Возможна дифференциация по UX/цене']
+      : ['Рынок свободен'];
+  }
 
-function getDefaultAnalysis(competitors: Competitor[]): Partial<CompetitionData> {
-  const count = competitors.length;
   return {
-    market_saturation: count > 7 ? 'high' : count > 3 ? 'medium' : 'low',
-    blue_ocean_score: Math.max(1, 10 - count),
-    opportunity_areas: count > 0 ? ['Требуется дифференциация', 'Фокус на нишу', 'Улучшение UX'] : ['Рынок свободен'],
-    risk_level: count > 5 ? 'high' : count > 2 ? 'medium' : 'low',
+    market_saturation: saturation.level,
+    blue_ocean_score: blueOcean.value,
+    opportunity_areas: opportunityAreas,
+    risk_level: risk.level,
+    strategic_positioning: strategicPositioning,
+    differentiation_opportunities: differentiationOpportunities,
   };
 }
 
@@ -349,6 +318,12 @@ export async function POST(request: NextRequest) {
       risk_level: analysis.risk_level || 'medium',
       strategic_positioning: analysis.strategic_positioning || null,
       differentiation_opportunities: analysis.differentiation_opportunities || [],
+      score_metadata: {
+        market_saturation: { data_type: 'calculated', formula: '<3=low, 3-7=medium, >7=high' },
+        blue_ocean_score: { data_type: 'calculated', formula: 'max(1, 10 - competitors * 1.2)' },
+        risk_level: { data_type: 'calculated', formula: 'competitors + funded_competitors * 2' },
+        opportunity_areas: { data_type: 'ai_synthesis', note: 'AI анализ на основе реальных конкурентов' },
+      },
       sources: [
         {
           name: 'Google Search',
@@ -363,7 +338,7 @@ export async function POST(request: NextRequest) {
       ],
       analyzed_at: new Date().toISOString(),
       context_received: !!previousContext?.analysis,
-      errors: [searchError, analysis.error].filter(Boolean),
+      errors: [searchError].filter(Boolean),
       warnings: missingKeys.length > 0 ? `Отсутствуют API ключи: ${missingKeys.join(', ')}` : undefined,
     };
 

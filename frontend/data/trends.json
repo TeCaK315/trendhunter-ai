@@ -1,6 +1,126 @@
 {
   "trends": [
     {
+      "id": "trend-1738250400000-1",
+      "title": "AI-Powered Contract Review for SMBs",
+      "category": "SaaS",
+      "popularity_score": 82,
+      "opportunity_score": 9.1,
+      "pain_score": 8.8,
+      "feasibility_score": 8.6,
+      "profit_potential": 9.3,
+      "growth_rate": 55,
+      "why_trending": "Малый и средний бизнес тратит тысячи долларов на юристов для проверки контрактов. AI-инструмент может за секунды выявить риски, пропущенные пункты и невыгодные условия — экономия до 90% затрат на базовый legal review. Рынок LegalTech растёт на 55% в год.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
+      "id": "trend-1738250400000-2",
+      "title": "Voice-First Customer Support Agent",
+      "category": "AI & ML",
+      "popularity_score": 85,
+      "opportunity_score": 9.4,
+      "pain_score": 9,
+      "feasibility_score": 7.8,
+      "profit_potential": 9.5,
+      "growth_rate": 62,
+      "why_trending": "Компании тратят $15-25/час на операторов колл-центров. Новое поколение голосовых AI-агентов (ElevenLabs, OpenAI Realtime API) способно вести естественный диалог 24/7. Рынок AI Voice Agents оценивается в $12B к 2028. Ключевая боль — 68% клиентов бросают звонок из-за ожидания.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
+      "id": "trend-1738250400000-3",
+      "title": "Automated Competitor Price Monitoring",
+      "category": "E-commerce",
+      "popularity_score": 79,
+      "opportunity_score": 8.9,
+      "pain_score": 8.5,
+      "feasibility_score": 9,
+      "profit_potential": 8.7,
+      "growth_rate": 38,
+      "why_trending": "E-commerce продавцы теряют до 30% маржи из-за неоптимальных цен. Инструмент мониторинга цен конкурентов в реальном времени с AI-рекомендациями по ценообразованию. На Amazon и Shopify более 12M активных продавцов — огромный рынок.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
+      "id": "trend-1738250400000-4",
+      "title": "AI Study Plan Generator for Medical Students",
+      "category": "EdTech",
+      "popularity_score": 74,
+      "opportunity_score": 8.6,
+      "pain_score": 9.2,
+      "feasibility_score": 8.3,
+      "profit_potential": 8.4,
+      "growth_rate": 42,
+      "why_trending": "Медстуденты изучают 20,000+ страниц материала за 6 лет. AI может создавать персонализированные планы обучения на основе расписания экзаменов, слабых тем и прогресса. USMLE prep market — $1.5B. Текущие решения (Anki, Sketchy) не адаптивны.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
+      "id": "trend-1738250400000-5",
+      "title": "Mental Health Chatbot for Remote Workers",
+      "category": "HealthTech",
+      "popularity_score": 80,
+      "opportunity_score": 8.8,
+      "pain_score": 9.1,
+      "feasibility_score": 7.9,
+      "profit_potential": 8.6,
+      "growth_rate": 48,
+      "why_trending": "76% удалённых работников отмечают повышенный уровень выгорания. Традиционная терапия стоит $150-300/сессию и имеет листы ожидания 4-8 недель. AI-чатбот для CBT-терапии, трекинга настроения и кризисной поддержки. Корпоративный wellness market — $65B.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
+      "id": "trend-1738250400000-6",
+      "title": "No-Code Internal Tool Builder with AI",
+      "category": "Technology",
+      "popularity_score": 83,
+      "opportunity_score": 9,
+      "pain_score": 8.4,
+      "feasibility_score": 8.8,
+      "profit_potential": 9.2,
+      "growth_rate": 50,
+      "why_trending": "Компании тратят 40% IT-бюджета на внутренние инструменты. Retool и Appsmith популярны, но требуют технических навыков. AI-powered no-code builder позволяет менеджерам создавать дашборды, формы и автоматизации голосом или текстом. TAM: $45B к 2027.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
+      "id": "trend-1738250400000-7",
+      "title": "AI-Powered Churn Prediction for SaaS",
+      "category": "SaaS",
+      "popularity_score": 77,
+      "opportunity_score": 9.2,
+      "pain_score": 8.7,
+      "feasibility_score": 8.5,
+      "profit_potential": 9.4,
+      "growth_rate": 35,
+      "why_trending": "Средний SaaS теряет 5-7% клиентов ежемесячно. Привлечь нового клиента в 5-7x дороже, чем удержать. AI-система предсказывает отток за 30 дней с точностью до 85%, анализируя паттерны использования продукта. Customer retention — приоритет #1 для 73% SaaS-компаний.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
+      "id": "trend-1738250400000-8",
+      "title": "Crypto Tax Automation Platform",
+      "category": "FinTech",
+      "popularity_score": 81,
+      "opportunity_score": 9.3,
+      "pain_score": 9,
+      "feasibility_score": 8.2,
+      "profit_potential": 9.1,
+      "growth_rate": 60,
+      "why_trending": "Более 420M людей владеют криптовалютой, но менее 5% правильно отчитываются по налогам. Новые регуляции (EU MiCA, US 1099-DA) делают отчётность обязательной с 2025. CoinTracker и Koinly не справляются с DeFi и cross-chain. Штрафы за неуплату — до 75% от суммы.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-01-30T10:00:00.000Z"
+    },
+    {
       "id": "trend-1768972048310-1",
       "title": "AI-Driven Email Response Optimizer",
       "category": "Business",
@@ -856,5 +976,5 @@
       "first_detected_at": "2026-01-15T23:58:25.912Z"
     }
   ],
-  "lastUpdated": "2026-01-21T05:07:28.615Z"
+  "lastUpdated": "2026-01-30T10:00:00.000Z"
 }
