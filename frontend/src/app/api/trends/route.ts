@@ -76,9 +76,56 @@ async function saveTrendsData(data: TrendsData): Promise<void> {
   }
 }
 
-// Normalize title for comparison
+// Normalize title for comparison - extract core concept
 function normalizeTitle(title: string): string {
-  return title.toLowerCase().trim().replace(/\s+/g, ' ');
+  // Generic suffixes to remove
+  const genericSuffixes = [
+    'tool', 'tools', 'software', 'platform', 'platforms', 'app', 'application',
+    'solution', 'solutions', 'system', 'systems', 'service', 'services',
+    'insights', 'analysis', 'analytics', 'management', 'manager',
+    'assistant', 'suite', 'dashboard', 'portal', 'kit', 'engine'
+  ];
+
+  // Common modifiers to remove (prefixes/adjectives)
+  const genericModifiers = [
+    'ai-powered', 'ai', 'smart', 'intelligent', 'automated', 'automatic',
+    'cloud-based', 'cloud', 'web-based', 'mobile', 'online', 'digital',
+    'advanced', 'modern', 'next-gen', 'innovative', 'revolutionary',
+    'integrated', 'comprehensive', 'complete', 'all-in-one', 'unified',
+    'real-time', 'realtime', 'instant', 'live',
+    'professional', 'enterprise', 'business', 'corporate',
+    'custom', 'personalized', 'adaptive', 'dynamic',
+    'secure', 'compliant', 'dea-compliant', 'hipaa-compliant',
+    'virtual', 'remote', 'distributed',
+    'consultation', 'monitoring', 'tracking', 'scheduling'
+  ];
+
+  let normalized = title.toLowerCase().trim().replace(/\s+/g, ' ');
+
+  // Remove generic suffixes from the end (iterative)
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const word of genericSuffixes) {
+      const pattern = new RegExp(`\\s+${word}$`, 'i');
+      if (pattern.test(normalized)) {
+        normalized = normalized.replace(pattern, '');
+        changed = true;
+      }
+    }
+  }
+
+  // Remove generic modifiers from anywhere in the title
+  for (const modifier of genericModifiers) {
+    // Remove as standalone word
+    const pattern = new RegExp(`\\b${modifier}\\b\\s*`, 'gi');
+    normalized = normalized.replace(pattern, ' ');
+  }
+
+  // Clean up multiple spaces
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+
+  return normalized;
 }
 
 // Check if two trends are duplicates

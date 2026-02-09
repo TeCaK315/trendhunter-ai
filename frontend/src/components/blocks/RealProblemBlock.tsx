@@ -49,7 +49,9 @@ interface RealProblemData {
   willingness_to_pay: {
     pricing_data: Array<{
       competitor: string;
-      results: Array<{ title: string; url: string; snippet: string }>;
+      pricing_url: string;
+      pricing_snippet: string;
+      prices_found: Array<{ amount: string; plan: string; period?: string }>;
     }>;
     paid_solution_count: number;
   };
@@ -279,22 +281,39 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
         </button>
         {expandedSection === 'willingness' && (
           <div className="px-3 pb-3 space-y-3">
-            {data.willingness_to_pay.pricing_data.map((pd, i) => (
-              <div key={i}>
-                <h4 className="text-xs font-medium text-zinc-400 mb-1">{pd.competitor}</h4>
-                {pd.results.slice(0, 2).map((r, j) => (
-                  <SourceCard
-                    key={j}
-                    title={r.title}
-                    url={r.url}
-                    source="google_search"
-                    snippet={r.snippet}
-                    dataType="real_data"
-                  />
-                ))}
+            {data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found.length > 0).map((pd, i) => (
+              <div key={i} className="bg-zinc-800/50 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{pd.competitor}</span>
+                  {pd.pricing_url && (
+                    <a
+                      href={pd.pricing_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-indigo-400 hover:text-indigo-300"
+                    >
+                      Страница цен
+                    </a>
+                  )}
+                </div>
+                {pd.prices_found.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {pd.prices_found.map((p, j) => (
+                      <span key={j} className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-300 rounded text-xs">
+                        {p.amount}
+                        <span className="text-zinc-500">
+                          {p.period === 'yr' ? '/год' : p.period === 'user/mo' ? '/юзер/мес' : '/мес'}
+                        </span>
+                        {p.plan && <span className="text-zinc-500">({p.plan})</span>}
+                      </span>
+                    ))}
+                  </div>
+                ) : pd.pricing_snippet ? (
+                  <p className="text-xs text-zinc-400">{pd.pricing_snippet}</p>
+                ) : null}
               </div>
             ))}
-            {data.willingness_to_pay.pricing_data.length === 0 && (
+            {data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found.length > 0).length === 0 && (
               <p className="text-sm text-zinc-400">Данные о ценах не найдены</p>
             )}
           </div>

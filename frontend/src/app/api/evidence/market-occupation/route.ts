@@ -3,6 +3,7 @@ import {
   fetchNegativeReviews,
   fetchReddit,
   fetchGoogleSearch,
+  discoverCompetitors,
 } from '@/lib/data-fetchers';
 import {
   calcBlueOceanScore,
@@ -39,7 +40,15 @@ export async function POST(request: NextRequest) {
     let totalSerpApiCalls = 0;
 
     // Get competitor info from context
-    const competitors: Array<{ name: string; target_market?: string }> = context?.competition?.competitors || [];
+    let competitors: Array<{ name: string; website?: string; target_market?: string }> = context?.competition?.competitors || [];
+
+    // Fallback: discover competitors via Google Search + GPT if none in context
+    if (competitors.length === 0) {
+      const discovered = await discoverCompetitors(searchQuery, 8);
+      totalSerpApiCalls += discovered.serpapi_calls_used;
+      competitors = discovered.competitors.map(c => ({ name: c.name, website: c.website }));
+    }
+
     const competitorsCount = competitors.length;
 
     // Fetch data in parallel
@@ -146,6 +155,7 @@ ${dataSection}
         count: competitorsCount,
         competitors: competitors.slice(0, 10).map(c => ({
           name: c.name,
+          website: c.website,
           target_market: c.target_market,
         })),
         no_competitors_is_bad: noCompetitorsIsBad,

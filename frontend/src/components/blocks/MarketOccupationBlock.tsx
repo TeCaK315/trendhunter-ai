@@ -7,7 +7,7 @@ import SourceCard from '../SourceCard';
 interface MarketOccupationData {
   competitors_exist: {
     count: number;
-    competitors: Array<{ name: string; target_market?: string }>;
+    competitors: Array<{ name: string; website?: string; target_market?: string }>;
     no_competitors_is_bad: boolean;
     note: string;
   };
@@ -147,8 +147,29 @@ export default function MarketOccupationBlock({ data, loading, error }: Props) {
             {data.competitors_exist.competitors.length > 0 ? (
               <div className="space-y-1">
                 {displayedCompetitors.map((c, i) => (
-                  <div key={i} className="flex items-center justify-between py-1 border-b border-zinc-700 last:border-0">
-                    <span className="text-sm font-medium">{c.name}</span>
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-zinc-700 last:border-0">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{c.name}</span>
+                      {c.website ? (
+                        <a
+                          href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                        >
+                          {c.website}
+                        </a>
+                      ) : (
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(c.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
+                        >
+                          Найти в Google
+                        </a>
+                      )}
+                    </div>
                     {c.target_market && <span className="text-xs text-zinc-400">{c.target_market}</span>}
                   </div>
                 ))}

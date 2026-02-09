@@ -245,8 +245,9 @@ export default function TrendPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [collectingSources, setCollectingSources] = useState(false);
   const [currentStep, setCurrentStep] = useState<FlowStep>('overview');
+  const [researchSubTab, setResearchSubTab] = useState<ResearchSubTab>('analysis');
   const [businessSubTab, setBusinessSubTab] = useState<BusinessSubTab>('venture');
-  const [evidenceSubTab, setEvidenceSubTab] = useState<EvidenceSubTab>('problem'); // Default to first Evidence tab
+  const [evidenceSubTab, setEvidenceSubTab] = useState<EvidenceSubTab>('problem');
   const [isFavorite, setIsFavorite] = useState(false);
 
   // Evidence block data
@@ -879,14 +880,16 @@ export default function TrendPage() {
     } else if (tabParam && !authSuccess) {
       // Обработка tab параметра при прямой загрузке страницы
       // Маппинг старых табов на новые
-      const tabMapping: Record<string, { step: FlowStep; subTab?: EvidenceSubTab | BusinessSubTab }> = {
+      const tabMapping: Record<string, { step: FlowStep; subTab?: ResearchSubTab | BusinessSubTab }> = {
         'overview': { step: 'overview' },
-        'analysis': { step: 'evidence', subTab: 'analysis' },
+        'analysis': { step: 'research', subTab: 'analysis' },
+        'competition': { step: 'research', subTab: 'competition' },
         'venture': { step: 'business', subTab: 'venture' },
         'leads': { step: 'business', subTab: 'leads' },
 
         'project': { step: 'project' },
         // Новые табы
+        'research': { step: 'research' },
         'business': { step: 'business' },
         'evidence': { step: 'evidence' },
       };
@@ -896,8 +899,8 @@ export default function TrendPage() {
         tabSetFromUrlRef.current = true;
         setCurrentStep(mapping.step);
         if (mapping.subTab) {
-          if (['analysis', 'problem', 'demand', 'sellability', 'occupation', 'economics'].includes(mapping.subTab)) {
-            setEvidenceSubTab(mapping.subTab as EvidenceSubTab);
+          if (['analysis', 'competition'].includes(mapping.subTab)) {
+            setResearchSubTab(mapping.subTab as ResearchSubTab);
           } else {
             setBusinessSubTab(mapping.subTab as BusinessSubTab);
           }
@@ -1224,7 +1227,8 @@ export default function TrendPage() {
         } as TrendAnalysis;
 
         setAnalysis(updatedAnalysis);
-        // Competition tab removed - staying on current step
+        setCurrentStep('research');
+        setResearchSubTab('competition');
 
         // Save to API
         await fetch('/api/trends/analyze', {
@@ -1755,6 +1759,10 @@ export default function TrendPage() {
 
   // Auto-fetch data when switching to relevant tabs/subtabs
   useEffect(() => {
+    // Research subtabs
+    if (currentStep === 'research' && researchSubTab === 'competition' && !competition && !loadingCompetition) {
+      fetchCompetition();
+    }
     // Business subtabs
     if (currentStep === 'business') {
       if (businessSubTab === 'venture' && !ventureData && !loadingVenture) {
@@ -1764,7 +1772,7 @@ export default function TrendPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, businessSubTab]);
+  }, [currentStep, researchSubTab, businessSubTab]);
 
   // Оптимизированный flow: 4 основных шага
   const flowSteps = [
@@ -1829,7 +1837,8 @@ export default function TrendPage() {
               const isPast = flowSteps.findIndex(s => s.id === currentStep) > index;
               const isClickable = isPast || step.id === 'overview' ||
                 step.id === 'evidence' ||
-                step.id === 'business' ||
+                (step.id === 'research' && analysis) ||
+                (step.id === 'business' && analysis) ||
                 (step.id === 'project' && analysis);
 
               return (
@@ -1882,12 +1891,12 @@ export default function TrendPage() {
           {currentStep === 'evidence' && (
             <div className="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-800/50 overflow-x-auto scrollbar-hide">
               {[
+                { id: 'analysis', label: language === 'ru' ? 'Анализ' : 'Analysis', icon: '🔍' },
                 { id: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
                 { id: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
                 { id: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
                 { id: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
                 { id: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
-                { id: 'analysis', label: language === 'ru' ? 'Анализ' : 'Analysis', icon: '🔍' },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -2023,6 +2032,67 @@ export default function TrendPage() {
           {/* Step Content */}
           {currentStep === 'overview' && (
             <div className="space-y-6">
+              {/* Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    label: t.trendDetail.overview.opportunity,
+                    value: trend.opportunity_score,
+                    icon: '🎯',
+                    colorClass: 'bg-indigo-500',
+                    description: language === 'ru'
+                      ? 'Оценка рыночных возможностей: размер рынка, растущий спрос, незанятые ниши'
+                      : 'Market opportunity: market size, growing demand, untapped niches'
+                  },
+                  {
+                    label: t.trendDetail.overview.painLevel,
+                    value: trend.pain_score,
+                    icon: '🔥',
+                    colorClass: 'bg-red-500',
+                    description: language === 'ru'
+                      ? 'Потребность: насколько сильно пользователи нуждаются в решении'
+                      : 'Need: how strongly users need a solution'
+                  },
+                  {
+                    label: t.trendDetail.overview.feasibility,
+                    value: trend.feasibility_score,
+                    icon: '⚡',
+                    colorClass: 'bg-amber-500',
+                    description: language === 'ru'
+                      ? 'Выполнимость: техническая сложность, доступность ресурсов, время до MVP'
+                      : 'Feasibility: technical complexity, resource availability, time to MVP'
+                  },
+                  {
+                    label: t.trendDetail.overview.potential,
+                    value: trend.profit_potential,
+                    icon: '💰',
+                    colorClass: 'bg-emerald-500',
+                    description: language === 'ru'
+                      ? 'Потенциальная выгода: готовность платить, LTV, маржинальность'
+                      : 'Profit potential: willingness to pay, LTV, profit margins'
+                  },
+                ].map((metric) => (
+                  <div key={metric.label} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 group relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span>{metric.icon}</span>
+                      <span className="text-sm text-zinc-400">{metric.label}</span>
+                      <span className="text-zinc-600 cursor-help" title={metric.description}>ⓘ</span>
+                    </div>
+                    <div className="text-2xl font-bold text-white">{metric.value}</div>
+                    <div className="mt-2 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${metric.colorClass} rounded-full transition-all`}
+                        style={{ width: `${metric.value * 10}%` }}
+                      />
+                    </div>
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 w-[220px] text-center">
+                      {metric.description}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {/* Info */}
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
@@ -2076,8 +2146,8 @@ export default function TrendPage() {
             </div>
           )}
 
-          {/* Evidence - Analysis subtab: No analysis yet */}
-          {currentStep === 'evidence' && evidenceSubTab === 'analysis' && !analysis && (
+          {/* Research - Analysis subtab: No analysis yet */}
+          {currentStep === 'research' && researchSubTab === 'analysis' && !analysis && (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-6">
                 <span className="text-4xl">🔍</span>
@@ -2112,8 +2182,8 @@ export default function TrendPage() {
             </div>
           )}
 
-          {/* Evidence - Analysis subtab: Has analysis */}
-          {currentStep === 'evidence' && evidenceSubTab === 'analysis' && analysis && (
+          {/* Research - Analysis subtab: Has analysis */}
+          {currentStep === 'research' && researchSubTab === 'analysis' && analysis && (
             <div className="space-y-6">
               {/* Analysis Type Badge */}
               {analysis.analysis_type === 'deep' && (
@@ -2363,6 +2433,140 @@ export default function TrendPage() {
             </div>
           )}
 
+          {/* Competition Tab */}
+          {currentStep === 'research' && researchSubTab === 'competition' && (
+            <div className="space-y-6">
+              {loadingCompetition ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mb-4" />
+                  <p className="text-zinc-400">{t.trendDetail.competition.analyzingCompetitors}</p>
+                </div>
+              ) : competition ? (
+                <>
+                  {/* Competition Overview */}
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.competition.marketSaturation}</div>
+                      <div className={`text-2xl font-bold ${
+                        competition.market_saturation === 'low' ? 'text-emerald-400' :
+                        competition.market_saturation === 'medium' ? 'text-amber-400' : 'text-red-400'
+                      }`}>
+                        {competition.market_saturation === 'low' ? t.trendDetail.competition.low :
+                         competition.market_saturation === 'medium' ? t.trendDetail.competition.medium : t.trendDetail.competition.high}
+                      </div>
+                    </div>
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                      <div className="text-sm text-zinc-400 mb-2">Blue Ocean Score</div>
+                      <div className="text-2xl font-bold text-indigo-400">{competition.blue_ocean_score}/10</div>
+                      <div className="text-xs text-zinc-500 mt-1">{t.trendDetail.competition.blueOceanHint}</div>
+                    </div>
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                      <div className="text-sm text-zinc-400 mb-2">{t.trendDetail.competition.riskLevel}</div>
+                      <div className={`text-2xl font-bold ${
+                        competition.risk_level === 'low' ? 'text-emerald-400' :
+                        competition.risk_level === 'medium' ? 'text-amber-400' : 'text-red-400'
+                      }`}>
+                        {competition.risk_level === 'low' ? t.trendDetail.competition.low :
+                         competition.risk_level === 'medium' ? t.trendDetail.competition.medium : t.trendDetail.competition.high}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Competitors */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">
+                      {t.trendDetail.competition.competitors} ({displayCompetitors.length})
+                      {translatingCompetition && (
+                        <span className="inline-block w-4 h-4 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      )}
+                    </h3>
+                    <div className="space-y-3">
+                      {displayCompetitors.map((comp, index) => (
+                        <a
+                          key={index}
+                          href={comp.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="text-white font-medium mb-1">{comp.name}</div>
+                              <div className="text-sm text-zinc-400 line-clamp-2">{comp.description}</div>
+                              <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500">
+                                <span className="px-2 py-0.5 bg-zinc-700 rounded">{comp.source}</span>
+                              </div>
+                            </div>
+                            <svg className="w-5 h-5 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Opportunity Areas */}
+                  {displayOpportunityAreas.length > 0 && (
+                    <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-6">
+                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <span>💡</span> {t.trendDetail.competition.opportunityAreas}
+                      </h3>
+                      <div className="space-y-2">
+                        {displayOpportunityAreas.map((area, index) => (
+                          <div key={index} className="flex items-start gap-2 text-emerald-300">
+                            <span>•</span>
+                            <span>{area}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sources */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-sm font-medium text-zinc-400 mb-3">{t.trendDetail.sources.dataSources}</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {competition.sources.map((source, index) => (
+                        <a
+                          key={index}
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded-lg text-sm hover:bg-zinc-700 transition-colors flex items-center gap-1"
+                        >
+                          {source.name}
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Next Step */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.competition.nextStep}</h3>
+                    <p className="text-zinc-400 mb-4">
+                      {t.trendDetail.competition.ventureDescription}
+                    </p>
+                    <button
+                      onClick={() => { setCurrentStep('business'); setBusinessSubTab('venture'); }}
+                      className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
+                    >
+                      <span>💰</span>
+                      {t.trendDetail.venture.ventureData}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-20 text-zinc-400">
+                  {t.trendDetail.competition.loadError}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Venture Tab */}
           {currentStep === 'business' && businessSubTab === 'venture' && (
             <div className="space-y-6">
@@ -2418,18 +2622,13 @@ export default function TrendPage() {
                               <div>
                                 <div className="text-white font-medium">{round.company}</div>
                                 <div className="text-sm text-zinc-400">
-                                  {round.round_type}
-                                  {round.date && round.date !== 'DATE_UNKNOWN' && round.date !== 'Дата неизвестна' && (
-                                    <span> • {round.date}</span>
-                                  )}
+                                  {round.round_type} • {round.date === 'DATE_UNKNOWN' ? t.trendDetail.venture.dateUnknown : round.date}
                                   {round.investors.length > 0 && (
                                     <span> • {round.investors.join(', ')}</span>
                                   )}
                                 </div>
                               </div>
-                              {round.amount && round.amount !== 'Undisclosed' && (
-                                <div className="text-emerald-400 font-bold text-lg">{round.amount}</div>
-                              )}
+                              <div className="text-emerald-400 font-bold text-lg">{round.amount}</div>
                             </div>
                           </a>
                         ))}
@@ -2707,7 +2906,7 @@ export default function TrendPage() {
                   </p>
                   {!analysis?.main_pain && (
                     <button
-                      onClick={() => { setCurrentStep('research'); setEvidenceSubTab('analysis'); }}
+                      onClick={() => { setCurrentStep('research'); setResearchSubTab('analysis'); }}
                       className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg"
                     >
                       {language === 'ru' ? 'Перейти к анализу' : 'Go to analysis'}

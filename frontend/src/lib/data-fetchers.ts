@@ -82,7 +82,7 @@ function extractFromSnippet(snippet: string, pattern: RegExp): string | null {
 // === REDDIT ===
 
 export async function fetchReddit(query: string): Promise<FetcherResponse<RedditResult>> {
-  const data = await serpApiSearch(`site:reddit.com ${query}`, { num: 20 });
+  const data = await serpApiSearch(`site:reddit.com ${query}`, { num: 20, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'reddit', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -125,7 +125,7 @@ export async function fetchReddit(query: string): Promise<FetcherResponse<Reddit
 // === HACKER NEWS ===
 
 export async function fetchHackerNews(query: string): Promise<FetcherResponse<HackerNewsResult>> {
-  const data = await serpApiSearch(`site:news.ycombinator.com ${query}`, { num: 15 });
+  const data = await serpApiSearch(`site:news.ycombinator.com ${query}`, { num: 15, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'hacker_news', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -138,11 +138,18 @@ export async function fetchHackerNews(query: string): Promise<FetcherResponse<Ha
     const url = result.link || '';
     if (!url.includes('news.ycombinator.com')) continue;
 
+    const title = result.title || '';
     const snippet = result.snippet || '';
-    const pointsMatch = snippet.match(/(\d+)\s*points?/i);
+    const date = result.date || '';
+
+    // Try to extract points from snippet, title, or date fields
+    const pointsMatch =
+      snippet.match(/(\d+)\s*points?/i) ||
+      title.match(/(\d+)\s*points?/i) ||
+      date.match(/(\d+)\s*points?/i);
 
     results.push({
-      title: (result.title || '').replace(/ \| Hacker News$/, ''),
+      title: title.replace(/ \| Hacker News$/, ''),
       url,
       snippet,
       source: 'hacker_news',
@@ -163,7 +170,7 @@ export async function fetchHackerNews(query: string): Promise<FetcherResponse<Ha
 // === TWITTER/X ===
 
 export async function fetchTwitter(query: string): Promise<FetcherResponse<TwitterResult>> {
-  const data = await serpApiSearch(`(site:twitter.com OR site:x.com) ${query}`, { num: 10 });
+  const data = await serpApiSearch(`(site:twitter.com OR site:x.com) ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'twitter', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -197,7 +204,7 @@ export async function fetchTwitter(query: string): Promise<FetcherResponse<Twitt
 // === QUORA ===
 
 export async function fetchQuora(query: string): Promise<FetcherResponse<QuoraResult>> {
-  const data = await serpApiSearch(`site:quora.com ${query}`, { num: 10 });
+  const data = await serpApiSearch(`site:quora.com ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'quora', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -231,7 +238,7 @@ export async function fetchQuora(query: string): Promise<FetcherResponse<QuoraRe
 // === STACK OVERFLOW ===
 
 export async function fetchStackOverflow(query: string): Promise<FetcherResponse<StackOverflowResult>> {
-  const data = await serpApiSearch(`site:stackoverflow.com ${query}`, { num: 10 });
+  const data = await serpApiSearch(`site:stackoverflow.com ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'stackoverflow', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -271,7 +278,7 @@ export async function fetchStackOverflow(query: string): Promise<FetcherResponse
 // === G2 REVIEWS ===
 
 export async function fetchG2Reviews(query: string): Promise<FetcherResponse<G2Result>> {
-  const data = await serpApiSearch(`site:g2.com ${query} review`, { num: 10 });
+  const data = await serpApiSearch(`site:g2.com ${query} review`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'g2', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -309,7 +316,7 @@ export async function fetchG2Reviews(query: string): Promise<FetcherResponse<G2R
 // === CAPTERRA REVIEWS ===
 
 export async function fetchCapterraReviews(query: string): Promise<FetcherResponse<CapterraResult>> {
-  const data = await serpApiSearch(`site:capterra.com ${query}`, { num: 10 });
+  const data = await serpApiSearch(`site:capterra.com ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'capterra', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -385,7 +392,7 @@ export async function fetchTrustpilot(query: string): Promise<FetcherResponse<Tr
 // === PRODUCT HUNT ===
 
 export async function fetchProductHunt(query: string): Promise<FetcherResponse<ProductHuntResult>> {
-  const data = await serpApiSearch(`site:producthunt.com ${query}`, { num: 10 });
+  const data = await serpApiSearch(`site:producthunt.com ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'producthunt', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -398,11 +405,18 @@ export async function fetchProductHunt(query: string): Promise<FetcherResponse<P
     const url = result.link || '';
     if (!url.includes('producthunt.com')) continue;
 
+    const title = result.title || '';
     const snippet = result.snippet || '';
-    const upvotesMatch = snippet.match(/(\d+)\s*(?:upvotes?|votes?)/i);
+    const date = result.date || '';
+
+    // Try to extract upvotes from snippet, title, or date fields
+    const upvotesMatch =
+      snippet.match(/(\d+)\s*(?:upvotes?|votes?)/i) ||
+      title.match(/(\d+)\s*(?:upvotes?|votes?)/i) ||
+      date.match(/(\d+)\s*(?:upvotes?|votes?)/i);
 
     results.push({
-      title: (result.title || '').split(' - ')[0],
+      title: title.split(' - ')[0],
       url,
       snippet,
       source: 'producthunt',
@@ -828,39 +842,101 @@ export async function fetchCompetitorPricing(competitorName: string): Promise<{
   competitor: string;
   pricing_url: string;
   pricing_snippet: string;
-  prices_found: Array<{ amount: string; plan: string }>;
+  prices_found: Array<{ amount: string; plan: string; period: string }>;
   serpapi_calls_used: number;
   error?: string;
 }> {
-  const data = await serpApiSearch(`${competitorName} pricing plans`, { num: 5 });
+  // Search specifically for the competitor's pricing page
+  const data = await serpApiSearch(`"${competitorName}" pricing plans site:${competitorName.toLowerCase().replace(/\s+/g, '')}.com OR pricing`, { num: 5 });
 
   if (data.error) {
-    return { competitor: competitorName, pricing_url: '', pricing_snippet: '', prices_found: [], serpapi_calls_used: 1, error: data.error };
+    // Fallback: try simpler search
+    const fallbackData = await serpApiSearch(`${competitorName} pricing`, { num: 5 });
+    if (fallbackData.error) {
+      return { competitor: competitorName, pricing_url: '', pricing_snippet: '', prices_found: [], serpapi_calls_used: 2, error: fallbackData.error };
+    }
+    return parsePricingResults(competitorName, fallbackData, 2);
   }
 
+  return parsePricingResults(competitorName, data, 1);
+}
+
+function parsePricingResults(
+  competitorName: string,
+  data: Record<string, unknown>,
+  callsUsed: number,
+): {
+  competitor: string;
+  pricing_url: string;
+  pricing_snippet: string;
+  prices_found: Array<{ amount: string; plan: string; period: string }>;
+  serpapi_calls_used: number;
+} {
   const organicResults = (data.organic_results || []) as Array<Record<string, string>>;
   let pricingUrl = '';
   let pricingSnippet = '';
-  const pricesFound: Array<{ amount: string; plan: string }> = [];
+  const pricesFound: Array<{ amount: string; plan: string; period: string }> = [];
+  const seenAmounts = new Set<string>();
 
   for (const result of organicResults) {
     const title = (result.title || '').toLowerCase();
     const link = result.link || '';
     const snippet = result.snippet || '';
 
-    if (title.includes('pricing') || title.includes('plans') || link.includes('pricing')) {
-      pricingUrl = link;
-      pricingSnippet = snippet;
+    // Check if this is a pricing-related page
+    const isPricingPage = title.includes('pricing') || title.includes('plans') ||
+      title.includes('cost') || link.includes('pricing') || link.includes('/plans');
 
-      // Extract prices from snippet
-      const priceMatches = snippet.matchAll(/\$(\d+(?:\.\d{2})?)\s*(?:\/?\s*(?:mo|month|year|yr|user))?/gi);
-      for (const match of priceMatches) {
-        pricesFound.push({
-          amount: `$${match[1]}`,
-          plan: match[0],
-        });
+    if (isPricingPage) {
+      if (!pricingUrl) {
+        pricingUrl = link;
+        pricingSnippet = snippet;
       }
-      break;
+
+      // Extract prices with period detection
+      const priceRegex = /\$(\d+(?:\.\d{2})?)\s*(?:\/?\s*(mo(?:nth)?|year(?:ly)?|yr|annual(?:ly)?|per\s+month|per\s+year|per\s+user|user))?/gi;
+      let match;
+      while ((match = priceRegex.exec(snippet)) !== null) {
+        const amount = parseFloat(match[1]);
+        if (amount <= 0 || amount > 50000) continue;
+
+        const periodRaw = (match[2] || '').toLowerCase();
+        let period = 'mo';
+        let displayAmount = amount;
+
+        if (periodRaw.includes('year') || periodRaw.includes('yr') || periodRaw.includes('annual')) {
+          period = 'yr';
+          // Also calculate monthly equivalent
+          displayAmount = amount;
+        } else if (periodRaw.includes('user')) {
+          period = 'user/mo';
+        } else {
+          period = 'mo';
+        }
+
+        const key = `${displayAmount}-${period}`;
+        if (!seenAmounts.has(key)) {
+          seenAmounts.add(key);
+
+          // Determine plan name from context
+          let planName = 'Standard';
+          const beforePrice = snippet.substring(0, match.index).toLowerCase();
+          if (beforePrice.includes('enterprise')) planName = 'Enterprise';
+          else if (beforePrice.includes('pro')) planName = 'Pro';
+          else if (beforePrice.includes('team')) planName = 'Team';
+          else if (beforePrice.includes('business')) planName = 'Business';
+          else if (beforePrice.includes('starter') || beforePrice.includes('basic')) planName = 'Starter';
+          else if (beforePrice.includes('free')) planName = 'Free';
+
+          pricesFound.push({
+            amount: `$${displayAmount}`,
+            plan: planName,
+            period,
+          });
+        }
+      }
+
+      if (pricesFound.length > 0) break; // Found prices, stop searching
     }
   }
 
@@ -868,8 +944,98 @@ export async function fetchCompetitorPricing(competitorName: string): Promise<{
     competitor: competitorName,
     pricing_url: pricingUrl,
     pricing_snippet: pricingSnippet,
-    prices_found: pricesFound,
-    serpapi_calls_used: 1,
+    prices_found: pricesFound.slice(0, 5),
+    serpapi_calls_used: callsUsed,
+  };
+}
+
+// === COMPETITOR DISCOVERY (FALLBACK) ===
+
+export async function discoverCompetitors(
+  query: string,
+  maxCompetitors: number = 5,
+): Promise<{
+  competitors: Array<{ name: string; website?: string }>;
+  serpapi_calls_used: number;
+}> {
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+
+  // Step 1: Google Search for competitors
+  const searchResult = await fetchGoogleSearch(`${query} top competitors alternatives tools 2025`, 10);
+
+  if (searchResult.data.length === 0) {
+    return { competitors: [], serpapi_calls_used: searchResult.serpapi_calls_used };
+  }
+
+  // Step 2: Use GPT to extract clean competitor names from search results
+  if (OPENAI_API_KEY) {
+    try {
+      const searchData = searchResult.data.slice(0, 10).map((r, i) =>
+        `${i + 1}. "${r.title}" — ${r.snippet}`
+      ).join('\n');
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0.1,
+          max_tokens: 300,
+          messages: [
+            {
+              role: 'system',
+              content: `Extract competitor/product names from search results for the niche "${query}".
+Return ONLY a JSON array of objects: [{"name": "Product Name", "website": "domain.com"}]
+Rules:
+- Return actual product/company names (e.g. "Notion", "Slack", "Asana")
+- Do NOT include generic terms, article titles, or category names
+- website is optional, include only if clearly visible in the results
+- Maximum ${maxCompetitors} competitors
+- Do NOT include the query term "${query}" itself as a competitor`,
+            },
+            { role: 'user', content: searchData },
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '';
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed)) {
+            return {
+              competitors: parsed.slice(0, maxCompetitors).map((c: { name: string; website?: string }) => ({
+                name: c.name,
+                website: c.website,
+              })),
+              serpapi_calls_used: searchResult.serpapi_calls_used,
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.error('GPT competitor extraction error:', e);
+    }
+  }
+
+  // Fallback: basic extraction without GPT
+  const nameSet = new Set<string>();
+  for (const r of searchResult.data) {
+    // Try to extract from "X vs Y" or "X | Y" patterns
+    const matches = r.title.match(/^([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)\s+(?:vs\.?|versus)\s+/i);
+    if (matches && matches[1].length <= 30) {
+      nameSet.add(matches[1].trim());
+    }
+  }
+
+  return {
+    competitors: Array.from(nameSet).slice(0, maxCompetitors).map(name => ({ name })),
+    serpapi_calls_used: searchResult.serpapi_calls_used,
   };
 }
 

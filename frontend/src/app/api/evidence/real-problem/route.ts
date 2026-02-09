@@ -5,6 +5,7 @@ import {
   fetchG2Reviews,
   fetchCapterraReviews,
   fetchCompetitorPricing,
+  discoverCompetitors,
 } from '@/lib/data-fetchers';
 import {
   calcProblemSeverity,
@@ -58,10 +59,16 @@ export async function POST(request: NextRequest) {
     totalSerpApiCalls += g2Result.serpapi_calls_used;
     totalSerpApiCalls += capterraResult.serpapi_calls_used;
 
-    // Fetch competitor pricing if we have competitor names from context
-    const competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 3) || [];
-    const pricingResults = [];
+    // Fetch competitor pricing — use context or discover via search
+    let competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 10) || [];
 
+    if (competitorNames.length === 0) {
+      const discovered = await discoverCompetitors(searchQuery, 10);
+      totalSerpApiCalls += discovered.serpapi_calls_used;
+      competitorNames = discovered.competitors.map(c => c.name);
+    }
+
+    const pricingResults = [];
     for (const name of competitorNames) {
       const pricingResult = await fetchCompetitorPricing(name);
       totalSerpApiCalls += pricingResult.serpapi_calls_used;
@@ -151,7 +158,7 @@ ${complaintsText}
       },
       how_often: {
         google_trends: trendsResult.data ? {
-          growth_rate: trendsResult.data.growth_rate,
+          growth_rate: Math.abs(trendsResult.data.growth_rate), // Always positive
           search_query: trendsResult.data.search_query,
           google_trends_url: trendsResult.data.google_trends_url,
         } : null,

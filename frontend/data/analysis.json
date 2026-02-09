@@ -5887,7 +5887,2307 @@
           "fetched_at": "2026-01-27T16:36:58.213Z"
         }
       }
+    },
+    "trend-1769884966474-15": {
+      "trend_id": "trend-1769884966474-15",
+      "trend_title": "WhatsApp AI Chatbot Builder",
+      "main_pain": "Пользователи испытывают трудности с созданием WhatsApp чатботов, особенно без доступа к официальному API или навыков программирования. Существующие решения часто требуют технических знаний или являются дорогостоящими.",
+      "key_pain_points": [
+        "Пользователи испытывают трудности с созданием WhatsApp чатботов, особенно без доступа к официальному API или навыков программирования. Существующие решения часто требуют технических знаний или являются дорогостоящими.",
+        "Существующие решения для создания WhatsApp чатботов часто оказываются недостаточно функциональными или сложными в использовании.",
+        "Сложность интеграции чатботов с другими системами и платформами."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Предприниматели и малые бизнесы",
+            "size": "Требует валидации",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/webdev, r/automation, Quora",
+            "confidence": 6
+          },
+          {
+            "name": "Разработчики",
+            "size": "Требует валидации",
+            "willingness_to_pay": "high",
+            "where_to_find": "Stack Overflow, r/SaaS",
+            "confidence": 5
+          }
+        ]
+      },
+      "sentiment_score": 6,
+      "status": "sources_collected",
+      "analyzed_at": "2026-01-31T18:54:00.619Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "What is the current poor man's way of creating a whatsapp ...",
+              "subreddit": "webdev",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/webdev/comments/1clyqbk/what_is_the_current_poor_mans_way_of_creating_a/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "I've built a WhatsApp chatbot using NestJS (a Node.js framework), and it integrates OpenAI 's GPT-4 model for conversational intelligence."
+            },
+            {
+              "title": "I want to make my WhatsApp into Chatbot. Can someone ...",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1h14opx/i_want_to_make_my_whatsapp_into_chatbot_can/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "1. Get Access to WhatsApp Business API · 2. Use a Chatbot Builder · 3. Build Your Chat Flow · 4. Use Predefined Chatbot Templates · 5. Deploy & ..."
+            },
+            {
+              "title": "[Project] I built an Open-Source WhatsApp Chatbot using ...",
+              "subreddit": "Python",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Python/comments/1l94mr0/project_i_built_an_opensource_whatsapp_chatbot/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "The project is an open-source Python application that acts as the \"brain\" for a WhatsApp chatbot. It listens for incoming messages, sends them to Google's ..."
+            },
+            {
+              "title": "Lessons from building a WhatsApp AI chatbot SaaS (200+ ...",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1nwhimk/lessons_from_building_a_whatsapp_ai_chatbot_saas/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "I built a SaaS called ChatooAi , a WhatsApp AI bot builder that works without the official API (just QR codes, supports GPT-4, Claude, and…"
+            },
+            {
+              "title": "What's the best way to build a WhatsApp bot in 2025?",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1ldf76c/whats_the_best_way_to_build_a_whatsapp_bot_in_2025/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "If you don't want to build everything yourself, tools like Steps AI Chatbot already support WhatsApp and handle the official API side for you."
+            },
+            {
+              "title": "Help building a human-like WhatsApp AI customer support ...",
+              "subreddit": "AI_Agents",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/AI_Agents/comments/1kh3ji4/help_building_a_humanlike_whatsapp_ai_customer/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "Hi everyone, I'm working on a customer service chatbot for WhatsApp and could use some direction from more experienced builders here."
+            },
+            {
+              "title": "Chatrace (chatbotbuilder) + WhatsApp and n8n.",
+              "subreddit": "n8n",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/n8n/comments/1it3mgj/chatrace_chatbotbuilder_whatsapp_and_n8n/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "I'm still in the journey to understand how to connect platforms n8n chatrace and WhatsApp. Any advice video or documentation may help. Thanks."
+            },
+            {
+              "title": "Anyone built a niche WhatsApp chatbot? 🤖✨ (Inspired by ...",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1ksnfbt/anyone_built_a_niche_whatsapp_chatbot_inspired_by/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "I've been toying with the idea of building a niche WhatsApp chatbot — something simple but useful for small businesses like hair salons, ..."
+            },
+            {
+              "title": "Whatsapp AI Chatbot",
+              "subreddit": "automation",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/automation/comments/1mubw6j/whatsapp_ai_chatbot/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "Answer common customer queries (business hours, pricing, etc.) · Collect and log orders/reservations into a Google Sheet automatically."
+            },
+            {
+              "title": "I built a WhatsApp chatbot and AI Agent for hotels and the ...",
+              "subreddit": "Automate",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Automate/comments/1mr379b/i_built_a_whatsapp_chatbot_and_ai_agent_for/",
+              "created": "2026-01-31T18:53:53.855Z",
+              "selftext": "I built a WhatsApp chatbot for hotels and the hospitality industry that's able to handle customer inquiries and questions 24/7."
+            }
+          ],
+          "communities": [
+            "webdev",
+            "automation",
+            "Python",
+            "SaaS",
+            "AI_Agents",
+            "n8n",
+            "Automate"
+          ],
+          "engagement": 0
+        },
+        "hacker_news": {
+          "posts": [
+            {
+              "title": "Show HN: IngestAI – NoCode ChatGPT-bot creator from ...",
+              "url": "https://news.ycombinator.com/item?id=34909921",
+              "points": 0,
+              "snippet": "It is the fastest way to build contextually intelligent ChatGPT-like bots within your own WhatsApp, Slack, or Discord to answer queries from ..."
+            },
+            {
+              "title": "I made it fast and easy to launch your own RAG-powered AI ...",
+              "url": "https://news.ycombinator.com/item?id=46022840",
+              "points": 0,
+              "snippet": "1. Intent Detection Per Message. Every message is classified to decide the retrieval strategy: · 2. Adaptive Retrieval. When retrieval is needed, the system ..."
+            },
+            {
+              "title": "Show HN: Eddy Travels – AI travel assistant on WhatsApp ...",
+              "url": "https://news.ycombinator.com/item?id=20381413",
+              "points": 0,
+              "snippet": "Eddy Travels is an AI-powered travel assistant that helps people plan their trips more easily. Travelers can send text or voice messages to the ..."
+            },
+            {
+              "title": "Microsoft Bot Framework",
+              "url": "https://news.ycombinator.com/item?id=11391137",
+              "points": 0,
+              "snippet": "A Chatbot is the least complex AI to build, but it still qualifies as AI. Hence, if you want to join the hype, a chatbot is a reasonable start."
+            },
+            {
+              "title": "ChatRAG – Next.js and AI SDK starter to ship RAG chatbots faster",
+              "url": "https://news.ycombinator.com/item?id=46015111",
+              "points": 0,
+              "snippet": "After building multiple RAG powered chatbots that performed well and passed some accuracy tests, I packaged this stack into ChatRAG so developers can ship high ..."
+            },
+            {
+              "title": "Chatwoot (YC W21) – Open-Source Alternative to Intercom ...",
+              "url": "https://news.ycombinator.com/item?id=26501527",
+              "points": 0,
+              "snippet": "With Chatwoot, businesses can connect channels like website live chat, email, Facebook, Twitter, WhatsApp etc and talk to the customers from one ..."
+            },
+            {
+              "title": "Trae: An AI-powered IDE by ByteDance",
+              "url": "https://news.ycombinator.com/item?id=42799540",
+              "points": 0,
+              "snippet": "... Whatsapp for social media/IM, Google Search for search, Windows for desktop ... The Builder tool is probably the best feature of Trae. It builds React ..."
+            },
+            {
+              "title": "ChatGPT with voice is now available to all free users",
+              "url": "https://news.ycombinator.com/item?id=38370252",
+              "points": 0,
+              "snippet": "It's replaced podcasts for me. I'll just pick a topic and then ask for a summary and then ask clarifying questions."
+            },
+            {
+              "title": "Nobody knows how to build with AI yet",
+              "url": "https://news.ycombinator.com/item?id=44616479",
+              "points": 0,
+              "snippet": "You're basically going to use the AI to fully rewrite the software over and over until the spec becomes clear which just isn't very efficient. Plus it doesn't ..."
+            },
+            {
+              "title": "The UX Research Reckoning is Here",
+              "url": "https://news.ycombinator.com/item?id=36113444",
+              "points": 0,
+              "snippet": "My company was creating a \"builder\" app, where you can use a GUI to ... whatsapp and facebook integration, because these are vitally ..."
+            }
+          ]
+        },
+        "twitter": {
+          "discussions": [
+            {
+              "title": "Chatling (@chatlingai) / Posts / X",
+              "url": "https://x.com/chatlingai",
+              "snippet": "✨ We've released the WhatsApp integration for AI Agents. Your Agents can now chat directly with users on WhatsApp and provide instant support!. Chatling's ..."
+            },
+            {
+              "title": "an AI-powered WhatsApp chatbot to confidentially support ...",
+              "url": "https://x.com/GuardianNigeria/status/1943722797278085363",
+              "snippet": "... Builders Youth Development Initiative (BBYDI) has launched \"Kemi\" — an AI-powered WhatsApp chatbot to confidentially support survivors in ..."
+            },
+            {
+              "title": "WotNot",
+              "url": "https://x.com/wotnot_io/status/1912832071950848424",
+              "snippet": "Our core product pages—Bot Builder, Live Chat, AI Studio, and WhatsApp Chatbot—have been completely redesigned to give you deeper overview ..."
+            },
+            {
+              "title": "LiveChatAI",
+              "url": "https://x.com/LiveChatAI",
+              "snippet": "Just published: 11 AI Agent Builders I Tested in 2025 – the ultimate guide to no‑code tools that turn chatbots into smart agents! Discover features, use cases ..."
+            },
+            {
+              "title": "LiveChatAI",
+              "url": "https://x.com/LiveChatAI/status/1847175973029982666",
+              "snippet": "Chatfuel is an AI-powered chatbot platform designed to automate customer engagement and sales across messaging channels like WhatsApp, Facebook, ..."
+            },
+            {
+              "title": "WhatBOT 🤖 (@whatBot_Sol) / Posts / X",
+              "url": "https://x.com/whatBot_Sol",
+              "snippet": "WhatBOT, an AI-driven personal assistant/trading Whatsapp Chatbot for Solana, With commands as simple as texting a friend, users can execute trades, bridge ..."
+            },
+            {
+              "title": "Chatsonic 💬 (@ChatSonicAI) / Posts / X",
+              "url": "https://x.com/ChatSonicAI",
+              "snippet": "A no-code AI chatbot builder that lets you train ChatGPT on your own data Powered by GPT-4 Insanely smart & customizable Easy to integrate—no ..."
+            },
+            {
+              "title": "Chatimize (@chatimizehq) / Posts / X",
+              "url": "https://x.com/chatimizehq",
+              "snippet": "Voiceflow is a chatbot builder that allows you to design, prototype and launch voice chatbots. ​​With a few clicks, you can create a voice chatbot and put it on ..."
+            },
+            {
+              "title": "konversable",
+              "url": "https://x.com/konversable",
+              "snippet": "Our no-code chatbot builder lets you capture and engage prospects 24/7. With interactive Chatbot Forms, auto-responses to FAQs, and the ability to insert ..."
+            },
+            {
+              "title": "We launched https://t.co/s35PXOYZeW , an ai chatbot builder. ...",
+              "url": "https://x.com/MohsinBazea/status/1904388637074092101",
+              "snippet": "We launched ChatSa.co , an ai chatbot builder. Integrated with WhatsApp, Facebook, Instagram, twitter, with unified knowledge base and agentic capabilities."
+            }
+          ]
+        },
+        "quora": {
+          "questions": [
+            {
+              "title": "Can an AI-based chatbot be built inside WhatsApp?",
+              "url": "https://www.quora.com/Can-an-AI-based-chatbot-be-built-inside-WhatsApp",
+              "snippet": "Yes, you can build a chatbot inside WhatsApp through the WhatsApp Business API. WhatsApp is the world's most popular messaging app."
+            },
+            {
+              "title": "Can you build a WhatsApp chatbot without any coding ...",
+              "url": "https://www.quora.com/Can-you-build-a-WhatsApp-chatbot-without-any-coding-experience",
+              "snippet": "Developing an intelligent chatbot requires the knowledge of something like Python and high-level libraries such as CoreNLP. Fortunately, ..."
+            },
+            {
+              "title": "What are some recommended chatbots for WhatsApp?",
+              "url": "https://www.quora.com/What-are-some-recommended-chatbots-for-WhatsApp",
+              "snippet": "Another recently famous chatbot is Cleverbot. It was developed in 1997 as an experiment to test how artificial intelligence technologies, such ..."
+            },
+            {
+              "title": "What is a WhatsApp AI chatbot?",
+              "url": "https://www.quora.com/What-is-a-WhatsApp-AI-chatbot",
+              "snippet": "It is a computer programme that simulates text-based human conversation via the WhatsApp messaging platform."
+            },
+            {
+              "title": "How to create a WhatsApp chatbot for my business",
+              "url": "https://www.quora.com/How-can-I-create-a-WhatsApp-chatbot-for-my-business",
+              "snippet": "On the flow builder of BotSailor, you can easily build WhatsApp bot by dragging and dropping. To build WhatsApp bot, drag components from the ..."
+            },
+            {
+              "title": "How to build a simple Whatsapp bot",
+              "url": "https://www.quora.com/How-do-I-build-a-simple-Whatsapp-bot",
+              "snippet": "Dialogflow Chatbot Builder is extremely easy to use & helps you create AI-based smart WhatsApp Chatbots without any proficiency in coding. With ..."
+            },
+            {
+              "title": "Which software or website is best for making chatbots ...",
+              "url": "https://www.quora.com/Which-software-or-website-is-best-for-making-chatbots-for-Messenger-and-WhatsApp",
+              "snippet": "Some popular options for creating chatbots for Messenger and WhatsApp include Dialogflow, ManyChat, Chatfuel, and Landbot."
+            },
+            {
+              "title": "Are there any examples of chatbots on WhatsApp?",
+              "url": "https://www.quora.com/Are-there-any-examples-of-chatbots-on-WhatsApp",
+              "snippet": "Once this click-based integration of your WhatsApp with the API is done, you can build a chatbot with some drag-and-drop builder. When a button, ..."
+            },
+            {
+              "title": "Has anyone made a chatbot for WhatsApp?",
+              "url": "https://www.quora.com/Has-anyone-made-a-chatbot-for-WhatsApp",
+              "snippet": "I suggest you use BotSailor, a free bot building platform. BotSailor has a visual drag and drop flow builder based editor. On the flow builder ..."
+            },
+            {
+              "title": "How to create a WhatsApp chatbot with mTalkz",
+              "url": "https://www.quora.com/How-can-you-create-a-WhatsApp-chatbot-with-mTalkz",
+              "snippet": "Go Through the Chatbot Builder Manual. Create a Welcoming Default Reply. Build the Conversation Structure. Input the Dialogue. Create the AI ..."
+            }
+          ]
+        },
+        "stackoverflow": {
+          "questions": [
+            {
+              "title": "Azure Bot + WhatsApp integration",
+              "url": "https://stackoverflow.com/questions/69175583/azure-bot-whatsapp-integration",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "The purpose of this is to have an automated bot like in WhatsApp Business that allows to choose options, but also be able to type free text to get the info."
+            },
+            {
+              "title": "Add Complex Logic To A Twilio Whatsapp Bot",
+              "url": "https://stackoverflow.com/questions/61384403/add-complex-logic-to-a-twilio-whatsapp-bot",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I am developing a Whatsapp Bot in Twilio to collect survey data Covid-19 related. However, i want to add complex logic in my program task. For ..."
+            },
+            {
+              "title": "How to send a WhatsApp message with buttons using ...",
+              "url": "https://stackoverflow.com/questions/75354043/how-to-send-a-whatsapp-message-with-buttons-using-twilio-in-laravel",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Message templates are the way forward to add quick reply buttons to messages. Once the template is approved, you can then respond with the body of the template."
+            },
+            {
+              "title": "How to embed user reposes in Bot replies in gushup ...",
+              "url": "https://stackoverflow.com/questions/63099324/how-to-embed-user-reposes-in-bot-replies-in-gushup-whatsapp-bot",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I am trying to create a whatsapp business chat bot using gupshup Flow bot builder but not able to find any documentation related to include ..."
+            },
+            {
+              "title": "WhatsApp audio media message (MediaUrl0) Transcribe ...",
+              "url": "https://stackoverflow.com/questions/67282665/whatsapp-audio-media-message-mediaurl0-transcribe-to-text",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Start a chat to get instant answers from across the network. Sign up to save and share your chats."
+            },
+            {
+              "title": "Newest 'chatbot' Questions",
+              "url": "https://stackoverflow.com/questions/tagged/chatbot?tab=Newest",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I'm developing a WhatsApp chatbot in Python and want to implement a human handover feature. The goal is to temporarily pause the bot's automated responses when ..."
+            },
+            {
+              "title": "Gupshup-Wit.ai integration very slow / getting stuck",
+              "url": "https://stackoverflow.com/questions/45327145/gupshup-wit-ai-integration-very-slow-getting-stuck",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I am using Gupshup IDE Bot Builder and Wit.ai for a ChatBot widget on my website. I have made the same bot in FB-messenger without Gupshup ..."
+            },
+            {
+              "title": "Newest 'twilio-programmable-chat' Questions",
+              "url": "https://stackoverflow.com/questions/tagged/twilio-programmable-chat",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I am migrating Twilio's WhatsApp template to their Content Builder, and after moving all the templates to the Content Template. I am not able to receive the ..."
+            },
+            {
+              "title": "azure - which bot solution I should use, Botframework or ...",
+              "url": "https://stackoverflow.com/questions/61391199/which-bot-solution-i-should-use-botframework-or-composer-tool-or-power-virtual",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "We want to upgrade our bot and we see now many new bot solutions like power virtual agent and composer. Is it worth to switch to any of the new solution?"
+            },
+            {
+              "title": "How to send Chatbase Intents in BLiP",
+              "url": "https://stackoverflow.com/questions/55603373/how-to-send-chatbase-intents-in-blip",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I have a chatbot made with BLiP's Builder. I'm trying to integrate Chatbase with it but I was unable to set the intent of my user's inputs ..."
+            }
+          ]
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Build a WhatsApp Chatbot in 2 Minutes With No Coding",
+              "channel": "Jason West",
+              "description": "Create your own WhatsApp AI Chatbot in minutes https://fastbots.ai/forwhatsapp Want to build a WhatsApp chatbot for customer ...",
+              "videoId": "uh2ioems964",
+              "url": "https://www.youtube.com/watch?v=uh2ioems964",
+              "publishedAt": "2024-08-24T13:00:55Z",
+              "thumbnail": "https://i.ytimg.com/vi/uh2ioems964/hqdefault.jpg"
+            },
+            {
+              "title": "6 Best WhatsApp Chatbots in 2025 (Ultimate Comparison)",
+              "channel": "Joren Wouters",
+              "description": "In this video, I will cover the best WhatsApp Chatbot tools in 2025. For each of them, I will give the pros, the cons and the pricing.",
+              "videoId": "gfyeIrRj1Z8",
+              "url": "https://www.youtube.com/watch?v=gfyeIrRj1Z8",
+              "publishedAt": "2025-01-14T14:00:48Z",
+              "thumbnail": "https://i.ytimg.com/vi/gfyeIrRj1Z8/hqdefault.jpg"
+            },
+            {
+              "title": "Presenting WhatsApp Chatbot Service by Squareboat",
+              "channel": "Squareboat",
+              "description": "We've created a bot that can automate the mundane, so you can focus more on the pleasurable. For a demo, click here ...",
+              "videoId": "mfhbFOgUCNU",
+              "url": "https://www.youtube.com/watch?v=mfhbFOgUCNU",
+              "publishedAt": "2022-12-19T06:53:49Z",
+              "thumbnail": "https://i.ytimg.com/vi/mfhbFOgUCNU/hqdefault.jpg"
+            },
+            {
+              "title": "Build a Free AI Chatbot in Minutes (No Coding Required)",
+              "channel": "Kevin Stratvert",
+              "description": "Want to give your customers instant, accurate support without hiring extra staff? In this step-by-step tutorial, I'll show you how to ...",
+              "videoId": "3vWIfCpwlEA",
+              "url": "https://www.youtube.com/watch?v=3vWIfCpwlEA",
+              "publishedAt": "2025-12-10T08:00:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/3vWIfCpwlEA/hqdefault.jpg"
+            },
+            {
+              "title": "How To Build a N8N WhatsApp Chatbot For ANY Business (FREE Template)",
+              "channel": "Zinho Automates",
+              "description": "How To Build a N8N WhatsApp AI Chatbot For ANY Business. Download the FREE Template: ...",
+              "videoId": "HB-Oe866S-w",
+              "url": "https://www.youtube.com/watch?v=HB-Oe866S-w",
+              "publishedAt": "2025-11-12T14:52:02Z",
+              "thumbnail": "https://i.ytimg.com/vi/HB-Oe866S-w/hqdefault.jpg"
+            },
+            {
+              "title": "How to Set Up WhatsApp with Chatbot Builder AI | Step-by-Step Guide by Wendy Molinares",
+              "channel": "Chatbot Builder AI",
+              "description": "How to Connect WhatsApp to ChatGPT with Chatbot Builder AI Learn how to seamlessly integrate WhatsApp with Chatbot ...",
+              "videoId": "_rYxzZOJvS0",
+              "url": "https://www.youtube.com/watch?v=_rYxzZOJvS0",
+              "publishedAt": "2024-09-02T21:49:50Z",
+              "thumbnail": "https://i.ytimg.com/vi/_rYxzZOJvS0/hqdefault.jpg"
+            },
+            {
+              "title": "I Built a $249/Month WhatsApp AI Chatbot (Step-by-Step)",
+              "channel": "Shreyas Raj",
+              "description": "In this full-length tutorial, you'll learn how to build an AI WhatsApp agent that can handle appointment booking + basic FAQs, ...",
+              "videoId": "66AOlrySxJA",
+              "url": "https://www.youtube.com/watch?v=66AOlrySxJA",
+              "publishedAt": "2025-12-24T09:22:13Z",
+              "thumbnail": "https://i.ytimg.com/vi/66AOlrySxJA/hqdefault.jpg"
+            },
+            {
+              "title": "Don’t Sell AI Chatbots…",
+              "channel": "Brock Mesarich | AI for Non Techies",
+              "description": "aiautomationagency #aichatbot #aiautomation #ai #agency #chatbot #chatgpt #openai.",
+              "videoId": "UVV_P3vIZBI",
+              "url": "https://www.youtube.com/watch?v=UVV_P3vIZBI",
+              "publishedAt": "2023-08-17T17:23:10Z",
+              "thumbnail": "https://i.ytimg.com/vi/UVV_P3vIZBI/hqdefault.jpg"
+            },
+            {
+              "title": "Build your first WhatsApp Chatbot only using an AI Agent in n8n, not even code #aiautomation",
+              "channel": "Ed Hill | AI Automation",
+              "description": "",
+              "videoId": "ZHhNBemzDoY",
+              "url": "https://www.youtube.com/watch?v=ZHhNBemzDoY",
+              "publishedAt": "2025-08-28T20:18:41Z",
+              "thumbnail": "https://i.ytimg.com/vi/ZHhNBemzDoY/hqdefault.jpg"
+            },
+            {
+              "title": "Build your first AI Agent using WhatsApp and ChatGPT with no Code in n8n #aiautomation",
+              "channel": "Ed Hill | AI Automation",
+              "description": "",
+              "videoId": "Fth6FqpZln0",
+              "url": "https://www.youtube.com/watch?v=Fth6FqpZln0",
+              "publishedAt": "2025-07-21T19:28:03Z",
+              "thumbnail": "https://i.ytimg.com/vi/Fth6FqpZln0/hqdefault.jpg"
+            },
+            {
+              "title": "How to Create a $32,000 AI Chatbot in 18 Minutes (No-Code)",
+              "channel": "Liam Ottley",
+              "description": "Join the #1 community for AI entrepreneurs and connect with 200000+ members: https://bit.ly/skool-ov We help industry experts ...",
+              "videoId": "UfrPhJJMUWg",
+              "url": "https://www.youtube.com/watch?v=UfrPhJJMUWg",
+              "publishedAt": "2024-09-10T17:31:54Z",
+              "thumbnail": "https://i.ytimg.com/vi/UfrPhJJMUWg/hqdefault.jpg"
+            },
+            {
+              "title": "How to Add Custom GPTs to WhatsApp in Minutes (OpenAI GPTs Tutorial)",
+              "channel": "Liam Ottley",
+              "description": "Join the #1 community for AI entrepreneurs and connect with 200000+ members: https://bit.ly/skool-ov We help industry experts ...",
+              "videoId": "JAaZFq4D7Co",
+              "url": "https://www.youtube.com/watch?v=JAaZFq4D7Co",
+              "publishedAt": "2024-08-20T18:38:25Z",
+              "thumbnail": "https://i.ytimg.com/vi/JAaZFq4D7Co/hqdefault.jpg"
+            },
+            {
+              "title": "How to Build a WhatsApp Chatbot for Free (in Minutes)",
+              "channel": "Joren Wouters",
+              "description": "In this video, I explain how to build a WhatsApp Bot for free, in minutes. And we will create this AI chatbot by using Botpress.",
+              "videoId": "Ca1-TyNvsuI",
+              "url": "https://www.youtube.com/watch?v=Ca1-TyNvsuI",
+              "publishedAt": "2024-10-01T13:00:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/Ca1-TyNvsuI/hqdefault.jpg"
+            },
+            {
+              "title": "Quick &amp; Easy AI Chatbot for Whatsapp and More #shorts #gpt4 #chatbot",
+              "channel": "Quickchat AI",
+              "description": "Build your own AI Agent for WhatsApp: https://docs.quickchat.ai/channels/whatsapp Head to our socials for more: – Discord: ...",
+              "videoId": "hv1TruDsrNc",
+              "url": "https://www.youtube.com/watch?v=hv1TruDsrNc",
+              "publishedAt": "2023-05-04T15:20:24Z",
+              "thumbnail": "https://i.ytimg.com/vi/hv1TruDsrNc/hqdefault.jpg"
+            },
+            {
+              "title": "How to Build a POWERFUL WhatsApp Chatbot in 5 Minutes",
+              "channel": "Botpress",
+              "description": "In this video, you'll learn how to build and deploy a WhatsApp chatbot in just a few minutes using Botpress. We'll walk through ...",
+              "videoId": "qdFSwBwWG1Q",
+              "url": "https://www.youtube.com/watch?v=qdFSwBwWG1Q",
+              "publishedAt": "2025-04-22T15:15:33Z",
+              "thumbnail": "https://i.ytimg.com/vi/qdFSwBwWG1Q/hqdefault.jpg"
+            },
+            {
+              "title": "How To Build a WhatsApp Chatbot in 2 Minutes With No-Code!",
+              "channel": "WorldofAI",
+              "description": "In this video, I'll show you how to build a WhatsApp AI chatbot in just 2 minutes with no coding required! Whether you want to ...",
+              "videoId": "rgVAjJdXGys",
+              "url": "https://www.youtube.com/watch?v=rgVAjJdXGys",
+              "publishedAt": "2024-10-12T19:39:32Z",
+              "thumbnail": "https://i.ytimg.com/vi/rgVAjJdXGys/hqdefault.jpg"
+            },
+            {
+              "title": "Build a Custom AI Chatbot in 30 seconds",
+              "channel": "Chatbase",
+              "description": "Chatbase allows anyone to build an incredible custom chatbot in seconds using their own data. Then you can embed it anywhere ...",
+              "videoId": "v0fXIpKDlWM",
+              "url": "https://www.youtube.com/watch?v=v0fXIpKDlWM",
+              "publishedAt": "2024-07-10T20:25:15Z",
+              "thumbnail": "https://i.ytimg.com/vi/v0fXIpKDlWM/hqdefault.jpg"
+            },
+            {
+              "title": "Create AI Chatbots for Local Businesses (Even If You&#39;re a Beginner)",
+              "channel": "Jason Wardrop",
+              "description": "Get My Free Course: https://bit.ly/GET-AI-COURSE Looking to get started with HighLevel? Get the 30-Day Extended SaaS Trial ...",
+              "videoId": "OJPK81VmjiE",
+              "url": "https://www.youtube.com/watch?v=OJPK81VmjiE",
+              "publishedAt": "2025-05-02T14:18:44Z",
+              "thumbnail": "https://i.ytimg.com/vi/OJPK81VmjiE/hqdefault.jpg"
+            },
+            {
+              "title": "Build your first Google sheets Agent only with WhatsApp and ChatGPT in #n8n #aiautomation (NO CODE)",
+              "channel": "Ed Hill | AI Automation",
+              "description": "",
+              "videoId": "4F3JeO4hxwg",
+              "url": "https://www.youtube.com/watch?v=4F3JeO4hxwg",
+              "publishedAt": "2025-08-07T14:14:20Z",
+              "thumbnail": "https://i.ytimg.com/vi/4F3JeO4hxwg/hqdefault.jpg"
+            },
+            {
+              "title": "Build a Whatsapp AI Agent for appointment handling (n8n Tutorial) #n8n #aiautomation",
+              "channel": "Ed Hill | AI Automation",
+              "description": "",
+              "videoId": "vcvRVlc_VFg",
+              "url": "https://www.youtube.com/watch?v=vcvRVlc_VFg",
+              "publishedAt": "2025-06-04T09:38:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/vcvRVlc_VFg/hqdefault.jpg"
+            },
+            {
+              "title": "Meet the top AI chatbots changing the game 🤖✨",
+              "channel": "Kevin Stratvert",
+              "description": "From ChatGPT's genius to Claude's calm, and even a Chinese AI that coded Pong — these tools are WILD. Which one's your ...",
+              "videoId": "icMTNiwAnjc",
+              "url": "https://www.youtube.com/watch?v=icMTNiwAnjc",
+              "publishedAt": "2025-04-19T00:13:42Z",
+              "thumbnail": "https://i.ytimg.com/vi/icMTNiwAnjc/hqdefault.jpg"
+            },
+            {
+              "title": "How I Built a WhatsApp AI Agent for My Online Store – Full Tutorial !",
+              "channel": "Website Learners",
+              "description": "Get N8n Hosting & Workflow* ➜ https://webspacekit.com/client/link.php?id=194 *Twilio* ➜ https://www.twilio.com/ ⚡ *Google ...",
+              "videoId": "0f89s8geaJU",
+              "url": "https://www.youtube.com/watch?v=0f89s8geaJU",
+              "publishedAt": "2025-11-27T11:30:00Z",
+              "thumbnail": "https://i.ytimg.com/vi/0f89s8geaJU/hqdefault.jpg"
+            },
+            {
+              "title": "How to Build a WhatsApp Agent with n8n (credential tutorial)",
+              "channel": "Nate Herk | AI Automation",
+              "description": "Full courses + unlimited support: https://www.skool.com/ai-automation-society-plus/about All my FREE resources: ...",
+              "videoId": "A0OwvNOLNlw",
+              "url": "https://www.youtube.com/watch?v=A0OwvNOLNlw",
+              "publishedAt": "2025-08-05T13:33:21Z",
+              "thumbnail": "https://i.ytimg.com/vi/A0OwvNOLNlw/hqdefault.jpg"
+            },
+            {
+              "title": "Create an AI Chatbot in Minutes Using n8n! 🤖 (No Coding Required)",
+              "channel": "Leon van Zyl",
+              "description": "Access ALL video resources & get personalized help in my community: ...",
+              "videoId": "aXf51HXzqLw",
+              "url": "https://www.youtube.com/watch?v=aXf51HXzqLw",
+              "publishedAt": "2025-01-13T11:13:30Z",
+              "thumbnail": "https://i.ytimg.com/vi/aXf51HXzqLw/hqdefault.jpg"
+            },
+            {
+              "title": "GoHighLevel AI Chatbot Tutorial V4 – Build in 5 Mins!",
+              "channel": "GHL Wizard",
+              "description": "Niche Mastery Prompt       https://www.aidigitalentrepreneurs.com/widget/form/Avsh3XMdMNFvf6fY1J1c?notrack=true ...",
+              "videoId": "OXcBmoureyg",
+              "url": "https://www.youtube.com/watch?v=OXcBmoureyg",
+              "publishedAt": "2025-08-23T14:00:35Z",
+              "thumbnail": "https://i.ytimg.com/vi/OXcBmoureyg/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Jason West",
+            "Joren Wouters",
+            "Squareboat",
+            "Kevin Stratvert",
+            "Zinho Automates"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 73,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Nov 2 – 8, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 66
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 100
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 0
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 0
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 0
+            },
+            {
+              "date": "Jan 18 – 24, 2026",
+              "value": 14
+            }
+          ],
+          "search_query": "WhatsApp Chatbot Builder",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22WhatsApp+Chatbot+Builder%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-01-31T18:53:52.263Z"
+        }
+      }
+    },
+    "trend-1769884966474-9": {
+      "trend_id": "trend-1769884966474-9",
+      "trend_title": "Integrated Accounting Solutions",
+      "main_pain": "Недостаток интеграции между бухгалтерскими программами и другими важными системами, такими как платёжные системы и системы управления запасами, что приводит к дополнительной работе и возможным ошибкам.",
+      "key_pain_points": [
+        "Недостаток интеграции между бухгалтерскими программами и другими важными системами."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Малые и средние бизнесы",
+            "size": "Требует валидации",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/smallbusiness, HN",
+            "confidence": 6
+          }
+        ]
+      },
+      "sentiment_score": 6.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-02-04T15:33:06.459Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Seeking recommendations for integrated CRM ...",
+              "subreddit": "ERP",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ERP/comments/1e2pk7x/seeking_recommendations_for_integrated_crm/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "I would like a suite that is already integrated, CRM, bookkeeping, scheduling, credit card processing, reports, monthly, quarterly, and annual reminders."
+            },
+            {
+              "title": "What's the best all in one booking keeping, payroll, and ...",
+              "subreddit": "Bookkeeping",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Bookkeeping/comments/1ii9t90/whats_the_best_all_in_one_booking_keeping_payroll/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "I have been recommending businesses with simpler accounting needs use Wave. The bookkeeping is easy for people without accounting knowledge. I ..."
+            },
+            {
+              "title": "Looking for multi-company accounting software ...",
+              "subreddit": "msp",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/msp/comments/18s4gsg/looking_for_multicompany_accounting_software/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "I have 6 small businesses (restaurants) that I use Quickbooks Desktop Pro 2019 for. The advantages are (1) it's non-subscription, so I only paid once."
+            },
+            {
+              "title": "Best Accounting/ERP Integrations with Salesforce",
+              "subreddit": "salesforce",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/salesforce/comments/1bcbj6k/best_accountingerp_integrations_with_salesforce/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "There's typically three options in this space: Purchase a product that has a native integration app with Salesforce. This is the low cost ..."
+            },
+            {
+              "title": "Accounting software with integrated inventory",
+              "subreddit": "smallbusiness",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/smallbusiness/comments/e81vc7/accounting_software_with_integrated_inventory/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "Looking for some advice on the best all-in-one account systems with integrated inventory. Trying to move away from having separate accounting and inventory ..."
+            },
+            {
+              "title": "Best accounting software that integrates with Stripe ...",
+              "subreddit": "stripe",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/stripe/comments/1inmcbt/best_accounting_software_that_integrates_with/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "Some accounting software (Xero, Freshbooks, Wave) seems to have varying levels of native Stripe integration. I know Xero maintains its own integration."
+            },
+            {
+              "title": "Looking for accounting software that integrates POS ...",
+              "subreddit": "smallbusiness",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/smallbusiness/comments/154qp9f/looking_for_accounting_software_that_integrates/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "POS and accounting integration is something that had to be done on the POS side. not all POs support any sort of direct integration/syncing."
+            },
+            {
+              "title": "The most painful GL Software experience in my career",
+              "subreddit": "Accounting",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Accounting/comments/17v1yes/the_most_painful_gl_software_experience_in_my/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "I once worked at a non profit that used a fund accounting software called MIP. I believe it is owned or created by Sage, but did not function like any Sage you ..."
+            },
+            {
+              "title": "Best accounting software for lean startups?",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1bi4sg8/best_accounting_software_for_lean_startups/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "Tool-wise, quickbooks / xero / zoho will get you the essentials, with Quickbooks having the deepest talent pool for people familiar with it."
+            },
+            {
+              "title": "Best accounting software for family offices?",
+              "subreddit": "Accounting",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Accounting/comments/1hkeiov/best_accounting_software_for_family_offices/",
+              "created": "2026-02-04T15:32:58.355Z",
+              "selftext": "I've been researching platforms, and I'm leaning toward solutions tailored to family offices rather than generic accounting tools."
+            }
+          ],
+          "communities": [
+            "ERP",
+            "Bookkeeping",
+            "msp",
+            "salesforce",
+            "smallbusiness",
+            "stripe",
+            "Accounting",
+            "SaaS"
+          ],
+          "engagement": 0
+        },
+        "hacker_news": {
+          "posts": [
+            {
+              "title": "Show HN: I've Built an Accounting System",
+              "url": "https://news.ycombinator.com/item?id=41585468",
+              "points": 0,
+              "snippet": "I'd love a tool that would let you reconcile the general ledger against more than one Chart of Accounts, or even tag expenses for reporting purposes."
+            },
+            {
+              "title": "I've been looking at the various open source accounting ...",
+              "url": "https://news.ycombinator.com/item?id=20118261",
+              "points": 0,
+              "snippet": "I've been looking at the various open source accounting options recently and I settled on Beancount: http://furius.ca/beancount/."
+            },
+            {
+              "title": "An open-source alternative to QuickBooks",
+              "url": "https://news.ycombinator.com/item?id=36118990",
+              "points": 0,
+              "snippet": "FOSS and other \"open\" projects should be using something like Zulip, or even anything else, that can actually be indexed by Google and other search engines."
+            },
+            {
+              "title": "ledger/ledger: Double-entry accounting system with a ...",
+              "url": "https://news.ycombinator.com/item?id=9418601",
+              "points": 0,
+              "snippet": "Ledger is a powerful, double-entry accounting system that is accessed from the UNIX command-line. This may put off some users, since there is no flashy UI."
+            },
+            {
+              "title": "As someone who's been involved in both building and ...",
+              "url": "https://news.ycombinator.com/item?id=39511449",
+              "points": 0,
+              "snippet": "As someone who's been involved in both building and integrating billing systems, I can say you speak from a position of blissful ignorance."
+            },
+            {
+              "title": "There's also Plain Text Accounting[1]. The biggest problem ...",
+              "url": "https://news.ycombinator.com/item?id=36120296",
+              "points": 0,
+              "snippet": "The biggest problem of all open source solutions, accountants' experience aside, is the lack of banking and taxes integration, especially outside of US ..."
+            },
+            {
+              "title": "Launch HN: Modernbanc (YC W20) – Modern and fast ...",
+              "url": "https://news.ycombinator.com/item?id=43414405",
+              "points": 0,
+              "snippet": "Transaction rules and AI smart actions handle the work for you. Get answers to any question, including runway, burn, and custom budgets, all in one place; ..."
+            },
+            {
+              "title": "Tell HN: AI coding is sexy, but accounting is the real low- ...",
+              "url": "https://news.ycombinator.com/item?id=46238354",
+              "points": 0,
+              "snippet": "One thing I keep noticing: compared to programming, accounting often looks like the more automatable problem: It's rule-based Double entry, ..."
+            },
+            {
+              "title": "Free and Open Source, Modern Desktop Accounting for SMB",
+              "url": "https://news.ycombinator.com/item?id=23091005",
+              "points": 0,
+              "snippet": "The world's best 100% open source ERP which was built in their own (open source) web framework called Frappe."
+            },
+            {
+              "title": "How to manage Bookkeeping for a bootstrapped startup?",
+              "url": "https://news.ycombinator.com/item?id=35410366",
+              "points": 0,
+              "snippet": "Xero or Quikbooks are inexpensive and can be integrated with many different services, effectivly automating a good chunk of bookkeeping."
+            }
+          ]
+        },
+        "twitter": {
+          "discussions": [
+            {
+              "title": "Through an integrated cloud accounting solution, find out how ...",
+              "url": "https://x.com/EisnerAmper/status/1894477538165915859",
+              "snippet": "Through an integrated cloud accounting solution, find out how we helped an orthodontics practice management organization save time, reduce costs, and ..."
+            },
+            {
+              "title": "IFASLLC (@IFASLLC1) / Posts / X",
+              "url": "https://x.com/ifasllc1?lang=ar-x-fm",
+              "snippet": "A firm that applies integrated finance and accounting solutions to every engagement to help clients build,sustain, and maintain a profitable business model."
+            },
+            {
+              "title": "Thomson Reuters Tax & Accounting Solutions",
+              "url": "https://x.com/TRTaxAccounting/status/2010743743733698880",
+              "snippet": "Join our expert panel to explore what strategic workflow automation delivers when you move beyond isolated tools to integrated systems."
+            },
+            {
+              "title": "Tech news: @KPMG rolls out AI trust service; EY ...",
+              "url": "https://x.com/AccountingToday/status/1920931793865253171",
+              "snippet": "Tech news: @KPMG rolls out AI trust service; EY @EYnews announces Integrated Finance Managed Service; Ignition @ignitionapp debuts ..."
+            },
+            {
+              "title": "BQE Software",
+              "url": "https://x.com/bqesoftware/status/1977524719868854513",
+              "snippet": "Manage all your financial transactions in one place with BQE CORE Accounting software. A truly integrated accounting solution. Click here ..."
+            },
+            {
+              "title": "Never Use 👇 Hosting provided by your tax software",
+              "url": "https://x.com/jasononfirms/status/2014774228650721501",
+              "snippet": "Hosting provided by your tax software - It's slower and MUCH more expensive than better alternatives. Oftentimes you can buy both faster hosting ..."
+            },
+            {
+              "title": "Integrated Financial Management Solutions",
+              "url": "https://x.com/SolutionsIfm",
+              "snippet": "We at IFMS specialize in helping disabled and special needs people get their due share of money from various Government sources. Posts. Integrated Financial ..."
+            },
+            {
+              "title": "Thomson Reuters Tax & Accounting Solutions",
+              "url": "https://x.com/TRTaxAccounting/status/2011800641891443158",
+              "snippet": "Is your audit tech stack slowing you down? Discover the hidden costs of fragmented systems and how modern, integrated tools can transform ..."
+            },
+            {
+              "title": "\"#Integratedaccounting\" - Results on X | Live Posts & ...",
+              "url": "https://x.com/search?q=%23Integratedaccounting&src=hashtag_click",
+              "snippet": "With Gravity, you keep what you love about Microsoft—Office 365, Teams, Outlook—while gaining a purpose-built, multi-entity cloud accounting ..."
+            },
+            {
+              "title": "The biggest fear when switching accounting software? ...",
+              "url": "https://x.com/VARC_Solutions/status/2008962350343238025",
+              "snippet": "Curious how integrated solutions can eliminate your migration anxiety? Ask VARC Solutions about our Quickbase and QuickBooks integration ..."
+            }
+          ]
+        },
+        "quora": {
+          "questions": [
+            {
+              "title": "What is integrated accounting?",
+              "url": "https://www.quora.com/What-is-integrated-accounting",
+              "snippet": "To make your accounting process smooth and hassle-free, you can use a business management system with integrated accounting."
+            },
+            {
+              "title": "What are the integrated cost accounting systems?",
+              "url": "https://www.quora.com/What-are-the-integrated-cost-accounting-systems",
+              "snippet": "QuickBooks: Widely used for small to medium businesses. · Sage: Offers robust financial and ERP solutions. · Xero: Popular for its cloud-based ..."
+            },
+            {
+              "title": "Why is Integrated accounting software essential for startup ...",
+              "url": "https://www.quora.com/Why-is-Integrated-accounting-software-essential-for-startup-businesses",
+              "snippet": "The platform is effective for managing sales, marketing, customer support, automating business processes and reporting, keeping track of email ..."
+            },
+            {
+              "title": "What is the best accounting integration that you can use ...",
+              "url": "https://www.quora.com/What-is-the-best-accounting-integration-that-you-can-use-with-your-POS-software",
+              "snippet": "To put it simply, Amaka delivers proper tech solutions tailored to accountants and bookkeepers involved in the hospitality industry and connects ..."
+            },
+            {
+              "title": "Should inventory system be integrated with accounting ...",
+              "url": "https://www.quora.com/Should-inventory-system-be-integrated-with-accounting-system-bookkeeping-general-ledger-etc-or-are-they-separated-software",
+              "snippet": "There are advantages to integrating inventory and accounting. The accounting system can help keep track of inventories, and will avoid having to enter ..."
+            },
+            {
+              "title": "I am looking for a cloud-based accounting solution that can ...",
+              "url": "https://www.quora.com/I-am-looking-for-a-cloud-based-accounting-solution-that-can-help-me-manage-my-finances-more-efficiently-Can-anyone-recommend-a-good-one",
+              "snippet": "There are probably two worthy of consideration, Netsuite and its Openair addon, and SAP Business ByDEsign. The latter is a fully integrated ..."
+            },
+            {
+              "title": "What is a good billing and accounting system that will ...",
+              "url": "https://www.quora.com/What-is-a-good-billing-and-accounting-system-that-will-integrate-with-my-CRM-program",
+              "snippet": "Zoho CRM can be integrated with your ERP, marketing automation platform, or accounting software to automate the lead-to-cash process."
+            },
+            {
+              "title": "Which one is an integrated business accounting software ...",
+              "url": "https://www.quora.com/Which-one-is-an-integrated-business-accounting-software-for-small-and-medium-businesses",
+              "snippet": "Xero is strong for bookkeeping, but QuickBooks offers more built-in functionality, and act as an all-in-one solution. It covers accounting, ..."
+            },
+            {
+              "title": "What is a good cloud based accounting solution ...",
+              "url": "https://www.quora.com/What-is-a-good-cloud-based-accounting-solution-for-an-American-software-startup",
+              "snippet": "There are probably two worthy of consideration, Netsuite and its Openair addon, and SAP Business ByDEsign. The latter is a fully integrated ..."
+            },
+            {
+              "title": "Which cloud based accounting systems offer API level ...",
+              "url": "https://www.quora.com/Which-cloud-based-accounting-systems-offer-API-level-integration",
+              "snippet": "QuickBooks: Widely used for small to medium businesses. · Sage: Offers robust financial and ERP solutions. · Xero: Popular for its cloud-based ..."
+            }
+          ]
+        },
+        "stackoverflow": {
+          "questions": [
+            {
+              "title": "Integrate multiple instances of java desktop application ...",
+              "url": "https://stackoverflow.com/questions/7127633/integrate-multiple-instances-of-java-desktop-application-with-online-accounting",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Integrate multiple instances of java desktop application with online accounting (quickbooks, peachtree) ... How to design a good QuickBooks ..."
+            },
+            {
+              "title": "c# - Evenly divide a dollar amount (decimal) by an integer",
+              "url": "https://stackoverflow.com/questions/2039405/evenly-divide-a-dollar-amount-decimal-by-an-integer",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Calculate the amounts one at a time, and subtract each amount from the total to make sure that you always have the correct total left: Copy."
+            },
+            {
+              "title": "rounding to 2 decimal places in accounting software is ...",
+              "url": "https://stackoverflow.com/questions/65492195/rounding-to-2-decimal-places-in-accounting-software-is-causing-difference-in-tot",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "The problem occurs after the rounding is done, the totals representing the debit side and credit side are not equal anymore due to differences around 0.01 or 0 ..."
+            },
+            {
+              "title": "c# - Integrate Sage Line 50 with windows application",
+              "url": "https://stackoverflow.com/questions/14582246/integrate-sage-line-50-with-windows-application",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Yes, the Sage 50 Accounts SDK is required if you want to integrate your accounting data to Sage... And yes, it costs money: about £1500."
+            },
+            {
+              "title": "Why not use Double or Float to represent currency?",
+              "url": "https://stackoverflow.com/questions/3730019/why-not-use-double-or-float-to-represent-currency",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "A solution that works in just about any language is to use integers instead, and count cents. For instance, 1025 would be $10.25. Several ..."
+            },
+            {
+              "title": "How do you compare float and double while accounting for ...",
+              "url": "https://stackoverflow.com/questions/17333/how-do-you-compare-float-and-double-while-accounting-for-precision-loss",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "There are two solution to this problem: either you set epsilon proportional to max(a,b) or you can get next representable numbers around a and ..."
+            },
+            {
+              "title": "Getting a list of all subdirectories in the current directory",
+              "url": "https://stackoverflow.com/questions/973473/getting-a-list-of-all-subdirectories-in-the-current-directory",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Do you mean immediate subdirectories, or every directory right down the tree? Either way, you could use os.walk to do this: Copy."
+            },
+            {
+              "title": "Common strategies to deal with rounding errors in currency ...",
+              "url": "https://stackoverflow.com/questions/2860432/common-strategies-to-deal-with-rounding-errors-in-currency-intensive-soft",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "There are many rounding issues when recording financial data. First issue is ability to store and retrieve exact decimal numbers."
+            },
+            {
+              "title": "How to perform an integer division, and separately get the ...",
+              "url": "https://stackoverflow.com/questions/4228356/how-to-perform-an-integer-division-and-separately-get-the-remainder-in-javascr",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "For some number y and some divisor x compute the quotient ( quotient ) and remainder ( remainder ) as: Copy."
+            },
+            {
+              "title": "My Windows Form keeps on shrinking/resizing on build",
+              "url": "https://stackoverflow.com/questions/27633483/my-windows-form-keeps-on-shrinking-resizing-on-build",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Try setting the AutoScaleMode-property to None in your form and offending controls, and they won't be automatically re-sized anymore."
+            }
+          ]
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "Integrated Accounting Solutions",
+              "channel": "Various Payments",
+              "description": "Effortless financial management with integrated accounting solutions and OnlineCheckWriter.com! Learn more: ...",
+              "videoId": "OOmowML0wIU",
+              "url": "https://www.youtube.com/watch?v=OOmowML0wIU",
+              "publishedAt": "2023-08-23T12:12:51Z",
+              "thumbnail": "https://i.ytimg.com/vi/OOmowML0wIU/hqdefault.jpg"
+            },
+            {
+              "title": "Dave Sholer, CPA, Integrated Accounting Solutions",
+              "channel": "eLearning Studio, Woodland Community College",
+              "description": "Local business owner Dave Sholer shares his unique path to becoming a certified public accountant. He discusses why ...",
+              "videoId": "rJ4T30yBJsQ",
+              "url": "https://www.youtube.com/watch?v=rJ4T30yBJsQ",
+              "publishedAt": "2021-07-15T00:11:18Z",
+              "thumbnail": "https://i.ytimg.com/vi/rJ4T30yBJsQ/hqdefault.jpg"
+            },
+            {
+              "title": "COST BOOKKEEPING - INTERGRATED ACCOUNTS(LESSON 2) MANAGEMENT ACCOUNTING",
+              "channel": "Aringo Fredrick",
+              "description": "Integrated accounting system refers to a single accounting system, where cost and financial accounts are maintained in the same ...",
+              "videoId": "8rRr48tVa9A",
+              "url": "https://www.youtube.com/watch?v=8rRr48tVa9A",
+              "publishedAt": "2022-05-20T11:20:01Z",
+              "thumbnail": "https://i.ytimg.com/vi/8rRr48tVa9A/hqdefault.jpg"
+            },
+            {
+              "title": "Interlocking System of Accounting (Non - Integrated Accounting) - Cost and Management Accounting",
+              "channel": "EZIKAN ACADEMY ",
+              "description": "This video explains the Interlocking system of Accounting (Non Integrated system) . Cost and Management Accounting students ...",
+              "videoId": "TNAlr4gfwsU",
+              "url": "https://www.youtube.com/watch?v=TNAlr4gfwsU",
+              "publishedAt": "2024-04-19T17:44:33Z",
+              "thumbnail": "https://i.ytimg.com/vi/TNAlr4gfwsU/hqdefault.jpg"
+            },
+            {
+              "title": "How AI Will Transform Accounting: A $100B Opportunity Explained",
+              "channel": "a16z",
+              "description": "Seventy-five percent of accountants are set to retire in the next 15 years, according to the American Institute of Certified Public ...",
+              "videoId": "OPRJI8Djfq8",
+              "url": "https://www.youtube.com/watch?v=OPRJI8Djfq8",
+              "publishedAt": "2024-12-17T20:26:17Z",
+              "thumbnail": "https://i.ytimg.com/vi/OPRJI8Djfq8/hqdefault.jpg"
+            },
+            {
+              "title": "Best AI Tools for Accountants",
+              "channel": "Miles Education",
+              "description": "We're pretty sure, these great AI tools will help you in the long run. Let's have a look at their importance: 1. VIC.AI: AI-powered ...",
+              "videoId": "J1ruD8l8Tqg",
+              "url": "https://www.youtube.com/watch?v=J1ruD8l8Tqg",
+              "publishedAt": "2023-06-28T14:03:06Z",
+              "thumbnail": "https://i.ytimg.com/vi/J1ruD8l8Tqg/hqdefault.jpg"
+            },
+            {
+              "title": "Ignite And Inspire: Building a Modern Accounting Firm With Dan Kochka",
+              "channel": "EOPhiladelphia",
+              "description": "In this episode, Tina Hamilton sits down with Dan Kochka, founder of Integrated Accounting Solutions and rising star in the ...",
+              "videoId": "HDouXr8_sBI",
+              "url": "https://www.youtube.com/watch?v=HDouXr8_sBI",
+              "publishedAt": "2025-08-29T18:29:29Z",
+              "thumbnail": "https://i.ytimg.com/vi/HDouXr8_sBI/hqdefault.jpg"
+            },
+            {
+              "title": "Top 5 Best AI Tools for Accountants! AI for Accounts | Be10x",
+              "channel": "Be10x",
+              "description": "Elevate your accounting practice with cutting-edge AI tools. Discover the top 5 AI solutions for accountants now and transform your ...",
+              "videoId": "Py-TDP-nBOU",
+              "url": "https://www.youtube.com/watch?v=Py-TDP-nBOU",
+              "publishedAt": "2024-02-15T12:50:10Z",
+              "thumbnail": "https://i.ytimg.com/vi/Py-TDP-nBOU/hqdefault.jpg"
+            },
+            {
+              "title": "Learn 80% of Accounting in under 20 Minutes",
+              "channel": "The Financial Controller",
+              "description": "Learn the skills to work as an Entry Level Accountant/Bookkeeper: ...",
+              "videoId": "-csJa169Njw",
+              "url": "https://www.youtube.com/watch?v=-csJa169Njw",
+              "publishedAt": "2025-04-09T13:48:41Z",
+              "thumbnail": "https://i.ytimg.com/vi/-csJa169Njw/hqdefault.jpg"
+            },
+            {
+              "title": "Best AI Tools for Finance &amp; Accounting Professionals - Like ChatGPT",
+              "channel": "NorthStar Academy",
+              "description": "bcom #commerce #commercejobs #ca #acca #cfa #cmausa #cpa #cpausa #commercecareer #bcomjobs #commercecourse.",
+              "videoId": "eA0o18tjDOw",
+              "url": "https://www.youtube.com/watch?v=eA0o18tjDOw",
+              "publishedAt": "2024-12-01T11:15:55Z",
+              "thumbnail": "https://i.ytimg.com/vi/eA0o18tjDOw/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Various Payments",
+            "eLearning Studio, Woodland Community College",
+            "Aringo Fredrick",
+            "EZIKAN ACADEMY ",
+            "a16z"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": 3867,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 0
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 0
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 0
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 68
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 80
+            },
+            {
+              "date": "Jan 18 – 24, 2026",
+              "value": 67
+            },
+            {
+              "date": "Jan 25 – 31, 2026",
+              "value": 23
+            }
+          ],
+          "search_query": "Integrated Accounting Solutions",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Integrated+Accounting+Solutions%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-02-04T15:32:54.737Z"
+        }
+      }
+    },
+    "trend-1770338762285-3": {
+      "trend_id": "trend-1770338762285-3",
+      "trend_title": "Real-Time Market Analysis Tool",
+      "main_pain": "Недостаток доступных и эффективных инструментов для анализа портфолио и акций в реальном времени.",
+      "key_pain_points": [
+        "Недостаток доступных и эффективных инструментов для анализа портфолио и акций в реальном времени.",
+        "Недостаток уникального предложения на рынке инструментов для анализа акций.",
+        "Проблемы с получением данных в реальном времени без задержек."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Инвесторы и трейдеры",
+            "size": "Требует валидации",
+            "willingness_to_pay": "high",
+            "where_to_find": "r/investing, HN, Quora, SO",
+            "confidence": 7
+          }
+        ]
+      },
+      "sentiment_score": 6.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-02-06T01:28:11.227Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Any good AI enabled tools for portfolio and stock analysis ...",
+              "subreddit": "investing",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/investing/comments/1maszho/any_good_ai_enabled_tools_for_portfolio_and_stock/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "It's an AI tool focused on portfolio analysis and connects with brokerages for real-time insights and alerts. I've been exploring it ..."
+            },
+            {
+              "title": "Trying to figure out the best apps to monitor stocks with real ...",
+              "subreddit": "ValueInvesting",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ValueInvesting/comments/1qwz006/trying_to_figure_out_the_best_apps_to_monitor/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "Stocktwits.com as a real time hub of market sentiment and stock movement. Finviz's heatmap for a bird eye view of the market segment by ..."
+            },
+            {
+              "title": "A comprehensive list of the 100+ best stock research tools",
+              "subreddit": "ValueInvesting",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ValueInvesting/comments/1jm4bc1/a_comprehensive_list_of_the_100_best_stock/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "- Real-time charting and screening tools. Screener.co - Global screener focused on fundamental analysis. Portfolio123 - Design strategies ..."
+            },
+            {
+              "title": "Best resources for realtime chart analysis/setups?",
+              "subreddit": "Daytrading",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Daytrading/comments/19b047w/best_resources_for_realtime_chart_analysissetups/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "I would like to get honest feedback about where to find profitable traders and their insights on particular stocks that are catching their attention."
+            },
+            {
+              "title": "Open sourced an investment assistant tool, backed by real ...",
+              "subreddit": "quant",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/quant/comments/1mjkgdl/open_sourced_an_investment_assistant_tool_backed/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "The tool is basically ChatGPT but for the stock market backed by real time data. You can ask complex questions involving any kind of math and ..."
+            },
+            {
+              "title": "I Built Market Rodeo: A Comprehensive Market Analysis ...",
+              "subreddit": "SideProject",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SideProject/comments/1p691el/i_built_market_rodeo_a_comprehensive_market/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "Just launched RodeoAI (Video above) - your 24/7 financial analyst that answers any market question with real-time data. Deep dive any ..."
+            },
+            {
+              "title": "Looking for a tool that gives real-time marketing insights ...",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1n84ywu/looking_for_a_tool_that_gives_realtime_marketing/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "We're looking for a marketing analytics tool that not only gives us a live pulse on our metrics (sign-ups, churn, LTV) but can also help us see ..."
+            },
+            {
+              "title": "I used AI to analyze every single US stock. Here's what to ...",
+              "subreddit": "ChatGPTPromptGenius",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ChatGPTPromptGenius/comments/1j8b55k/i_used_ai_to_analyze_every_single_us_stock_heres/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "It's a stock and ETF ranking platform that updates daily, using AI to score each asset based on market-beating potential. They make the ..."
+            },
+            {
+              "title": "Built a tool for market research, real-time news, analyst ...",
+              "subreddit": "RealDayTrading",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/RealDayTrading/comments/1nvmr5e/built_a_tool_for_market_research_realtime_news/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "Built a tool for market research, real-time news, analyst ratings, price alerts, insights and more. Sorry, this post was deleted by the ..."
+            },
+            {
+              "title": "Tool based on prediction markets + LLMs for stock analysis ...",
+              "subreddit": "ValueInvesting",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ValueInvesting/comments/1mhbhvs/tool_based_on_prediction_markets_llms_for_stock/",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "I've been experimenting with a workflow that combines real-money prediction markets (like Polymarket and Kalshi) with LLMs to generate ..."
+            },
+            {
+              "title": "Кто-нибудь вообще использовал кластеризацию для ...",
+              "subreddit": "datascience",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/datascience/comments/hqfvp4/has_anyone_actually_used_clustering_to_solve_an/?tl=ru",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "После базовой регрессии и классификации кластеризация, кажется, является областью, о которой большинство людей узнают следующей, когда изучают ..."
+            },
+            {
+              "title": "Поделитесь своим стартапом - ежеквартальный пост",
+              "subreddit": "startups",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/startups/comments/1jwuuer/share_your_startup_quarterly_post/?tl=ru",
+              "created": "2026-02-06T01:28:04.055Z",
+              "selftext": "Mortimer - это быстрый, без лишних заморочек трекер времени, созданный для фрилансеров и агентств, которые больше заботятся о получении оплаты, ..."
+            }
+          ],
+          "communities": [
+            "investing",
+            "ValueInvesting",
+            "Daytrading",
+            "quant",
+            "SideProject",
+            "SaaS",
+            "ChatGPTPromptGenius",
+            "RealDayTrading"
+          ],
+          "engagement": 0
+        },
+        "hacker_news": {
+          "posts": [
+            {
+              "title": "Perplexity AI's new tool for researching the stock market",
+              "url": "https://news.ycombinator.com/item?id=41906949",
+              "points": 0,
+              "snippet": "Little to no value in this tool based on the data they listed. All of these things already exist and for anyone doing work of any value, you ..."
+            },
+            {
+              "title": "Show HN: Modern Terminal for Financial Investment and ...",
+              "url": "https://news.ycombinator.com/item?id=41534248",
+              "points": 0,
+              "snippet": "FinceptTerminal is a command-line interface tool for analyzing and visualizing financial and economic data. It provides users with real-time ..."
+            },
+            {
+              "title": "Autonomous AI agents that monitor the stock market for you",
+              "url": "https://news.ycombinator.com/item?id=42433734",
+              "points": 0,
+              "snippet": "It's just a research and analysis tool that automates the process of ... real-time market data, search, and browse the web. It's still ..."
+            },
+            {
+              "title": "Capital Companion – Empowering Traders with AI-Driven ...",
+              "url": "https://news.ycombinator.com/item?id=41880101",
+              "points": 0,
+              "snippet": "That's partly what inspired me to create this tool. Capital Companion uses advanced AI to help traders and investors navigate the ..."
+            },
+            {
+              "title": "How does an everyday person get the real time market data ...",
+              "url": "https://news.ycombinator.com/item?id=26259604",
+              "points": 0,
+              "snippet": "The value for me (again not a trader) comes from having 25 years of robust fundamental and market data along with powerful portfolio analysis tools and models."
+            },
+            {
+              "title": "Created a free website that simplifies stock analysis",
+              "url": "https://news.ycombinator.com/item?id=38591946",
+              "points": 0,
+              "snippet": "Last time I tried building a software around stocks, the major pain I had was the lack of affordable APIs that would give quotes in almost real ..."
+            },
+            {
+              "title": "AI market analysis tool, Limited spots for testers",
+              "url": "https://news.ycombinator.com/item?id=44382770",
+              "points": 0,
+              "snippet": "So I started working on a tool that can do all those for me. Uses real-time OHLCV data to calculate indicators, has access to internet for getting asset ..."
+            },
+            {
+              "title": "QuantDinger – AI-driven, local-first quant trading platform",
+              "url": "https://news.ycombinator.com/item?id=46745801",
+              "points": 0,
+              "snippet": "... real-time charts, portfolio monitoring, global market overview. Key ... tools that this could address Bugs / feature requests (issues ..."
+            },
+            {
+              "title": "AI-Hedge Fund (With DeepSeek R1)",
+              "url": "https://news.ycombinator.com/item?id=42919378",
+              "points": 0,
+              "snippet": "The Fincept Terminal is an open-source, real-time financial research tool with an AI Hedge Fund feature that analyzes markets using LLMs like OpenAI, Gemini, ..."
+            },
+            {
+              "title": "Rallies – Investment assistant backed by real time data",
+              "url": "https://news.ycombinator.com/item?id=45238628",
+              "points": 0,
+              "snippet": "Because both tools mostly rely on web search, there is an inherent limitation of delayed time data. I've been spending some spare time over the last few months ..."
+            }
+          ]
+        },
+        "twitter": {
+          "discussions": [
+            {
+              "title": "Membit Insight is the first tool that tells me exactly where to ...",
+              "url": "https://x.com/CryptoSpelll/status/2019339946276929859",
+              "snippet": "-> Membit Insight is the first tool that tells me exactly where to look, how the market feels, and saves me hours of research. No more trading ..."
+            },
+            {
+              "title": "Veldan Exchange Unveils Real-Time Market Analysis Tool ...",
+              "url": "https://x.com/FinTech_Series/status/1958172033855980007",
+              "snippet": "Veldan Exchange Unveils Real-Time Market Analysis Tool to Empower Cryptocurrency Traders ow.ly/U98t50WITmg #financialtechnology #Fintech ..."
+            },
+            {
+              "title": "Brandwatch",
+              "url": "https://partners.x.com/en/partners/brandwatch",
+              "snippet": "Brandwatch's flagship product, Consumer Research, gathers millions of online conversations every day and provides users with highly customizable analysis tools ..."
+            },
+            {
+              "title": "A major crypto exchange has introduced an AI-powered market ...",
+              "url": "https://x.com/CPOfficialtx/status/2009085965810192631",
+              "snippet": "A major crypto exchange has introduced an AI-powered market analysis tool directly into its trading app, aiming to deliver real-time insights without ..."
+            },
+            {
+              "title": "klydexglobal exchange offers professional tools for market ...",
+              "url": "https://x.com/search?src=&q=klydexglobal%20exchange%20offers%20professional%20tools%20for%20market%20analysis.xnk",
+              "snippet": "... tools for market analysis.xnk. 19 results found ... i built a tool that includes live orderbooks + auto-matched similar ..."
+            },
+            {
+              "title": "What is @Zheno_AI about?",
+              "url": "https://twitter.com/i/grok/share/GMdKDGCIBiIuAwnelIwBATto7",
+              "snippet": "Live Line Chart. Tracks trends of token launches per hour, categorized as New, Progress, Graduated ; Market Behavior Analysis. Maps real-time system behavior, ..."
+            },
+            {
+              "title": "Bloomberg",
+              "url": "https://partners.x.com/en/partners/bloomberg",
+              "snippet": "Using advanced AI and curation tools for processing and entity mapping, Bloomberg refines the X feed at scale on a real-time basis to the most financially ..."
+            },
+            {
+              "title": "Paxful",
+              "url": "https://x.com/paxful/status/1866483322806812785",
+              "snippet": "Strategic trading begins with reliable tools. Juyysss relies on Paxful's real-time market analysis and data tools to turn complex market trends into ..."
+            },
+            {
+              "title": "Dhan",
+              "url": "https://x.com/DhanHQ/status/1955932424921342145",
+              "snippet": "It's a tool for deep market analysis, fast execution, and complete flexibility with indicators, layouts, and templates. Layer that with Option ..."
+            },
+            {
+              "title": "CMS Prime",
+              "url": "https://x.com/cmsprime_en/status/1946109666125390074",
+              "snippet": "What's new? Real-time technical analysis. Advanced charting tools. Expert market insights at your fingertips"
+            }
+          ]
+        },
+        "quora": {
+          "questions": [
+            {
+              "title": "What are the best free tools to analyze stocks and monitor ...",
+              "url": "https://www.quora.com/What-are-the-best-free-tools-to-analyze-stocks-and-monitor-market-trends",
+              "snippet": "you can use trading view website for real time charts, it provide the best chats in current market across every securities. here i have uploaded ..."
+            },
+            {
+              "title": "What are some reliable sources for real-time stock data? ...",
+              "url": "https://www.quora.com/What-are-some-reliable-sources-for-real-time-stock-data-Are-there-any-free-options-available-or-is-a-paid-site-recommended",
+              "snippet": "If you're fine with IEX top of book data, I recommend Stock Market Tools | Tiingo based on my experience and Selecting a Stock Market Data (Web) ..."
+            },
+            {
+              "title": "Are there any good AI trading applications for stock and ...",
+              "url": "https://www.quora.com/Are-there-any-good-AI-trading-applications-for-stock-and-options-trading-that-work",
+              "snippet": "AI trading applications like Trade Ideas and Tickeron are designed for stock and options trading. They analyze market data and provide trading ..."
+            },
+            {
+              "title": "What websites offer real-time stock prices and historical ...",
+              "url": "https://www.quora.com/What-websites-offer-real-time-stock-prices-and-historical-charting-tools",
+              "snippet": "What is the best site to get real time stock market data, charts, and analysis? Tradingview gives one all the tools you need for some decent ..."
+            },
+            {
+              "title": "Which apps or websites provide free, real-time stock data ...",
+              "url": "https://www.quora.com/Which-apps-or-websites-provide-free-real-time-stock-data-for-comprehensive-market-analysis",
+              "snippet": "TradeEdge Exchange offers real-time market analysis tools. The platform provides live charts that update quickly, along with a variety of ..."
+            },
+            {
+              "title": "Where can I find reliable stock market analysis?",
+              "url": "https://www.quora.com/Where-can-I-find-reliable-stock-market-analysis-1",
+              "snippet": "Reliable stock market analysis can be found on platforms like Zerodha Varsity, Moneycontrol, and TradingView, offering detailed insights, real ..."
+            },
+            {
+              "title": "What lesser-known platforms that offer high-quality real ...",
+              "url": "https://www.quora.com/What-lesser-known-platforms-that-offer-high-quality-real-time-stock-information-for-active-investors-are-there-I-cant-afford-the-likes-of-Bloomberg-and-Refinitv",
+              "snippet": "My top recommendations include Algoseek (ultra-low latency real-time market data at a fraction of the cost of Bloomberg. Best for quants doing AI, machine ..."
+            },
+            {
+              "title": "What are the best AI tools for stock market predictions?",
+              "url": "https://www.quora.com/What-are-the-best-AI-tools-for-stock-market-predictions",
+              "snippet": "I haven't seen many tools out there (maybe marketcrunch.ai). Ideally, a model should train on real-time from price history, options, technical indicators, ..."
+            },
+            {
+              "title": "What are some reliable sources for free Forex market ...",
+              "url": "https://www.quora.com/What-are-some-reliable-sources-for-free-Forex-market-analysis-and-real-time-charts-online-besides-Bloomberg-and-Reuters",
+              "snippet": "... analysis include TradingView, Investopedia, StockCharts, Forex Factory, and DailyFX. These platforms offer real-time data, charting tools ..."
+            },
+            {
+              "title": "What are some reliable sources for obtaining free real-time ...",
+              "url": "https://www.quora.com/What-are-some-reliable-sources-for-obtaining-free-real-time-historical-stock-market-data-Why-are-they-considered-good-sources",
+              "snippet": "1. NK Stock Talk - Hedging & Technical (YT) · 2. SOIC - Fundamental Analysis (YT) · 3. Vivek Bajaj - Technical Analysis (YT) · 4. Basant Maheshwari ..."
+            }
+          ]
+        },
+        "stackoverflow": {
+          "questions": [
+            {
+              "title": "What tools should I use for stock market data analysis?",
+              "url": "https://stackoverflow.com/beta/discussions/77972942/what-tools-should-i-use-for-stock-market-data-analysis",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Excel, Python with libraries such as Pandas, NumPy, R, MATLAB, Data visualization tools, APIs or specialized software like Bloomberg Terminal or ..."
+            },
+            {
+              "title": "How can i get live market data without minimal delay",
+              "url": "https://stackoverflow.com/questions/74694161/how-can-i-get-live-market-data-without-minimal-delay",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Stack Internal Implement a knowledge platform layer to power your enterprise and AI tools. Stack Data Licensing Get access to top-class ..."
+            },
+            {
+              "title": "Where can i find sample alogrithms for analyzing historical ...",
+              "url": "https://stackoverflow.com/questions/1286211/where-can-i-find-sample-alogrithms-for-analyzing-historical-stock-prices",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "It is a platform that lets you write software to analyze historical stock data. You can even write programs that would trade the stock, and ..."
+            },
+            {
+              "title": "How to use Selenium to get real-time stock price on website?",
+              "url": "https://stackoverflow.com/questions/53586898/how-to-use-selenium-to-get-real-time-stock-price-on-website",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "It shows in the network tab when you use dev tools F12 to inspect the web traffic. 2018-12-04T07:05:38.807Z+00:00. 0. Reply. Copy link. Add a ..."
+            },
+            {
+              "title": "trading - Platform that runs scripts monitoring stock market ...",
+              "url": "https://stackoverflow.com/questions/9244528/platform-that-runs-scripts-monitoring-stock-market-activity-possibly-executes-t",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Questions asking us to recommend or find a book, tool, software ... real time data. I'm looking to do simple stuff like: If \"SDY\" drops to ..."
+            },
+            {
+              "title": "Get RealTime stock price from AlphaVantage",
+              "url": "https://stackoverflow.com/questions/59578028/get-realtime-stock-price-from-alphavantage",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Stack Internal Implement a knowledge platform layer to power your enterprise and AI tools. Stack Data Licensing Get access to top-class ..."
+            },
+            {
+              "title": "Financial charts in .NET? Best library to display a live ...",
+              "url": "https://stackoverflow.com/questions/1110105/financial-charts-in-net-best-library-to-display-a-live-streaming-1-min-stock-c",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Questions asking us to recommend or find a tool, library or favorite off-site resource are off-topic for Stack Overflow as they tend to attract ..."
+            },
+            {
+              "title": "Where to get free detailed historic data e.g. with interval <1 ...",
+              "url": "https://stackoverflow.com/questions/8141948/where-to-get-free-detailed-historic-data-e-g-with-interval-1-minute",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "This question is seeking recommendations for software libraries, tutorials, tools, books, or other off-site resources. ... Where to fetch REAL- ..."
+            },
+            {
+              "title": "Is there a World-Wide Stock Market real-time quotes ...",
+              "url": "https://stackoverflow.com/questions/3280870/is-there-a-world-wide-stock-market-real-time-quotes-application-programming-inte",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "This question is seeking recommendations for software libraries, tutorials, tools, books, or other off-site resources. It does not meet Stack ..."
+            },
+            {
+              "title": "Real time stock market data with R [closed]",
+              "url": "https://stackoverflow.com/questions/12034152/real-time-stock-market-data-with-r",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Stack Internal Implement a knowledge platform layer to power your enterprise and AI tools. Stack Data Licensing Get access to top-class ..."
+            }
+          ]
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "XAUUSD Gold Technical Analysis Levels Revealed",
+              "channel": "Trading Walk",
+              "description": "Learn this simple strategy to find better entry points with good risk reward when trading XAUUSD. This video is a recent trade ...",
+              "videoId": "sJPfpIcBHvM",
+              "url": "https://www.youtube.com/watch?v=sJPfpIcBHvM",
+              "publishedAt": "2023-03-20T11:36:01Z",
+              "thumbnail": "https://i.ytimg.com/vi/sJPfpIcBHvM/hqdefault.jpg"
+            },
+            {
+              "title": "The Only Technical Analysis Video You Will Ever Need... (Full Course: Beginner To Advanced)",
+              "channel": "The Trading Channel (The Trading Channel)",
+              "description": "I am currently looking for 500 new or struggling traders to mentor and help accomplish their trading goals throughout the ...",
+              "videoId": "eynxyoKgpng",
+              "url": "https://www.youtube.com/watch?v=eynxyoKgpng",
+              "publishedAt": "2021-03-12T05:43:15Z",
+              "thumbnail": "https://i.ytimg.com/vi/eynxyoKgpng/hqdefault.jpg"
+            },
+            {
+              "title": "The 4 Best Places To Do Market Research | Marketing Research | Digital Marketing",
+              "channel": "Teaching-Revolution",
+              "description": "How you can do market research? There are four places where you can do free easy market research. That's Quora, Reddit ...",
+              "videoId": "T8emev4z2Jk",
+              "url": "https://www.youtube.com/watch?v=T8emev4z2Jk",
+              "publishedAt": "2022-03-09T13:00:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/T8emev4z2Jk/hqdefault.jpg"
+            },
+            {
+              "title": "Warren Buffet: Technical analysis is Garbage!! 🔥🔥🔥",
+              "channel": "Bargain Investor",
+              "description": "This is the most interesting adivce you'll hear about investing in the stock market. Warren Buffet used to pick stocks and do ...",
+              "videoId": "6T0hqlF-lX8",
+              "url": "https://www.youtube.com/watch?v=6T0hqlF-lX8",
+              "publishedAt": "2022-12-09T13:17:38Z",
+              "thumbnail": "https://i.ytimg.com/vi/6T0hqlF-lX8/hqdefault.jpg"
+            },
+            {
+              "title": "Technical Analysis for Beginners: Best Technical Trading Strategy",
+              "channel": "The Positive Trader",
+              "description": "Technical Analysis for Beginners: Best Technical Trading Strategy #trading #ytshorts #tradingshorts.",
+              "videoId": "WO1FzhwSCog",
+              "url": "https://www.youtube.com/watch?v=WO1FzhwSCog",
+              "publishedAt": "2025-01-22T13:00:47Z",
+              "thumbnail": "https://i.ytimg.com/vi/WO1FzhwSCog/hqdefault.jpg"
+            },
+            {
+              "title": "🚀 Top 4 Best Trading Apps &amp; Websites | Must-Have Tools for Smart Traders!",
+              "channel": "POWER OF RED AND GREEN",
+              "description": "Want to trade smarter and maximize your stock market profits? Whether you're a beginner or a pro, using the right trading ...",
+              "videoId": "SByVEhb6el0",
+              "url": "https://www.youtube.com/watch?v=SByVEhb6el0",
+              "publishedAt": "2025-03-17T09:44:38Z",
+              "thumbnail": "https://i.ytimg.com/vi/SByVEhb6el0/hqdefault.jpg"
+            },
+            {
+              "title": "Every Trading Strategy Explained in 12 Minutes",
+              "channel": "Data Trader",
+              "description": "Join my FREE Telegram (Market Analysis & Exclusive Guides): https://t.me/datatraderyoutube See all of my trades live ...",
+              "videoId": "ZX-Tp4zgJYc",
+              "url": "https://www.youtube.com/watch?v=ZX-Tp4zgJYc",
+              "publishedAt": "2024-06-13T09:00:07Z",
+              "thumbnail": "https://i.ytimg.com/vi/ZX-Tp4zgJYc/hqdefault.jpg"
+            },
+            {
+              "title": "How To Do Market Research (Market Research 101)",
+              "channel": "Adam Erhart",
+              "description": "Free 30-Day HighLevel Trial + My One-Person Agency System: https://adamerhart.co/4p1EHNT — Want to build a marketing ...",
+              "videoId": "kFM72UJhW8s",
+              "url": "https://www.youtube.com/watch?v=kFM72UJhW8s",
+              "publishedAt": "2022-07-20T13:30:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/kFM72UJhW8s/hqdefault.jpg"
+            },
+            {
+              "title": "Top 7 Websites for Options Trading | best options trading tools I free options oi data | iv data",
+              "channel": "One Best Trade",
+              "description": "Shorts Top 7 Websites for Options Trading | best options trading tools I free options oi data | iv data This video is all about 7 best ...",
+              "videoId": "tKfVtZvK4v4",
+              "url": "https://www.youtube.com/watch?v=tKfVtZvK4v4",
+              "publishedAt": "2021-12-23T02:30:12Z",
+              "thumbnail": "https://i.ytimg.com/vi/tKfVtZvK4v4/hqdefault.jpg"
+            },
+            {
+              "title": "How To Predict The Market",
+              "channel": "TradingLab",
+              "description": "The market follows one specific cycle every single time. If you can find which category it's currently in, it will make you so much ...",
+              "videoId": "M0NBkb3V5jo",
+              "url": "https://www.youtube.com/watch?v=M0NBkb3V5jo",
+              "publishedAt": "2024-04-24T14:00:26Z",
+              "thumbnail": "https://i.ytimg.com/vi/M0NBkb3V5jo/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Trading Walk",
+            "The Trading Channel (The Trading Channel)",
+            "Teaching-Revolution",
+            "Bargain Investor",
+            "The Positive Trader"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -42,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 49
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 48
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 53
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 46
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 46
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 42
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 23
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 33
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 33
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 38
+            },
+            {
+              "date": "Jan 18 – 24, 2026",
+              "value": 30
+            },
+            {
+              "date": "Jan 25 – 31, 2026",
+              "value": 9
+            }
+          ],
+          "search_query": "Real-Time Market Analysis",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Real-Time+Market+Analysis%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-02-06T01:27:59.430Z"
+        }
+      }
+    },
+    "trend-1770346788453-8": {
+      "trend_id": "trend-1770346788453-8",
+      "trend_title": "AI Lead Generation Tool",
+      "main_pain": "Сложность в поиске эффективных и надежных инструментов для генерации лидов с использованием AI.",
+      "key_pain_points": [
+        "Сложность в поиске эффективных и надежных инструментов для генерации лидов с использованием AI.",
+        "Необходимость автоматизации процессов генерации лидов и последующего взаимодействия с клиентами."
+      ],
+      "target_audience": {
+        "segments": [
+          {
+            "name": "Предприниматели и малый бизнес",
+            "size": "Требует валидации",
+            "willingness_to_pay": "medium",
+            "where_to_find": "r/SaaS, r/Entrepreneur, Quora",
+            "confidence": 6.5
+          }
+        ]
+      },
+      "sentiment_score": 6.5,
+      "status": "sources_collected",
+      "analyzed_at": "2026-02-06T03:13:18.235Z",
+      "analysis_type": "deep",
+      "real_sources": {
+        "reddit": {
+          "posts": [
+            {
+              "title": "Free AI lead generation/follow-up tool? Or best paid tool?",
+              "subreddit": "sales",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/sales/comments/1kkz906/free_ai_lead_generationfollowup_tool_or_best_paid/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "An AI based tool that automates lead scoring & followups based on replies and intent signals. It's not flashy, but it cuts time massively."
+            },
+            {
+              "title": "What ai lead generation tools actually work?",
+              "subreddit": "SaaS",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/SaaS/comments/1ivct20/what_ai_lead_generation_tools_actually_work/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "If you're looking for a lead generation tool that actually works, try Wiza. It pulls verified emails and phone numbers directly from LinkedIn or Sales Navigator ..."
+            },
+            {
+              "title": "Best AI Lead Generation Tools for 2026 (any options I'm ...",
+              "subreddit": "salestechniques",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/salestechniques/comments/1phqfa4/best_ai_lead_generation_tools_for_2026_any/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "Clay's good for data enrichment and ICP building like others mentioned. Apollo and ZoomInfo are reliable for prospecting. For automation, check out Outreach or ..."
+            },
+            {
+              "title": "What are the best AI tools to boost lead generation for both ...",
+              "subreddit": "DigitalMarketing",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/DigitalMarketing/comments/1ok4jcs/what_are_the_best_ai_tools_to_boost_lead/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "For B2B, tools like HubSpot and Apollo AI can automate outreach and scoring, while for B2C, Drift and ManyChat are great for engaging leads in real time."
+            },
+            {
+              "title": "AI in Lead Generation—Game Changer or Overhyped?",
+              "subreddit": "GrowthHacking",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/GrowthHacking/comments/1jdi3nr/ai_in_lead_generationgame_changer_or_overhyped/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "AI-powered lead generation tools are everywhere now, but are they really as effective as people claim? I've tried a few, like Apollo, ZoomInfo, and Success AI, ..."
+            },
+            {
+              "title": "Best AI Tools for Lead Generation?",
+              "subreddit": "salestechniques",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/salestechniques/comments/1j91v4d/best_ai_tools_for_lead_generation/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "Success AI has been my go-to. It automates lead sourcing, verifies contact details, and even personalizes outreach—saving tons of time compared to manual ..."
+            },
+            {
+              "title": "Do any of you use AI lead generation or appointment ...",
+              "subreddit": "InsuranceAgent",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/InsuranceAgent/comments/1is0oth/do_any_of_you_use_ai_lead_generation_or/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "Comments Section · Yes we use AI Lead Gen tools for sourcing leads. Snovio for our web-based leads and Devi AI for our social media leads. · We don't use IMO per ..."
+            },
+            {
+              "title": "I developed an AI-Powered Lead Generation System that's ...",
+              "subreddit": "ChatGPTPromptGenius",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/ChatGPTPromptGenius/comments/1j9yksm/i_developed_an_aipowered_lead_generation_system/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "This prototype could completely automate the draining, anxiety-inducing work of cold outreach while I could re-focus my energy on content creation and software ..."
+            },
+            {
+              "title": "Are AI lead generation costs really justified?",
+              "subreddit": "Entrepreneur",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/Entrepreneur/comments/1jckqqb/are_ai_lead_generation_costs_really_justified/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "I started to look for, and honestly, I'm shocked since some of these tools charge insane amounts, like $5,000 a month. To me, it feels like madness and kinda ..."
+            },
+            {
+              "title": "Best Lead Generation Tools for B2B?",
+              "subreddit": "CRMSoftware",
+              "score": 0,
+              "num_comments": 0,
+              "url": "https://www.reddit.com/r/CRMSoftware/comments/1lidafm/best_lead_generation_tools_for_b2b/",
+              "created": "2026-02-06T03:13:09.315Z",
+              "selftext": "Check out Salesrobot.co for LinkedIn/ email ai led automation. Plenty of case studies and huge community using it."
+            }
+          ],
+          "communities": [
+            "sales",
+            "SaaS",
+            "salestechniques",
+            "DigitalMarketing",
+            "GrowthHacking",
+            "InsuranceAgent",
+            "ChatGPTPromptGenius",
+            "Entrepreneur"
+          ],
+          "engagement": 0
+        },
+        "hacker_news": {
+          "posts": [
+            {
+              "title": "AI agent that clones viral content structures to automate ...",
+              "url": "https://news.ycombinator.com/item?id=45181503",
+              "points": 0,
+              "snippet": "So, while we use AI models (e.g. Nano Banana, etc.) for some creative visuals, we also built a suite of our own custom image generation tools from scratch to ..."
+            },
+            {
+              "title": "Generative AI coding tools and agents do not work for me",
+              "url": "https://news.ycombinator.com/item?id=44294633",
+              "points": 0,
+              "snippet": "Another common argument I've heard is that Generative AI is helpful when you need to write code in a language or technology you are not familiar with."
+            },
+            {
+              "title": "The unreasonable effectiveness of an LLM agent loop with ...",
+              "url": "https://news.ycombinator.com/item?id=43998472",
+              "points": 0,
+              "snippet": "It is indeed astonishing how well a loop with an LLM that can call tools works for all kinds of tasks now. Yes, sometimes they go off the rails."
+            },
+            {
+              "title": "Are people's bosses making them use AI tools?",
+              "url": "https://news.ycombinator.com/item?id=45079911",
+              "points": 0,
+              "snippet": "The big boss hears from a Microsoft salesman that AI = you can fire 20% of your workforce, but never questions exactly how that works. They probably never got ..."
+            },
+            {
+              "title": "Launch HN: Webhound (YC S23) – Research agent that ...",
+              "url": "https://news.ycombinator.com/item?id=45373008",
+              "points": 0,
+              "snippet": "We're the team behind Webhound (https://webhound.ai), an AI agent that builds datasets from the web based on natural language prompts."
+            },
+            {
+              "title": "Olmo 3: Charting a path through the model flow to lead ...",
+              "url": "https://news.ycombinator.com/item?id=46001889",
+              "points": 0,
+              "snippet": "This is how the future of \"AI\" has to look like: Fully-traceable inferences steps, that can be inspected & adjusted if needed."
+            },
+            {
+              "title": "The current hype around autonomous agents, and what ...",
+              "url": "https://news.ycombinator.com/item?id=44623207",
+              "points": 0,
+              "snippet": "Plenty of tech companies have started using gen AI for live chat support. Off the top of head I know off sonder.com and wealthsimple.com."
+            },
+            {
+              "title": "Two kinds of AI users are emerging",
+              "url": "https://news.ycombinator.com/item?id=46850588",
+              "points": 0,
+              "snippet": "I'd argue 2 types of users are. * People using it as a tool, aware of its limitations and treating it basically as intern/boring task executor (whether its ..."
+            },
+            {
+              "title": "Building powerful and reliable AI Agents is becoming less ...",
+              "url": "https://news.ycombinator.com/item?id=44428090",
+              "points": 0,
+              "snippet": "Building powerful and reliable AI Agents is becoming less about finding a magic prompt or model updates. Ok, I can buy this."
+            },
+            {
+              "title": "Ask HN: Is your company forcing use of AI?",
+              "url": "https://news.ycombinator.com/item?id=44431251",
+              "points": 0,
+              "snippet": "We are forcing non-use because of compliance. There is a fear that the models will scan and steal our proprietary code."
+            }
+          ]
+        },
+        "twitter": {
+          "discussions": [
+            {
+              "title": "Apollo.io - Best AI Lead Generation Tools in 2026",
+              "url": "https://x.com/useapolloio/status/2015898292824010773",
+              "snippet": "why buy 5 tools when the best one does it all? @cybernews just ranked apollo a top ai lead gen platform for 2026—recognized for finding and emailing ..."
+            },
+            {
+              "title": "Build a Lead Generation Tool for Any Industry with Just $20! 🚀 I'll ...",
+              "url": "https://x.com/Linkifi_/status/1892859471107424427",
+              "snippet": "I'll show you how to create a powerful lead generation tool with zero coding skills using Bolt(.)new, an AI-powered app builder. We'll walk through the entire ..."
+            },
+            {
+              "title": "Insurance-Leads.AI | AI-Powered Lead Gen Software",
+              "url": "https://x.com/insleadsAI",
+              "snippet": "Tap into the latest surge in AI-driven marketing tools, with a 30% rise in ... AI Lead Generation Hack. ​​. AI Hack: Generate Live Transfer Insurance ..."
+            },
+            {
+              "title": "AI Tools For Lead Generation",
+              "url": "https://x.com/boberdoo/status/1894832681877123412",
+              "snippet": "AI Tools For Lead Generation. AI Tools For Lead Generation. www.boberdoo.com. 1. 1. 1. 15 · · Explore Trending StoriesGo to HomeSearch XNews."
+            },
+            {
+              "title": "Best Free AI Tools (@bestfreeaitools) / Posts / X",
+              "url": "https://x.com/bestfreeaitools",
+              "snippet": "Oct 4. 29 Best AI Research Paper Generator Tools in 2025 [Tested & Ranked] · bestfreeaitools.io/best-ai-tool/b… ; Oct 2. Rephrasy AI Review: Effective AI Text ..."
+            },
+            {
+              "title": "The Best AI-First Lead Generation Tools to Know in 2025 ...",
+              "url": "https://x.com/TechBullion/status/2014785608053367005",
+              "snippet": "The Best AI-First Lead Generation Tools to Know in 2025 @ZoomInfo techbullion.com/the-best-ai-fi… #AI #LeadGeneration @TechBullion."
+            },
+            {
+              "title": "Use This AI Tool For Effortless Lead Generation! #aiagents ...",
+              "url": "https://x.com/voicegenie_ai/status/1922894716594467199",
+              "snippet": "Use This AI Tool For Effortless Lead Generation! #aiagents #leadgeneration #voiceai."
+            },
+            {
+              "title": "Which AI Agent Framework Should You Choose? With so ...",
+              "url": "https://x.com/goyalshaliniuk/status/1998369538136846397",
+              "snippet": "AutoGen (Microsoft) → Enables human–AI and AI–AI collaboration with memory and tool use, great for enterprise workflows and co-pilot systems. CrewAI → Lets you ..."
+            },
+            {
+              "title": "What to look for in an AI lead magnet generator | ScoreApp",
+              "url": "https://x.com/DanielPriestley/status/1964418348168495114",
+              "snippet": "... AI lead magnet generator. We share 5 key questions to find a tool that saves time while delivering valuable insights and boosting conversions. Don't settle ..."
+            },
+            {
+              "title": "Supercharging your lead generation has never been more ...",
+              "url": "https://x.com/wpbeginner/status/1938228255581933738",
+              "snippet": "... AI can personalize and optimize your campaigns 🛠️ Tools and plugins that turn data into real results ⚡ Actionable strategies to engage and qualify more ..."
+            }
+          ]
+        },
+        "quora": {
+          "questions": [
+            {
+              "title": "What are the benefits of using AI lead generation software ...",
+              "url": "https://www.quora.com/What-are-the-benefits-of-using-AI-lead-generation-software-for-small-businesses",
+              "snippet": "AI tools analyze behavior, trends, and data to target people who are already looking for something like what you offer. Saves hours of manual work. Forget ..."
+            },
+            {
+              "title": "How can businesses generate high-quality leads using AI ...",
+              "url": "https://www.quora.com/How-can-businesses-generate-high-quality-leads-using-AI-in-2025",
+              "snippet": "In 2025, AI tools like Jasper, HubSpot, and Drift are great for lead generation, they help automate outreach and personalize interactions."
+            },
+            {
+              "title": "What are the most effective lead generation tools for B2B ...",
+              "url": "https://www.quora.com/What-are-the-most-effective-lead-generation-tools-for-B2B-companies-that-use-phone-email-or-both-as-sales-channels",
+              "snippet": "The best tool for generating sales leads through cold email campaigns is Success.ai. It's super user-friendly and helps you craft personalized emails that ..."
+            },
+            {
+              "title": "How can AI improve the effectiveness of email marketing ...",
+              "url": "https://www.quora.com/How-can-AI-improve-the-effectiveness-of-email-marketing-and-lead-generation",
+              "snippet": "AI boosts email marketing and lead generation by personalizing content, scoring and segmenting leads, optimizing send times, automating follow-ups, ..."
+            },
+            {
+              "title": "What tools for AI automation in sales and marketing do you ...",
+              "url": "https://www.quora.com/What-tools-for-AI-automation-in-sales-and-marketing-do-you-use-and-why",
+              "snippet": "For AI automation in sales and marketing, you can use ChatGPT for content and email writing, Zapier for workflow automation, HubSpot AI for lead scoring and CRM ..."
+            },
+            {
+              "title": "What are the 5 free AI tools for marketing?",
+              "url": "https://www.quora.com/What-are-the-5-free-AI-tools-for-marketing",
+              "snippet": "1.ChatGPT / Gemini (Best for Strategy & Copy) · 2. Canva Magic Studio (Best for Visual Design) · 3. Predis.ai (Best for Social Media Automation) · 4.CapCut / ..."
+            },
+            {
+              "title": "What are the best free tools to generate sales leads?",
+              "url": "https://www.quora.com/What-are-the-best-free-tools-to-generate-sales-leads",
+              "snippet": "Here are some free lead generation tools: HubSpotAn all-in-one solution for inbound marketing that offers tools to improve sales, marketing, and customer suppor ..."
+            },
+            {
+              "title": "Which AI tools are essential for small businesses to stay ...",
+              "url": "https://www.quora.com/Which-AI-tools-are-essential-for-small-businesses-to-stay-competitive-in-2025",
+              "snippet": "What are the best AI tools for leads generation in 2025? In 2025, consider tools like Outreach, Best sales Lead software seamless AI HubSpot, LinkedIn Sales ..."
+            },
+            {
+              "title": "How can B2B marketers use tools like LeadFoxy to ...",
+              "url": "https://www.quora.com/How-can-B2B-marketers-use-tools-like-LeadFoxy-to-automate-lead-generation-and-improve-the-quality-of-their-sales-pipeline",
+              "snippet": "How can B2B marketers use tools like LeadFoxy to automate lead generation and improve the quality of their sales pipeline? All related (31)."
+            },
+            {
+              "title": "Why should businesses invest in AI lead generation tools?",
+              "url": "https://www.quora.com/Why-should-businesses-invest-in-AI-lead-generation-tools",
+              "snippet": "Businesses should invest in AI lead generation tools because they: * Save time by automating tedious tasks like prospect research and outreach * Increase ..."
+            }
+          ]
+        },
+        "stackoverflow": {
+          "questions": [
+            {
+              "title": "Newest 'artificial-intelligence' Questions",
+              "url": "https://stackoverflow.com/questions/tagged/artificial-intelligence?tab=Newest",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I'm writing a generative AI Corpus and AI Vocal Analysis tool that is for training peoples voice and giving feedback. I'm using qwen4b-instruct as an LLM ..."
+            },
+            {
+              "title": "A Gamified Coding Challenge Feature for Stack Overflow? ...",
+              "url": "https://meta.stackoverflow.com/questions/433667/a-gamified-coding-challenge-feature-for-stack-overflow-we-want-your-feedback",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "We're considering an opt-in feature that introduces coding challenges within Stack Overflow, which I'm affectionately calling 'StackQuest'."
+            },
+            {
+              "title": "What are the essential things to know before trying to use ...",
+              "url": "https://meta.stackoverflow.com/questions/433897/what-are-the-essential-things-to-know-before-trying-to-use-stack-overflow",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "What are the most important things new users should understand, assuming that they intend to stick around long enough to participate in the process fully?"
+            },
+            {
+              "title": "Load Phi 3 model extract attention layer and visualize it",
+              "url": "https://stackoverflow.com/questions/79455504/load-phi-3-model-extract-attention-layer-and-visualize-it",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I would like to visualize the attention layer of a Phi-3-medium-4k-instruct (or mini) model downloaded from hugging-face."
+            },
+            {
+              "title": "API endpoint for AI chat completions worked on local but ...",
+              "url": "https://stackoverflow.com/questions/79477997/api-endpoint-for-ai-chat-completions-worked-on-local-but-500-on-cloudflare-produ",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I am having problems with deploying my NextJS app, which is using an API endpoint for chat completions from OpenRouter AI. The API endpoint below worked well on ..."
+            },
+            {
+              "title": "The 2025 Developer Survey is Now Live",
+              "url": "https://meta.stackoverflow.com/questions/434080/the-2025-developer-survey-is-now-live",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Like so many other tech companies, Stack Overflow shows with clear colors its hyped stance on AI. There are at least 12 pages of questions related to AI."
+            },
+            {
+              "title": "how to generate random probability arrays with pre ...",
+              "url": "https://stackoverflow.com/questions/79537279/how-to-generate-random-probability-arrays-with-pre-specified-mean",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I want to generate several, say 10 random probability arrays (each sums up to 1) whose mean is [0.5, 0.5, 0]"
+            },
+            {
+              "title": "Recreate a ranked heatmap in R",
+              "url": "https://stackoverflow.com/questions/79555781/recreate-a-ranked-heatmap-in-r",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "I want to recreate this plot in R:Ranked heatmap. I've tried tidyheatmaps and I can get something with the category in a fixed position on the y-axis."
+            },
+            {
+              "title": "Why does generating the Sobol Sequence in SciPy hang ...",
+              "url": "https://stackoverflow.com/questions/79718895/why-does-generating-the-sobol-sequence-in-scipy-hang-after-completing-25-of-the",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "This is a bug. After generating 232 samples, a function that sampler.random calls, low_0_bit , can loop forever. A fix for it is planned to be included in ..."
+            },
+            {
+              "title": "Why does this Genetic Algorithm give such bad solutions to ...",
+              "url": "https://stackoverflow.com/questions/79486933/why-does-this-genetic-algorithm-give-such-bad-solutions-to-a-tsp",
+              "votes": 0,
+              "answers": 0,
+              "snippet": "Why is my Genetic Algorithm running so bad? Here are a few solutions I get when using different mating/mutating algorithms. Note that all runs have been made ..."
+            }
+          ]
+        },
+        "youtube": {
+          "videos": [
+            {
+              "title": "The Best AI Lead Generation Tools in 2026",
+              "channel": "Nas io",
+              "description": "Try Nas.io for free: https://nas.io/aileadgen2025 Use promo code: DIGITAL7DAYS Finding customers used to take endless ...",
+              "videoId": "IhZ_4eDjpR4",
+              "url": "https://www.youtube.com/watch?v=IhZ_4eDjpR4",
+              "publishedAt": "2025-11-27T12:40:05Z",
+              "thumbnail": "https://i.ytimg.com/vi/IhZ_4eDjpR4/hqdefault.jpg"
+            },
+            {
+              "title": "5 Best AI Lead Generation Tools (Free &amp; Paid)",
+              "channel": "Ash Davis",
+              "description": "In this video, I review the 5 top AI lead generation tools & software to help you automate the marketing in your business.",
+              "videoId": "O0RRrWYrqks",
+              "url": "https://www.youtube.com/watch?v=O0RRrWYrqks",
+              "publishedAt": "2023-10-11T18:07:23Z",
+              "thumbnail": "https://i.ytimg.com/vi/O0RRrWYrqks/hqdefault.jpg"
+            },
+            {
+              "title": "Did This AI Tool Just Change Sales Forever? (Clay AI Review)",
+              "channel": "Sales Feed",
+              "description": "Clay AI has been the buzzword in the sales world lately, but does it live up to the hype? In this video, I dive deep into Clay AI's ...",
+              "videoId": "Z9xzPDRrQHw",
+              "url": "https://www.youtube.com/watch?v=Z9xzPDRrQHw",
+              "publishedAt": "2025-01-02T20:23:26Z",
+              "thumbnail": "https://i.ytimg.com/vi/Z9xzPDRrQHw/hqdefault.jpg"
+            },
+            {
+              "title": "Hack To Convert More Leads",
+              "channel": "Alex Hormozi",
+              "description": "Want my books for free? Go here: https://www.acquisition.com/audiobooks The easiest business I can help you start (free trial): ...",
+              "videoId": "2oSh0nDmBIM",
+              "url": "https://www.youtube.com/watch?v=2oSh0nDmBIM",
+              "publishedAt": "2025-03-27T04:30:04Z",
+              "thumbnail": "https://i.ytimg.com/vi/2oSh0nDmBIM/hqdefault.jpg"
+            },
+            {
+              "title": "How To Generate Leads with AI in 2026 (Full Guide)",
+              "channel": "Patrick Dang",
+              "description": "Try Apollo For Free Today: https://get.apollo.io/g1k7la1c8yfg Free Training → Monetize Your Skills Online & Build Your Personal ...",
+              "videoId": "C1J5rF5mnR0",
+              "url": "https://www.youtube.com/watch?v=C1J5rF5mnR0",
+              "publishedAt": "2026-01-08T13:30:14Z",
+              "thumbnail": "https://i.ytimg.com/vi/C1J5rF5mnR0/hqdefault.jpg"
+            },
+            {
+              "title": "Explee Review - 2025 | How to Use AI Lead Generation Tool and Find 1000+ Verified B2B Leads",
+              "channel": "Daniel | Tech & Data",
+              "description": "(Discount Link) Try Explee Now: https://tinyurl.com/expleetech Struggling to build effective ICP lists? This Explee Review shows ...",
+              "videoId": "seS1egJ34AE",
+              "url": "https://www.youtube.com/watch?v=seS1egJ34AE",
+              "publishedAt": "2025-09-23T12:45:01Z",
+              "thumbnail": "https://i.ytimg.com/vi/seS1egJ34AE/hqdefault.jpg"
+            },
+            {
+              "title": "How to use A.I. to Generate FREE Real Estate Leads FAST [FULL COURSE]",
+              "channel": "Mike Sherrard",
+              "description": "Access the Ultimate A.I. Execution Prompt Vault https://bit.ly/4iPWIfW Access my FREE YouTube Lead Engine Course!",
+              "videoId": "HFYtD1zck0Q",
+              "url": "https://www.youtube.com/watch?v=HFYtD1zck0Q",
+              "publishedAt": "2025-12-08T13:00:26Z",
+              "thumbnail": "https://i.ytimg.com/vi/HFYtD1zck0Q/hqdefault.jpg"
+            },
+            {
+              "title": "How to Build a B2B Lead Generation AI Agent Using n8n",
+              "channel": "Website Learners",
+              "description": "Get N8n Hosting & Workflow* ➜ https://webspacekit.com/client/link.php?id=172 ❤️ *LIMITED TODAY:* Get *1 Year* of ...",
+              "videoId": "jBrCyXnjjGI",
+              "url": "https://www.youtube.com/watch?v=jBrCyXnjjGI",
+              "publishedAt": "2026-01-07T12:01:36Z",
+              "thumbnail": "https://i.ytimg.com/vi/jBrCyXnjjGI/hqdefault.jpg"
+            },
+            {
+              "title": "Using ChatGPT to Generate 1000s of Leads in Any Niche (Free + Easy Method)",
+              "channel": "Helena Liu",
+              "description": "To learn more about AI and automations, sign up for my free course here: www.productcamps.com/free Want to learn how to start ...",
+              "videoId": "XgclEibeoGc",
+              "url": "https://www.youtube.com/watch?v=XgclEibeoGc",
+              "publishedAt": "2024-07-15T12:00:29Z",
+              "thumbnail": "https://i.ytimg.com/vi/XgclEibeoGc/hqdefault.jpg"
+            },
+            {
+              "title": "These 4 AI Automations Will Make You $1M (With Zero Employees)",
+              "channel": "Dan Martell",
+              "description": "Get your FREE Sell by Chat Playbook here: https://go.danmartell.com/48pqVxy Are you building an AI software company?",
+              "videoId": "sDZmLFZ8BkM",
+              "url": "https://www.youtube.com/watch?v=sDZmLFZ8BkM",
+              "publishedAt": "2025-11-29T15:01:45Z",
+              "thumbnail": "https://i.ytimg.com/vi/sDZmLFZ8BkM/hqdefault.jpg"
+            }
+          ],
+          "channels": [
+            "Nas io",
+            "Ash Davis",
+            "Sales Feed",
+            "Alex Hormozi",
+            "Patrick Dang"
+          ]
+        },
+        "google_trends": {
+          "growth_rate": -16,
+          "related_queries": [],
+          "interest_timeline": [
+            {
+              "date": "Nov 9 – 15, 2025",
+              "value": 53
+            },
+            {
+              "date": "Nov 16 – 22, 2025",
+              "value": 51
+            },
+            {
+              "date": "Nov 23 – 29, 2025",
+              "value": 52
+            },
+            {
+              "date": "Nov 30 – Dec 6, 2025",
+              "value": 59
+            },
+            {
+              "date": "Dec 7 – 13, 2025",
+              "value": 56
+            },
+            {
+              "date": "Dec 14 – 20, 2025",
+              "value": 57
+            },
+            {
+              "date": "Dec 21 – 27, 2025",
+              "value": 43
+            },
+            {
+              "date": "Dec 28, 2025 – Jan 3, 2026",
+              "value": 41
+            },
+            {
+              "date": "Jan 4 – 10, 2026",
+              "value": 52
+            },
+            {
+              "date": "Jan 11 – 17, 2026",
+              "value": 56
+            },
+            {
+              "date": "Jan 18 – 24, 2026",
+              "value": 50
+            },
+            {
+              "date": "Jan 25 – 31, 2026",
+              "value": 34
+            }
+          ],
+          "search_query": "Lead Generation",
+          "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22Lead+Generation%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22today+12-m%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+          "fetched_at": "2026-02-06T03:13:05.985Z"
+        }
+      }
     }
   },
-  "lastUpdated": "2026-01-27T16:37:10.631Z"
+  "lastUpdated": "2026-02-06T03:13:18.254Z"
 }

@@ -49,17 +49,6 @@ const categoryConfig: Record<string, { icon: string; color: string }> = {
   'Education': { icon: '📚', color: 'from-orange-500/20 to-amber-500/20' },
 };
 
-function getOverallScore(trend: Trend): number {
-  return Number(((trend.opportunity_score + trend.pain_score + trend.feasibility_score + trend.profit_potential) / 4).toFixed(1));
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 8.5) return 'from-green-500 to-emerald-500';
-  if (score >= 7) return 'from-indigo-500 to-purple-500';
-  if (score >= 5) return 'from-yellow-500 to-orange-500';
-  return 'from-red-500 to-rose-500';
-}
-
 export default function TrendCard({ trend, dataTour }: TrendCardProps) {
   const [showModal, setShowModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -67,7 +56,6 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
   const router = useRouter();
   const t = useTranslations();
   const { language } = useLanguage();
-  const overallScore = getOverallScore(trend);
   const config = categoryConfig[trend.category] || { icon: '📌', color: 'from-zinc-500/20 to-zinc-600/20' };
 
   // Для английского: используем готовый перевод why_trending_en если есть, иначе переводим через API
@@ -108,22 +96,6 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays} ${t.trendCard.daysAgo}`;
   };
-
-  // Localized score label
-  const getScoreLabelLocalized = (score: number): string => {
-    if (score >= 8.5) return t.trendCard.excellent;
-    if (score >= 7) return t.trendCard.good;
-    if (score >= 5) return t.trendCard.average;
-    return t.trendCard.low;
-  };
-
-  // Localized metrics
-  const metrics = [
-    { label: t.trendCard.opportunity, value: trend.opportunity_score, icon: '🎯' },
-    { label: t.trendCard.pain, value: trend.pain_score, icon: '🔥' },
-    { label: t.trendCard.feasibility, value: trend.feasibility_score, icon: '⚡' },
-    { label: t.trendCard.profit, value: trend.profit_potential, icon: '💰' },
-  ];
 
   // Проверяем, завершён ли проект (GitHub репозиторий создан = проект готов)
   useEffect(() => {
@@ -167,16 +139,6 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
         <div className="relative">
           {/* Header */}
           <div className="flex justify-between items-start mb-4">
-            {/* Score */}
-            <div className="relative">
-              <div className={`score-badge bg-gradient-to-br ${getScoreColor(overallScore)} text-white shadow-lg`}>
-                {overallScore}
-              </div>
-              <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-900/80 text-zinc-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity`}>
-                {getScoreLabelLocalized(overallScore)}
-              </div>
-            </div>
-
             {/* Project completed indicator */}
             {isProjectCompleted && (
               <div
@@ -204,33 +166,9 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
           </h3>
 
           {/* Description */}
-          <p className="text-sm text-zinc-400 mb-5 line-clamp-2 group-hover:text-zinc-300 transition-colors">
+          <p className="text-sm text-zinc-400 mb-5 line-clamp-3 group-hover:text-zinc-300 transition-colors">
             {displayWhyTrending}
           </p>
-
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="group/metric">
-                <div className="flex justify-between items-center text-xs mb-1.5">
-                  <span className="text-zinc-500 flex items-center gap-1">
-                    <span className="opacity-0 group-hover/metric:opacity-100 transition-opacity">{metric.icon}</span>
-                    {metric.label}
-                  </span>
-                  <span className="text-zinc-300 font-medium">{metric.value}</span>
-                </div>
-                <div className="metric-bar">
-                  <div
-                    className="metric-bar-fill"
-                    style={{
-                      width: isHovered ? `${metric.value * 10}%` : `${metric.value * 10}%`,
-                      transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
 
           {/* Footer */}
           <div className="flex justify-between items-center pt-4 border-t border-zinc-800/50">
@@ -301,20 +239,6 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
 
             {/* Modal Body */}
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-              {/* Score Section */}
-              <div className="flex items-center gap-4 sm:gap-6 p-3 sm:p-4 bg-zinc-900/50 rounded-xl">
-                <div className={`score-badge bg-gradient-to-br ${getScoreColor(overallScore)} text-white text-2xl sm:text-3xl`}>
-                  {overallScore}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-zinc-400 text-xs sm:text-sm mb-1">{t.trendCard.overallRating}</div>
-                  <div className="text-white font-semibold text-sm sm:text-lg">{t.trendCard.potential}: {getScoreLabelLocalized(overallScore)}</div>
-                  <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">
-                    {t.trendCard.basedOnMetrics}
-                  </div>
-                </div>
-              </div>
-
               {/* Description */}
               <div className="bg-zinc-900/30 rounded-xl p-4">
                 <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
@@ -322,33 +246,6 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
                   {t.trendCard.whyTrending}
                 </h3>
                 <p className="text-zinc-400">{displayWhyTrending}</p>
-              </div>
-
-              {/* Detailed Metrics */}
-              <div>
-                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  <span>📊</span>
-                  {t.trendCard.detailedMetrics}
-                </h3>
-                <div className="space-y-4">
-                  {metrics.map((metric) => (
-                    <div key={metric.label} className="group">
-                      <div className="flex justify-between items-center text-sm mb-2">
-                        <span className="text-zinc-400 flex items-center gap-2">
-                          <span>{metric.icon}</span>
-                          {metric.label}
-                        </span>
-                        <span className="text-white font-semibold">{metric.value}/10</span>
-                      </div>
-                      <div className="h-2.5 bg-zinc-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700"
-                          style={{ width: `${metric.value * 10}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* Info */}

@@ -38,6 +38,7 @@ interface MarketSellabilityData {
       price: string;
       url: string;
       plan_type: string;
+      period?: string;
     }>;
     median_price: number | null;
     price_count: number;
@@ -200,48 +201,6 @@ export default function MarketSellabilityBlock({ data, loading, error }: Props) 
             <div className="text-xs text-zinc-400">
               Сигналы из анализа поисковых результатов (частота упоминаний ключевых слов)
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Section: Pricing */}
-      <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
-        <button onClick={() => toggle('pricing')} className="w-full flex items-center justify-between p-3 text-left">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">Цены конкурентов</span>
-            <EvidenceBadge type="real_data" />
-            <span className="text-xs text-zinc-400">{data.average_ticket.price_count} найдено</span>
-          </div>
-          <span className="text-zinc-500">{expandedSection === 'pricing' ? '−' : '+'}</span>
-        </button>
-        {expandedSection === 'pricing' && (
-          <div className="px-3 pb-3">
-            {data.average_ticket.competitor_prices.length > 0 ? (
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-zinc-400 border-b border-zinc-700">
-                    <th className="text-left py-1">Конкурент</th>
-                    <th className="text-left py-1">Цена</th>
-                    <th className="text-left py-1">План</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.average_ticket.competitor_prices.map((p, i) => (
-                    <tr key={i} className="border-b border-zinc-700">
-                      <td className="py-1">{p.competitor}</td>
-                      <td className="py-1 font-medium">
-                        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">
-                          {p.price}
-                        </a>
-                      </td>
-                      <td className="py-1 text-zinc-400">{p.plan_type}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="text-sm text-zinc-400">Данные о ценах не найдены</p>
-            )}
           </div>
         )}
       </div>

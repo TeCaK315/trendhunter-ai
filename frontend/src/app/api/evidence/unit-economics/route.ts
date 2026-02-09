@@ -4,6 +4,7 @@ import {
   fetchCompetitorPricing,
   fetchGoogleSearch,
   fetchGoogleTrends,
+  discoverCompetitors,
 } from '@/lib/data-fetchers';
 import {
   calcEstimatedCac,
@@ -47,7 +48,14 @@ export async function POST(request: NextRequest) {
     ];
 
     // Fetch CPC data + competitor pricing + market size signals in parallel
-    const competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 3) || [];
+    let competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 3) || [];
+
+    // Fallback: discover competitors via Google Search + GPT if none in context
+    if (competitorNames.length === 0) {
+      const discovered = await discoverCompetitors(searchQuery, 5);
+      totalSerpApiCalls += discovered.serpapi_calls_used;
+      competitorNames = discovered.competitors.map(c => c.name).slice(0, 3);
+    }
 
     const [
       cpcResult1,
@@ -67,7 +75,13 @@ export async function POST(request: NextRequest) {
     totalSerpApiCalls += trendsResult.serpapi_calls_used;
 
     // Fetch competitor pricing
-    const pricingResults = [];
+    const pricingResults: Array<{
+      competitor: string;
+      pricing_url: string;
+      pricing_snippet: string;
+      prices_found: Array<{ amount: string; plan: string; period: string }>;
+      serpapi_calls_used: number;
+    }> = [];
     for (const name of competitorNames.slice(0, 3)) {
       const pricingResult = await fetchCompetitorPricing(name);
       totalSerpApiCalls += pricingResult.serpapi_calls_used;
@@ -103,7 +117,7 @@ export async function POST(request: NextRequest) {
         const priceNum = parseFloat(p.amount.replace(/[^0-9.]/g, ''));
         if (priceNum > 0 && priceNum < 10000) {
           // Determine if monthly or annual
-          const isAnnual = /yr|year|annual/i.test(p.plan);
+          const isAnnual = (p.period === 'yr') || /yr|year|annual/i.test(p.plan);
           if (isAnnual) {
             const monthlyEquiv = priceNum / 12;
             if (!monthlyPrices.some(mp => Math.abs(mp - monthlyEquiv) < 1)) {
@@ -139,10 +153,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const estimatedLtv = calcEstimatedLtv(monthlyPrices);
+    // 3. Market Size Indicators (REPLACES LTV!)
+    // Call our new market-size API to get real revenue data
+    const marketSizeResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/evidence/market-size`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        competitors: competitorNames,
+        existing_pricing: competitorNames.reduce((acc: Record<string, { range: string; typical_price: string; source_url: string }>, name: string, idx: number) => {
+          const pr = pricingResults[idx];
+          if (pr && pr.prices_found.length > 0) {
+            const prices = pr.prices_found.map(p => parseFloat(p.amount.replace(/[^0-9.]/g, ''))).filter(p => p > 0);
+            const typical = prices.length > 0 ? prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)] : null;
+            if (typical) {
+              acc[name] = {
+                range: `$${Math.min(...prices)}-${Math.max(...prices)}/mo`,
+                typical_price: `$${typical}/mo`,
+                source_url: pr.pricing_url || '',
+              };
+            }
+          }
+          return acc;
+        }, {}),
+      }),
+    });
 
-    // 3. LTV/CAC ratio
-    const ltvCacRatio = calcLtvCacRatio(estimatedLtv.value, estimatedCac.value);
+    const marketSizeData = marketSizeResponse.ok ? await marketSizeResponse.json() : null;
+
+    // 4. Calculate average price for LTV/CAC ratio (use median from competitors)
+    const avgMonthlyPrice = monthlyPrices.length > 0
+      ? monthlyPrices.sort((a, b) => a - b)[Math.floor(monthlyPrices.length / 2)]
+      : 0;
+    const estimatedLtvForRatio = avgMonthlyPrice * 24; // Assume 24-month lifetime for ratio
+
+    const ltvCacRatio = calcLtvCacRatio(estimatedLtvForRatio, estimatedCac.value);
 
     // 4. Business model detection
     const modelSnippets = businessModelResult.data.map(r => `${r.title} ${r.snippet}`).join(' ').toLowerCase();
@@ -190,10 +234,13 @@ export async function POST(request: NextRequest) {
         estimated_cac: estimatedCac,
         cpc_data_points: cpcValues.length,
       },
-      ltv: {
-        competitor_prices: competitorPriceDetails,
-        estimated_ltv: estimatedLtv,
-        price_data_points: monthlyPrices.length,
+      market_size_indicators: marketSizeData || {
+        competitors: [],
+        total_market_revenue: null,
+        total_estimated_customers: null,
+        largest_player: null,
+        data_quality: 'low',
+        sources_count: 0,
       },
       ltv_cac_ratio: ltvCacRatio,
       repeat_sales: {
@@ -234,7 +281,11 @@ export async function POST(request: NextRequest) {
       },
       data_metadata: {
         cac: { data_type: cpcValues.length > 0 ? 'calculated' : 'no_data', source: 'Google Ads CPC via SerpAPI' },
-        ltv: { data_type: monthlyPrices.length > 0 ? 'calculated' : 'no_data', source: 'Competitor pricing pages' },
+        market_size: {
+          data_type: marketSizeData && marketSizeData.sources_count > 0 ? 'actual_and_estimated' : 'no_data',
+          source: 'SEC filings, press releases, LinkedIn, competitor pricing',
+          note: 'Public companies: actual data. Private companies: estimates based on employees and pricing.',
+        },
         ltv_cac_ratio: { data_type: (cpcValues.length > 0 && monthlyPrices.length > 0) ? 'calculated' : 'no_data' },
         business_model: { data_type: 'calculated', note: 'Keyword frequency analysis' },
         scalability: { data_type: 'calculated', formula: 'base(5) + trend_bonus + market_signals_bonus + subscription_bonus' },

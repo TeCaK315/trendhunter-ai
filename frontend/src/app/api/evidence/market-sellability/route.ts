@@ -5,6 +5,7 @@ import {
   fetchG2Reviews,
   fetchCompetitorPricing,
   fetchGoogleSearch,
+  discoverCompetitors,
 } from '@/lib/data-fetchers';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -76,7 +77,15 @@ export async function POST(request: NextRequest) {
     segmentConfidence = Math.min(90, segmentConfidence);
 
     // 3. Average ticket — competitor pricing pages
-    const competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 5) || [];
+    let competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 5) || [];
+
+    // Fallback: discover competitors via Google Search + GPT if none in context
+    if (competitorNames.length === 0) {
+      const discovered = await discoverCompetitors(searchQuery, 5);
+      totalSerpApiCalls += discovered.serpapi_calls_used;
+      competitorNames = discovered.competitors.map(c => c.name);
+    }
+
     const pricingResults = [];
 
     for (const name of competitorNames.slice(0, 3)) {
@@ -86,16 +95,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract price mentions from pricing results
-    const priceExtracted: Array<{ competitor: string; price: string; url: string; plan_type: string }> = [];
+    const priceExtracted: Array<{ competitor: string; price: string; url: string; plan_type: string; period: string }> = [];
     for (const pr of pricingResults) {
       for (const p of pr.prices_found) {
         priceExtracted.push({
           competitor: pr.competitor,
           price: p.amount,
           url: pr.pricing_url,
-          plan_type: p.plan.toLowerCase().includes('enterprise') ? 'Enterprise' :
-                     p.plan.toLowerCase().includes('pro') ? 'Pro' :
-                     p.plan.toLowerCase().includes('team') ? 'Team' : 'Standard',
+          plan_type: p.plan,
+          period: p.period || 'mo',
         });
       }
       // Also try to extract from pricing_snippet if no prices_found
@@ -107,6 +115,7 @@ export async function POST(request: NextRequest) {
             price: priceMatch[0],
             url: pr.pricing_url,
             plan_type: 'Standard',
+            period: 'mo',
           });
         }
       }

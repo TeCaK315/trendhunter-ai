@@ -20,18 +20,44 @@ interface UnitEconomicsData {
     };
     cpc_data_points: number;
   };
-  ltv: {
-    competitor_prices: Array<{
-      competitor: string;
-      monthly_price: number;
-      annual_price?: number;
+  market_size_indicators: {
+    competitors: Array<{
+      name: string;
+      revenue: {
+        value: string | null;
+        year: number | null;
+        type: 'actual' | 'estimate' | null;
+        source: string | null;
+        source_url: string | null;
+        fiscal_year_end?: string;
+      };
+      employees: {
+        count: number | null;
+        source: 'LinkedIn' | 'Crunchbase' | null;
+        source_url: string | null;
+        revenue_estimate?: string;
+      };
+      pricing: {
+        range: string | null;
+        typical_price: string | null;
+        source_url: string | null;
+      };
+      estimated_customers: {
+        range: string;
+        calculation: string;
+        confidence: 'low' | 'medium' | 'high';
+      } | null;
+      funding: {
+        total: string;
+        last_round: string;
+        source_url: string;
+      } | null;
     }>;
-    estimated_ltv: {
-      value: number;
-      formula?: string;
-      confidence: number;
-    };
-    price_data_points: number;
+    total_market_revenue: string | null;
+    total_estimated_customers: string | null;
+    largest_player: string | null;
+    data_quality: 'high' | 'medium' | 'low';
+    sources_count: number;
   };
   ltv_cac_ratio: {
     value: number;
@@ -131,10 +157,10 @@ export default function UnitEconomicsBlock({ data, loading, error }: Props) {
         </div>
         <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800 text-center">
           <div className="text-lg font-bold">
-            {data.ltv.estimated_ltv.value > 0 ? `$${data.ltv.estimated_ltv.value}` : '—'}
+            {data.market_size_indicators.total_market_revenue || '—'}
           </div>
-          <div className="text-xs text-zinc-400">LTV</div>
-          <EvidenceBadge type={data.ltv.price_data_points > 0 ? 'calculated' : 'no_data'} className="mt-1" />
+          <div className="text-xs text-zinc-400">Размер рынка</div>
+          <EvidenceBadge type={data.market_size_indicators.sources_count > 0 ? data.market_size_indicators.data_quality === 'high' ? 'real_data' : 'calculated' : 'no_data'} className="mt-1" />
         </div>
         <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800 text-center">
           <div className={`text-lg font-bold ${ltvCacColor}`}>
@@ -200,49 +226,149 @@ export default function UnitEconomicsBlock({ data, loading, error }: Props) {
         )}
       </div>
 
-      {/* Section: LTV */}
+      {/* Section: Market Size Indicators (REPLACES LTV!) */}
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
-        <button onClick={() => toggle('ltv')} className="w-full flex items-center justify-between p-3 text-left">
+        <button onClick={() => toggle('market-size')} className="w-full flex items-center justify-between p-3 text-left">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">LTV (ценность клиента)</span>
-            <EvidenceBadge type={data.ltv.price_data_points > 0 ? 'calculated' : 'no_data'} />
+            <span className="text-sm font-medium text-white">Market Size Indicators</span>
+            <EvidenceBadge type={data.market_size_indicators.sources_count > 0 ? 'real_data' : 'no_data'} />
           </div>
-          <span className="text-zinc-500">{expandedSection === 'ltv' ? '−' : '+'}</span>
+          <span className="text-zinc-500">{expandedSection === 'market-size' ? '−' : '+'}</span>
         </button>
-        {expandedSection === 'ltv' && (
-          <div className="px-3 pb-3 space-y-2">
-            {data.ltv.estimated_ltv.value > 0 && (
-              <ScoreDisplay
-                value={data.ltv.estimated_ltv.value}
-                maxValue={10000}
-                label={`Estimated LTV: $${data.ltv.estimated_ltv.value}`}
-                formula={data.ltv.estimated_ltv.formula}
-                confidence={data.ltv.estimated_ltv.confidence}
-              />
+        {expandedSection === 'market-size' && (
+          <div className="px-3 pb-3 space-y-4">
+            {/* Summary */}
+            {data.market_size_indicators.total_market_revenue && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                  <div className="text-sm text-zinc-400 mb-1">Размер рынка</div>
+                  <div className="text-xl font-bold text-emerald-400">{data.market_size_indicators.total_market_revenue}</div>
+                </div>
+                {data.market_size_indicators.total_estimated_customers && (
+                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                    <div className="text-sm text-zinc-400 mb-1">Всего клиентов</div>
+                    <div className="text-xl font-bold text-white">{data.market_size_indicators.total_estimated_customers}</div>
+                  </div>
+                )}
+                {data.market_size_indicators.largest_player && (
+                  <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                    <div className="text-sm text-zinc-400 mb-1">Крупнейший игрок</div>
+                    <div className="text-sm font-bold text-indigo-400">{data.market_size_indicators.largest_player}</div>
+                  </div>
+                )}
+              </div>
             )}
-            {data.ltv.competitor_prices.length > 0 ? (
-              <table className="w-full text-xs mt-2">
-                <thead>
-                  <tr className="text-zinc-400 border-b border-zinc-700">
-                    <th className="text-left py-1">Конкурент</th>
-                    <th className="text-right py-1">Месяц</th>
-                    <th className="text-right py-1">Год</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.ltv.competitor_prices.map((cp, i) => (
-                    <tr key={i} className="border-b border-zinc-700">
-                      <td className="py-1">{cp.competitor}</td>
-                      <td className="text-right py-1 font-medium">${cp.monthly_price.toFixed(0)}/мес</td>
-                      <td className="text-right py-1 text-zinc-400">
-                        {cp.annual_price ? `$${cp.annual_price.toFixed(0)}/год` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            {/* Competitors */}
+            {data.market_size_indicators.competitors.length > 0 ? (
+              <div className="space-y-3">
+                {data.market_size_indicators.competitors.map((comp, i) => (
+                  <div key={i} className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                    <h4 className="text-sm font-semibold text-white mb-3">{comp.name}</h4>
+
+                    {/* Revenue */}
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs text-zinc-400">Revenue:</span>
+                        {comp.revenue.value ? (
+                          <>
+                            <span className="text-sm text-white font-medium">{comp.revenue.value}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              comp.revenue.type === 'actual'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-amber-500/20 text-amber-400'
+                            }`}>
+                              {comp.revenue.type}
+                            </span>
+                            {comp.revenue.year && (
+                              <span className="text-xs text-zinc-500">({comp.revenue.year})</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-sm text-zinc-500">Not disclosed</span>
+                        )}
+                      </div>
+                      {comp.revenue.source && comp.revenue.source_url && (
+                        <a
+                          href={comp.revenue.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                        >
+                          📄 {comp.revenue.source}
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Employees */}
+                    {comp.employees.count && (
+                      <div className="mb-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-zinc-400">Employees:</span>
+                          <span className="text-sm text-white">{comp.employees.count.toLocaleString()}</span>
+                          {comp.employees.source_url && (
+                            <a
+                              href={comp.employees.source_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-indigo-400 hover:text-indigo-300"
+                            >
+                              ({comp.employees.source})
+                            </a>
+                          )}
+                        </div>
+                        {comp.employees.revenue_estimate && !comp.revenue.value && (
+                          <div className="text-xs text-zinc-500">
+                            💡 Est. revenue: {comp.employees.revenue_estimate} (based on headcount)
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Estimated Customers */}
+                    {comp.estimated_customers && (
+                      <div className="mt-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-zinc-400">Est. Customers:</span>
+                          <span className="text-sm text-white font-medium">{comp.estimated_customers.range}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            comp.estimated_customers.confidence === 'high'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-amber-500/20 text-amber-400'
+                          }`}>
+                            {comp.estimated_customers.confidence}
+                          </span>
+                        </div>
+                        <div className="text-xs text-zinc-500">
+                          💡 {comp.estimated_customers.calculation}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pricing */}
+                    {comp.pricing.typical_price && (
+                      <div className="mt-2">
+                        <span className="text-xs text-zinc-400">Pricing: </span>
+                        <span className="text-sm text-white">{comp.pricing.typical_price}</span>
+                        {comp.pricing.range && (
+                          <span className="text-xs text-zinc-500"> ({comp.pricing.range})</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Funding */}
+                    {comp.funding && (
+                      <div className="mt-2">
+                        <span className="text-xs text-zinc-400">Funding: </span>
+                        <span className="text-sm text-emerald-400">{comp.funding.total}</span>
+                        <span className="text-xs text-zinc-500"> ({comp.funding.last_round})</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-zinc-400">Данные о ценах конкурентов не найдены</p>
+              <p className="text-sm text-zinc-400">Данные о размере рынка не найдены</p>
             )}
           </div>
         )}
