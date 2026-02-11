@@ -385,7 +385,7 @@ interface AnalysisResult {
 
 export default function Home() {
   const [input, setInput] = useState('');
-  const [inputType, setInputType] = useState<'text' | 'url'>('${config.inputType}');
+  const [inputType, setInputType] = useState<'text' | 'url'>('${config.inputType === 'form' ? 'text' : config.inputType}');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateCodeWithClaude, ProjectSpec } from '@/lib/code-generator';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -1160,11 +1161,24 @@ async function createProjectStructure(
     const blobs: Array<{ path: string; sha: string }> = [];
 
     for (const [path, content] of Object.entries(files)) {
+      // Ensure content is a string (Claude might return objects for some files)
+      let fileContent: string;
+      if (typeof content === 'string') {
+        fileContent = content;
+      } else if (content && typeof content === 'object') {
+        fileContent = JSON.stringify(content, null, 2);
+        console.warn(`[create-project] File ${path} was an object, converted to JSON string`);
+      } else {
+        console.error(`[create-project] File ${path} has invalid content type: ${typeof content}`);
+        errors.push(`File ${path}: invalid content type`);
+        continue;
+      }
+
       const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          content: Buffer.from(content).toString('base64'),
+          content: Buffer.from(fileContent).toString('base64'),
           encoding: 'base64',
         }),
       });
@@ -1391,11 +1405,50 @@ export async function POST(request: NextRequest) {
           let projectFiles: Record<string, string>;
 
           if (useNewMVPSystem) {
-            // Используем НОВУЮ систему MVP с рабочим функционалом
-            console.log(`Generating MVP with new system: ${mvp_type}`);
-            const mvpResult = generateMVP(context, mvp_type as MVPType);
-            projectFiles = mvpResult.files;
-            console.log(`MVP generated: ${mvpResult.projectName}, ${Object.keys(projectFiles).length} files`);
+            // Проверяем есть ли derived_features из ProductSpec
+            const hasDerivedFeatures = context.productSpec?.derived_features?.length > 0;
+
+            if (hasDerivedFeatures) {
+              // НОВЫЙ ПУТЬ: Используем Claude API для контекстной генерации
+              console.log(`[create-project] Using Claude API with ${context.productSpec.derived_features.length} derived_features`);
+
+              // Формируем spec для Claude API
+              const claudeSpec = {
+                project_name: projectOutput.project_name,
+                one_liner: projectOutput.one_liner,
+                problem_statement: projectOutput.problem_statement,
+                solution_overview: projectOutput.solution_overview,
+                target_audience: context.analysis?.target_audience?.primary || 'Broad audience',
+                main_pain: context.analysis?.main_pain || projectOutput.problem_statement,
+                mvp_specification: projectOutput.mvp_specification,
+                design_system: context.productSpec.design_system,
+                derived_features: context.productSpec.derived_features,
+              };
+
+              console.log('[create-project] Calling Claude API with derived_features:');
+              claudeSpec.derived_features.forEach((f: { feature_name: string; priority: string; pain_quote: string; solution: string }, i: number) => {
+                console.log(`  ${i + 1}. ${f.feature_name} [${f.priority}]: "${f.pain_quote}" → ${f.solution}`);
+              });
+
+              // Вызываем генератор кода НАПРЯМУЮ (без HTTP fetch - избегаем timeout)
+              try {
+                console.log('[create-project] Calling generateCodeWithClaude directly...');
+                const generatedFiles = await generateCodeWithClaude(claudeSpec as ProjectSpec);
+                projectFiles = generatedFiles;
+                console.log(`[create-project] Claude generated ${Object.keys(projectFiles).length} files with context`);
+              } catch (generateError) {
+                // Fallback на статические шаблоны если Claude API failed
+                console.warn('[create-project] Claude API failed, falling back to templates:', generateError instanceof Error ? generateError.message : generateError);
+                const mvpResult = generateMVP(context, mvp_type as MVPType);
+                projectFiles = mvpResult.files;
+              }
+            } else {
+              // СТАРЫЙ ПУТЬ: Используем статические шаблоны (когда нет derived_features)
+              console.log(`[create-project] Using static templates (no derived_features): ${mvp_type}`);
+              const mvpResult = generateMVP(context, mvp_type as MVPType);
+              projectFiles = mvpResult.files;
+              console.log(`MVP generated: ${mvpResult.projectName}, ${Object.keys(projectFiles).length} files`);
+            }
           } else if (selectedProductType && selectedProductType !== 'landing') {
             // Используем старые функциональные шаблоны
             projectFiles = generateTemplateFiles(selectedProductType, context);

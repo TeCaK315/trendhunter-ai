@@ -552,9 +552,9 @@ export default function TrendPage() {
   const [creatingGithubRepo, setCreatingGithubRepo] = useState(false);
 
   // Состояние для нового MVP селектора
-  const [showMVPSelector, setShowMVPSelector] = useState(false);
+  // showMVPSelector removed - META agent now auto-selects type
   const [selectedMVPType, setSelectedMVPType] = useState<MVPType | null>(null);
-  const [pendingCreateWithGithub, setPendingCreateWithGithub] = useState(false);
+  // pendingCreateWithGithub removed - auto-flow doesn't need it
 
   // Product Specification - AI гипотезы о продукте (NEW)
   const [productSpec, setProductSpec] = useState<ProductSpecification | null>(null);
@@ -856,6 +856,22 @@ export default function TrendPage() {
     }
   }, []);
 
+  // Auto-generate ProductSpec when Evidence data is available
+  // This ensures derived_features are based on REAL data, not empty arrays
+  useEffect(() => {
+    // Only trigger if we have analysis AND at least one Evidence block loaded
+    const hasAnalysis = analysis?.main_pain;
+    const hasEvidenceData = evidenceData.problem?.who_hurts?.complaints?.length > 0 ||
+                            evidenceData.occupation?.negative_reviews?.length > 0 ||
+                            evidenceData.occupation?.unmet_needs?.length > 0;
+
+    // Only auto-generate if we don't have productSpec yet AND we have data
+    if (hasAnalysis && hasEvidenceData && !productSpec && !loadingProductSpec) {
+      console.log('[ProductSpec] Evidence data ready, triggering generation with context');
+      fetchProductSpec();
+    }
+  }, [analysis, evidenceData.problem, evidenceData.occupation, productSpec, loadingProductSpec]);
+
   // Проверка auth_success после редиректа с GitHub OAuth
   useEffect(() => {
     const authSuccess = searchParams.get('auth_success');
@@ -1075,6 +1091,18 @@ export default function TrendPage() {
     setAnalyzing(true);
 
     try {
+      // Передаём Evidence данные если они загружены (problem + occupation)
+      const evidencePayload = {
+        problem: evidenceData.problem || undefined,
+        occupation: evidenceData.occupation || undefined,
+      };
+      const hasEvidence = evidencePayload.problem?.who_hurts?.complaints?.length > 0;
+
+      console.log(`[runAnalysis] Starting with Evidence data: ${hasEvidence ? 'YES' : 'NO (fallback mode)'}`);
+      if (hasEvidence) {
+        console.log(`[runAnalysis] Evidence: ${evidencePayload.problem?.who_hurts?.complaints?.length || 0} complaints, ${evidencePayload.occupation?.why_gaps_exist?.negative_reviews?.length || 0} negative reviews`);
+      }
+
       const response = await fetch('/api/deep-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1083,6 +1111,8 @@ export default function TrendPage() {
           trend_title: trend.title,
           trend_category: trend.category,
           why_trending: trend.why_trending,
+          // NEW: Передаём Evidence данные для улучшенного анализа
+          evidence_data: hasEvidence ? evidencePayload : undefined,
         }),
       });
 
@@ -1116,13 +1146,8 @@ export default function TrendPage() {
 
         setCurrentStep('evidence');
 
-        // Автоматически генерируем ProductSpec после анализа болей
-        // Это позволяет иметь спецификацию продукта раньше в flow
-        setTimeout(() => {
-          fetchProductSpec();
-        }, 500);
-
         // Запускаем все 5 Evidence блоков параллельно
+        // ProductSpec будет вызван ПОСЛЕ загрузки Evidence (см. useEffect ниже)
         setTimeout(() => {
           runAllEvidenceBlocks();
         }, 300);
@@ -1260,6 +1285,25 @@ export default function TrendPage() {
     try {
       const context = buildAnalysisContext();
 
+      // Get design analysis from occupation evidence (runs in background)
+      const designAnalysis = evidenceData.occupation?.design_analysis || null;
+
+      // Build evidence object from collected data
+      const evidence = {
+        // Block 1: Real Problem - complaints from forums
+        complaints: evidenceData.problem?.who_hurts?.complaints || [],
+        // Block 4: Market Occupation - competitor issues
+        negative_reviews: evidenceData.occupation?.negative_reviews || [],
+        unmet_needs: evidenceData.occupation?.unmet_needs || [],
+        // Pricing data from real problem block
+        pricing_data: evidenceData.problem?.willingness_to_pay?.pricing_data || [],
+        // AI Synthesis from deep analysis (3 agents debate result)
+        ai_synthesis: analysis?.main_pain ? {
+          consensus: analysis.main_pain,
+          key_insights: analysis.key_pain_points || [],
+        } : undefined,
+      };
+
       const response = await fetch('/api/product-spec', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1271,6 +1315,8 @@ export default function TrendPage() {
           },
           analysis: context.analysis,
           competition: context.competition,
+          design_analysis: designAnalysis, // Pass design data from background analysis
+          evidence, // NEW: Pass Evidence data for contextual feature extraction
         }),
       });
 
@@ -1279,6 +1325,8 @@ export default function TrendPage() {
       if (data.success && data.product_spec) {
         setProductSpec(data.product_spec);
         console.log('[ProductSpec] Generated:', data.metadata);
+        console.log('[ProductSpec] Full spec:', data.product_spec);
+        console.log('[ProductSpec] derived_features:', data.product_spec.derived_features);
         return data.product_spec;
       } else {
         setProductSpecError(data.error || (language === 'ru' ? 'Не удалось создать спецификацию' : 'Failed to create specification'));
@@ -1443,22 +1491,38 @@ export default function TrendPage() {
     }
   };
 
-  // Открытие модального окна выбора MVP типа
-  const handleOpenMVPSelector = (withGithub: boolean) => {
-    setPendingCreateWithGithub(withGithub);
-    setShowMVPSelector(true);
-  };
+  // Автоматическое создание проекта на основе ProductSpec
+  // META агент сам определяет тип проекта из анализа болей и контекста
+  const handleCreateProjectAuto = async (withGithub: boolean) => {
+    if (!trend || loadingProject) return;
 
-  // Обработчик выбора MVP типа
-  const handleMVPTypeSelect = async (type: MVPType) => {
-    setSelectedMVPType(type);
-    setShowMVPSelector(false);
+    // Получаем ProductSpec если ещё нет — он определит оптимальный тип
+    let spec = productSpec;
+    if (!spec) {
+      console.log('[handleCreateProjectAuto] Fetching ProductSpec to determine MVP type...');
+      spec = await fetchProductSpec();
+    }
 
-    // Получаем Product Specification перед созданием проекта
-    // Это даст META-агенту конкретные данные о том КАК должен работать продукт
-    await fetchProductSpec();
+    // Маппинг generation_approach → MVPType
+    // META агент анализирует боли и выбирает подход
+    const approachToMvpType: Record<string, MVPType> = {
+      'ai-tool': 'ai-tool',
+      'calculator': 'calculator',
+      'dashboard': 'dashboard',
+      'automation': 'ai-tool',      // AI automation → AI tool
+      'marketplace': 'dashboard',    // marketplace → dashboard-like
+      'content-platform': 'landing-waitlist',
+    };
 
-    createProject(pendingCreateWithGithub, type);
+    const mvpType = spec?.generation_approach
+      ? approachToMvpType[spec.generation_approach] || 'ai-tool'
+      : 'ai-tool'; // fallback
+
+    console.log(`[handleCreateProjectAuto] META agent chose: ${spec?.generation_approach} → MVP type: ${mvpType}`);
+    console.log(`[handleCreateProjectAuto] derived_features: ${spec?.derived_features?.length || 0}`);
+
+    setSelectedMVPType(mvpType);
+    createProject(withGithub, mvpType);
   };
 
   // Создание проекта через META-агент
@@ -1653,7 +1717,15 @@ export default function TrendPage() {
         target_audience: analysis?.target_audience?.segments?.[0]?.name || '',
         main_pain: analysis?.main_pain || projectData.problem_statement || '',
         mvp_specification: projectData.mvp_specification,
+        // NEW: Pass design system from product spec
+        design_system: productSpec?.design_system || undefined,
+        // NEW: Pass derived features for contextual code generation
+        derived_features: productSpec?.derived_features || undefined,
       };
+
+      console.log('[GenerateCode] Spec being sent:', spec);
+      console.log('[GenerateCode] derived_features:', spec.derived_features);
+      console.log('[GenerateCode] design_system:', spec.design_system);
 
       const response = await fetch('/api/generate-code', {
         method: 'POST',
@@ -2902,113 +2974,84 @@ export default function TrendPage() {
               {/* Если проект ещё не создан */}
               {!projectData && !loadingProject && (
                 <>
-                  {/* Выбор типа продукта */}
+                  {/* META Agent Auto Mode */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">🎯</span>
-                        <h3 className="text-lg font-semibold text-white">{t.trendDetail.project.selectMvpType}</h3>
+                        <span className="text-2xl">🤖</span>
+                        <h3 className="text-lg font-semibold text-white">
+                          {language === 'ru' ? 'META Агент создаст проект' : 'META Agent will create project'}
+                        </h3>
                       </div>
-                      {productRecommendation && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
-                          <span className="text-emerald-400 text-sm">✨ {language === 'ru' ? 'AI рекомендует:' : 'AI recommends:'}</span>
-                          <span className="text-emerald-300 text-sm font-medium">
-                            {productRecommendation.recommended === 'landing' ? 'Landing' :
-                             productRecommendation.recommended === 'saas' ? 'SaaS' :
-                             productRecommendation.recommended === 'ai-wrapper' ? 'AI Wrapper' : 'E-commerce'}
+                      {productSpec && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/30 rounded-full">
+                          <span className="text-indigo-400 text-sm">✨</span>
+                          <span className="text-indigo-300 text-sm font-medium">
+                            {productSpec.generation_approach === 'ai-tool' ? 'AI Tool' :
+                             productSpec.generation_approach === 'calculator' ? 'Calculator' :
+                             productSpec.generation_approach === 'dashboard' ? 'Dashboard' :
+                             productSpec.generation_approach === 'automation' ? 'Automation' :
+                             productSpec.generation_approach === 'marketplace' ? 'Marketplace' :
+                             'Content Platform'}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Объяснение рекомендации */}
-                    {productRecommendation && productRecommendation.reasoning && (
-                      <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <span className="text-lg mt-0.5">💡</span>
-                          <div>
-                            <p className="text-sm text-emerald-300/90">{productRecommendation.reasoning}</p>
-                            {selectedProductType !== productRecommendation.recommended && (
-                              <p className="text-xs text-zinc-500 mt-2">
-                                {language === 'ru' ? 'Вы выбрали другой тип — это тоже хороший выбор!' : 'You chose a different type — that\'s also a good choice!'}
-                              </p>
-                            )}
-                          </div>
+                    {/* Объяснение автоматического режима */}
+                    <div className="mb-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <span className="text-lg mt-0.5">💡</span>
+                        <div>
+                          <p className="text-sm text-indigo-300/90">
+                            {language === 'ru'
+                              ? 'META агент проанализировал боли пользователей и определит оптимальный тип проекта автоматически. Код будет генерироваться на основе реальных потребностей рынка.'
+                              : 'META agent analyzed user pain points and will automatically determine the optimal project type. Code will be generated based on real market needs.'}
+                          </p>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Показываем derived_features если есть */}
+                    {productSpec?.derived_features && productSpec.derived_features.length > 0 && (
+                      <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-lg">🎯</span>
+                          <span className="text-sm font-medium text-emerald-400">
+                            {language === 'ru' ? `${productSpec.derived_features.length} фич из анализа болей:` : `${productSpec.derived_features.length} features from pain analysis:`}
+                          </span>
+                        </div>
+                        <ul className="space-y-2">
+                          {productSpec.derived_features.slice(0, 3).map((f, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm">
+                              <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                f.priority === 'must_have' ? 'bg-red-500/20 text-red-400' :
+                                f.priority === 'should_have' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-zinc-700 text-zinc-400'
+                              }`}>
+                                {f.priority === 'must_have' ? '!' : f.priority === 'should_have' ? '~' : '?'}
+                              </span>
+                              <span className="text-zinc-300">{f.feature_name}</span>
+                            </li>
+                          ))}
+                          {productSpec.derived_features.length > 3 && (
+                            <li className="text-xs text-zinc-500 pl-6">
+                              + {productSpec.derived_features.length - 3} {language === 'ru' ? 'ещё...' : 'more...'}
+                            </li>
+                          )}
+                        </ul>
                       </div>
                     )}
 
-                    <div className="grid sm:grid-cols-2 gap-4 mb-6">
-                      {[
-                        { id: 'landing' as const, name: 'Landing + Waitlist', icon: '🚀', desc: language === 'ru' ? 'Лендинг со сбором email и Supabase' : 'Landing page with email collection and Supabase', complexity: language === 'ru' ? 'Легко' : 'Easy', time: language === 'ru' ? '1-2 дня' : '1-2 days' },
-                        { id: 'saas' as const, name: 'SaaS Dashboard', icon: '📊', desc: language === 'ru' ? 'Приложение с авторизацией и дашбордом' : 'App with auth and dashboard', complexity: language === 'ru' ? 'Средне' : 'Medium', time: language === 'ru' ? '1-2 недели' : '1-2 weeks' },
-                        { id: 'ai-wrapper' as const, name: 'AI Wrapper', icon: '🤖', desc: language === 'ru' ? 'Чат-интерфейс для AI с историей' : 'Chat interface for AI with history', complexity: language === 'ru' ? 'Средне' : 'Medium', time: language === 'ru' ? '3-5 дней' : '3-5 days' },
-                        { id: 'ecommerce' as const, name: 'E-commerce Lite', icon: '🛒', desc: language === 'ru' ? 'Магазин с каталогом и корзиной' : 'Shop with catalog and cart', complexity: language === 'ru' ? 'Сложно' : 'Hard', time: language === 'ru' ? '1-2 недели' : '1-2 weeks' },
-                      ].map((type) => {
-                        const isRecommended = productRecommendation?.recommended === type.id;
-                        const recommendationScore = productRecommendation?.allRecommendations.find(r => r.type === type.id);
-                        const isSelected = selectedProductType === type.id;
-
-                        return (
-                          <button
-                            key={type.id}
-                            onClick={() => setSelectedProductType(type.id)}
-                            className={`relative text-left p-5 rounded-xl border-2 transition-all ${
-                              isSelected
-                                ? 'bg-indigo-500/10 border-indigo-500 shadow-lg shadow-indigo-500/20'
-                                : isRecommended
-                                  ? 'bg-emerald-500/5 border-emerald-500/40 hover:border-emerald-500/60'
-                                  : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
-                            }`}
-                          >
-                            {/* Бейдж рекомендации */}
-                            {isRecommended && !isSelected && (
-                              <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-emerald-500 text-white text-xs font-medium rounded-full shadow-lg">
-                                {language === 'ru' ? 'Рекомендуем' : 'Recommended'}
-                              </div>
-                            )}
-
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-2xl">{type.icon}</span>
-                                <span className={`font-semibold ${
-                                  isSelected ? 'text-indigo-300' :
-                                  isRecommended ? 'text-emerald-300' : 'text-white'
-                                }`}>
-                                  {type.name}
-                                </span>
-                              </div>
-                              {isSelected && (
-                                <div className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
-                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-sm text-zinc-400 mb-2">{type.desc}</p>
-                            <div className="flex items-center gap-3 text-xs">
-                              <span className={`px-2 py-0.5 rounded-full ${
-                                type.complexity === 'Легко' || type.complexity === 'Easy' ? 'bg-green-500/20 text-green-400' :
-                                type.complexity === 'Средне' || type.complexity === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                                'bg-red-500/20 text-red-400'
-                              }`}>
-                                {type.complexity}
-                              </span>
-                              <span className="text-zinc-500">{type.time}</span>
-                              {/* Показываем релевантность только если есть рекомендация */}
-                              {recommendationScore && recommendationScore.score > 0 && (
-                                <span className={`px-2 py-0.5 rounded-full ${
-                                  isRecommended ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'
-                                }`}>
-                                  {Math.min(100, Math.round(recommendationScore.score))}% match
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {/* Загрузка ProductSpec */}
+                    {loadingProductSpec && (
+                      <div className="mb-6 p-4 bg-zinc-800/50 rounded-lg flex items-center gap-3">
+                        <div className="animate-spin w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                        <span className="text-sm text-zinc-400">
+                          {language === 'ru' ? 'Анализируем боли и определяем оптимальный тип проекта...' : 'Analyzing pain points and determining optimal project type...'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Auto-deploy toggle */}
                     {isGithubAuthenticated && (
@@ -3073,7 +3116,7 @@ export default function TrendPage() {
                       </button>
                       {isGithubAuthenticated ? (
                         <button
-                          onClick={() => handleOpenMVPSelector(true)}
+                          onClick={() => handleCreateProjectAuto(true)}
                           disabled={loadingProject}
                           className={`px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 ${
                             loadingProject
@@ -4050,29 +4093,10 @@ ${Object.entries(generatedTheme.cssVariables).map(([key, value]) => `  ${key}: $
         language={language}
       />
 
-      {/* MVP Type Selector Modal */}
-      {showMVPSelector && trend && (
-        <MVPTypeSelector
-          context={{
-            trend: {
-              id: trend.id,
-              title: trend.title,
-              category: trend.category,
-              why_trending: trend.why_trending,
-            },
-            analysis: analysis ? {
-              main_pain: analysis.main_pain,
-              key_pain_points: analysis.key_pain_points,
-              target_audience: analysis.target_audience,
-            } : undefined,
-            // NEW: Передаём productSpec если уже есть
-            productSpec: productSpec || undefined,
-          } as MVPGenerationContext}
-          onSelect={handleMVPTypeSelect}
-          onCancel={() => setShowMVPSelector(false)}
-          isLoading={loadingProject || loadingProductSpec}
-        />
-      )}
+      {/* MVP Type Selector Modal - REMOVED
+          META агент теперь автоматически определяет тип проекта
+          на основе ProductSpec.generation_approach и derived_features
+      */}
     </div>
   );
 }

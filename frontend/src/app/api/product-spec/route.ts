@@ -47,6 +47,65 @@ interface ProductSpecRequest {
     }>;
     strategic_positioning?: string;
   };
+  // Design data from background analysis
+  design_analysis?: {
+    generated_design?: {
+      color_palette: {
+        primary: string;
+        secondary: string;
+        accent: string;
+        background: string;
+        text: string;
+      };
+      typography: {
+        headings: string;
+        body: string;
+        mono?: string;
+      };
+      unique_elements: string[];
+      design_rationale: string;
+    };
+    competitors_analyzed?: Array<{
+      name: string;
+      colors: string[];
+      fonts: string[];
+    }>;
+  };
+  // NEW: Full Evidence data for contextual feature generation
+  evidence?: {
+    // Block 1: Real Problem (who_hurts)
+    complaints?: Array<{
+      source: string;
+      title: string;
+      engagement?: number;
+      url?: string;
+    }>;
+    // Block 4: Market Occupation
+    negative_reviews?: Array<{
+      competitor: string;
+      review: string;
+      source?: string;
+    }>;
+    unmet_needs?: Array<{
+      need: string;
+      frequency: string;
+      source?: string;
+    }>;
+    // Pricing analysis
+    pricing_data?: Array<{
+      competitor: string;
+      plans?: Array<{
+        name: string;
+        price: string;
+        features?: string[];
+      }>;
+    }>;
+    // AI Synthesis from 3 agents
+    ai_synthesis?: {
+      consensus?: string;
+      key_insights?: string[];
+    };
+  };
 }
 
 // Результат - Product Specification
@@ -136,6 +195,34 @@ export interface ProductSpecification {
     switching_cost: 'low' | 'medium' | 'high';
   };
 
+  // Design System (from background analysis or generated)
+  design_system?: {
+    color_palette: {
+      primary: string;
+      secondary: string;
+      accent: string;
+      background: string;
+      text: string;
+    };
+    typography: {
+      headings: string;
+      body: string;
+      mono?: string;
+    };
+    unique_elements: string[];
+    design_rationale: string;
+  };
+
+  // NEW: Features derived from real pain data
+  derived_features?: Array<{
+    feature_name: string;
+    pain_source: 'complaint' | 'negative_review' | 'unmet_need' | 'pricing' | 'synthesis';
+    pain_quote: string;
+    solution: string;
+    priority: 'must_have' | 'should_have' | 'nice_to_have';
+    implementation_hint: string;
+  }>;
+
   // Метаданные
   confidence_score: number;
   generation_approach: 'ai-tool' | 'calculator' | 'dashboard' | 'automation' | 'marketplace' | 'content-platform';
@@ -143,9 +230,22 @@ export interface ProductSpecification {
 }
 
 // System prompt для генерации Product Specification
-const PRODUCT_SPEC_PROMPT = `Ты Senior Product Manager с 15+ лет опыта в стартапах. Твоя задача - создать ПОЛНУЮ СПЕЦИФИКАЦИЮ ПРОДУКТА на основе анализа тренда и болей.
+const PRODUCT_SPEC_PROMPT = `Ты Senior Product Manager с 15+ лет опыта в стартапах. Твоя задача - создать ПОЛНУЮ СПЕЦИФИКАЦИЮ ПРОДУКТА на основе РЕАЛЬНЫХ ДАННЫХ анализа.
 
-Ты должен ДУМАТЬ КАК ИНЖЕНЕР: конкретно, технически, с примерами.
+## КРИТИЧЕСКИ ВАЖНО: FEATURE EXTRACTION
+Ты получаешь РЕАЛЬНЫЕ данные из анализа рынка:
+- **complaints** - реальные жалобы пользователей с Reddit/Quora/HackerNews
+- **negative_reviews** - негативные отзывы о конкурентах
+- **unmet_needs** - неудовлетворённые потребности рынка
+- **pricing_data** - цены конкурентов
+
+ТВОЯ ГЛАВНАЯ ЗАДАЧА: Извлечь из этих данных КОНКРЕТНЫЕ ФИЧИ для MVP!
+
+Пример логики:
+- Жалоба: "SonarQube слишком сложный для малых команд" → Фича: "Simple Mode - 3 клика до первого сканирования"
+- Негативный отзыв: "CodeClimate не поддерживает Python 3.12" → Фича: "Поддержка Python 3.12 из коробки"
+- Unmet need: "Хочу интеграцию с GitLab" → Фича: "Нативная интеграция GitLab + GitHub"
+- Pricing: "Конкуренты берут $30/user" → Pricing: "$5/user или freemium"
 
 ПРАВИЛА:
 1. user_output - ЧТО КОНКРЕТНО получает пользователь? Не абстрактно "решение", а конкретный артефакт
@@ -153,10 +253,12 @@ const PRODUCT_SPEC_PROMPT = `Ты Senior Product Manager с 15+ лет опыт�
 3. user_flow - ПОШАГОВО что видит пользователь от открытия до получения ценности
 4. magic_location - ГДЕ происходит магия? AI анализ? Формула? Агрегация данных?
 5. technical_requirements - Какие API нужны? Нужна ли БД? Нужна ли авторизация?
-6. monetization - Freemium или платно? Почему?
-7. current_user_solution - Как люди решают эту проблему СЕЙЧАС?
+6. monetization - Freemium или платно? СМОТРИ НА ЦЕНЫ КОНКУРЕНТОВ и выбирай конкурентную стратегию
+7. current_user_solution - Как люди решают эту проблему СЕЙЧАС? Используй complaints!
+8. derived_features - НОВОЕ ПОЛЕ: список фич, выведенных из конкретных болей
 
 ВАЖНО:
+- Каждая фича должна РЕШАТЬ конкретную боль из данных
 - Будь КОНКРЕТЕН. "Отчёт на 3 страницы с графиками" вместо "результат анализа"
 - Думай о МИНИМАЛЬНОМ MVP - что можно сделать за 1-2 недели?
 - Учитывай бюджет $0-100/мес на инфраструктуру
@@ -239,6 +341,16 @@ const PRODUCT_SPEC_PROMPT = `Ты Senior Product Manager с 15+ лет опыт�
     "our_advantage": "Наше преимущество",
     "switching_cost": "low|medium|high"
   },
+  "derived_features": [
+    {
+      "feature_name": "Название фичи",
+      "pain_source": "Откуда пришла боль (complaint/review/need)",
+      "pain_quote": "Цитата из данных",
+      "solution": "Как мы решаем",
+      "priority": "must_have|should_have|nice_to_have",
+      "implementation_hint": "Как реализовать технически"
+    }
+  ],
   "confidence_score": 8.5,
   "generation_approach": "ai-tool|calculator|dashboard|automation|marketplace|content-platform",
   "mvp_complexity": "simple|medium|complex"
@@ -314,9 +426,71 @@ ${body.competition?.competitors?.map(c =>
 
 **Позиционирование:** ${body.competition?.strategic_positioning || 'Не определено'}
 
+${body.evidence?.complaints?.length ? `## РЕАЛЬНЫЕ ЖАЛОБЫ ПОЛЬЗОВАТЕЛЕЙ (из Reddit/Quora/HackerNews)
+${body.evidence.complaints.slice(0, 10).map((c, i) =>
+  `${i + 1}. [${c.source}] "${c.title}" (engagement: ${c.engagement || 'N/A'})`
+).join('\n')}
+
+ВАЖНО: Используй эти жалобы для вывода КОНКРЕТНЫХ фич!
+` : ''}
+${body.evidence?.negative_reviews?.length ? `## НЕГАТИВНЫЕ ОТЗЫВЫ О КОНКУРЕНТАХ
+${body.evidence.negative_reviews.slice(0, 8).map((r, i) =>
+  `${i + 1}. ${r.competitor}: "${r.review}" (${r.source || 'review'})`
+).join('\n')}
+
+ВАЖНО: Каждый негативный отзыв = возможность для нашего продукта!
+` : ''}
+${body.evidence?.unmet_needs?.length ? `## НЕУДОВЛЕТВОРЁННЫЕ ПОТРЕБНОСТИ РЫНКА
+${body.evidence.unmet_needs.slice(0, 8).map((n, i) =>
+  `${i + 1}. "${n.need}" (частота: ${n.frequency}, источник: ${n.source || 'analysis'})`
+).join('\n')}
+
+ВАЖНО: Это то, что рынок ХОЧЕТ, но не получает от конкурентов!
+` : ''}
+${body.evidence?.pricing_data?.length ? `## ЦЕНООБРАЗОВАНИЕ КОНКУРЕНТОВ
+${body.evidence.pricing_data.map(p =>
+  `**${p.competitor}:**\n${p.plans?.map(plan =>
+    `  - ${plan.name}: ${plan.price}${plan.features?.length ? ` (${plan.features.slice(0, 3).join(', ')})` : ''}`
+  ).join('\n') || '  - Цены не найдены'}`
+).join('\n\n')}
+
+ВАЖНО: Используй для конкурентного ценообразования!
+` : ''}
+${body.evidence?.ai_synthesis?.consensus ? `## AI СИНТЕЗ (консенсус 3 агентов)
+**Консенсус:** ${body.evidence.ai_synthesis.consensus}
+${body.evidence.ai_synthesis.key_insights?.length ? `**Ключевые инсайты:**\n${body.evidence.ai_synthesis.key_insights.map(i => `- ${i}`).join('\n')}` : ''}
+` : ''}
+${body.design_analysis?.generated_design ? `## ДИЗАЙН СИСТЕМА (УЖЕ ПРОАНАЛИЗИРОВАНА)
+**Цветовая палитра:**
+- Primary: ${body.design_analysis.generated_design.color_palette.primary}
+- Secondary: ${body.design_analysis.generated_design.color_palette.secondary}
+- Accent: ${body.design_analysis.generated_design.color_palette.accent}
+- Background: ${body.design_analysis.generated_design.color_palette.background}
+- Text: ${body.design_analysis.generated_design.color_palette.text}
+
+**Типографика:**
+- Headings: ${body.design_analysis.generated_design.typography.headings}
+- Body: ${body.design_analysis.generated_design.typography.body}
+${body.design_analysis.generated_design.typography.mono ? `- Mono: ${body.design_analysis.generated_design.typography.mono}` : ''}
+
+**Уникальные элементы:** ${body.design_analysis.generated_design.unique_elements.join(', ')}
+
+**Обоснование:** ${body.design_analysis.generated_design.design_rationale}
+` : ''}
 ---
 
-На основе этих данных создай ПОЛНУЮ спецификацию продукта.
+## ТВОЯ ЗАДАЧА
+
+1. Проанализируй ВСЕ данные выше
+2. Выведи из каждой жалобы/отзыва/потребности КОНКРЕТНУЮ ФИЧУ
+3. Заполни derived_features массив с указанием источника боли
+4. Используй цены конкурентов для конкурентного pricing
+5. Создай MVP который РЕШАЕТ выявленные боли, а не generic шаблон
+
+${body.evidence?.complaints?.length || body.evidence?.negative_reviews?.length ?
+  'У тебя есть РЕАЛЬНЫЕ данные - используй их для создания УНИКАЛЬНОГО продукта!' :
+  'Данные Evidence не переданы - создай спецификацию на основе анализа.'}
+${body.design_analysis?.generated_design ? 'ВАЖНО: Используй УКАЗАННУЮ выше дизайн-систему в своей спецификации.' : ''}
 Помни: это должен быть РАБОЧИЙ MVP, который можно сделать за 1-2 недели с бюджетом $0-100/мес.`;
 
     // Запускаем AI агента
@@ -343,6 +517,11 @@ ${body.competition?.competitors?.map(c =>
         { success: false, error: 'Не удалось распознать ответ AI. Попробуйте ещё раз.' },
         { status: 500 }
       );
+    }
+
+    // Inject design_system from background analysis if available
+    if (body.design_analysis?.generated_design && !productSpec.design_system) {
+      productSpec.design_system = body.design_analysis.generated_design;
     }
 
     const totalTime = Date.now() - startTime;

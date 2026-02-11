@@ -4,15 +4,73 @@ import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } fro
 import { fetchReddit, fetchHackerNews, fetchQuora, fetchStackOverflow } from '@/lib/data-fetchers';
 
 /**
- * /api/deep-analysis — ПЕРЕРАБОТАННЫЙ
+ * /api/deep-analysis — ПЕРЕРАБОТАННЫЙ v2
  *
  * БЫЛО: 3 агента генерируют боли из воздуха (100% галлюцинация)
- * СТАЛО:
+ * СТАЛО v1:
  *   1. СНАЧАЛА собираем реальные жалобы из Reddit/HN/Quora/SO
  *   2. Передаём реальные данные в агентов (Optimist/Skeptic/Arbiter)
  *   3. Промпт обязывает ссылаться на конкретные посты
  *   4. Confidence score — по формуле, не GPT
+ *
+ * СТАЛО v2 (ОПТИМИЗАЦИЯ):
+ *   1. Используем ГОТОВЫЕ данные из Evidence блоков (problem + occupation)
+ *   2. Добавляем negative_reviews и unmet_needs из Market Occupation
+ *   3. Используем severity_score и frequency_score уже рассчитанные
+ *   4. Fallback на старый подход если Evidence данных нет
  */
+
+// Типы для Evidence данных
+interface EvidenceComplaint {
+  text: string;
+  source: string;
+  source_url: string;
+  engagement: number;
+}
+
+interface EvidenceNegativeReview {
+  title: string;
+  url: string;
+  snippet?: string;
+  source: string;
+}
+
+interface EvidenceUnmetNeed {
+  title: string;
+  url: string;
+  subreddit?: string;
+  score?: number;
+}
+
+interface EvidenceProblemData {
+  who_hurts?: {
+    complaints: EvidenceComplaint[];
+    total_complaints: number;
+    severity_score?: { value: number };
+  };
+  how_often?: {
+    google_trends?: { growth_rate: number };
+    reddit_post_count: number;
+    so_question_count: number;
+    frequency_score?: { value: number };
+  };
+  ai_summary?: { text: string };
+}
+
+interface EvidenceOccupationData {
+  why_gaps_exist?: {
+    negative_reviews: EvidenceNegativeReview[];
+    unmet_needs: EvidenceUnmetNeed[];
+    total_signals: number;
+  };
+  differentiation?: {
+    positioning_opportunities: string[];
+  };
+  competitors_exist?: {
+    count: number;
+    competitors: Array<{ name: string; website?: string }>;
+  };
+}
 
 interface DeepAnalysisRequest {
   trend_title: string;
@@ -21,6 +79,11 @@ interface DeepAnalysisRequest {
   existing_analysis?: {
     main_pain?: string;
     key_pain_points?: string[];
+  };
+  // NEW: Evidence данные из предыдущих блоков
+  evidence_data?: {
+    problem?: EvidenceProblemData;
+    occupation?: EvidenceOccupationData;
   };
 }
 
@@ -184,24 +247,141 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // === STEP 0: СОБИРАЕМ РЕАЛЬНЫЕ ДАННЫЕ ===
-    console.log(`[deep-analysis] Collecting real data for: ${body.trend_title}`);
+    // === STEP 0: ПОЛУЧАЕМ ДАННЫЕ (из Evidence или собираем сами) ===
+    console.log(`[deep-analysis] Starting for: ${body.trend_title}`);
     const dataStartTime = Date.now();
 
-    const [redditData, hnData, quoraData, soData] = await Promise.all([
-      fetchReddit(body.trend_title),
-      fetchHackerNews(body.trend_title),
-      fetchQuora(body.trend_title),
-      fetchStackOverflow(body.trend_title),
-    ]);
+    // Проверяем есть ли готовые Evidence данные
+    const complaintsLength = body.evidence_data?.problem?.who_hurts?.complaints?.length ?? 0;
+    const negativeReviewsLength = body.evidence_data?.occupation?.why_gaps_exist?.negative_reviews?.length ?? 0;
+    const unmetNeedsLength = body.evidence_data?.occupation?.why_gaps_exist?.unmet_needs?.length ?? 0;
+    const hasEvidenceData = complaintsLength > 0;
+    const hasOccupationData = negativeReviewsLength > 0 || unmetNeedsLength > 0;
+
+    let complaints: EvidenceComplaint[] = [];
+    let negativeReviews: EvidenceNegativeReview[] = [];
+    let unmetNeeds: EvidenceUnmetNeed[] = [];
+    let severityScore = 0;
+    let frequencyScore = 0;
+    let totalSerpApiCalls = 0;
+    let dataSource: 'evidence_blocks' | 'direct_fetch' = 'direct_fetch';
+
+    // Данные для совместимости со старым форматом
+    let redditData = { total_results: 0, data: [] as Array<{ title: string; subreddit: string; score: number; num_comments: number; url: string; snippet?: string }>, serpapi_calls_used: 0 };
+    let hnData = { total_results: 0, data: [] as Array<{ title: string; points: number; url: string; snippet?: string }>, serpapi_calls_used: 0 };
+    let quoraData = { total_results: 0, data: [] as Array<{ title: string; url: string; snippet?: string }>, serpapi_calls_used: 0 };
+    let soData = { total_results: 0, data: [] as Array<{ title: string; url: string; votes: number; answers: number }>, serpapi_calls_used: 0 };
+
+    if (hasEvidenceData) {
+      // === ИСПОЛЬЗУЕМ ГОТОВЫЕ EVIDENCE ДАННЫЕ ===
+      console.log(`[deep-analysis] Using Evidence data (problem + occupation)`);
+      dataSource = 'evidence_blocks';
+
+      // Из блока "Проблема"
+      complaints = body.evidence_data!.problem!.who_hurts!.complaints;
+      severityScore = body.evidence_data!.problem!.who_hurts!.severity_score?.value || 5;
+      frequencyScore = body.evidence_data!.problem!.how_often?.frequency_score?.value || 5;
+
+      // Из блока "Рынок" (если есть)
+      if (hasOccupationData) {
+        negativeReviews = body.evidence_data!.occupation!.why_gaps_exist!.negative_reviews || [];
+        unmetNeeds = body.evidence_data!.occupation!.why_gaps_exist!.unmet_needs || [];
+        console.log(`[deep-analysis] + Occupation data: ${negativeReviews.length} negative reviews, ${unmetNeeds.length} unmet needs`);
+      }
+
+      console.log(`[deep-analysis] Evidence data loaded: ${complaints.length} complaints, severity=${severityScore}, frequency=${frequencyScore}`);
+
+    } else {
+      // === FALLBACK: Собираем данные сами (старый подход) ===
+      console.log(`[deep-analysis] No Evidence data, falling back to direct fetch`);
+
+      const [fetchedReddit, fetchedHn, fetchedQuora, fetchedSo] = await Promise.all([
+        fetchReddit(body.trend_title),
+        fetchHackerNews(body.trend_title),
+        fetchQuora(body.trend_title),
+        fetchStackOverflow(body.trend_title),
+      ]);
+
+      redditData = fetchedReddit;
+      hnData = fetchedHn;
+      quoraData = fetchedQuora;
+      soData = fetchedSo;
+
+      totalSerpApiCalls = redditData.serpapi_calls_used + hnData.serpapi_calls_used + quoraData.serpapi_calls_used + soData.serpapi_calls_used;
+
+      // Конвертируем в формат complaints для совместимости
+      complaints = [
+        ...redditData.data.map(p => ({
+          text: p.title,
+          source: 'reddit',
+          source_url: p.url,
+          engagement: p.score + p.num_comments,
+        })),
+        ...hnData.data.map(p => ({
+          text: p.title,
+          source: 'hacker_news',
+          source_url: p.url,
+          engagement: p.points,
+        })),
+        ...quoraData.data.map(p => ({
+          text: p.title,
+          source: 'quora',
+          source_url: p.url,
+          engagement: 0,
+        })),
+        ...soData.data.map(p => ({
+          text: p.title,
+          source: 'stackoverflow',
+          source_url: p.url,
+          engagement: p.votes,
+        })),
+      ];
+    }
 
     const dataTime = Date.now() - dataStartTime;
-    console.log(`[deep-analysis] Data collected in ${dataTime}ms: Reddit=${redditData.total_results}, HN=${hnData.total_results}, Quora=${quoraData.total_results}, SO=${soData.total_results}`);
+    console.log(`[deep-analysis] Data ready in ${dataTime}ms: ${complaints.length} complaints, ${negativeReviews.length} negative reviews, ${unmetNeeds.length} unmet needs (source: ${dataSource})`);
 
-    const totalSerpApiCalls = redditData.serpapi_calls_used + hnData.serpapi_calls_used + quoraData.serpapi_calls_used + soData.serpapi_calls_used;
+    // Для совместимости со старым кодом
+    if (!hasEvidenceData) {
+      console.log(`[deep-analysis] Direct fetch stats: Reddit=${redditData.total_results}, HN=${hnData.total_results}, Quora=${quoraData.total_results}, SO=${soData.total_results}`);
+    }
 
     // Format real data for agents
-    const realDataSection = `
+    let realDataSection = '';
+
+    if (hasEvidenceData) {
+      // === НОВЫЙ ФОРМАТ: Данные из Evidence блоков ===
+      realDataSection = `
+## РЕАЛЬНЫЕ ДАННЫЕ ИЗ EVIDENCE БЛОКОВ (используй ТОЛЬКО их):
+
+### Жалобы пользователей (${complaints.length} найдено, severity: ${severityScore}/10, frequency: ${frequencyScore}/10):
+${complaints.length > 0
+  ? complaints.slice(0, 15).map((c, i) =>
+    `${i + 1}. [${c.source}] "${c.text}" (engagement: ${c.engagement})
+   URL: ${c.source_url}`
+  ).join('\n\n')
+  : 'Нет данных о жалобах'}
+
+### ⚠️ НЕГАТИВНЫЕ ОТЗЫВЫ о конкурентах (${negativeReviews.length} найдено) — КЛЮЧЕВОЙ ИСТОЧНИК:
+${negativeReviews.length > 0
+  ? negativeReviews.slice(0, 10).map((r, i) =>
+    `${i + 1}. [${r.source}] "${r.title}"
+   URL: ${r.url}
+   ${r.snippet ? `Отрывок: ${r.snippet}` : ''}`
+  ).join('\n\n')
+  : 'Нет негативных отзывов (это может означать высокую удовлетворённость или отсутствие данных)'}
+
+### 🎯 ЧТО ХОЧЕТ РЫНОК — Unmet Needs (${unmetNeeds.length} найдено):
+${unmetNeeds.length > 0
+  ? unmetNeeds.slice(0, 10).map((u, i) =>
+    `${i + 1}. [Reddit${u.subreddit ? ` r/${u.subreddit}` : ''}] "${u.title}" ${u.score ? `(${u.score} upvotes)` : ''}
+   URL: ${u.url}`
+  ).join('\n\n')
+  : 'Нет данных о недостающих функциях'}`;
+
+    } else {
+      // === СТАРЫЙ ФОРМАТ: Fallback на прямые данные ===
+      realDataSection = `
 ## РЕАЛЬНЫЕ ДАННЫЕ ИЗ ИСТОЧНИКОВ (используй ТОЛЬКО их):
 
 ### Reddit (${redditData.total_results} постов найдено):
@@ -238,6 +418,7 @@ ${soData.data.length > 0
    URL: ${p.url}`
   ).join('\n\n')
   : 'Нет данных'}`;
+    }
 
     const userPrompt = `Проанализируй нишу/тренд:
 
@@ -291,6 +472,26 @@ ${realDataSection}
     console.log('[deep-analysis] Starting arbitration');
     const arbiterStartTime = Date.now();
 
+    // Формируем промпт для арбитра с учётом источника данных
+    let arbiterDataSummary = '';
+    if (hasEvidenceData) {
+      arbiterDataSummary = `
+## РЕАЛЬНЫЕ ДАННЫЕ ИЗ EVIDENCE (для справки):
+- Жалобы пользователей: ${complaints.length} (severity: ${severityScore}/10, frequency: ${frequencyScore}/10)
+- Общий engagement: ${complaints.reduce((s, c) => s + c.engagement, 0)}
+- ⚠️ Негативные отзывы о конкурентах: ${negativeReviews.length} — ЭТО КЛЮЧЕВОЙ ИНДИКАТОР!
+- 🎯 Unmet needs (чего хочет рынок): ${unmetNeeds.length}
+- Источник данных: Evidence блоки (pre-analyzed)`;
+    } else {
+      arbiterDataSummary = `
+## РЕАЛЬНЫЕ ДАННЫЕ (для справки):
+- Reddit: ${redditData.total_results} постов (engagement: ${redditData.data.reduce((s, p) => s + p.score + p.num_comments, 0)})
+- Hacker News: ${hnData.total_results} постов (points: ${hnData.data.reduce((s, p) => s + p.points, 0)})
+- Quora: ${quoraData.total_results} вопросов
+- Stack Overflow: ${soData.total_results} вопросов
+- Источник данных: Direct fetch`;
+    }
+
     const arbiterUserPrompt = `Вот два анализа ниши "${body.trend_title}":
 
 ## АНАЛИЗ ОПТИМИСТА:
@@ -298,15 +499,13 @@ ${JSON.stringify(optimistAnalysis, null, 2)}
 
 ## АНАЛИЗ СКЕПТИКА:
 ${JSON.stringify(skepticAnalysis, null, 2)}
-
-## РЕАЛЬНЫЕ ДАННЫЕ (для справки):
-- Reddit: ${redditData.total_results} постов (engagement: ${redditData.data.reduce((s, p) => s + p.score + p.num_comments, 0)})
-- Hacker News: ${hnData.total_results} постов (points: ${hnData.data.reduce((s, p) => s + p.points, 0)})
-- Quora: ${quoraData.total_results} вопросов
-- Stack Overflow: ${soData.total_results} вопросов
+${arbiterDataSummary}
 
 Синтезируй эти два мнения в объективный финальный анализ.
-ПОМНИ: confidence должен отражать количество реальных данных. Мало данных = низкий confidence.`;
+ПОМНИ:
+- confidence должен отражать количество реальных данных. Мало данных = низкий confidence.
+- Негативные отзывы о конкурентах — СИЛЬНЫЙ сигнал о реальной боли!
+- Unmet needs показывают что РЕАЛЬНО хочет рынок.`;
 
     const arbiterResult = await runAgent(ARBITER_PROMPT, arbiterUserPrompt);
     const arbiterTime = Date.now() - arbiterStartTime;
@@ -329,8 +528,22 @@ ${JSON.stringify(skepticAnalysis, null, 2)}
     }
 
     // === STEP 3: Adjust confidence based on data volume ===
-    const totalDataPoints = redditData.total_results + hnData.total_results + quoraData.total_results + soData.total_results;
-    const dataConfidenceFactor = totalDataPoints >= 20 ? 1.0 : totalDataPoints >= 10 ? 0.8 : totalDataPoints >= 5 ? 0.6 : 0.4;
+    let totalDataPoints: number;
+    let dataConfidenceFactor: number;
+
+    if (hasEvidenceData) {
+      // Для Evidence данных учитываем все источники + бонус за negative reviews
+      totalDataPoints = complaints.length + negativeReviews.length * 2 + unmetNeeds.length * 1.5;
+      // Negative reviews и unmet needs повышают уверенность
+      const hasStrongSignals = negativeReviews.length >= 3 || unmetNeeds.length >= 3;
+      dataConfidenceFactor = totalDataPoints >= 25 ? 1.0 :
+                             totalDataPoints >= 15 ? (hasStrongSignals ? 0.95 : 0.85) :
+                             totalDataPoints >= 8 ? (hasStrongSignals ? 0.8 : 0.7) :
+                             0.5;
+    } else {
+      totalDataPoints = redditData.total_results + hnData.total_results + quoraData.total_results + soData.total_results;
+      dataConfidenceFactor = totalDataPoints >= 20 ? 1.0 : totalDataPoints >= 10 ? 0.8 : totalDataPoints >= 5 ? 0.6 : 0.4;
+    }
 
     // Корректируем confidence на основе реального объёма данных
     arbitrationResult.confidence = Math.round(arbitrationResult.confidence * dataConfidenceFactor * 10) / 10;
@@ -353,7 +566,20 @@ ${JSON.stringify(skepticAnalysis, null, 2)}
         optimist: optimistAnalysis,
         skeptic: skepticAnalysis
       },
-      real_data_summary: {
+      real_data_summary: hasEvidenceData ? {
+        // Новый формат для Evidence данных
+        data_source: 'evidence_blocks',
+        complaints_count: complaints.length,
+        negative_reviews_count: negativeReviews.length,
+        unmet_needs_count: unmetNeeds.length,
+        severity_score: severityScore,
+        frequency_score: frequencyScore,
+        total_data_points: totalDataPoints,
+        confidence_factor: dataConfidenceFactor,
+        serpapi_calls_used: 0, // Данные уже собраны ранее
+      } : {
+        // Старый формат для direct fetch
+        data_source: 'direct_fetch',
         reddit_posts: redditData.total_results,
         hn_posts: hnData.total_results,
         quora_questions: quoraData.total_results,
@@ -367,7 +593,9 @@ ${JSON.stringify(skepticAnalysis, null, 2)}
         parallel_time_ms: parallelTime,
         arbitration_time_ms: arbiterTime,
         total_time_ms: totalTime,
-        analysis_type: 'deep_parallel_arbitration_evidence_based'
+        analysis_type: hasEvidenceData ? 'deep_parallel_arbitration_evidence_v2' : 'deep_parallel_arbitration_evidence_based',
+        used_evidence_blocks: hasEvidenceData,
+        used_occupation_data: hasOccupationData,
       },
       timestamp: new Date().toISOString()
     });

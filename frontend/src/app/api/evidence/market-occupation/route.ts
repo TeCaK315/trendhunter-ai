@@ -9,6 +9,7 @@ import {
   calcBlueOceanScore,
   calcMarketSaturation,
 } from '@/lib/evidence-calculations';
+import { analyzeDesign } from '@/lib/design-analyzer';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -51,15 +52,17 @@ export async function POST(request: NextRequest) {
 
     const competitorsCount = competitors.length;
 
-    // Fetch data in parallel
+    // Fetch data in parallel (including background design analysis)
     const [
       negativeReviewsResult,
       featureGapRedditResult,
       alternativesSearchResult,
+      designAnalysisResult,
     ] = await Promise.all([
       fetchNegativeReviews(searchQuery),
       fetchReddit(`${searchQuery} alternative OR wish OR missing feature OR lack`),
       fetchGoogleSearch(`${searchQuery} alternatives comparison`),
+      analyzeDesign(searchQuery, competitors), // Background design analysis
     ]);
 
     totalSerpApiCalls += negativeReviewsResult.serpapi_calls_used;
@@ -217,7 +220,10 @@ ${dataSection}
         feature_gaps: { data_type: 'real_data', source: 'Reddit via SerpAPI' },
         differentiation: { data_type: differentiationOpportunities.length > 0 ? 'ai_synthesis' : 'not_available' },
         red_ocean: { data_type: 'calculated', formula: 'max(1, 10 - competitors * 1.2)' },
+        design_analysis: { data_type: designAnalysisResult ? 'ai_synthesis' : 'not_available' },
       },
+      // Design analysis runs in background - used by META agent for MVP generation
+      design_analysis: designAnalysisResult,
       serpapi_calls_used: totalSerpApiCalls,
       analyzed_at: new Date().toISOString(),
     };

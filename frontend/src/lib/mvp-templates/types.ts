@@ -111,6 +111,34 @@ export interface ProductSpecification {
     switching_cost: 'low' | 'medium' | 'high';
   };
 
+  // Design System (from background analysis)
+  design_system?: {
+    color_palette: {
+      primary: string;
+      secondary: string;
+      accent: string;
+      background: string;
+      text: string;
+    };
+    typography: {
+      headings: string;
+      body: string;
+      mono?: string;
+    };
+    unique_elements: string[];
+    design_rationale: string;
+  };
+
+  // NEW: Features derived from real pain data (complaints, reviews, unmet needs)
+  derived_features?: Array<{
+    feature_name: string;
+    pain_source: 'complaint' | 'negative_review' | 'unmet_need' | 'pricing' | 'synthesis';
+    pain_quote: string;
+    solution: string;
+    priority: 'must_have' | 'should_have' | 'nice_to_have';
+    implementation_hint: string;
+  }>;
+
   // Метаданные
   confidence_score: number;
   generation_approach: 'ai-tool' | 'calculator' | 'dashboard' | 'automation' | 'marketplace' | 'content-platform';
