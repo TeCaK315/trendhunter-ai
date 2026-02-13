@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
-
 // Маппинг категорий UI → категории scan-trends
 const CATEGORY_MAP: Record<string, string[]> = {
   'Technology': ['Technology'],
@@ -57,24 +55,6 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       console.error('scan-trends error:', error);
-    }
-
-    // Fallback: n8n webhook (если настроен)
-    if (N8N_WEBHOOK_URL) {
-      try {
-        const response = await fetch(`${N8N_WEBHOOK_URL}/generate-trends`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          return NextResponse.json({ success: true, data });
-        }
-      } catch (error) {
-        console.error('n8n webhook error:', error);
-      }
     }
 
     // Если ничего не найдено

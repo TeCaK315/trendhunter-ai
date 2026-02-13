@@ -1326,12 +1326,15 @@ function generateRepoName(projectName: string): string {
     .replace(/-+$/, '');
 }
 
-// Импорт генератора шаблонов (старые)
-import { generateProjectFiles as generateTemplateFiles } from '@/lib/templates/generator';
-import { type ProductType } from '@/lib/templates';
+// DEPRECATED: Статические шаблоны больше не используются!
+// Теперь ВСЕГДА используем Claude API для генерации реального кода.
+// import { generateProjectFiles as generateTemplateFiles } from '@/lib/templates/generator';
+// import { type ProductType } from '@/lib/templates';
+// import { generateMVP, MVPType } from '@/lib/mvp-templates';
 
-// Импорт новых MVP шаблонов
-import { generateMVP, MVPType } from '@/lib/mvp-templates';
+// Типы для обратной совместимости (но шаблоны не используются)
+type ProductType = 'landing' | 'saas' | 'ai-wrapper' | 'ecommerce';
+type MVPType = 'ai-tool' | 'calculator' | 'dashboard' | 'landing-waitlist';
 
 export async function POST(request: NextRequest) {
   try {
@@ -1401,62 +1404,80 @@ export async function POST(request: NextRequest) {
           github_url = repoResult.url;
           github_created = true;
 
-          // Генерируем файлы на основе выбранного типа продукта
+          // ВСЕГДА используем Claude API для генерации — никаких статических шаблонов!
           let projectFiles: Record<string, string>;
 
-          if (useNewMVPSystem) {
-            // Проверяем есть ли derived_features из ProductSpec
-            const hasDerivedFeatures = context.productSpec?.derived_features?.length > 0;
+          // Получаем derived_features из ProductSpec или генерируем из анализа
+          let derivedFeatures = context.productSpec?.derived_features || [];
 
-            if (hasDerivedFeatures) {
-              // НОВЫЙ ПУТЬ: Используем Claude API для контекстной генерации
-              console.log(`[create-project] Using Claude API with ${context.productSpec.derived_features.length} derived_features`);
+          // Если derived_features пустой — генерируем из контекста анализа
+          if (derivedFeatures.length === 0 && context.analysis) {
+            console.log('[create-project] No derived_features, generating from analysis context...');
 
-              // Формируем spec для Claude API
-              const claudeSpec = {
-                project_name: projectOutput.project_name,
-                one_liner: projectOutput.one_liner,
-                problem_statement: projectOutput.problem_statement,
-                solution_overview: projectOutput.solution_overview,
-                target_audience: context.analysis?.target_audience?.primary || 'Broad audience',
-                main_pain: context.analysis?.main_pain || projectOutput.problem_statement,
-                mvp_specification: projectOutput.mvp_specification,
-                design_system: context.productSpec.design_system,
-                derived_features: context.productSpec.derived_features,
-              };
+            // Создаём базовые фичи из анализа болей
+            const mainPain = context.analysis.main_pain || projectOutput.problem_statement;
+            const keyPains = context.analysis.key_pain_points || [];
+            const opportunities = context.analysis.opportunities || [];
 
-              console.log('[create-project] Calling Claude API with derived_features:');
-              claudeSpec.derived_features.forEach((f: { feature_name: string; priority: string; pain_quote: string; solution: string }, i: number) => {
-                console.log(`  ${i + 1}. ${f.feature_name} [${f.priority}]: "${f.pain_quote}" → ${f.solution}`);
-              });
+            derivedFeatures = [
+              {
+                feature_name: 'Решение главной боли',
+                pain_source: 'analysis',
+                pain_quote: mainPain,
+                solution: projectOutput.solution_overview || `Инструмент для решения: ${mainPain}`,
+                priority: 'must-have',
+                implementation_hint: 'Core functionality with real API integration',
+              },
+              ...keyPains.slice(0, 2).map((pain: string, i: number) => ({
+                feature_name: `Дополнительная функция ${i + 1}`,
+                pain_source: 'key_pain_points',
+                pain_quote: pain,
+                solution: `Функционал для: ${pain}`,
+                priority: i === 0 ? 'should-have' : 'nice-to-have',
+                implementation_hint: 'Supporting feature with data persistence',
+              })),
+              ...opportunities.slice(0, 1).map((opp: string) => ({
+                feature_name: 'Рыночная возможность',
+                pain_source: 'opportunities',
+                pain_quote: opp,
+                solution: `Использовать возможность: ${opp}`,
+                priority: 'should-have',
+                implementation_hint: 'Market differentiator feature',
+              })),
+            ];
 
-              // Вызываем генератор кода НАПРЯМУЮ (без HTTP fetch - избегаем timeout)
-              try {
-                console.log('[create-project] Calling generateCodeWithClaude directly...');
-                const generatedFiles = await generateCodeWithClaude(claudeSpec as ProjectSpec);
-                projectFiles = generatedFiles;
-                console.log(`[create-project] Claude generated ${Object.keys(projectFiles).length} files with context`);
-              } catch (generateError) {
-                // Fallback на статические шаблоны если Claude API failed
-                console.warn('[create-project] Claude API failed, falling back to templates:', generateError instanceof Error ? generateError.message : generateError);
-                const mvpResult = generateMVP(context, mvp_type as MVPType);
-                projectFiles = mvpResult.files;
-              }
-            } else {
-              // СТАРЫЙ ПУТЬ: Используем статические шаблоны (когда нет derived_features)
-              console.log(`[create-project] Using static templates (no derived_features): ${mvp_type}`);
-              const mvpResult = generateMVP(context, mvp_type as MVPType);
-              projectFiles = mvpResult.files;
-              console.log(`MVP generated: ${mvpResult.projectName}, ${Object.keys(projectFiles).length} files`);
-            }
-          } else if (selectedProductType && selectedProductType !== 'landing') {
-            // Используем старые функциональные шаблоны
-            projectFiles = generateTemplateFiles(selectedProductType, context);
-          } else {
-            // Используем старую генерацию (бойлерплейт)
-            projectFiles = generateProjectFiles(projectOutput, context);
-            // README добавляем отдельно с полным контентом из projectOutput
-            projectFiles['README.md'] = projectOutput.readme_content;
+            console.log(`[create-project] Generated ${derivedFeatures.length} features from analysis`);
+          }
+
+          // Формируем spec для Claude API
+          const claudeSpec = {
+            project_name: projectOutput.project_name,
+            one_liner: projectOutput.one_liner,
+            problem_statement: projectOutput.problem_statement,
+            solution_overview: projectOutput.solution_overview,
+            target_audience: context.analysis?.target_audience?.primary || 'Broad audience',
+            main_pain: context.analysis?.main_pain || projectOutput.problem_statement,
+            mvp_specification: projectOutput.mvp_specification,
+            design_system: context.productSpec?.design_system,
+            derived_features: derivedFeatures,
+          };
+
+          console.log(`[create-project] ALWAYS using Claude API with ${derivedFeatures.length} derived_features`);
+          derivedFeatures.forEach((f: { feature_name: string; priority: string; pain_quote: string; solution: string }, i: number) => {
+            console.log(`  ${i + 1}. ${f.feature_name} [${f.priority}]: "${f.pain_quote}" → ${f.solution}`);
+          });
+
+          // Вызываем Claude API — БЕЗ FALLBACK на статические шаблоны!
+          console.log('[create-project] Calling generateCodeWithClaude directly...');
+          const generatedFiles = await generateCodeWithClaude(claudeSpec as ProjectSpec);
+          projectFiles = generatedFiles;
+          console.log(`[create-project] Claude generated ${Object.keys(projectFiles).length} files with REAL integrations`);
+
+          // Проверяем что Claude создал критические файлы
+          const criticalFiles = ['.env.example', 'package.json', 'src/app/page.tsx'];
+          const missingCritical = criticalFiles.filter(f => !projectFiles[f]);
+          if (missingCritical.length > 0) {
+            console.warn(`[create-project] WARNING: Missing critical files: ${missingCritical.join(', ')}`);
           }
 
           // Сохраняем список файлов для response

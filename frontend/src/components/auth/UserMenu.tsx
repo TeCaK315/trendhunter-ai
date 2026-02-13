@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -18,8 +18,28 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
   const { ideasUsed, ideasRemaining, ideasLimit, usagePercent, isAdmin } = useIdeasLimit();
   const [isOpen, setIsOpen] = useState(false);
   const [showProviders, setShowProviders] = useState(false);
+  const [vercelAuth, setVercelAuth] = useState(false);
+  const [vercelUser, setVercelUser] = useState<{ username: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const t = useTranslations();
+
+  // Check Vercel auth status
+  const checkVercelAuth = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/vercel/user');
+      const data = await res.json();
+      setVercelAuth(data.authenticated);
+      if (data.user) {
+        setVercelUser({ username: data.user.username });
+      }
+    } catch {
+      setVercelAuth(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkVercelAuth();
+  }, [checkVercelAuth]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -105,6 +125,20 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
                 </div>
                 <span>GitHub</span>
               </button>
+
+              {/* Vercel */}
+              <a
+                href="/api/auth/vercel"
+                onClick={() => setShowProviders(false)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M24 22.525H0l12-21.05 12 21.05z" />
+                  </svg>
+                </div>
+                <span>Vercel</span>
+              </a>
             </div>
           </div>
         )}
@@ -229,6 +263,29 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
                   >
                     {t.auth.connect || 'Подключить'}
                   </button>
+                )}
+              </div>
+
+              {/* Vercel status */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M24 22.525H0l12-21.05 12 21.05z" />
+                  </svg>
+                  <span className="text-sm text-zinc-300">Vercel</span>
+                </div>
+                {vercelAuth ? (
+                  <span className="text-xs text-green-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                    {vercelUser?.username || (t.auth.connected || 'Подключён')}
+                  </span>
+                ) : (
+                  <a
+                    href="/api/auth/vercel"
+                    className="text-xs text-indigo-400 hover:text-indigo-300"
+                  >
+                    {t.auth.connect || 'Подключить'}
+                  </a>
                 )}
               </div>
             </div>

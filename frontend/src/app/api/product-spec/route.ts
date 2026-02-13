@@ -524,8 +524,101 @@ ${body.design_analysis?.generated_design ? 'ВАЖНО: Используй УК�
       productSpec.design_system = body.design_analysis.generated_design;
     }
 
+    // ========== ГАРАНТИРУЕМ ЗАПОЛНЕНИЕ derived_features ==========
+    // Если AI не сгенерировал derived_features — создаём из Evidence данных
+    if (!productSpec.derived_features || productSpec.derived_features.length === 0) {
+      console.log('[product-spec] AI did not generate derived_features, extracting from Evidence...');
+
+      const extractedFeatures: ProductSpecification['derived_features'] = [];
+
+      // 1. Извлекаем из жалоб пользователей (complaints)
+      if (body.evidence?.complaints?.length) {
+        body.evidence.complaints.slice(0, 3).forEach((complaint, i) => {
+          extractedFeatures.push({
+            feature_name: `Решение боли #${i + 1}`,
+            pain_source: 'complaint',
+            pain_quote: complaint.title,
+            solution: `Функционал для решения: ${complaint.title.substring(0, 100)}`,
+            priority: i === 0 ? 'must_have' : 'should_have',
+            implementation_hint: `Based on ${complaint.source} feedback - needs real implementation`,
+          });
+        });
+      }
+
+      // 2. Извлекаем из негативных отзывов о конкурентах
+      if (body.evidence?.negative_reviews?.length) {
+        body.evidence.negative_reviews.slice(0, 2).forEach((review) => {
+          extractedFeatures.push({
+            feature_name: `Преимущество над ${review.competitor}`,
+            pain_source: 'negative_review',
+            pain_quote: review.review,
+            solution: `Сделать лучше чем ${review.competitor}: ${review.review.substring(0, 80)}`,
+            priority: 'should_have',
+            implementation_hint: `Competitive advantage feature - real API/integration needed`,
+          });
+        });
+      }
+
+      // 3. Извлекаем из неудовлетворённых потребностей
+      if (body.evidence?.unmet_needs?.length) {
+        body.evidence.unmet_needs.slice(0, 2).forEach((need) => {
+          extractedFeatures.push({
+            feature_name: `Рыночная потребность`,
+            pain_source: 'unmet_need',
+            pain_quote: need.need,
+            solution: `Реализовать: ${need.need}`,
+            priority: need.frequency === 'high' ? 'must_have' : 'should_have',
+            implementation_hint: `Market demand feature - ${need.source || 'analysis based'}`,
+          });
+        });
+      }
+
+      // 4. Если ничего нет — создаём из основного анализа
+      if (extractedFeatures.length === 0 && body.analysis) {
+        extractedFeatures.push({
+          feature_name: 'Решение главной боли',
+          pain_source: 'synthesis',
+          pain_quote: body.analysis.main_pain,
+          solution: productSpec.user_output?.value_proposition || `Инструмент для: ${body.analysis.main_pain}`,
+          priority: 'must_have',
+          implementation_hint: 'Core value proposition - requires real working implementation',
+        });
+
+        // Добавляем из key_pain_points
+        body.analysis.key_pain_points?.slice(0, 2).forEach((pain, i) => {
+          extractedFeatures.push({
+            feature_name: `Дополнительная фича ${i + 1}`,
+            pain_source: 'synthesis',
+            pain_quote: pain,
+            solution: `Функционал для: ${pain}`,
+            priority: 'should_have',
+            implementation_hint: 'Supporting feature with data persistence',
+          });
+        });
+      }
+
+      productSpec.derived_features = extractedFeatures;
+      console.log(`[product-spec] Extracted ${extractedFeatures.length} features from Evidence data`);
+    } else {
+      console.log(`[product-spec] AI generated ${productSpec.derived_features.length} derived_features`);
+    }
+
+    // Валидация: derived_features ДОЛЖНЫ быть заполнены
+    if (!productSpec.derived_features || productSpec.derived_features.length === 0) {
+      console.warn('[product-spec] WARNING: No derived_features after all extraction attempts!');
+      // Создаём минимальную фичу чтобы система работала
+      productSpec.derived_features = [{
+        feature_name: 'Core Functionality',
+        pain_source: 'synthesis',
+        pain_quote: body.analysis.main_pain,
+        solution: 'Main product functionality solving the core pain',
+        priority: 'must_have',
+        implementation_hint: 'Implement with real API calls, no mocks or placeholders',
+      }];
+    }
+
     const totalTime = Date.now() - startTime;
-    console.log(`[product-spec] Completed in ${totalTime}ms`);
+    console.log(`[product-spec] Completed in ${totalTime}ms, derived_features: ${productSpec.derived_features.length}`);
 
     return NextResponse.json({
       success: true,

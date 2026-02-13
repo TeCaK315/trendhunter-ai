@@ -586,6 +586,7 @@ export default function ProjectPage() {
   const [usedQuickActions, setUsedQuickActions] = useState<QuickActionResponse[]>([]);
   const [isAtTop, setIsAtTop] = useState(true);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [creatingElapsed, setCreatingElapsed] = useState(0);
   const [projectCreated, setProjectCreated] = useState<{ repo_url: string; clone_url: string } | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentType>('general');
   const { authenticated: githubAuthenticated, user: githubUser, login: githubLogin } = useGitHubAuth();
@@ -724,6 +725,18 @@ export default function ProjectPage() {
       setItem(chatKey, messages);
     }
   }, [messages, projectId]);
+
+  // Timer for project creation elapsed time
+  useEffect(() => {
+    if (!isCreatingProject) {
+      setCreatingElapsed(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setCreatingElapsed(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isCreatingProject]);
 
   // Save used quick actions to localStorage
   useEffect(() => {
@@ -1509,7 +1522,9 @@ export default function ProjectPage() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              <span>Создание...</span>
+                              <span>
+                                {creatingElapsed < 15 ? 'Генерация кода' : creatingElapsed < 60 ? 'Создание репозитория' : creatingElapsed < 120 ? 'Загрузка файлов' : 'Почти готово'}... {Math.floor(creatingElapsed / 60)}:{(creatingElapsed % 60).toString().padStart(2, '0')}
+                              </span>
                             </>
                           ) : (
                             <>

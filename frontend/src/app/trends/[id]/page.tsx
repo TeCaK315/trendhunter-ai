@@ -239,6 +239,22 @@ export default function TrendPage() {
   const trendId = params.id as string;
   const { language, t } = useLanguage();
 
+  // === localStorage cache helpers ===
+  const cacheKey = (key: string) => `th_${trendId}_${key}`;
+
+  const saveToCache = useCallback((key: string, data: unknown) => {
+    try {
+      localStorage.setItem(cacheKey(key), JSON.stringify(data));
+    } catch { /* ignore quota errors */ }
+  }, [trendId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadFromCache = useCallback(<T,>(key: string): T | null => {
+    try {
+      const stored = localStorage.getItem(cacheKey(key));
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  }, [trendId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [trend, setTrend] = useState<Trend | null>(null);
   const [analysis, setAnalysis] = useState<TrendAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
@@ -841,6 +857,22 @@ export default function TrendPage() {
     }
   }, [productRecommendation, hasAutoSelectedType, currentStep]);
 
+  // === Сохранение данных в localStorage при изменении ===
+  useEffect(() => { if (analysis) saveToCache('analysis', analysis); }, [analysis, saveToCache]);
+  useEffect(() => { if (Object.keys(evidenceData).length > 0) saveToCache('evidenceData', evidenceData); }, [evidenceData, saveToCache]);
+  useEffect(() => { if (rawAnalyses.optimist || rawAnalyses.skeptic) saveToCache('rawAnalyses', rawAnalyses); }, [rawAnalyses, saveToCache]);
+  useEffect(() => { if (analysisMetadata) saveToCache('analysisMetadata', analysisMetadata); }, [analysisMetadata, saveToCache]);
+  useEffect(() => { if (competition) saveToCache('competition', competition); }, [competition, saveToCache]);
+  useEffect(() => { if (ventureData) saveToCache('ventureData', ventureData); }, [ventureData, saveToCache]);
+  useEffect(() => { if (leadsData) saveToCache('leadsData', leadsData); }, [leadsData, saveToCache]);
+  useEffect(() => { if (productSpec) saveToCache('productSpec', productSpec); }, [productSpec, saveToCache]);
+  useEffect(() => { if (sourcesSynthesis) saveToCache('sourcesSynthesis', sourcesSynthesis); }, [sourcesSynthesis, saveToCache]);
+  useEffect(() => { if (strategicPositioning) saveToCache('strategicPositioning', strategicPositioning); }, [strategicPositioning, saveToCache]);
+  useEffect(() => { if (projectData) saveToCache('projectData', projectData); }, [projectData, saveToCache]);
+  useEffect(() => {
+    if (currentStep !== 'overview') saveToCache('currentStep', currentStep);
+  }, [currentStep, saveToCache]);
+
   // Функция проверки GitHub авторизации
   const checkGithubAuth = useCallback(async () => {
     try {
@@ -852,6 +884,20 @@ export default function TrendPage() {
       return isAuth;
     } catch {
       setIsGithubAuthenticated(false);
+      return false;
+    }
+  }, []);
+
+  // Функция проверки Vercel авторизации
+  const checkVercelAuth = useCallback(async () => {
+    try {
+      const vercelRes = await fetch('/api/auth/vercel/user');
+      const vercelData = await vercelRes.json();
+      const isAuth = vercelData.authenticated && !!vercelData.user;
+      setIsVercelAuthenticated(isAuth);
+      return isAuth;
+    } catch {
+      setIsVercelAuthenticated(false);
       return false;
     }
   }, []);
@@ -1004,6 +1050,46 @@ export default function TrendPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // === Восстанавливаем кешированные данные из localStorage ===
+        const cachedAnalysis = loadFromCache<TrendAnalysis>('analysis');
+        if (cachedAnalysis) setAnalysis(cachedAnalysis);
+
+        const cachedEvidence = loadFromCache<Record<string, unknown>>('evidenceData');
+        if (cachedEvidence && Object.keys(cachedEvidence).length > 0) setEvidenceData(cachedEvidence);
+
+        const cachedRawAnalyses = loadFromCache<{ optimist: AgentAnalysis | null; skeptic: AgentAnalysis | null }>('rawAnalyses');
+        if (cachedRawAnalyses) setRawAnalyses(cachedRawAnalyses);
+
+        const cachedMetadata = loadFromCache<{ optimist_summary?: string; skeptic_summary?: string; consensus_reached?: boolean }>('analysisMetadata');
+        if (cachedMetadata) setAnalysisMetadata(cachedMetadata);
+
+        const cachedCompetition = loadFromCache<CompetitionData>('competition');
+        if (cachedCompetition) setCompetition(cachedCompetition);
+
+        const cachedVenture = loadFromCache<VentureData>('ventureData');
+        if (cachedVenture) setVentureData(cachedVenture);
+
+        const cachedLeads = loadFromCache<LeadsData>('leadsData');
+        if (cachedLeads) setLeadsData(cachedLeads);
+
+        const cachedProductSpec = loadFromCache<ProductSpecification>('productSpec');
+        if (cachedProductSpec) setProductSpec(cachedProductSpec);
+
+        const cachedSources = loadFromCache<SourcesSynthesis>('sourcesSynthesis');
+        if (cachedSources) setSourcesSynthesis(cachedSources);
+
+        const cachedPositioning = loadFromCache<string>('strategicPositioning');
+        if (cachedPositioning) setStrategicPositioning(cachedPositioning);
+
+        const cachedProjectData = loadFromCache<ProjectData>('projectData');
+        if (cachedProjectData) {
+          setProjectData(cachedProjectData);
+          if (cachedProjectData.github_url) setGithubCreated(true);
+        }
+
+        const cachedStep = loadFromCache<FlowStep>('currentStep');
+        if (cachedStep) setCurrentStep(cachedStep);
+
         // Fetch trend
         const trendsRes = await fetch('/api/trends');
         const trendsData = await trendsRes.json();
@@ -1012,51 +1098,51 @@ export default function TrendPage() {
           setTrend(foundTrend);
         }
 
-        // Fetch analysis if exists
+        // Fetch analysis if exists (обновляем кеш если есть серверные данные)
         const analysisRes = await fetch('/api/trends/analyze');
         const analysisData = await analysisRes.json();
         if (analysisData.analyses?.[trendId]) {
           setAnalysis(analysisData.analyses[trendId]);
-          // Данные анализа загружены, но не меняем текущую вкладку
-          // Пользователь должен всегда видеть "Обзор" при открытии страницы
         }
 
         // Check if favorite
         const favorites = JSON.parse(localStorage.getItem('trendhunter_favorites') || '[]');
         setIsFavorite(favorites.includes(trendId));
 
-        // Загружаем существующий проект из localStorage (если есть)
-        try {
-          const storedProjects = localStorage.getItem('trendhunter_projects');
-          if (storedProjects) {
-            const projects = JSON.parse(storedProjects);
-            const existingProject = projects.find((p: { trend_id: string }) => p.trend_id === trendId);
-            if (existingProject) {
-              // Восстанавливаем данные проекта
-              setProjectData({
-                project_name: existingProject.name,
-                one_liner: existingProject.description,
-                problem_statement: existingProject.description,
-                solution_overview: '',
-                github_url: existingProject.repo_url,
-                readme_content: '',
-                mvp_specification: existingProject.mvp_specification || { core_features: [], tech_stack: [] },
-                roadmap: existingProject.roadmap || { mvp: { goals: [], deliverables: [], success_metrics: [] }, alpha: { goals: [], deliverables: [], success_metrics: [] }, beta: { goals: [], deliverables: [], success_metrics: [] }, production: { goals: [], deliverables: [], success_metrics: [] } },
-                enhancement_recommendations: [],
-                business_metrics: {},
-                created_at: existingProject.created_at,
-              });
-              if (existingProject.repo_url) {
-                setGithubCreated(true);
+        // Загружаем существующий проект из localStorage (если есть и не восстановлен из кеша)
+        if (!cachedProjectData) {
+          try {
+            const storedProjects = localStorage.getItem('trendhunter_projects');
+            if (storedProjects) {
+              const projects = JSON.parse(storedProjects);
+              const existingProject = projects.find((p: { trend_id: string }) => p.trend_id === trendId);
+              if (existingProject) {
+                setProjectData({
+                  project_name: existingProject.name,
+                  one_liner: existingProject.description,
+                  problem_statement: existingProject.description,
+                  solution_overview: '',
+                  github_url: existingProject.repo_url,
+                  readme_content: '',
+                  mvp_specification: existingProject.mvp_specification || { core_features: [], tech_stack: [] },
+                  roadmap: existingProject.roadmap || { mvp: { goals: [], deliverables: [], success_metrics: [] }, alpha: { goals: [], deliverables: [], success_metrics: [] }, beta: { goals: [], deliverables: [], success_metrics: [] }, production: { goals: [], deliverables: [], success_metrics: [] } },
+                  enhancement_recommendations: [],
+                  business_metrics: {},
+                  created_at: existingProject.created_at,
+                });
+                if (existingProject.repo_url) {
+                  setGithubCreated(true);
+                }
               }
             }
+          } catch (storageError) {
+            console.error('Error loading project from localStorage:', storageError);
           }
-        } catch (storageError) {
-          console.error('Error loading project from localStorage:', storageError);
         }
 
-        // Check GitHub authentication
+        // Check GitHub and Vercel authentication
         await checkGithubAuth();
+        await checkVercelAuth();
       } catch (error) {
         console.error('Error fetching trend:', error);
       } finally {
@@ -1065,7 +1151,8 @@ export default function TrendPage() {
     };
 
     fetchData();
-  }, [trendId, checkGithubAuth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trendId, checkGithubAuth, checkVercelAuth, loadFromCache]);
 
   const handleFavorite = () => {
     const favorites = JSON.parse(localStorage.getItem('trendhunter_favorites') || '[]');
@@ -1090,18 +1177,19 @@ export default function TrendPage() {
     if (!trend) return;
     setAnalyzing(true);
 
+    // Сразу переключаемся на Evidence и запускаем 5 блоков параллельно
+    setCurrentStep('evidence');
+    runAllEvidenceBlocks();
+
     try {
-      // Передаём Evidence данные если они загружены (problem + occupation)
+      // Параллельно запускаем deep-analysis (3 AI-агента)
       const evidencePayload = {
         problem: evidenceData.problem || undefined,
         occupation: evidenceData.occupation || undefined,
       };
       const hasEvidence = evidencePayload.problem?.who_hurts?.complaints?.length > 0;
 
-      console.log(`[runAnalysis] Starting with Evidence data: ${hasEvidence ? 'YES' : 'NO (fallback mode)'}`);
-      if (hasEvidence) {
-        console.log(`[runAnalysis] Evidence: ${evidencePayload.problem?.who_hurts?.complaints?.length || 0} complaints, ${evidencePayload.occupation?.why_gaps_exist?.negative_reviews?.length || 0} negative reviews`);
-      }
+      console.log(`[runAnalysis] Starting deep-analysis + 5 Evidence blocks in parallel`);
 
       const response = await fetch('/api/deep-analysis', {
         method: 'POST',
@@ -1111,14 +1199,12 @@ export default function TrendPage() {
           trend_title: trend.title,
           trend_category: trend.category,
           why_trending: trend.why_trending,
-          // NEW: Передаём Evidence данные для улучшенного анализа
           evidence_data: hasEvidence ? evidencePayload : undefined,
         }),
       });
 
       const data = await response.json();
       if (data.success && data.analysis) {
-        // Save the arbitration result as analysis
         setAnalysis({
           trend_id: trend.id,
           trend_title: trend.title,
@@ -1131,7 +1217,6 @@ export default function TrendPage() {
           analysis_type: 'deep',
         });
 
-        // Save raw analyses from Optimist and Skeptic
         if (data.raw_analyses) {
           setRawAnalyses({
             optimist: data.raw_analyses.optimist,
@@ -1139,21 +1224,13 @@ export default function TrendPage() {
           });
         }
 
-        // Save metadata
         if (data.analysis.analysis_metadata) {
           setAnalysisMetadata(data.analysis.analysis_metadata);
         }
-
-        setCurrentStep('evidence');
-
-        // Запускаем все 5 Evidence блоков параллельно
-        // ProductSpec будет вызван ПОСЛЕ загрузки Evidence (см. useEffect ниже)
-        setTimeout(() => {
-          runAllEvidenceBlocks();
-        }, 300);
       }
     } catch (error) {
-      console.error('Error running analysis:', error);
+      console.error('Error running deep-analysis:', error);
+      // Evidence блоки уже запущены и работают независимо
     } finally {
       setAnalyzing(false);
     }
@@ -3060,19 +3137,34 @@ export default function TrendPage() {
                           <span className="text-xl">▲</span>
                           <div>
                             <div className="font-medium text-white">{language === 'ru' ? 'Автодеплой на Vercel' : 'Auto-deploy to Vercel'}</div>
-                            <div className="text-sm text-zinc-400">{language === 'ru' ? 'Продукт будет сразу доступен онлайн' : 'Product will be available online immediately'}</div>
+                            <div className="text-sm text-zinc-400">
+                              {isVercelAuthenticated
+                                ? (language === 'ru' ? 'Продукт будет сразу доступен онлайн' : 'Product will be available online immediately')
+                                : (language === 'ru' ? 'Подключите Vercel для автодеплоя' : 'Connect Vercel for auto-deploy')
+                              }
+                            </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => setAutoDeploy(!autoDeploy)}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${
-                            autoDeploy ? 'bg-indigo-500' : 'bg-zinc-700'
-                          }`}
-                        >
-                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            autoDeploy ? 'left-7' : 'left-1'
-                          }`} />
-                        </button>
+                        {isVercelAuthenticated ? (
+                          <button
+                            onClick={() => setAutoDeploy(!autoDeploy)}
+                            className={`relative w-12 h-6 rounded-full transition-colors ${
+                              autoDeploy ? 'bg-indigo-500' : 'bg-zinc-700'
+                            }`}
+                          >
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                              autoDeploy ? 'left-7' : 'left-1'
+                            }`} />
+                          </button>
+                        ) : (
+                          <a
+                            href="/api/auth/vercel"
+                            className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2"
+                          >
+                            <span>▲</span>
+                            {language === 'ru' ? 'Подключить' : 'Connect'}
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
