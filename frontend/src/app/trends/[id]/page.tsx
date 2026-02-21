@@ -16,6 +16,7 @@ import MarketOccupationBlock from '@/components/blocks/MarketOccupationBlock';
 import UnitEconomicsBlock from '@/components/blocks/UnitEconomicsBlock';
 import EvidenceBadge from '@/components/EvidenceBadge';
 import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
+import FinancialCalculator from '@/components/blocks/FinancialCalculator';
 
 interface Trend {
   id: string;
@@ -91,6 +92,7 @@ type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'research' | 'business
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
+type ActionPlanSubTab = 'plan' | 'calculator';
 type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics';
 
 interface PotentialCompany {
@@ -259,6 +261,7 @@ export default function TrendPage() {
   const [collectingSources, setCollectingSources] = useState(false);
   const [currentStep, setCurrentStep] = useState<FlowStep>('overview');
   const [businessSubTab, setBusinessSubTab] = useState<BusinessSubTab>('venture');
+  const [actionPlanSubTab, setActionPlanSubTab] = useState<ActionPlanSubTab>('plan');
   const [evidenceSubTab, setEvidenceSubTab] = useState<EvidenceSubTab>('problem'); // Default to first Evidence tab
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -2327,72 +2330,121 @@ export default function TrendPage() {
           {/* Action Plan Content */}
           {currentStep === 'action-plan' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">
-                    {language === 'ru' ? 'План действий' : 'Action Plan'}
-                  </h2>
-                  <p className="text-zinc-400 text-sm mt-1">
-                    {language === 'ru'
-                      ? 'Стратегия на основе собранных Evidence данных. Все рекомендации подкреплены источниками.'
-                      : 'Strategy based on collected Evidence data. All recommendations backed by sources.'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => generateActionPlan()}
-                  disabled={actionPlanLoading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                >
-                  {actionPlanLoading && (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  )}
-                  {actionPlanData
-                    ? (language === 'ru' ? 'Обновить план' : 'Refresh Plan')
-                    : (language === 'ru' ? 'Сгенерировать план' : 'Generate Plan')}
-                </button>
+              {/* Sub-tabs: Plan | Calculator */}
+              <div className="flex items-center gap-4">
+                {[
+                  { id: 'plan' as ActionPlanSubTab, label: language === 'ru' ? 'Стратегия' : 'Strategy', icon: '📋' },
+                  { id: 'calculator' as ActionPlanSubTab, label: language === 'ru' ? 'Финансовый калькулятор' : 'Financial Calculator', icon: '🧮' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActionPlanSubTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
+                      actionPlanSubTab === tab.id
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
               </div>
 
-              {/* Evidence readiness indicator */}
-              {!actionPlanData && !actionPlanLoading && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                  <p className="text-sm text-zinc-400 mb-3">
-                    {language === 'ru' ? 'Собранные Evidence данные:' : 'Collected Evidence data:'}
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {[
-                      { key: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
-                      { key: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
-                      { key: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
-                      { key: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
-                      { key: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
-                    ].map((block) => (
-                      <div
-                        key={block.key}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                          evidenceData[block.key]
-                            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                            : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
-                        }`}
-                      >
-                        <span>{block.icon}</span>
-                        <span>{block.label}</span>
-                        {evidenceData[block.key] && <span className="ml-auto">✓</span>}
-                      </div>
-                    ))}
+              {/* Strategy sub-tab */}
+              {actionPlanSubTab === 'plan' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold text-white">
+                        {language === 'ru' ? 'План действий' : 'Action Plan'}
+                      </h2>
+                      <p className="text-zinc-400 text-sm mt-1">
+                        {language === 'ru'
+                          ? 'Стратегия на основе собранных Evidence данных. Все рекомендации подкреплены источниками.'
+                          : 'Strategy based on collected Evidence data. All recommendations backed by sources.'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => generateActionPlan()}
+                      disabled={actionPlanLoading}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      {actionPlanLoading && (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      )}
+                      {actionPlanData
+                        ? (language === 'ru' ? 'Обновить план' : 'Refresh Plan')
+                        : (language === 'ru' ? 'Сгенерировать план' : 'Generate Plan')}
+                    </button>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-3">
-                    {language === 'ru'
-                      ? 'Минимум 2 блока для генерации плана. Чем больше данных — тем точнее рекомендации.'
-                      : 'Minimum 2 blocks needed. More data = better recommendations.'}
-                  </p>
-                </div>
+
+                  {/* Evidence readiness indicator */}
+                  {!actionPlanData && !actionPlanLoading && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                      <p className="text-sm text-zinc-400 mb-3">
+                        {language === 'ru' ? 'Собранные Evidence данные:' : 'Collected Evidence data:'}
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          { key: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
+                          { key: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
+                          { key: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
+                          { key: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
+                          { key: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
+                        ].map((block) => (
+                          <div
+                            key={block.key}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                              evidenceData[block.key]
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
+                            }`}
+                          >
+                            <span>{block.icon}</span>
+                            <span>{block.label}</span>
+                            {evidenceData[block.key] && <span className="ml-auto">✓</span>}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-3">
+                        {language === 'ru'
+                          ? 'Минимум 2 блока для генерации плана. Чем больше данных — тем точнее рекомендации.'
+                          : 'Minimum 2 blocks needed. More data = better recommendations.'}
+                      </p>
+                    </div>
+                  )}
+
+                  <ActionPlanBlock
+                    data={actionPlanData}
+                    loading={actionPlanLoading}
+                    error={actionPlanError}
+                  />
+                </>
               )}
 
-              <ActionPlanBlock
-                data={actionPlanData}
-                loading={actionPlanLoading}
-                error={actionPlanError}
-              />
+              {/* Financial Calculator sub-tab */}
+              {actionPlanSubTab === 'calculator' && (
+                <>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      {language === 'ru' ? 'Финансовый калькулятор' : 'Financial Calculator'}
+                    </h2>
+                    <p className="text-zinc-400 text-sm mt-1">
+                      {language === 'ru'
+                        ? 'Интерактивные расчёты unit-экономики. Двигайте ползунки — результат обновляется мгновенно.'
+                        : 'Interactive unit economics. Adjust sliders — results update instantly.'}
+                    </p>
+                  </div>
+                  <FinancialCalculator
+                    defaults={{
+                      monthlyPrice: evidenceData.sellability?.average_ticket?.median_price || undefined,
+                      estimatedCac: evidenceData.economics?.cac?.estimated_cac?.value || undefined,
+                      businessModel: evidenceData.economics?.repeat_sales?.business_model || undefined,
+                    }}
+                  />
+                </>
+              )}
             </div>
           )}
 
