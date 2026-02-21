@@ -19,6 +19,7 @@ import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
 import FinancialCalculator from '@/components/blocks/FinancialCalculator';
 import ExecutiveSummary from '@/components/blocks/ExecutiveSummary';
 import ScenarioComparison from '@/components/blocks/ScenarioComparison';
+import SurveyGenerator from '@/components/blocks/SurveyGenerator';
 
 interface Trend {
   id: string;
@@ -94,7 +95,7 @@ type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'research' | 'business
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
-type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'report';
+type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'survey' | 'report';
 type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics';
 
 interface PotentialCompany {
@@ -2338,6 +2339,7 @@ export default function TrendPage() {
                   { id: 'plan' as ActionPlanSubTab, label: language === 'ru' ? 'Стратегия' : 'Strategy', icon: '📋' },
                   { id: 'calculator' as ActionPlanSubTab, label: language === 'ru' ? 'Калькулятор' : 'Calculator', icon: '🧮' },
                   { id: 'scenarios' as ActionPlanSubTab, label: language === 'ru' ? 'Сценарии' : 'Scenarios', icon: '🔀' },
+                  { id: 'survey' as ActionPlanSubTab, label: language === 'ru' ? 'Опросник' : 'Survey', icon: '📝' },
                   { id: 'report' as ActionPlanSubTab, label: language === 'ru' ? 'Отчёт' : 'Report', icon: '📄' },
                 ].map((tab) => (
                   <button
@@ -2474,6 +2476,14 @@ export default function TrendPage() {
                       monthlyGrowthRate: 15,
                     };
                   })()}
+                />
+              )}
+
+              {/* Survey Generator sub-tab */}
+              {actionPlanSubTab === 'survey' && (
+                <SurveyGenerator
+                  trendTitle={trend.source_query || trend.title}
+                  evidenceData={evidenceData}
                 />
               )}
 
