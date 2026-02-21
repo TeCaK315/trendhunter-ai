@@ -2437,6 +2437,7 @@ export default function TrendPage() {
                     </p>
                   </div>
                   <FinancialCalculator
+                    trendId={trend.id}
                     defaults={{
                       monthlyPrice: evidenceData.sellability?.average_ticket?.median_price || undefined,
                       estimatedCac: evidenceData.economics?.cac?.estimated_cac?.value || undefined,

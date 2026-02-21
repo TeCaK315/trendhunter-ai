@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import EvidenceBadge from '../EvidenceBadge';
 
 interface FinancialCalculatorProps {
+  /** Trend ID for persisting inputs in localStorage */
+  trendId?: string;
   /** Pre-filled defaults from Evidence data */
   defaults?: {
     monthlyPrice?: number;
@@ -145,22 +147,39 @@ function calculate(inputs: Inputs): Calculations {
   };
 }
 
-export default function FinancialCalculator({ defaults }: FinancialCalculatorProps) {
-  const [inputs, setInputs] = useState<Inputs>({
-    monthlyPrice: defaults?.monthlyPrice || 49,
-    annualDiscount: 20,
-    monthlyChurnRate: 5,
-    cac: defaults?.estimatedCac || 150,
-    monthlyFixedCosts: 3000,
-    initialInvestment: 10000,
-    customersMonth1: 10,
-    monthlyGrowthRate: 15,
+export default function FinancialCalculator({ trendId, defaults }: FinancialCalculatorProps) {
+  const storageKey = trendId ? `th_calc_${trendId}` : null;
+
+  const [inputs, setInputs] = useState<Inputs>(() => {
+    // Restore from localStorage if available
+    if (storageKey) {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) return JSON.parse(saved) as Inputs;
+      } catch { /* ignore */ }
+    }
+    return {
+      monthlyPrice: defaults?.monthlyPrice || 49,
+      annualDiscount: 20,
+      monthlyChurnRate: 5,
+      cac: defaults?.estimatedCac || 150,
+      monthlyFixedCosts: 3000,
+      initialInvestment: 10000,
+      customersMonth1: 10,
+      monthlyGrowthRate: 15,
+    };
   });
 
   const results = useMemo(() => calculate(inputs), [inputs]);
 
   const update = (field: keyof Inputs, value: number) => {
-    setInputs(prev => ({ ...prev, [field]: value }));
+    setInputs(prev => {
+      const next = { ...prev, [field]: value };
+      if (storageKey) {
+        try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* ignore */ }
+      }
+      return next;
+    });
   };
 
   // Health indicators
@@ -351,11 +370,26 @@ function InputField({
   max: number;
   step: number;
 }) {
+  const handleTextChange = (raw: string) => {
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed)) {
+      onChange(Math.min(max, Math.max(min, parsed)));
+    }
+  };
+
   return (
     <div>
-      <div className="flex justify-between text-xs mb-1">
+      <div className="flex justify-between items-center text-xs mb-1">
         <span className="text-zinc-400">{label}</span>
-        <span className="text-white font-medium">{value}</span>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={e => handleTextChange(e.target.value)}
+          className="w-20 bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-right text-white font-medium text-xs focus:outline-none focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
       </div>
       <input
         type="range"
