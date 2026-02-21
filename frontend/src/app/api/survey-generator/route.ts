@@ -18,11 +18,23 @@ interface SurveyQuestion {
   required: boolean;
 }
 
+interface DistributionChannel {
+  channel: string;
+  platform: 'reddit' | 'linkedin' | 'producthunt' | 'hacker_news' | 'youtube' | 'indiehackers' | 'facebook' | 'twitter' | 'email' | 'google';
+  reason: string;
+  evidence: string;
+  action: string;
+  estimated_responses: string;
+  estimated_cost: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
 interface SurveyData {
   title: string;
   description: string;
   target_segment: string;
   questions: SurveyQuestion[];
+  distribution_channels: DistributionChannel[];
   export_formats: {
     plain_text: string;
     google_forms_url: string;
@@ -48,6 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     const problem = evidenceData?.problem || null;
+    const demand = evidenceData?.demand || null;
     const sellability = evidenceData?.sellability || null;
     const occupation = evidenceData?.occupation || null;
     const economics = evidenceData?.economics || null;
@@ -393,6 +406,11 @@ export async function POST(request: NextRequest) {
       required: false,
     });
 
+    // === DISTRIBUTION CHANNELS ===
+    const channels = buildDistributionChannels(
+      query, segmentType, complaints, demand, sellability, competitorNames
+    );
+
     // === BUILD EXPORT ===
     const plainText = buildPlainText(query, segmentType, questions);
     const googleFormsUrl = buildGoogleFormsUrl(query, questions);
@@ -402,6 +420,7 @@ export async function POST(request: NextRequest) {
       description: `Опрос для валидации ниши "${query}". Сгенерирован на основе ${topComplaints.length} реальных жалоб, ${competitorNames.length} конкурентов и ${competitorPrices.length} ценовых точек.`,
       target_segment: segmentType,
       questions,
+      distribution_channels: channels,
       export_formats: {
         plain_text: plainText,
         google_forms_url: googleFormsUrl,
@@ -422,6 +441,188 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function buildDistributionChannels(
+  query: string,
+  segment: string,
+  complaints: Array<{ text: string; source: string; engagement: number; source_url?: string }>,
+  demand: any,
+  sellability: any,
+  competitorNames: string[]
+): DistributionChannel[] {
+  const channels: DistributionChannel[] = [];
+  const isB2B = ['B2B', 'SMB', 'Enterprise'].includes(segment);
+
+  // Count complaints by source
+  const sourceCounts: Record<string, number> = {};
+  const sourceEngagement: Record<string, number> = {};
+  for (const c of complaints) {
+    const src = c.source?.toLowerCase() || 'unknown';
+    sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+    sourceEngagement[src] = (sourceEngagement[src] || 0) + (c.engagement || 0);
+  }
+
+  // 1. Reddit — if complaints from reddit exist
+  const redditCount = sourceCounts['reddit'] || 0;
+  if (redditCount > 0) {
+    // Try to extract subreddit from URLs
+    const subreddits = new Set<string>();
+    for (const c of complaints) {
+      if (c.source === 'reddit' && c.source_url) {
+        const match = c.source_url.match(/reddit\.com\/r\/([^/]+)/);
+        if (match) subreddits.add(match[1]);
+      }
+    }
+    const subList = Array.from(subreddits).slice(0, 3);
+
+    channels.push({
+      channel: subList.length > 0
+        ? `Reddit: ${subList.map(s => `r/${s}`).join(', ')}`
+        : 'Reddit (тематические сабреддиты)',
+      platform: 'reddit',
+      reason: `Найдено ${redditCount} жалоб (${sourceEngagement['reddit'] || 0} реакций) — аудитория активна`,
+      evidence: `${redditCount} постов из Evidence (real-problem)`,
+      action: `Пост: "Исследование: что вас бесит в ${query.length > 30 ? query.substring(0, 30) + '...' : query}?"`,
+      estimated_responses: '30-80 ответов',
+      estimated_cost: '$0 (органический)',
+      priority: redditCount >= 5 ? 'high' : 'medium',
+    });
+  }
+
+  // 2. Hacker News — if HN complaints or Show HN posts
+  const hnCount = sourceCounts['hacker_news'] || 0;
+  const showHnPosts = demand?.new_players?.show_hn_posts || [];
+  if (hnCount > 0 || showHnPosts.length > 0) {
+    channels.push({
+      channel: 'Hacker News',
+      platform: 'hacker_news',
+      reason: hnCount > 0
+        ? `Найдено ${hnCount} обсуждений на HN + ${showHnPosts.length} Show HN проектов`
+        : `${showHnPosts.length} Show HN проектов — аудитория знакома с темой`,
+      evidence: `${hnCount} постов + ${showHnPosts.length} Show HN`,
+      action: 'Ask HN: Исследование — какой инструмент вам не хватает?',
+      estimated_responses: '20-50 ответов',
+      estimated_cost: '$0 (органический)',
+      priority: hnCount >= 3 ? 'high' : 'medium',
+    });
+  }
+
+  // 3. LinkedIn — if B2B/SMB/Enterprise
+  if (isB2B) {
+    const enterpriseSignals = sellability?.market_segment?.signals?.enterprise || 0;
+    const b2bSignals = sellability?.market_segment?.signals?.b2b || 0;
+
+    channels.push({
+      channel: 'LinkedIn (таргетированная реклама)',
+      platform: 'linkedin',
+      reason: `Сегмент ${segment} — LinkedIn оптимален для B2B опросов`,
+      evidence: `Segment signals: enterprise=${enterpriseSignals}, b2b=${b2bSignals}`,
+      action: competitorNames.length > 0
+        ? `Таргетинг: пользователи ${competitorNames.slice(0, 2).join(', ')} + релевантные должности`
+        : 'Таргетинг: профили с релевантными должностями',
+      estimated_responses: '50-200 ответов',
+      estimated_cost: '$50-150',
+      priority: 'high',
+    });
+  }
+
+  // 4. Product Hunt — if PH launches exist
+  const phLaunches = demand?.new_players?.producthunt_launches || [];
+  if (phLaunches.length > 0) {
+    channels.push({
+      channel: 'Product Hunt (комментарии)',
+      platform: 'producthunt',
+      reason: `${phLaunches.length} запусков в нише — аудитория ищет альтернативы`,
+      evidence: `${phLaunches.length} Product Hunt запусков`,
+      action: `Оставить комментарий с опросом под релевантными запусками`,
+      estimated_responses: '10-30 ответов',
+      estimated_cost: '$0 (органический)',
+      priority: 'medium',
+    });
+  }
+
+  // 5. YouTube — if youtube content exists
+  const ytContent = demand?.youtube_content || [];
+  if (ytContent.length > 0) {
+    channels.push({
+      channel: 'YouTube (комментарии к видео)',
+      platform: 'youtube',
+      reason: `${ytContent.length} видео по теме — зрители как потенциальные респонденты`,
+      evidence: `${ytContent.length} видео из Evidence (demand)`,
+      action: 'Оставить ссылку на опрос в комментариях к топ-видео',
+      estimated_responses: '10-40 ответов',
+      estimated_cost: '$0 (органический)',
+      priority: 'low',
+    });
+  }
+
+  // 6. Indie Hackers — if IH posts exist
+  const ihPosts = demand?.new_players?.indiehackers_posts || [];
+  if (ihPosts.length > 0) {
+    channels.push({
+      channel: 'Indie Hackers',
+      platform: 'indiehackers',
+      reason: `${ihPosts.length} постов — сообщество фаундеров знакомо с нишей`,
+      evidence: `${ihPosts.length} постов из Evidence`,
+      action: 'Пост в разделе "Validate" с просьбой пройти опрос',
+      estimated_responses: '15-40 ответов',
+      estimated_cost: '$0 (органический)',
+      priority: 'medium',
+    });
+  }
+
+  // 7. Facebook Groups — for B2C
+  if (!isB2B) {
+    channels.push({
+      channel: 'Facebook Groups',
+      platform: 'facebook',
+      reason: `Сегмент ${segment} — Facebook группы эффективны для B2C опросов`,
+      evidence: `Segment: ${segment}`,
+      action: `Поиск групп: "${query}" + публикация опроса`,
+      estimated_responses: '20-60 ответов',
+      estimated_cost: '$0-30',
+      priority: 'medium',
+    });
+  }
+
+  // 8. Twitter/X — if twitter complaints
+  const twitterCount = sourceCounts['twitter'] || 0;
+  if (twitterCount > 0) {
+    channels.push({
+      channel: 'Twitter/X',
+      platform: 'twitter',
+      reason: `${twitterCount} жалоб найдено в Twitter`,
+      evidence: `${twitterCount} постов из Evidence`,
+      action: `Тред: "Мы исследуем ${query} — помогите пройти опрос (2 мин)"`,
+      estimated_responses: '10-30 ответов',
+      estimated_cost: '$0 (органический)',
+      priority: 'low',
+    });
+  }
+
+  // 9. Google Ads — if CPC data available
+  const cpcData = (demand?.economics?.cac?.keyword_cpc || []) as Array<{ keyword: string; cpc: number }>;
+  if (cpcData.length > 0 || (complaints.length > 0 && competitorNames.length > 0)) {
+    channels.push({
+      channel: 'Google Ads (микро-бюджет)',
+      platform: 'google',
+      reason: 'Точный таргетинг по ключевым запросам из Evidence',
+      evidence: cpcData.length > 0
+        ? `${cpcData.length} ключевых слов с CPC данными`
+        : 'На основе найденных ключевых слов',
+      action: `Landing page с опросом → реклама по "${query}" запросам`,
+      estimated_responses: '50-150 ответов',
+      estimated_cost: '$30-100',
+      priority: complaints.length >= 5 ? 'medium' : 'low',
+    });
+  }
+
+  // Sort by priority
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  channels.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  return channels;
 }
 
 function buildPlainText(query: string, segment: string, questions: SurveyQuestion[]): string {

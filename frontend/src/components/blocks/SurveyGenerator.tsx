@@ -18,6 +18,7 @@ interface SurveyData {
   description: string;
   target_segment: string;
   questions: SurveyQuestion[];
+  distribution_channels: DistributionChannel[];
   export_formats: {
     plain_text: string;
     google_forms_url: string;
@@ -28,6 +29,17 @@ interface SurveyData {
     prices_used: number;
   };
   generated_at: string;
+}
+
+interface DistributionChannel {
+  channel: string;
+  platform: string;
+  reason: string;
+  evidence: string;
+  action: string;
+  estimated_responses: string;
+  estimated_cost: string;
+  priority: 'high' | 'medium' | 'low';
 }
 
 interface Props {
@@ -62,6 +74,7 @@ export default function SurveyGenerator({ trendTitle, evidenceData }: Props) {
           query: trendTitle,
           evidenceData: {
             problem: evidenceData.problem || null,
+            demand: evidenceData.demand || null,
             sellability: evidenceData.sellability || null,
             occupation: evidenceData.occupation || null,
             economics: evidenceData.economics || null,
@@ -217,6 +230,24 @@ export default function SurveyGenerator({ trendTitle, evidenceData }: Props) {
             })}
           </div>
 
+          {/* Distribution Channels */}
+          {survey.distribution_channels.length > 0 && (
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📡</span>
+                  <h3 className="font-semibold text-white">Каналы распространения</h3>
+                  <span className="text-xs text-zinc-500 ml-2">Подобраны автоматически из Evidence</span>
+                </div>
+              </div>
+              <div className="divide-y divide-zinc-800/50">
+                {survey.distribution_channels.map((ch, i) => (
+                  <ChannelCard key={i} channel={ch} index={i + 1} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Plain text preview */}
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
             <PlainTextPreview text={survey.export_formats.plain_text} onCopy={copyToClipboard} copied={copied} />
@@ -228,6 +259,46 @@ export default function SurveyGenerator({ trendTitle, evidenceData }: Props) {
 }
 
 /* ─── Sub-components ─── */
+
+function ChannelCard({ channel: ch, index }: { channel: DistributionChannel; index: number }) {
+  const priorityConfig = {
+    high: { label: 'Высокий', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
+    medium: { label: 'Средний', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+    low: { label: 'Низкий', color: 'text-zinc-400', bg: 'bg-zinc-700/30 border-zinc-600/20' },
+  };
+  const prio = priorityConfig[ch.priority];
+
+  const platformIcons: Record<string, string> = {
+    reddit: '🟠', linkedin: '🔵', producthunt: '🟧', hacker_news: '🟧',
+    youtube: '🔴', indiehackers: '🟣', facebook: '🔵', twitter: '🐦',
+    email: '📧', google: '🔍',
+  };
+
+  return (
+    <div className="p-4 hover:bg-zinc-800/20 transition-colors">
+      <div className="flex items-start gap-3">
+        <span className="text-lg">{platformIcons[ch.platform] || '📌'}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-white">{index}. {ch.channel}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${prio.bg} ${prio.color}`}>
+              {prio.label}
+            </span>
+          </div>
+          <p className="text-xs text-zinc-400 mt-1">{ch.reason}</p>
+          <div className="mt-2 bg-zinc-800/50 rounded-lg p-2.5 text-xs">
+            <p className="text-indigo-300 font-medium">{ch.action}</p>
+          </div>
+          <div className="flex items-center gap-4 mt-2 text-[10px] text-zinc-500">
+            <span>Ожидаемо: <span className="text-zinc-300">{ch.estimated_responses}</span></span>
+            <span>Бюджет: <span className="text-zinc-300">{ch.estimated_cost}</span></span>
+            <span>Источник: {ch.evidence}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
