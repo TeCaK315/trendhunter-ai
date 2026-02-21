@@ -14,10 +14,6 @@ interface Trend {
   title: string;
   category: string;
   popularity_score: number;
-  opportunity_score: number;
-  pain_score: number;
-  feasibility_score: number;
-  profit_potential: number;
   growth_rate: number;
   why_trending: string;
   status: string;
@@ -25,21 +21,13 @@ interface Trend {
   source?: string;
 }
 
-type SortField = 'overall_score' | 'opportunity_score' | 'pain_score' | 'feasibility_score' | 'profit_potential' | 'first_detected_at';
+type SortField = 'growth_rate' | 'first_detected_at';
 type SortDirection = 'asc' | 'desc';
 
 const sortOptionsConfig: { id: SortField; labelKey: keyof typeof import('@/lib/i18n/translations').translations.ru.sort; icon: string }[] = [
-  { id: 'overall_score', labelKey: 'overallScore', icon: '📊' },
+  { id: 'growth_rate', labelKey: 'growth', icon: '📈' },
   { id: 'first_detected_at', labelKey: 'byDate', icon: '🕐' },
-  { id: 'opportunity_score', labelKey: 'opportunity', icon: '🎯' },
-  { id: 'pain_score', labelKey: 'pain', icon: '🔥' },
-  { id: 'feasibility_score', labelKey: 'feasibility', icon: '⚡' },
-  { id: 'profit_potential', labelKey: 'profit', icon: '💰' },
 ];
-
-function getOverallScore(trend: Trend): number {
-  return Number(((trend.opportunity_score + trend.pain_score + trend.feasibility_score + trend.profit_potential) / 4).toFixed(1));
-}
 
 const categoriesConfig: { id: string; labelKey: keyof typeof import('@/lib/i18n/translations').translations.ru.categories; icon: string }[] = [
   { id: 'all', labelKey: 'all', icon: '🌐' },
@@ -64,7 +52,7 @@ export default function Home() {
   const [generating, setGenerating] = useState(false);
   const [generatingElapsed, setGeneratingElapsed] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('overall_score');
+  const [sortField, setSortField] = useState<SortField>('growth_rate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -214,10 +202,7 @@ export default function Home() {
     let aValue: number;
     let bValue: number;
 
-    if (sortField === 'overall_score') {
-      aValue = getOverallScore(a);
-      bValue = getOverallScore(b);
-    } else if (sortField === 'first_detected_at') {
+    if (sortField === 'first_detected_at') {
       // Сортировка по дате
       aValue = new Date(a.first_detected_at).getTime();
       bValue = new Date(b.first_detected_at).getTime();
@@ -240,7 +225,7 @@ export default function Home() {
 
   // Stats for hero
   const totalIdeas = trends.length;
-  const avgScore = trends.length > 0 ? (trends.reduce((sum, t) => sum + getOverallScore(t), 0) / trends.length).toFixed(1) : '0';
+  const avgGrowth = trends.length > 0 ? (trends.reduce((sum, t) => sum + (t.growth_rate || 0), 0) / trends.length).toFixed(0) : '0';
   // Stats calculation (mostPopularCategory available for future use)
 
   return (
@@ -435,8 +420,8 @@ export default function Home() {
               </div>
               <div className="w-px h-10 bg-zinc-700"></div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold gradient-text">{avgScore}</div>
-                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.avgRating}</div>
+                <div className="text-xl sm:text-2xl font-bold gradient-text">+{avgGrowth}%</div>
+                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.avgGrowth}</div>
               </div>
               <div className="w-px h-10 bg-zinc-700"></div>
               <div>

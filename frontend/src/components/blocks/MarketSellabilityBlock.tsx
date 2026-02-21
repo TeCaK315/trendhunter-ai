@@ -132,8 +132,8 @@ export default function MarketSellabilityBlock({ data, loading, error }: Props) 
         <button onClick={() => toggle('who_pays')} className="w-full flex items-center justify-between p-3 text-left">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-white">Кто платит</span>
-            <EvidenceBadge type="real_data" />
-            <span className="text-xs text-zinc-400">{data.who_pays.total_data_points} обсуждений</span>
+            <EvidenceBadge type={data.who_pays.total_data_points > 0 ? 'real_data' : 'no_data'} />
+            <span className="text-xs text-zinc-400">{data.who_pays.total_data_points > 0 ? `${data.who_pays.total_data_points} обсуждений` : 'Нет данных'}</span>
           </div>
           <span className="text-zinc-500">{expandedSection === 'who_pays' ? '−' : '+'}</span>
         </button>

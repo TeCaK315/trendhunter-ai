@@ -24,6 +24,9 @@ import type {
   GoogleTrendsResult,
   GoogleTrendsTimeline,
   YouTubeResult,
+  GitHubRepoResult,
+  GoogleAutocompleteResult,
+  IndieHackersResult,
   FundingNewsResult,
   CompanySearchResult,
   SearchResult,
@@ -34,6 +37,8 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || '';
 
 // === INTERNAL HELPERS ===
 
+const SERPAPI_TIMEOUT_MS = 10_000; // 10 seconds per request
+
 async function serpApiSearch(
   query: string,
   options: {
@@ -41,13 +46,14 @@ async function serpApiSearch(
     tbs?: string;
     engine?: string;
     extraParams?: Record<string, string>;
+    timeoutMs?: number;
   } = {}
 ): Promise<{ organic_results?: Array<Record<string, unknown>>; error?: string; [key: string]: unknown }> {
   if (!SERPAPI_KEY) {
     return { error: 'SERPAPI_KEY not configured' };
   }
 
-  const { num = 10, tbs, engine = 'google', extraParams = {} } = options;
+  const { num = 10, tbs, engine = 'google', extraParams = {}, timeoutMs = SERPAPI_TIMEOUT_MS } = options;
 
   const params = new URLSearchParams({
     engine,
@@ -60,7 +66,14 @@ async function serpApiSearch(
   if (tbs) params.set('tbs', tbs);
 
   try {
-    const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
     if (!response.ok) {
       return { error: `SerpAPI error: ${response.status}` };
     }
@@ -70,6 +83,9 @@ async function serpApiSearch(
     }
     return data;
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return { error: `SerpAPI timeout (${timeoutMs}ms) for: ${query.substring(0, 50)}` };
+    }
     return { error: `Network error: ${error instanceof Error ? error.message : 'Unknown'}` };
   }
 }
@@ -79,10 +95,93 @@ function extractFromSnippet(snippet: string, pattern: RegExp): string | null {
   return match ? match[1] || match[0] : null;
 }
 
+// === DATE & RELEVANCE FILTERS ===
+
+/**
+ * Parse date from SerpAPI result date field.
+ * Common formats: "3 days ago", "2 weeks ago", "Jan 15, 2024", "Mar 10, 2023", "2024-01-15"
+ */
+function parseResultDate(dateStr?: string): Date | null {
+  if (!dateStr) return null;
+
+  // "X days/weeks/months/years ago"
+  const agoMatch = dateStr.match(/(\d+)\s+(day|week|month|year)s?\s+ago/i);
+  if (agoMatch) {
+    const num = parseInt(agoMatch[1]);
+    const unit = agoMatch[2].toLowerCase();
+    const now = new Date();
+    if (unit === 'day') now.setDate(now.getDate() - num);
+    else if (unit === 'week') now.setDate(now.getDate() - num * 7);
+    else if (unit === 'month') now.setMonth(now.getMonth() - num);
+    else if (unit === 'year') now.setFullYear(now.getFullYear() - num);
+    return now;
+  }
+
+  // "Jan 15, 2024" or "January 15, 2024"
+  const dateFormatMatch = dateStr.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+  if (dateFormatMatch) {
+    const parsed = new Date(`${dateFormatMatch[1]} ${dateFormatMatch[2]}, ${dateFormatMatch[3]}`);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  // ISO date "2024-01-15"
+  const isoMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const parsed = new Date(isoMatch[0]);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  return null;
+}
+
+/**
+ * Check if a result is fresh enough (within maxDaysAgo).
+ * Returns true if date can't be parsed (keep result by default).
+ */
+function isResultFresh(dateStr?: string, maxDaysAgo: number = 365): boolean {
+  const parsed = parseResultDate(dateStr);
+  if (!parsed) return true; // Can't determine — keep it
+  const daysAgo = (Date.now() - parsed.getTime()) / (1000 * 60 * 60 * 24);
+  return daysAgo <= maxDaysAgo;
+}
+
+/**
+ * Check if a search result is relevant to the query.
+ * Lenient: only filters completely off-topic results.
+ * For site:-scoped searches, most results are already relevant.
+ */
+function isResultRelevant(title: string, snippet: string, query: string): boolean {
+  // Minimal stop words — only grammar words, NOT domain terms
+  const stopWords = new Set([
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'can', 'shall', 'to', 'of', 'in', 'for',
+    'on', 'with', 'at', 'by', 'from', 'or', 'and', 'not', 'no', 'but',
+    'if', 'so', 'as', 'it', 'its', 'this', 'that', 'how', 'what', 'which',
+    'who', 'why', 'when', 'where', 'all', 'each', 'every', 'both', 'few',
+    'more', 'most', 'other', 'some', 'such', 'than', 'too', 'very',
+    'site', 'com', 'www',
+  ]);
+
+  const queryWords = query.toLowerCase()
+    .replace(/site:\S+/g, '')
+    .replace(/["""()|]/g, '')
+    .replace(/\b(OR|AND)\b/gi, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopWords.has(w));
+
+  if (queryWords.length === 0) return true;
+
+  const text = `${title} ${snippet}`.toLowerCase();
+
+  // Accept if any query word appears (partial match counts)
+  return queryWords.some(w => text.includes(w));
+}
+
 // === REDDIT ===
 
 export async function fetchReddit(query: string): Promise<FetcherResponse<RedditResult>> {
-  const data = await serpApiSearch(`site:reddit.com ${query}`, { num: 20, tbs: 'qdr:y1' }); // Last 12 months
+  const data = await serpApiSearch(`site:reddit.com ${query}`, { num: 20, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'reddit', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -95,6 +194,11 @@ export async function fetchReddit(query: string): Promise<FetcherResponse<Reddit
     const url = result.link || '';
     const subredditMatch = url.match(/reddit\.com\/r\/([^/]+)/);
     if (!subredditMatch) continue;
+
+    // Filter: date freshness (max 365 days)
+    if (!isResultFresh(result.date, 365)) continue;
+    // Filter: relevance
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
 
     const snippet = result.snippet || '';
     const scoreMatch = snippet.match(/(\d+)\s*(?:points?|upvotes?)/i);
@@ -125,7 +229,7 @@ export async function fetchReddit(query: string): Promise<FetcherResponse<Reddit
 // === HACKER NEWS ===
 
 export async function fetchHackerNews(query: string): Promise<FetcherResponse<HackerNewsResult>> {
-  const data = await serpApiSearch(`site:news.ycombinator.com ${query}`, { num: 15, tbs: 'qdr:y1' }); // Last 12 months
+  const data = await serpApiSearch(`site:news.ycombinator.com ${query}`, { num: 15, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'hacker_news', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -138,11 +242,14 @@ export async function fetchHackerNews(query: string): Promise<FetcherResponse<Ha
     const url = result.link || '';
     if (!url.includes('news.ycombinator.com')) continue;
 
+    // Filter: date freshness & relevance
+    if (!isResultFresh(result.date, 365)) continue;
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
+
     const title = result.title || '';
     const snippet = result.snippet || '';
     const date = result.date || '';
 
-    // Try to extract points from snippet, title, or date fields
     const pointsMatch =
       snippet.match(/(\d+)\s*points?/i) ||
       title.match(/(\d+)\s*points?/i) ||
@@ -183,6 +290,9 @@ export async function fetchTwitter(query: string): Promise<FetcherResponse<Twitt
     const url = result.link || '';
     if (!url.includes('twitter.com') && !url.includes('x.com')) continue;
 
+    if (!isResultFresh(result.date, 365)) continue;
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
+
     results.push({
       title: result.title || '',
       url,
@@ -204,7 +314,7 @@ export async function fetchTwitter(query: string): Promise<FetcherResponse<Twitt
 // === QUORA ===
 
 export async function fetchQuora(query: string): Promise<FetcherResponse<QuoraResult>> {
-  const data = await serpApiSearch(`site:quora.com ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
+  const data = await serpApiSearch(`site:quora.com ${query}`, { num: 10, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'quora', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -216,6 +326,9 @@ export async function fetchQuora(query: string): Promise<FetcherResponse<QuoraRe
   for (const result of organicResults) {
     const url = result.link || '';
     if (!url.includes('quora.com')) continue;
+
+    if (!isResultFresh(result.date, 365)) continue;
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
 
     results.push({
       title: result.title || '',
@@ -238,7 +351,7 @@ export async function fetchQuora(query: string): Promise<FetcherResponse<QuoraRe
 // === STACK OVERFLOW ===
 
 export async function fetchStackOverflow(query: string): Promise<FetcherResponse<StackOverflowResult>> {
-  const data = await serpApiSearch(`site:stackoverflow.com ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
+  const data = await serpApiSearch(`site:stackoverflow.com ${query}`, { num: 10, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'stackoverflow', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -250,6 +363,9 @@ export async function fetchStackOverflow(query: string): Promise<FetcherResponse
   for (const result of organicResults) {
     const url = result.link || '';
     if (!url.includes('stackoverflow.com')) continue;
+
+    if (!isResultFresh(result.date, 365)) continue;
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
 
     const snippet = result.snippet || '';
     const votesMatch = snippet.match(/(\d+)\s*votes?/i);
@@ -278,7 +394,7 @@ export async function fetchStackOverflow(query: string): Promise<FetcherResponse
 // === G2 REVIEWS ===
 
 export async function fetchG2Reviews(query: string): Promise<FetcherResponse<G2Result>> {
-  const data = await serpApiSearch(`site:g2.com ${query} review`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
+  const data = await serpApiSearch(`site:g2.com ${query} review`, { num: 10, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'g2', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -290,6 +406,8 @@ export async function fetchG2Reviews(query: string): Promise<FetcherResponse<G2R
   for (const result of organicResults) {
     const url = result.link || '';
     if (!url.includes('g2.com')) continue;
+
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
 
     const snippet = result.snippet || '';
     const ratingMatch = snippet.match(/(\d+(?:\.\d+)?)\s*(?:\/5|out of 5|stars?)/i);
@@ -316,7 +434,7 @@ export async function fetchG2Reviews(query: string): Promise<FetcherResponse<G2R
 // === CAPTERRA REVIEWS ===
 
 export async function fetchCapterraReviews(query: string): Promise<FetcherResponse<CapterraResult>> {
-  const data = await serpApiSearch(`site:capterra.com ${query}`, { num: 10, tbs: 'qdr:y1' }); // Last 12 months
+  const data = await serpApiSearch(`site:capterra.com ${query}`, { num: 10, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'capterra', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -328,6 +446,8 @@ export async function fetchCapterraReviews(query: string): Promise<FetcherRespon
   for (const result of organicResults) {
     const url = result.link || '';
     if (!url.includes('capterra.com')) continue;
+
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
 
     const snippet = result.snippet || '';
     const ratingMatch = snippet.match(/(\d+(?:\.\d+)?)\s*(?:\/5|out of 5|stars?)/i);
@@ -354,7 +474,7 @@ export async function fetchCapterraReviews(query: string): Promise<FetcherRespon
 // === TRUSTPILOT ===
 
 export async function fetchTrustpilot(query: string): Promise<FetcherResponse<TrustpilotResult>> {
-  const data = await serpApiSearch(`site:trustpilot.com ${query}`, { num: 10 });
+  const data = await serpApiSearch(`site:trustpilot.com ${query}`, { num: 10, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'trustpilot', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -472,7 +592,8 @@ function generateQueryVariants(originalQuery: string): string[] {
   if (words.length >= 1) variants.push(`${words[0]} software`);
   variants.push(originalQuery);
 
-  return [...new Set(variants)].filter(v => v.length > 0 && v.length < 50);
+  // Limit to 3 variants max to avoid sequential SerpAPI overload
+  return [...new Set(variants)].filter(v => v.length > 0 && v.length < 50).slice(0, 3);
 }
 
 export async function fetchGoogleTrends(
@@ -583,7 +704,8 @@ export async function fetchYouTube(query: string): Promise<FetcherResponse<YouTu
   }
 
   try {
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`;
+    const publishedAfter = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&publishedAfter=${publishedAfter}&order=date&key=${YOUTUBE_API_KEY}`;
     const response = await fetch(searchUrl);
 
     if (!response.ok) {
@@ -614,6 +736,128 @@ export async function fetchYouTube(query: string): Promise<FetcherResponse<YouTu
   } catch (error) {
     return { data: [], total_results: 0, source: 'youtube', query_used: query, fetched_at: new Date().toISOString(), error: `YouTube error: ${error instanceof Error ? error.message : 'Unknown'}`, serpapi_calls_used: 0 };
   }
+}
+
+// === GITHUB (Free API — no SerpAPI) ===
+
+export async function fetchGitHub(query: string): Promise<FetcherResponse<GitHubRepoResult>> {
+  try {
+    const searchUrl = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=10`;
+    const response = await fetch(searchUrl, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'TrendHunter-AI',
+      },
+    });
+
+    if (!response.ok) {
+      return { data: [], total_results: 0, source: 'github', query_used: query, fetched_at: new Date().toISOString(), error: `GitHub API error: ${response.status}`, serpapi_calls_used: 0 };
+    }
+
+    const data = await response.json();
+    const items = data.items || [];
+
+    const repos: GitHubRepoResult[] = items
+      .filter((item: { stargazers_count: number }) => item.stargazers_count >= 5)
+      .map((item: { name: string; full_name: string; html_url: string; description: string; stargazers_count: number; forks_count: number; open_issues_count: number; language: string | null; created_at: string; updated_at: string; topics: string[] }) => ({
+        name: item.name,
+        full_name: item.full_name,
+        url: item.html_url,
+        description: item.description || '',
+        stars: item.stargazers_count,
+        forks: item.forks_count,
+        open_issues: item.open_issues_count,
+        language: item.language,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        topics: item.topics || [],
+      }));
+
+    return {
+      data: repos,
+      total_results: repos.length,
+      source: 'github',
+      query_used: query,
+      fetched_at: new Date().toISOString(),
+      serpapi_calls_used: 0,
+    };
+  } catch (error) {
+    return { data: [], total_results: 0, source: 'github', query_used: query, fetched_at: new Date().toISOString(), error: `GitHub error: ${error instanceof Error ? error.message : 'Unknown'}`, serpapi_calls_used: 0 };
+  }
+}
+
+// === GOOGLE AUTOCOMPLETE (1 SerpAPI call) ===
+
+export async function fetchGoogleAutocomplete(query: string): Promise<{
+  suggestions: GoogleAutocompleteResult[];
+  serpapi_calls_used: number;
+  error?: string;
+}> {
+  if (!SERPAPI_KEY) {
+    return { suggestions: [], serpapi_calls_used: 0, error: 'SERPAPI_KEY not configured' };
+  }
+
+  try {
+    const params = new URLSearchParams({
+      engine: 'google_autocomplete',
+      q: query,
+      api_key: SERPAPI_KEY,
+    });
+
+    const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
+    if (!response.ok) {
+      return { suggestions: [], serpapi_calls_used: 1, error: `SerpAPI error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const suggestions: GoogleAutocompleteResult[] = (data.suggestions || [])
+      .slice(0, 10)
+      .map((s: { value: string; type?: string }) => ({
+        suggestion: s.value,
+        type: s.type || 'suggestion',
+      }));
+
+    return { suggestions, serpapi_calls_used: 1 };
+  } catch (error) {
+    return { suggestions: [], serpapi_calls_used: 1, error: `Autocomplete error: ${error instanceof Error ? error.message : 'Unknown'}` };
+  }
+}
+
+// === INDIE HACKERS (1 SerpAPI call) ===
+
+export async function fetchIndieHackers(query: string): Promise<FetcherResponse<IndieHackersResult>> {
+  const data = await serpApiSearch(`site:indiehackers.com ${query}`, { num: 10, tbs: 'qdr:y' });
+
+  if (data.error) {
+    return { data: [], total_results: 0, source: 'indiehackers', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
+  }
+
+  const results: IndieHackersResult[] = [];
+  const organicResults = (data.organic_results || []) as Array<Record<string, string>>;
+
+  for (const result of organicResults) {
+    const url = result.link || '';
+    if (!url.includes('indiehackers.com')) continue;
+
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
+
+    results.push({
+      title: result.title || '',
+      url,
+      snippet: result.snippet || '',
+      source: 'indiehackers',
+      date: result.date,
+    });
+  }
+
+  return {
+    data: results,
+    total_results: results.length,
+    source: 'indiehackers',
+    query_used: query,
+    fetched_at: new Date().toISOString(),
+    serpapi_calls_used: 1,
+  };
 }
 
 // === GOOGLE NEWS (Funding/Investment news) ===
@@ -681,7 +925,7 @@ export async function fetchGoogleNews(query: string, months: number = 6): Promis
 // === GOOGLE SEARCH (General + Companies) ===
 
 export async function fetchGoogleSearch(query: string, num: number = 10): Promise<FetcherResponse<SearchResult>> {
-  const data = await serpApiSearch(query, { num });
+  const data = await serpApiSearch(query, { num, tbs: 'qdr:y' });
 
   if (data.error) {
     return { data: [], total_results: 0, source: 'google_search', query_used: query, fetched_at: new Date().toISOString(), error: data.error, serpapi_calls_used: 1 };
@@ -691,6 +935,9 @@ export async function fetchGoogleSearch(query: string, num: number = 10): Promis
   const organicResults = (data.organic_results || []) as Array<Record<string, string>>;
 
   for (const result of organicResults) {
+    if (!isResultFresh(result.date, 365)) continue;
+    if (!isResultRelevant(result.title || '', result.snippet || '', query)) continue;
+
     results.push({
       title: result.title || '',
       url: result.link || '',
@@ -1049,21 +1296,22 @@ export async function fetchComplaints(
   total_engagement: number;
   sources_used: number;
   serpapi_calls_used: number;
+  errors: string[];
 }> {
   const complaints: Array<SearchResult & { source: SourceName; engagement: number }> = [];
   let totalEngagement = 0;
   let callsUsed = 0;
+  const errors: string[] = [];
 
-  const painKeywords = 'problem|frustrated|hate|annoying|issue|broken|terrible|worst|struggling';
-  const modifiedQuery = `${query} (${painKeywords})`;
-
+  // Search broadly — site: operators in each fetcher already constrain results.
+  // Do NOT inject pain keywords into query — Google treats | as literal text.
   const fetchers: Array<{ source: SourceName; fn: () => Promise<FetcherResponse<SearchResult & { engagement?: number }>> }> = [];
 
   if (sources.includes('reddit')) {
     fetchers.push({
       source: 'reddit',
       fn: async () => {
-        const result = await fetchReddit(`${modifiedQuery}`);
+        const result = await fetchReddit(query);
         return {
           ...result,
           data: result.data.map(r => ({ ...r, engagement: (r as RedditResult).score + (r as RedditResult).num_comments * 2 })),
@@ -1076,7 +1324,7 @@ export async function fetchComplaints(
     fetchers.push({
       source: 'hacker_news',
       fn: async () => {
-        const result = await fetchHackerNews(modifiedQuery);
+        const result = await fetchHackerNews(query);
         return {
           ...result,
           data: result.data.map(r => ({ ...r, engagement: (r as HackerNewsResult).points })),
@@ -1089,7 +1337,7 @@ export async function fetchComplaints(
     fetchers.push({
       source: 'quora',
       fn: async () => {
-        const result = await fetchQuora(modifiedQuery);
+        const result = await fetchQuora(query);
         return {
           ...result,
           data: result.data.map(r => ({ ...r, engagement: 1 })),
@@ -1102,10 +1350,23 @@ export async function fetchComplaints(
     fetchers.push({
       source: 'stackoverflow',
       fn: async () => {
-        const result = await fetchStackOverflow(modifiedQuery);
+        const result = await fetchStackOverflow(query);
         return {
           ...result,
           data: result.data.map(r => ({ ...r, engagement: (r as StackOverflowResult).votes })),
+        };
+      },
+    });
+  }
+
+  if (sources.includes('twitter')) {
+    fetchers.push({
+      source: 'twitter',
+      fn: async () => {
+        const result = await fetchTwitter(query);
+        return {
+          ...result,
+          data: result.data.map(r => ({ ...r, engagement: 1 })),
         };
       },
     });
@@ -1116,6 +1377,9 @@ export async function fetchComplaints(
 
   for (const result of results) {
     callsUsed += result.serpapi_calls_used;
+    if (result.error) {
+      errors.push(`${result.source}: ${result.error}`);
+    }
     for (const item of result.data) {
       const engagement = (item as { engagement?: number }).engagement || 0;
       complaints.push({
@@ -1135,6 +1399,7 @@ export async function fetchComplaints(
     total_engagement: totalEngagement,
     sources_used: fetchers.length,
     serpapi_calls_used: callsUsed,
+    errors,
   };
 }
 
@@ -1176,21 +1441,26 @@ export interface BatchFetchResult {
   stackoverflow: FetcherResponse<StackOverflowResult>;
   g2: FetcherResponse<G2Result>;
   capterra: FetcherResponse<CapterraResult>;
+  trustpilot: FetcherResponse<TrustpilotResult>;
   producthunt: FetcherResponse<ProductHuntResult>;
   youtube: FetcherResponse<YouTubeResult>;
+  github: FetcherResponse<GitHubRepoResult>;
+  indiehackers: FetcherResponse<IndieHackersResult>;
   google_trends: { data: GoogleTrendsResult | null; serpapi_calls_used: number; error?: string };
+  google_autocomplete: { suggestions: GoogleAutocompleteResult[]; serpapi_calls_used: number; error?: string };
   total_serpapi_calls: number;
 }
 
 export async function fetchAllSources(query: string, enabledSources?: SourceName[]): Promise<BatchFetchResult> {
   const all: SourceName[] = enabledSources || [
     'reddit', 'hacker_news', 'twitter', 'quora', 'stackoverflow',
-    'g2', 'capterra', 'producthunt', 'youtube', 'google_trends',
+    'g2', 'capterra', 'trustpilot', 'producthunt', 'youtube',
+    'github', 'indiehackers', 'google_trends', 'google_autocomplete',
   ];
 
   const shouldFetch = (source: SourceName) => all.includes(source);
 
-  const [reddit, hacker_news, twitter, quora, stackoverflow, g2, capterra, producthunt, youtube, google_trends] =
+  const [reddit, hacker_news, twitter, quora, stackoverflow, g2, capterra, trustpilot, producthunt, youtube, github, indiehackers, google_trends, google_autocomplete] =
     await Promise.all([
       shouldFetch('reddit') ? fetchReddit(query) : emptyResponse<RedditResult>('reddit', query),
       shouldFetch('hacker_news') ? fetchHackerNews(query) : emptyResponse<HackerNewsResult>('hacker_news', query),
@@ -1199,13 +1469,17 @@ export async function fetchAllSources(query: string, enabledSources?: SourceName
       shouldFetch('stackoverflow') ? fetchStackOverflow(query) : emptyResponse<StackOverflowResult>('stackoverflow', query),
       shouldFetch('g2') ? fetchG2Reviews(query) : emptyResponse<G2Result>('g2', query),
       shouldFetch('capterra') ? fetchCapterraReviews(query) : emptyResponse<CapterraResult>('capterra', query),
+      shouldFetch('trustpilot') ? fetchTrustpilot(query) : emptyResponse<TrustpilotResult>('trustpilot', query),
       shouldFetch('producthunt') ? fetchProductHunt(query) : emptyResponse<ProductHuntResult>('producthunt', query),
       shouldFetch('youtube') ? fetchYouTube(query) : emptyResponse<YouTubeResult>('youtube', query),
+      shouldFetch('github') ? fetchGitHub(query) : emptyResponse<GitHubRepoResult>('github', query),
+      shouldFetch('indiehackers') ? fetchIndieHackers(query) : emptyResponse<IndieHackersResult>('indiehackers', query),
       shouldFetch('google_trends') ? fetchGoogleTrends(query) : { data: null, serpapi_calls_used: 0 },
+      shouldFetch('google_autocomplete') ? fetchGoogleAutocomplete(query) : { suggestions: [], serpapi_calls_used: 0 },
     ]);
 
-  const totalCalls = [reddit, hacker_news, twitter, quora, stackoverflow, g2, capterra, producthunt, youtube]
-    .reduce((sum, r) => sum + r.serpapi_calls_used, 0) + google_trends.serpapi_calls_used;
+  const totalCalls = [reddit, hacker_news, twitter, quora, stackoverflow, g2, capterra, trustpilot, producthunt, youtube, github, indiehackers]
+    .reduce((sum, r) => sum + r.serpapi_calls_used, 0) + google_trends.serpapi_calls_used + google_autocomplete.serpapi_calls_used;
 
   return {
     reddit,
@@ -1215,9 +1489,13 @@ export async function fetchAllSources(query: string, enabledSources?: SourceName
     stackoverflow,
     g2,
     capterra,
+    trustpilot,
     producthunt,
     youtube,
+    github,
+    indiehackers,
     google_trends,
+    google_autocomplete,
     total_serpapi_calls: totalCalls,
   };
 }

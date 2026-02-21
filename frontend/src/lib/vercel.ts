@@ -92,6 +92,32 @@ export async function createVercelProject(
 
     if (!response.ok) {
       const error = await response.json();
+      const errorCode = error.error?.code;
+      const cleanName = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
+      // Проект уже существует — получаем его ID и переиспользуем
+      if (errorCode === 'conflict') {
+        console.log(`[vercel] Project "${cleanName}" already exists, fetching existing...`);
+        try {
+          const getResponse = await fetch(`${VERCEL_API_URL}/v9/projects/${cleanName}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (getResponse.ok) {
+            const existingProject = await getResponse.json();
+            return {
+              success: true,
+              projectId: existingProject.id,
+              projectName: existingProject.name,
+            };
+          }
+        } catch {
+          // Fallback to error
+        }
+      }
+
       console.error('Vercel project creation error:', error);
       return { success: false, error: error.error?.message || 'Failed to create project' };
     }
@@ -112,10 +138,14 @@ export async function createVercelProject(
 export async function deployFromGitHub(
   token: string,
   projectName: string,
-  gitRepoUrl: string // формат: "owner/repo"
+  gitRepoUrl: string, // формат: "owner/repo"
+  branch: string = 'main'
 ): Promise<DeployResult> {
   try {
-    // Сначала создаём проект с привязкой к GitHub
+    const cleanProjectName = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const [owner, repo] = gitRepoUrl.split('/');
+
+    // Шаг 1: Создаём проект с привязкой к GitHub
     const projectResult = await createVercelProject(token, projectName, {
       repo: gitRepoUrl,
       type: 'github',
@@ -125,8 +155,10 @@ export async function deployFromGitHub(
       return { success: false, error: projectResult.error };
     }
 
-    // После привязки GitHub, Vercel автоматически запускает деплой
-    // Получаем информацию о деплое
+    // Шаг 2: Даём Vercel время на настройку Git-интеграции
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Шаг 3: Проверяем, запустился ли автоматический деплой
     const deploymentsResponse = await fetch(
       `${VERCEL_API_URL}/v6/deployments?projectId=${projectResult.projectId}&limit=1`,
       {
@@ -137,29 +169,93 @@ export async function deployFromGitHub(
       }
     );
 
-    if (!deploymentsResponse.ok) {
-      return {
-        success: true,
-        projectUrl: `https://${projectResult.projectName}.vercel.app`,
-        error: 'Project created, but could not fetch deployment status',
-      };
+    if (deploymentsResponse.ok) {
+      const deploymentsData = await deploymentsResponse.json();
+      const existingDeployment = deploymentsData.deployments?.[0];
+
+      if (existingDeployment) {
+        console.log(`[vercel] Auto-deployment detected: ${existingDeployment.uid}`);
+        return {
+          success: true,
+          deploymentId: existingDeployment.uid,
+          deploymentUrl: `https://${existingDeployment.url}`,
+          projectUrl: `https://${cleanProjectName}.vercel.app`,
+        };
+      }
     }
 
-    const deploymentsData = await deploymentsResponse.json();
-    const deployment = deploymentsData.deployments?.[0];
+    // Шаг 4: Автоматический деплой не запустился — тригерим явно через API
+    console.log(`[vercel] No auto-deployment detected, triggering explicit deploy for ${owner}/${repo}`);
 
-    if (deployment) {
+    const deployResponse = await fetch(`${VERCEL_API_URL}/v13/deployments`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: cleanProjectName,
+        gitSource: {
+          type: 'github',
+          org: owner,
+          repo: repo,
+          ref: branch,
+        },
+        projectSettings: {
+          framework: 'nextjs',
+          installCommand: 'npm install',
+          buildCommand: 'npm run build',
+          outputDirectory: '.next',
+        },
+      }),
+    });
+
+    if (deployResponse.ok) {
+      const deployment = await deployResponse.json();
+      console.log(`[vercel] Explicit deployment triggered: ${deployment.id || deployment.uid}`);
       return {
         success: true,
-        deploymentId: deployment.uid,
+        deploymentId: deployment.id || deployment.uid,
         deploymentUrl: `https://${deployment.url}`,
-        projectUrl: `https://${projectResult.projectName}.vercel.app`,
+        projectUrl: `https://${cleanProjectName}.vercel.app`,
       };
     }
 
+    // gitSource не сработал — логируем ошибку
+    const deployError = await deployResponse.json().catch(() => ({}));
+    console.warn(`[vercel] Explicit deploy failed (${deployResponse.status}):`, deployError);
+
+    // Шаг 5: Финальный fallback — ждём ещё и проверяем
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    const recheckResponse = await fetch(
+      `${VERCEL_API_URL}/v6/deployments?projectId=${projectResult.projectId}&limit=1`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (recheckResponse.ok) {
+      const recheckData = await recheckResponse.json();
+      const lateDeployment = recheckData.deployments?.[0];
+      if (lateDeployment) {
+        return {
+          success: true,
+          deploymentId: lateDeployment.uid,
+          deploymentUrl: `https://${lateDeployment.url}`,
+          projectUrl: `https://${cleanProjectName}.vercel.app`,
+        };
+      }
+    }
+
+    // Проект создан, но деплой не запустился
     return {
       success: true,
-      projectUrl: `https://${projectResult.projectName}.vercel.app`,
+      projectUrl: `https://${cleanProjectName}.vercel.app`,
+      error: 'Project created and linked to GitHub, but deployment did not start. Try pushing a new commit or deploy manually from Vercel dashboard.',
     };
   } catch (error) {
     console.error('Vercel deployment error:', error);

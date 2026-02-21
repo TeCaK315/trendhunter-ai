@@ -201,206 +201,15 @@ ${category ? `Категория: ${category}` : ''}
   return callAIJson(systemPrompt, userMessage, { temperature: 0.7 });
 }
 
-/**
- * Генерация питч-дека
- */
-export async function generatePitchDeck(
-  trendTitle: string,
-  mainPain: string,
-  targetAudience: string,
-  keyPainPoints: string[]
-): Promise<AIResponse<{
-  title: string;
-  tagline: string;
-  problem: string;
-  solution: string;
-  uniqueValue: string;
-  marketSize: string;
-  businessModel: string;
-  goToMarket: string;
-  team: string;
-  askAmount: string;
-}>> {
-  const systemPrompt = `Ты - эксперт по созданию питч-деков для стартапов.
-Создай убедительный питч-дек на основе анализа тренда.
-Каждый раздел должен быть конкретным и убедительным.
-Отвечай на русском языке. Верни JSON.`;
-
-  const userMessage = `Тренд: ${trendTitle}
-Главная боль: ${mainPain}
-Целевая аудитория: ${targetAudience}
-Ключевые болевые точки:
-${keyPainPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
-
-  return callAIJson(systemPrompt, userMessage, { temperature: 0.8 });
-}
+// generatePitchDeck, analyzeCompetitors, findPotentialClients — УДАЛЕНЫ
+// generateVentureData, generateOutreachEmail, synthesizeInsights — УДАЛЕНЫ
+// Причина: генерировали 100% галлюцинированные данные без реальных источников
+// Реальные данные: /api/competition (SerpAPI), /api/find-companies (SerpAPI), /api/venture-data (SerpAPI)
 
 /**
- * Анализ конкурентов
- */
-export async function analyzeCompetitors(
-  trendTitle: string,
-  mainPain: string,
-  competitors: Array<{ name: string; description?: string }>
-): Promise<AIResponse<{
-  competitive_landscape: string;
-  our_positioning: string;
-  differentiation_opportunities: string[];
-  competitor_analysis: Array<{
-    name: string;
-    strengths: string[];
-    weaknesses: string[];
-    pricing?: string;
-  }>;
-}>> {
-  const systemPrompt = `Ты - эксперт по конкурентному анализу.
-Проанализируй конкурентов и определи возможности для дифференциации.
-Отвечай на русском языке. Верни JSON.`;
-
-  const userMessage = `Тренд: ${trendTitle}
-Главная боль которую решаем: ${mainPain}
-Конкуренты:
-${competitors.map(c => `- ${c.name}${c.description ? `: ${c.description}` : ''}`).join('\n')}`;
-
-  return callAIJson(systemPrompt, userMessage, { temperature: 0.7 });
-}
-
-/**
- * Поиск потенциальных клиентов/компаний
- */
-export async function findPotentialClients(
-  trendTitle: string,
-  mainPain: string,
-  targetSegments: string[]
-): Promise<AIResponse<{
-  companies: Array<{
-    name: string;
-    industry: string;
-    size: string;
-    relevance_score: number;
-    pain_match: string;
-    contact_approach: string;
-  }>;
-  outreach_strategy: string;
-}>> {
-  const systemPrompt = `Ты - эксперт по B2B продажам и поиску клиентов.
-Определи потенциальных клиентов которые могут быть заинтересованы в решении данной проблемы.
-Отвечай на русском языке. Верни JSON.`;
-
-  const userMessage = `Тренд/Решение: ${trendTitle}
-Боль которую решаем: ${mainPain}
-Целевые сегменты: ${targetSegments.join(', ')}`;
-
-  return callAIJson(systemPrompt, userMessage, { temperature: 0.7 });
-}
-
-/**
- * Генерация данных о венчурных инвестициях
- */
-export async function generateVentureData(
-  trendTitle: string,
-  category: string,
-  mainPain: string
-): Promise<AIResponse<{
-  market_overview: {
-    total_funding: string;
-    deal_count: string;
-    avg_deal_size: string;
-    growth_rate: string;
-  };
-  recent_deals: Array<{
-    company: string;
-    amount: string;
-    stage: string;
-    investors: string[];
-    date: string;
-  }>;
-  key_investors: Array<{
-    name: string;
-    type: string;
-    focus_areas: string[];
-    notable_investments: string[];
-  }>;
-  investment_thesis: string;
-  recommendations: string[];
-}>> {
-  const systemPrompt = `Ты - эксперт по венчурным инвестициям.
-Проанализируй инвестиционный ландшафт для данного тренда/ниши.
-Предоставь реалистичные данные о рынке, сделках и инвесторах.
-Отвечай на русском языке. Верни JSON.`;
-
-  const userMessage = `Тренд: ${trendTitle}
-Категория: ${category}
-Проблема: ${mainPain}`;
-
-  return callAIJson(systemPrompt, userMessage, { temperature: 0.7 });
-}
-
-/**
- * Генерация email для outreach
- */
-export async function generateOutreachEmail(
-  companyName: string,
-  contactRole: string,
-  productDescription: string,
-  painPoint: string
-): Promise<AIResponse<{
-  subject: string;
-  body: string;
-  followUp: string;
-}>> {
-  const systemPrompt = `Ты - эксперт по cold outreach и B2B продажам.
-Напиши персонализированное письмо для первого контакта.
-Письмо должно быть коротким (3-4 абзаца), конкретным и с чётким CTA.
-Отвечай на русском языке. Верни JSON.`;
-
-  const userMessage = `Компания: ${companyName}
-Роль контакта: ${contactRole}
-Наш продукт: ${productDescription}
-Боль которую решаем: ${painPoint}`;
-
-  return callAIJson(systemPrompt, userMessage, { temperature: 0.8 });
-}
-
-/**
- * Синтез инсайтов из собранных данных
- */
-export async function synthesizeInsights(
-  trendTitle: string,
-  redditData: { posts: number; communities: string[]; topTopics: string[] },
-  youtubeData: { videos: number; channels: string[] },
-  googleTrendsData: { growth: string; relatedQueries: string[] }
-): Promise<AIResponse<{
-  key_insights: string[];
-  content_gaps: string[];
-  audience_sentiment: string;
-  recommended_angles: string[];
-  action_items: string[];
-}>> {
-  const systemPrompt = `Ты - эксперт по анализу данных и выявлению инсайтов.
-Синтезируй данные из разных источников и выдели ключевые инсайты.
-Отвечай на русском языке. Верни JSON.`;
-
-  const userMessage = `Тренд: ${trendTitle}
-
-Reddit:
-- Постов проанализировано: ${redditData.posts}
-- Сообщества: ${redditData.communities.join(', ')}
-- Топ темы: ${redditData.topTopics.join(', ')}
-
-YouTube:
-- Видео найдено: ${youtubeData.videos}
-- Каналы: ${youtubeData.channels.join(', ')}
-
-Google Trends:
-- Рост: ${googleTrendsData.growth}
-- Связанные запросы: ${googleTrendsData.relatedQueries.join(', ')}`;
-
-  return callAIJson(systemPrompt, userMessage, { temperature: 0.7 });
-}
-
-/**
- * Исследование ниши
+ * Исследование ниши — генерирует ТОЛЬКО подсказки для дальнейшего исследования.
+ * НЕ генерирует фейковые скоры, конкурентов, размеры рынка или revenue.
+ * Реальные данные собираются через Evidence блоки и SerpAPI.
  */
 export async function researchNiche(
   niche: string,
@@ -408,132 +217,37 @@ export async function researchNiche(
   targetAudience?: string,
   existingProblems?: string
 ): Promise<AIResponse<{
-  niche_analysis: {
-    market_size: string;
-    growth_trend: string;
-    competition_level: string;
-    entry_barriers: string;
-  };
-  pain_points: Array<{
-    pain: string;
-    severity: number;
-    frequency: string;
-  }>;
-  target_segments: Array<{
-    name: string;
-    size: string;
-    willingness_to_pay: string;
-    where_to_find: string;
-    communication_channels: string[];
-  }>;
-  opportunities: Array<{
-    opportunity: string;
-    potential_revenue: string;
-    implementation_difficulty: string;
-    time_to_market: string;
-  }>;
-  competitors: Array<{
-    name: string;
-    website?: string;
-    strengths: string[];
-    weaknesses: string[];
-    pricing?: string;
-  }>;
-  recommended_solutions: Array<{
-    type: string;
-    description: string;
-    mvp_features: string[];
-    estimated_cost: string;
-    monetization: string;
-  }>;
   keywords_for_research: string[];
   subreddits: string[];
-  overall_score: {
-    opportunity: number;
-    pain_severity: number;
-    feasibility: number;
-    profit_potential: number;
-  };
+  search_queries: string[];
+  hypothesis: string;
 }>> {
-  const systemPrompt = `Ты эксперт по анализу рынка и выявлению бизнес-возможностей.
-Проанализируй указанную нишу и верни детальный анализ.
+  const systemPrompt = `Ты помощник по исследованию ниш. Твоя задача — помочь пользователю НАЧАТЬ исследование.
 
-ВАЖНО: Верни ответ ТОЛЬКО в формате JSON без markdown форматирования.
+ВАЖНО: Ты НЕ генерируешь данные о рынке, конкурентах или revenue. Ты только предлагаешь:
+1. Ключевые слова для поиска
+2. Subreddit'ы где обсуждают эту тему
+3. Поисковые запросы для Google/SerpAPI
+4. Краткую гипотезу (1-2 предложения) что исследовать
 
-Формат ответа:
+Верни JSON:
 {
-  "niche_analysis": {
-    "market_size": "описание размера рынка",
-    "growth_trend": "растущий/стабильный/падающий",
-    "competition_level": "низкий/средний/высокий",
-    "entry_barriers": "описание барьеров входа"
-  },
-  "pain_points": [
-    {
-      "pain": "описание боли",
-      "severity": 8,
-      "frequency": "часто/иногда/редко"
-    }
-  ],
-  "target_segments": [
-    {
-      "name": "название сегмента",
-      "size": "размер аудитории",
-      "willingness_to_pay": "high/medium/low",
-      "where_to_find": "где найти этих клиентов",
-      "communication_channels": ["канал1", "канал2"]
-    }
-  ],
-  "opportunities": [
-    {
-      "opportunity": "описание возможности",
-      "potential_revenue": "потенциальный доход",
-      "implementation_difficulty": "легко/средне/сложно",
-      "time_to_market": "срок выхода на рынок"
-    }
-  ],
-  "competitors": [
-    {
-      "name": "название конкурента",
-      "website": "сайт если известен",
-      "strengths": ["сильная сторона"],
-      "weaknesses": ["слабая сторона"],
-      "pricing": "ценообразование"
-    }
-  ],
-  "recommended_solutions": [
-    {
-      "type": "SaaS/мобильное приложение/автоматизация/консалтинг",
-      "description": "описание решения",
-      "mvp_features": ["фича1", "фича2"],
-      "estimated_cost": "примерная стоимость разработки",
-      "monetization": "модель монетизации"
-    }
-  ],
   "keywords_for_research": ["ключевое слово 1", "ключевое слово 2"],
   "subreddits": ["subreddit1", "subreddit2"],
-  "overall_score": {
-    "opportunity": 8,
-    "pain_severity": 7,
-    "feasibility": 6,
-    "profit_potential": 7
-  }
-}`;
+  "search_queries": ["запрос для поиска конкурентов", "запрос для поиска болей"],
+  "hypothesis": "Краткая гипотеза что можно проверить через Evidence"
+}
 
-  const userMessage = `Проанализируй нишу:
+НЕ включай: competitors, market_size, overall_score, revenue, pain_points со severity, target_segments.
+Все эти данные пользователь получит через реальные API (SerpAPI, Reddit, Google Trends).`;
 
-**Ниша:** ${niche}
-
-**Описание проблемы/бизнеса заказчика:** ${description}
-
-${targetAudience ? `**Целевая аудитория:** ${targetAudience}` : ''}
-
-${existingProblems ? `**Известные проблемы:** ${existingProblems}` : ''}
-
-Проведи глубокий анализ этой ниши. Найди реальные боли, потенциальных клиентов, конкурентов и возможности. Дай конкретные рекомендации по решениям.`;
+  const userMessage = `Ниша: ${niche}
+Описание: ${description}
+${targetAudience ? `Аудитория: ${targetAudience}` : ''}
+${existingProblems ? `Известные проблемы: ${existingProblems}` : ''}`;
 
   return callAIJson(systemPrompt, userMessage, {
-    temperature: 0.7,
-    maxTokens: 4000
+    temperature: 0.5,
+    maxTokens: 1000
   });
 }

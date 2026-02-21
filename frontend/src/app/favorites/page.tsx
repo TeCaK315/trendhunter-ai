@@ -11,10 +11,6 @@ interface Trend {
   title: string;
   category: string;
   popularity_score: number;
-  opportunity_score: number;
-  pain_score: number;
-  feasibility_score: number;
-  profit_potential: number;
   growth_rate: number;
   why_trending: string;
   status: string;
@@ -150,7 +146,7 @@ const categoryConfig: Record<string, { icon: string; color: string }> = {
 };
 
 function getOverallScore(trend: Trend): number {
-  return Number(((trend.opportunity_score + trend.pain_score + trend.feasibility_score + trend.profit_potential) / 4).toFixed(1));
+  return trend.popularity_score;
 }
 
 function getScoreColor(score: number): string {
@@ -325,10 +321,8 @@ export default function FavoritesPage() {
 ${trend.why_trending}
 
 ## Метрики
-- Возможность рынка: ${trend.opportunity_score}/10
-- Потребность: ${trend.pain_score}/10
-- Выполнимость: ${trend.feasibility_score}/10
-- Потенциальная выгода: ${trend.profit_potential}/10
+- Популярность: ${trend.popularity_score}/100
+- Рост тренда: ${trend.growth_rate}%
 `;
 
     if (analysis) {
@@ -620,10 +614,8 @@ function TrendDetailView({
   const isTranslating = trendLoading || analysisLoading;
 
   const metrics = [
-    { label: t.trendCard.opportunity, value: trend.opportunity_score, icon: '🎯' },
-    { label: t.trendCard.pain, value: trend.pain_score, icon: '🔥' },
-    { label: t.trendCard.feasibility, value: trend.feasibility_score, icon: '⚡' },
-    { label: t.trendCard.profit, value: trend.profit_potential, icon: '💰' },
+    { label: t.trendCard.popularity, value: trend.popularity_score, icon: '📊' },
+    { label: t.trendCard.growth, value: `${trend.growth_rate}%`, icon: '📈' },
   ];
 
   return (

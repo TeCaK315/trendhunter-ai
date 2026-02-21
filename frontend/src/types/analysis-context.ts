@@ -126,7 +126,6 @@ export interface FundingRound {
 
 export interface ActiveFund {
   name: string;
-  focus_areas: string[];
   typical_check_size: string;
   portfolio_relevant: string[];
   contact_info?: string;

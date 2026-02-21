@@ -138,8 +138,8 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
         >
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-white">У кого болит</span>
-            <EvidenceBadge type="real_data" />
-            <span className="text-xs text-zinc-400">{data.who_hurts.total_complaints} жалоб из {data.who_hurts.sources_count} источников</span>
+            <EvidenceBadge type={data.who_hurts.total_complaints > 0 ? 'real_data' : 'no_data'} />
+            <span className="text-xs text-zinc-400">{data.who_hurts.total_complaints > 0 ? `${data.who_hurts.total_complaints} жалоб из ${data.who_hurts.sources_count} источников` : 'Нет данных'}</span>
           </div>
           <span className="text-zinc-500">{expandedSection === 'who_hurts' ? '−' : '+'}</span>
         </button>
@@ -233,8 +233,8 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
         >
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-white">Текущие решения</span>
-            <EvidenceBadge type="real_data" />
-            <span className="text-xs text-zinc-400">{data.current_solutions.total_reviews} отзывов</span>
+            <EvidenceBadge type={data.current_solutions.total_reviews > 0 ? 'real_data' : 'no_data'} />
+            <span className="text-xs text-zinc-400">{data.current_solutions.total_reviews > 0 ? `${data.current_solutions.total_reviews} отзывов` : 'Нет данных'}</span>
           </div>
           <span className="text-zinc-500">{expandedSection === 'solutions' ? '−' : '+'}</span>
         </button>
@@ -274,8 +274,8 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
         >
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-white">Готовность платить</span>
-            <EvidenceBadge type="real_data" />
-            <span className="text-xs text-zinc-400">{data.willingness_to_pay.paid_solution_count} платных решений</span>
+            <EvidenceBadge type={data.willingness_to_pay.paid_solution_count > 0 ? 'real_data' : 'no_data'} />
+            <span className="text-xs text-zinc-400">{data.willingness_to_pay.paid_solution_count > 0 ? `${data.willingness_to_pay.paid_solution_count} платных решений` : 'Нет данных'}</span>
           </div>
           <span className="text-zinc-500">{expandedSection === 'willingness' ? '−' : '+'}</span>
         </button>

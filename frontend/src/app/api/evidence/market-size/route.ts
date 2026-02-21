@@ -61,23 +61,38 @@ interface MarketSizeResponse {
   sources_count: number;
 }
 
-// SerpAPI helper
+const SERPAPI_TIMEOUT_MS = 10_000; // 10 seconds per request
+
+// SerpAPI helper with timeout
 async function serpApiSearch(query: string, params: Record<string, unknown> = {}) {
   const url = new URL('https://serpapi.com/search');
   url.searchParams.set('q', query);
   url.searchParams.set('api_key', SERPAPI_KEY);
   url.searchParams.set('engine', 'google');
-  url.searchParams.set('num', '10');
+  url.searchParams.set('num', '5'); // Reduced from 10 to speed up
 
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.set(key, String(value));
   });
 
-  const response = await fetch(url.toString());
-  if (!response.ok) throw new Error(`SerpAPI error: ${response.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SERPAPI_TIMEOUT_MS);
 
-  const data = await response.json();
-  return data.organic_results || [];
+  try {
+    const response = await fetch(url.toString(), { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error(`SerpAPI error: ${response.status}`);
+
+    const data = await response.json();
+    return data.organic_results || [];
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error(`[market-size] SerpAPI timeout for: ${query.substring(0, 50)}`);
+      return [];
+    }
+    throw error;
+  }
 }
 
 // Check if company is public (has stock ticker)
@@ -390,57 +405,55 @@ function calculateEstimatedCustomers(
   }
 }
 
-// Get competitor metrics
+// Get competitor metrics — runs revenue + employees + funding in parallel
 async function getCompetitorMetrics(
   companyName: string,
   existingPricing?: { range: string; typical_price: string; source_url: string }
 ): Promise<CompetitorMetrics> {
   console.log(`[market-size] Fetching metrics for: ${companyName}`);
 
-  // 1. Check if public company
-  const ticker = await getStockTicker(companyName);
+  // Run ticker check, employee count, and funding in parallel
+  const [ticker, employees, funding] = await Promise.all([
+    getStockTicker(companyName),
+    getEmployeeCount(companyName),
+    // Funding (optional, quick search)
+    (async (): Promise<CompetitorMetrics['funding']> => {
+      try {
+        const fundingResults = await serpApiSearch(`"${companyName}" raises funding Series`);
+        const fundingMatch = fundingResults[0]?.snippet?.match(/raises?\s+\$?([\d.]+)([MB])/i);
+        if (fundingMatch) {
+          return {
+            total: `$${fundingMatch[1]}${fundingMatch[2]}`,
+            last_round: 'Series A',
+            source_url: fundingResults[0].link,
+          };
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    })(),
+  ]);
 
-  // 2. Get revenue (public or private)
+  // Get revenue (depends on ticker result)
   const revenue = ticker
     ? await getPublicCompanyRevenue(ticker)
     : await getPrivateCompanyRevenue(companyName);
 
-  // 3. Get employee count
-  const employees = await getEmployeeCount(companyName);
-
-  // 4. If no revenue but have employees, estimate
+  // If no revenue but have employees, estimate
   if (!revenue.value && employees.count) {
-    const estimateMin = employees.count * 150000; // $150K per employee
-    const estimateMax = employees.count * 200000; // $200K per employee
+    const estimateMin = employees.count * 150000;
+    const estimateMax = employees.count * 200000;
     employees.revenue_estimate = `$${(estimateMin/1e6).toFixed(0)}M-${(estimateMax/1e6).toFixed(0)}M`;
   }
 
-  // 5. Pricing (use existing or fetch)
   const pricing = existingPricing || {
     range: null,
     typical_price: null,
     source_url: null,
   };
 
-  // 6. Calculate estimated customers
   const estimated_customers = calculateEstimatedCustomers(revenue, pricing);
-
-  // 7. Funding data (optional, quick search)
-  let funding = null;
-  try {
-    const fundingResults = await serpApiSearch(`"${companyName}" raises funding Series`);
-    // Simple extraction, not critical
-    const fundingMatch = fundingResults[0]?.snippet.match(/raises?\s+\$?([\d.]+)([MB])/i);
-    if (fundingMatch) {
-      funding = {
-        total: `$${fundingMatch[1]}${fundingMatch[2]}`,
-        last_round: 'Series A', // Simplified
-        source_url: fundingResults[0].link,
-      };
-    }
-  } catch {
-    // Funding is optional, ignore errors
-  }
 
   return {
     name: companyName,
@@ -459,14 +472,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`[market-size] Starting analysis for ${competitors.length} competitors`);
 
-    // Fetch metrics for each competitor
-    const competitorMetrics: CompetitorMetrics[] = [];
-
-    for (const compName of competitors.slice(0, 10)) { // Limit to 10
-      const pricing = existing_pricing[compName];
-      const metrics = await getCompetitorMetrics(compName, pricing);
-      competitorMetrics.push(metrics);
-    }
+    // Fetch metrics for each competitor IN PARALLEL (was sequential — caused massive delays)
+    // Limit to 3 to avoid SerpAPI rate limits
+    const competitorMetrics = await Promise.all(
+      competitors.slice(0, 3).map((compName: string) => {
+        const pricing = existing_pricing[compName];
+        return getCompetitorMetrics(compName, pricing);
+      })
+    );
 
     // Calculate totals
     let totalRevenue = 0;

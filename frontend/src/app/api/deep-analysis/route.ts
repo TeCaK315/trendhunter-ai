@@ -76,6 +76,7 @@ interface DeepAnalysisRequest {
   trend_title: string;
   trend_category: string;
   why_trending: string;
+  source_query?: string;
   existing_analysis?: {
     main_pain?: string;
     key_pain_points?: string[];
@@ -133,9 +134,15 @@ const OPTIMIST_PROMPT = `Ты опытный предприниматель и �
 
 Тебе предоставлены РЕАЛЬНЫЕ данные из Reddit, Hacker News, Quora и StackOverflow.
 
+КРИТИЧЕСКОЕ ПРАВИЛО: Ты ОБЯЗАН работать ТОЛЬКО с предоставленными данными.
+- Каждая боль ДОЛЖНА ссылаться на конкретный пост/URL из данных выше.
+- Если боль нельзя подтвердить конкретным постом — НЕ включай её.
+- НЕ ПРИДУМЫВАЙ посты, URL, цитаты, статистику или источники.
+- Количество болей в ответе НЕ МОЖЕТ превышать количество УНИКАЛЬНЫХ тем в данных.
+
 ПРАВИЛА:
 1. Анализируй ТОЛЬКО предоставленные данные. НЕ выдумывай ничего.
-2. Для каждой боли ОБЯЗАТЕЛЬНО укажи конкретный пост/вопрос как доказательство (URL или название)
+2. Для каждой боли ОБЯЗАТЕЛЬНО укажи конкретный пост/вопрос как доказательство (URL или название из данных)
 3. Если данных недостаточно — скажи честно, а не придумывай
 4. Фокусируйся на болях где люди УЖЕ тратят деньги на неидеальные решения
 
@@ -157,9 +164,14 @@ const SKEPTIC_PROMPT = `Ты опытный инвестор который ви
 
 Тебе предоставлены РЕАЛЬНЫЕ данные из Reddit, Hacker News, Quora и StackOverflow.
 
+КРИТИЧЕСКОЕ ПРАВИЛО: Ты ОБЯЗАН работать ТОЛЬКО с предоставленными данными.
+- Каждый аргумент ДОЛЖЕН ссылаться на конкретный пост/URL из данных выше.
+- НЕ ПРИДУМЫВАЙ посты, URL, цитаты, статистику или источники.
+- Если в данных нет контраргументов — так и скажи, а не выдумывай их.
+
 ПРАВИЛА:
 1. Анализируй ТОЛЬКО предоставленные данные. НЕ выдумывай.
-2. Для каждого аргумента ссылайся на конкретный пост/вопрос
+2. Для каждого аргумента ссылайся на конкретный пост/вопрос из предоставленных данных
 3. Ищи КОНТРАРГУМЕНТЫ в тех же данных — может быть люди уже нашли решение?
 4. Если постов мало — это сам по себе красный флаг
 
@@ -184,12 +196,18 @@ const ARBITER_PROMPT = `Ты Senior Product Strategist с 20+ лет опыта.
 
 Оба анализа основаны на РЕАЛЬНЫХ данных из Reddit, HN, Quora, SO.
 
+КРИТИЧЕСКОЕ ПРАВИЛО:
+- НЕ добавляй новые боли, которых нет в анализах оптимиста и скептика.
+- НЕ ПРИДУМЫВАЙ размеры рынка, метрики, статистику или источники.
+- Если оптимист и скептик ссылаются на одни и те же посты — это СИЛЬНЫЙ сигнал.
+- Поле "size" в target_audience ДОЛЖНО быть "Требует валидации" если нет реальных данных о размере.
+
 ПРАВИЛА:
 1. Не просто усредняй — АНАЛИЗИРУЙ аргументы
 2. Для каждой боли взвесь аргументы ЗА и ПРОТИВ
 3. Дай уровень уверенности 1-10 для каждого вывода
 4. Главная боль — та, у которой больше всего РЕАЛЬНЫХ доказательств
-5. Если данных мало — confidence должен быть НИЗКИМ, не выдумывай
+5. Если данных мало — confidence должен быть НИЗКИМ (1-3), не выдумывай
 
 Верни JSON:
 {
@@ -295,11 +313,12 @@ export async function POST(request: NextRequest) {
       // === FALLBACK: Собираем данные сами (старый подход) ===
       console.log(`[deep-analysis] No Evidence data, falling back to direct fetch`);
 
+      const searchTerm = body.source_query || body.trend_title;
       const [fetchedReddit, fetchedHn, fetchedQuora, fetchedSo] = await Promise.all([
-        fetchReddit(body.trend_title),
-        fetchHackerNews(body.trend_title),
-        fetchQuora(body.trend_title),
-        fetchStackOverflow(body.trend_title),
+        fetchReddit(searchTerm),
+        fetchHackerNews(searchTerm),
+        fetchQuora(searchTerm),
+        fetchStackOverflow(searchTerm),
       ]);
 
       redditData = fetchedReddit;
@@ -344,6 +363,30 @@ export async function POST(request: NextRequest) {
     // Для совместимости со старым кодом
     if (!hasEvidenceData) {
       console.log(`[deep-analysis] Direct fetch stats: Reddit=${redditData.total_results}, HN=${hnData.total_results}, Quora=${quoraData.total_results}, SO=${soData.total_results}`);
+    }
+
+    // === GUARD: Минимум данных для анализа ===
+    const totalRealSignals = complaints.length + negativeReviews.length + unmetNeeds.length;
+    if (totalRealSignals < 3) {
+      console.log(`[deep-analysis] Insufficient data: only ${totalRealSignals} signals. Skipping AI agents.`);
+      return NextResponse.json({
+        success: true,
+        insufficient_data: true,
+        analysis: null,
+        message: `Недостаточно реальных данных для глубокого анализа. Найдено сигналов: ${totalRealSignals} (минимум: 3). Попробуйте сначала собрать Evidence данные.`,
+        real_data_summary: {
+          data_source: dataSource,
+          complaints_count: complaints.length,
+          negative_reviews_count: negativeReviews.length,
+          unmet_needs_count: unmetNeeds.length,
+          total_signals: totalRealSignals,
+        },
+        metadata: {
+          data_collection_time_ms: dataTime,
+          skipped_reason: 'insufficient_data',
+        },
+        timestamp: new Date().toISOString()
+      });
     }
 
     // Format real data for agents

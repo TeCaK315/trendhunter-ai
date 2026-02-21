@@ -10,6 +10,7 @@ interface PreviousContext {
     title: string;
     category?: string;
     why_trending?: string;
+    source_query?: string;
   };
   analysis?: {
     main_pain: string;
@@ -203,11 +204,12 @@ async function analyzeCompetition(
   const blueOcean = calcBlueOceanScore(count);
   const risk = calcRiskLevel(count, fundedCount);
 
-  if (competitors.length === 0) {
+  if (competitors.length < 2) {
+    // Слишком мало данных для AI-анализа — не генерируем opportunity_areas
     return {
       market_saturation: saturation.level,
       blue_ocean_score: blueOcean.value,
-      opportunity_areas: ['Конкуренты не найдены — рынок может быть свободен или слишком нишевый'],
+      opportunity_areas: [],
       risk_level: risk.level,
     };
   }
@@ -226,16 +228,20 @@ async function analyzeCompetition(
       }
 
       const prompt = `Ты эксперт по конкурентному анализу. Вот РЕАЛЬНЫЕ конкуренты для "${query}":
-${competitors.map((c, i) => `${i + 1}. ${c.name} (${c.source}): ${c.description}`).join('\n')}
+${competitors.map((c, i) => `${i + 1}. ${c.name} (${c.website}) [${c.source}]: ${c.description}`).join('\n')}
 ${contextSection}
 
-ВАЖНО: Опирайся ТОЛЬКО на данные о конкурентах выше. Для каждой возможности укажи, КАКОЙ конкурент её не покрывает.
+КРИТИЧЕСКИЕ ПРАВИЛА:
+1. Опирайся ТОЛЬКО на данные о конкурентах выше. НЕ ПРИДУМЫВАЙ конкурентов, которых нет в списке.
+2. Каждая возможность ДОЛЖНА ссылаться на КОНКРЕТНОГО конкурента из списка и его РЕАЛЬНУЮ слабость видную из описания.
+3. НЕ ВЫДУМЫВАЙ слабости — используй только то, что видно из описания или сайта конкурента.
+4. Если из описаний нельзя понять слабости — скажи "Требуется ручной анализ конкурента X".
 
 Верни JSON:
 {
-  "opportunity_areas": ["Конкурент X не покрывает Y — возможность для...", "..."],
-  "strategic_positioning": "Позиционирование на основе слабостей конкурентов",
-  "differentiation_opportunities": ["Отличие от X: ...", "Отличие от Y: ..."]
+  "opportunity_areas": ["Конкурент [имя] не покрывает [что именно видно из описания] — возможность для...", "..."],
+  "strategic_positioning": "Позиционирование на основе видимых слабостей конкурентов",
+  "differentiation_opportunities": ["Отличие от [имя]: ...", "Отличие от [имя]: ..."]
 }`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -268,11 +274,7 @@ ${contextSection}
     }
   }
 
-  if (opportunityAreas.length === 0) {
-    opportunityAreas = count > 0
-      ? ['Требуется анализ слабостей конкурентов', 'Возможна дифференциация по UX/цене']
-      : ['Рынок свободен'];
-  }
+  // Не добавляем шаблонные фразы — если AI не нашёл возможностей, значит их нет в данных
 
   return {
     market_saturation: saturation.level,
@@ -297,7 +299,7 @@ export async function POST(request: NextRequest) {
     }
 
     const previousContext: PreviousContext | undefined = context;
-    const searchQuery = query || trend_title || context?.trend?.title;
+    const searchQuery = context?.trend?.source_query || query || trend_title || context?.trend?.title;
 
     // Check API keys
     const missingKeys: string[] = [];

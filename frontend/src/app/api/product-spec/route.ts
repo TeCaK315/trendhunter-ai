@@ -257,6 +257,14 @@ const PRODUCT_SPEC_PROMPT = `Ты Senior Product Manager с 15+ лет опыт�
 7. current_user_solution - Как люди решают эту проблему СЕЙЧАС? Используй complaints!
 8. derived_features - НОВОЕ ПОЛЕ: список фич, выведенных из конкретных болей
 
+КРИТИЧЕСКИЕ ПРАВИЛА АНТИГАЛЛЮЦИНАЦИИ:
+- Каждая фича в derived_features ОБЯЗАНА ссылаться на конкретную жалобу/отзыв/потребность из предоставленных данных.
+- pain_quote ДОЛЖЕН быть РЕАЛЬНОЙ ЦИТАТОЙ из данных, а не выдуманной фразой.
+- Если Evidence данных (complaints, negative_reviews, unmet_needs) НЕТ — derived_features должен быть ПУСТЫМ массивом [].
+- НЕ ПРИДУМЫВАЙ размеры рынка, доходы, стоимость разработки или статистику.
+- pricing_tiers: если нет pricing_data конкурентов — пиши "Требует исследования" вместо выдуманных цен.
+- Поле size в target_audience = "Требует валидации" если нет реальных данных.
+
 ВАЖНО:
 - Каждая фича должна РЕШАТЬ конкретную боль из данных
 - Будь КОНКРЕТЕН. "Отчёт на 3 страницы с графиками" вместо "результат анализа"
@@ -534,13 +542,15 @@ ${body.design_analysis?.generated_design ? 'ВАЖНО: Используй УК�
       // 1. Извлекаем из жалоб пользователей (complaints)
       if (body.evidence?.complaints?.length) {
         body.evidence.complaints.slice(0, 3).forEach((complaint, i) => {
+          const title = typeof complaint?.title === 'string' ? complaint.title : '';
+          if (!title) return;
           extractedFeatures.push({
             feature_name: `Решение боли #${i + 1}`,
             pain_source: 'complaint',
-            pain_quote: complaint.title,
-            solution: `Функционал для решения: ${complaint.title.substring(0, 100)}`,
+            pain_quote: title,
+            solution: `Функционал для решения: ${title.substring(0, 100)}`,
             priority: i === 0 ? 'must_have' : 'should_have',
-            implementation_hint: `Based on ${complaint.source} feedback - needs real implementation`,
+            implementation_hint: `Based on ${complaint.source || 'user'} feedback - needs real implementation`,
           });
         });
       }
@@ -548,11 +558,13 @@ ${body.design_analysis?.generated_design ? 'ВАЖНО: Используй УК�
       // 2. Извлекаем из негативных отзывов о конкурентах
       if (body.evidence?.negative_reviews?.length) {
         body.evidence.negative_reviews.slice(0, 2).forEach((review) => {
+          const reviewText = typeof review?.review === 'string' ? review.review : '';
+          if (!reviewText) return;
           extractedFeatures.push({
-            feature_name: `Преимущество над ${review.competitor}`,
+            feature_name: `Преимущество над ${review.competitor || 'конкурентом'}`,
             pain_source: 'negative_review',
-            pain_quote: review.review,
-            solution: `Сделать лучше чем ${review.competitor}: ${review.review.substring(0, 80)}`,
+            pain_quote: reviewText,
+            solution: `Сделать лучше чем ${review.competitor || 'конкурент'}: ${reviewText.substring(0, 80)}`,
             priority: 'should_have',
             implementation_hint: `Competitive advantage feature - real API/integration needed`,
           });
@@ -562,39 +574,22 @@ ${body.design_analysis?.generated_design ? 'ВАЖНО: Используй УК�
       // 3. Извлекаем из неудовлетворённых потребностей
       if (body.evidence?.unmet_needs?.length) {
         body.evidence.unmet_needs.slice(0, 2).forEach((need) => {
+          const needText = typeof need?.need === 'string' ? need.need : '';
+          if (!needText) return;
           extractedFeatures.push({
             feature_name: `Рыночная потребность`,
             pain_source: 'unmet_need',
-            pain_quote: need.need,
-            solution: `Реализовать: ${need.need}`,
+            pain_quote: needText,
+            solution: `Реализовать: ${needText}`,
             priority: need.frequency === 'high' ? 'must_have' : 'should_have',
             implementation_hint: `Market demand feature - ${need.source || 'analysis based'}`,
           });
         });
       }
 
-      // 4. Если ничего нет — создаём из основного анализа
-      if (extractedFeatures.length === 0 && body.analysis) {
-        extractedFeatures.push({
-          feature_name: 'Решение главной боли',
-          pain_source: 'synthesis',
-          pain_quote: body.analysis.main_pain,
-          solution: productSpec.user_output?.value_proposition || `Инструмент для: ${body.analysis.main_pain}`,
-          priority: 'must_have',
-          implementation_hint: 'Core value proposition - requires real working implementation',
-        });
-
-        // Добавляем из key_pain_points
-        body.analysis.key_pain_points?.slice(0, 2).forEach((pain, i) => {
-          extractedFeatures.push({
-            feature_name: `Дополнительная фича ${i + 1}`,
-            pain_source: 'synthesis',
-            pain_quote: pain,
-            solution: `Функционал для: ${pain}`,
-            priority: 'should_have',
-            implementation_hint: 'Supporting feature with data persistence',
-          });
-        });
+      // 4. Если Evidence данных нет — НЕ генерируем шаблонные фичи
+      if (extractedFeatures.length === 0) {
+        console.log('[product-spec] No Evidence data available — derived_features will be empty');
       }
 
       productSpec.derived_features = extractedFeatures;
@@ -603,18 +598,10 @@ ${body.design_analysis?.generated_design ? 'ВАЖНО: Используй УК�
       console.log(`[product-spec] AI generated ${productSpec.derived_features.length} derived_features`);
     }
 
-    // Валидация: derived_features ДОЛЖНЫ быть заполнены
+    // Если derived_features пуст — это нормально, значит нет Evidence данных
     if (!productSpec.derived_features || productSpec.derived_features.length === 0) {
-      console.warn('[product-spec] WARNING: No derived_features after all extraction attempts!');
-      // Создаём минимальную фичу чтобы система работала
-      productSpec.derived_features = [{
-        feature_name: 'Core Functionality',
-        pain_source: 'synthesis',
-        pain_quote: body.analysis.main_pain,
-        solution: 'Main product functionality solving the core pain',
-        priority: 'must_have',
-        implementation_hint: 'Implement with real API calls, no mocks or placeholders',
-      }];
+      console.log('[product-spec] No derived_features — Evidence данные не были предоставлены');
+      productSpec.derived_features = [];
     }
 
     const totalTime = Date.now() - startTime;

@@ -4,6 +4,7 @@ import {
   fetchGoogleTrends,
   fetchG2Reviews,
   fetchCapterraReviews,
+  fetchTrustpilot,
   fetchCompetitorPricing,
   discoverCompetitors,
 } from '@/lib/data-fetchers';
@@ -26,6 +27,8 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
  * Вердикт: рассчитанный score по формуле (кол-во жалоб * avg engagement)
  */
 
+const ROUTE_TIMEOUT_MS = 45_000; // 45 seconds max for entire route
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -39,40 +42,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const routeStart = Date.now();
     let totalSerpApiCalls = 0;
 
-    // Fetch all data in parallel
+    // Fetch all data in parallel (including Twitter + Trustpilot)
     const [
       complaintsResult,
       trendsResult,
       g2Result,
       capterraResult,
+      trustpilotResult,
     ] = await Promise.all([
-      fetchComplaints(searchQuery, ['reddit', 'hacker_news', 'quora', 'stackoverflow']),
+      fetchComplaints(searchQuery, ['reddit', 'hacker_news', 'quora', 'stackoverflow', 'twitter']),
       fetchGoogleTrends(searchQuery),
       fetchG2Reviews(searchQuery),
       fetchCapterraReviews(searchQuery),
+      fetchTrustpilot(searchQuery),
     ]);
 
     totalSerpApiCalls += complaintsResult.serpapi_calls_used;
     totalSerpApiCalls += trendsResult.serpapi_calls_used;
     totalSerpApiCalls += g2Result.serpapi_calls_used;
     totalSerpApiCalls += capterraResult.serpapi_calls_used;
+    totalSerpApiCalls += trustpilotResult.serpapi_calls_used;
 
-    // Fetch competitor pricing — use context or discover via search
-    let competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 10) || [];
+    // Fetch competitor pricing — use context or discover via search (max 3 to avoid SerpAPI overload)
+    // Skip if route is already taking too long
+    let competitorNames: string[] = context?.competition?.competitors?.map((c: { name: string }) => c.name).slice(0, 3) || [];
+    let pricingResults: Awaited<ReturnType<typeof fetchCompetitorPricing>>[] = [];
 
-    if (competitorNames.length === 0) {
-      const discovered = await discoverCompetitors(searchQuery, 10);
-      totalSerpApiCalls += discovered.serpapi_calls_used;
-      competitorNames = discovered.competitors.map(c => c.name);
-    }
+    const elapsed = Date.now() - routeStart;
+    if (elapsed < ROUTE_TIMEOUT_MS - 15_000) { // Only if we have 15+ seconds left
+      if (competitorNames.length === 0) {
+        const discovered = await discoverCompetitors(searchQuery, 3);
+        totalSerpApiCalls += discovered.serpapi_calls_used;
+        competitorNames = discovered.competitors.map(c => c.name).slice(0, 3);
+      }
 
-    const pricingResults = [];
-    for (const name of competitorNames) {
-      const pricingResult = await fetchCompetitorPricing(name);
-      totalSerpApiCalls += pricingResult.serpapi_calls_used;
-      pricingResults.push(pricingResult);
+      // Parallel pricing fetch (was sequential — caused 10+ minute delays)
+      pricingResults = await Promise.all(
+        competitorNames.slice(0, 3).map(name => fetchCompetitorPricing(name))
+      );
+      for (const pr of pricingResults) {
+        totalSerpApiCalls += pr.serpapi_calls_used;
+      }
+    } else {
+      console.log(`[real-problem] Skipping pricing fetch — ${elapsed}ms elapsed, timeout at ${ROUTE_TIMEOUT_MS}ms`);
     }
 
     // === CALCULATIONS (NO GPT) ===
@@ -95,8 +110,8 @@ export async function POST(request: NextRequest) {
 
     const frequencyScore = calcFrequencyScore(redditCount, soCount, Math.abs(trendsVolume));
 
-    // 3. Current solutions — reviews
-    const reviews = [...g2Result.data, ...capterraResult.data];
+    // 3. Current solutions — reviews (G2 + Capterra + Trustpilot)
+    const reviews = [...g2Result.data, ...capterraResult.data, ...trustpilotResult.data];
 
     // 4. Willingness to pay — pricing data
     const paidSolutionCount = pricingResults.filter(p => p.prices_found.length > 0 || p.pricing_url).length;
@@ -106,9 +121,10 @@ export async function POST(request: NextRequest) {
     const verdictValue = Math.min(10, Math.max(1, Math.round(verdictRaw * 10) / 10));
     const verdictConfidence = Math.min(90, 20 + complaints.length * 5 + reviews.length * 3 + paidSolutionCount * 5);
 
-    // === AI SUMMARY (optional, based on real data) ===
+    // === AI SUMMARY (optional, based on real data — skip if running low on time) ===
     let aiSummary: string | null = null;
-    if (OPENAI_API_KEY && complaints.length > 0) {
+    const elapsed2 = Date.now() - routeStart;
+    if (OPENAI_API_KEY && complaints.length > 0 && elapsed2 < ROUTE_TIMEOUT_MS - 10_000) {
       try {
         const complaintsText = complaints.slice(0, 10).map((c, i) =>
           `${i + 1}. [${c.source}] "${c.title}" (engagement: ${c.engagement || 0}, URL: ${c.url})`
@@ -201,6 +217,13 @@ ${complaintsText}
         data_type: 'ai_synthesis' as const,
         note: 'AI-синтез на основе реальных жалоб',
       } : null,
+      search_errors: [
+        ...(complaintsResult.errors || []),
+        ...(trendsResult.error ? [`google_trends: ${trendsResult.error}`] : []),
+        ...(g2Result.error ? [`g2: ${g2Result.error}`] : []),
+        ...(capterraResult.error ? [`capterra: ${capterraResult.error}`] : []),
+        ...(trustpilotResult.error ? [`trustpilot: ${trustpilotResult.error}`] : []),
+      ],
       serpapi_calls_used: totalSerpApiCalls,
       analyzed_at: new Date().toISOString(),
     };

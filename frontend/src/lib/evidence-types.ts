@@ -26,6 +26,9 @@ export type SourceName =
   | 'youtube'
   | 'google_news'
   | 'google_search'
+  | 'google_autocomplete'
+  | 'github'
+  | 'indiehackers'
   | 'techcrunch'
   | 'crunchbase'
   | 'linkedin';
@@ -120,6 +123,29 @@ export interface YouTubeResult {
   url: string;
   publishedAt: string;
   thumbnail: string;
+}
+
+export interface GitHubRepoResult {
+  name: string;
+  full_name: string;
+  url: string;
+  description: string;
+  stars: number;
+  forks: number;
+  open_issues: number;
+  language: string | null;
+  created_at: string;
+  updated_at: string;
+  topics: string[];
+}
+
+export interface GoogleAutocompleteResult {
+  suggestion: string;
+  type: string;
+}
+
+export interface IndieHackersResult extends SearchResult {
+  source: 'indiehackers';
 }
 
 export interface FundingNewsResult extends SearchResult {

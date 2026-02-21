@@ -8,15 +8,12 @@ export interface Trend {
   title: string;
   category: string;
   popularity_score: number;
-  opportunity_score: number;
-  pain_score: number;
-  feasibility_score: number;
-  profit_potential: number;
   growth_rate: number;
   why_trending: string;
   status: string;
   first_detected_at: string;
   source?: string;
+  source_query?: string;
 }
 
 interface TrendsData {
@@ -128,17 +125,64 @@ function normalizeTitle(title: string): string {
   return normalized;
 }
 
+// Extract significant words from a string (works for both English and Russian)
+function getSignificantWords(text: string): Set<string> {
+  const stopWords = new Set([
+    // English
+    'the', 'a', 'an', 'is', 'are', 'for', 'of', 'in', 'on', 'to', 'and', 'or', 'with',
+    'tool', 'tools', 'software', 'platform', 'app', 'service', 'ai', 'ml', 'saas',
+    'best', 'top', 'new', 'free', 'vs', 'comparison', 'compare', 'review',
+    // Russian
+    'для', 'на', 'по', 'из', 'от', 'до', 'при', 'без', 'над', 'под', 'через',
+    'инструмент', 'платформа', 'сервис', 'система', 'приложение',
+    'на', 'основе', 'помощью', 'помощи',
+  ]);
+
+  return new Set(
+    text.toLowerCase()
+      .replace(/[^a-zа-яёА-ЯЁ0-9\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !stopWords.has(w))
+  );
+}
+
+function wordSetSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 1;
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const w of a) { if (b.has(w)) intersection++; }
+  return intersection / (a.size + b.size - intersection);
+}
+
 // Check if two trends are duplicates
 function isDuplicate(newTrend: Trend, existingTrend: Trend): boolean {
   const newTitle = normalizeTitle(newTrend.title);
   const existingTitle = normalizeTitle(existingTrend.title);
 
+  // 1. Exact normalized title match
   if (newTitle === existingTitle) return true;
 
+  // 2. Substring match with 70%+ length ratio
   if (newTitle.includes(existingTitle) || existingTitle.includes(newTitle)) {
     const shorter = newTitle.length < existingTitle.length ? newTitle : existingTitle;
     const longer = newTitle.length < existingTitle.length ? existingTitle : newTitle;
     if (shorter.length / longer.length > 0.7) return true;
+  }
+
+  // 3. source_query word-set comparison (English keywords)
+  if (newTrend.source_query && existingTrend.source_query) {
+    const newQueryWords = getSignificantWords(newTrend.source_query);
+    const existingQueryWords = getSignificantWords(existingTrend.source_query);
+    if (newQueryWords.size >= 2 && existingQueryWords.size >= 2) {
+      if (wordSetSimilarity(newQueryWords, existingQueryWords) >= 0.7) return true;
+    }
+  }
+
+  // 4. Title word-set comparison (Russian/English words)
+  const newTitleWords = getSignificantWords(newTrend.title);
+  const existingTitleWords = getSignificantWords(existingTrend.title);
+  if (newTitleWords.size >= 2 && existingTitleWords.size >= 2) {
+    if (wordSetSimilarity(newTitleWords, existingTitleWords) >= 0.7) return true;
   }
 
   return false;

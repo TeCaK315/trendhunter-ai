@@ -4,6 +4,10 @@ import {
   fetchProductHunt,
   fetchHackerNews,
   fetchGoogleNews,
+  fetchYouTube,
+  fetchGitHub,
+  fetchIndieHackers,
+  fetchGoogleAutocomplete,
 } from '@/lib/data-fetchers';
 import {
   calcTrendStability,
@@ -37,19 +41,27 @@ export async function POST(request: NextRequest) {
 
     let totalSerpApiCalls = 0;
 
-    // Fetch all data in parallel
+    // Fetch all data in parallel (including YouTube, GitHub, Indie Hackers, Autocomplete)
     const [
       trends12mResult,
       trends3mResult,
       phResult,
       hnResult,
       fundingNewsResult,
+      youtubeResult,
+      githubResult,
+      indieHackersResult,
+      autocompleteResult,
     ] = await Promise.all([
       fetchGoogleTrends(searchQuery, 'today 12-m'),
       fetchGoogleTrends(searchQuery, 'today 3-m'),
       fetchProductHunt(searchQuery),
       fetchHackerNews(`Show HN ${searchQuery}`),
       fetchGoogleNews(searchQuery, 6),
+      fetchYouTube(searchQuery),
+      fetchGitHub(searchQuery),
+      fetchIndieHackers(searchQuery),
+      fetchGoogleAutocomplete(searchQuery),
     ]);
 
     totalSerpApiCalls += trends12mResult.serpapi_calls_used;
@@ -57,6 +69,10 @@ export async function POST(request: NextRequest) {
     totalSerpApiCalls += phResult.serpapi_calls_used;
     totalSerpApiCalls += hnResult.serpapi_calls_used;
     totalSerpApiCalls += fundingNewsResult.serpapi_calls_used;
+    totalSerpApiCalls += youtubeResult.serpapi_calls_used;
+    totalSerpApiCalls += githubResult.serpapi_calls_used;
+    totalSerpApiCalls += indieHackersResult.serpapi_calls_used;
+    totalSerpApiCalls += autocompleteResult.serpapi_calls_used;
 
     // === CALCULATIONS (NO GPT) ===
 
@@ -82,11 +98,15 @@ export async function POST(request: NextRequest) {
       stdDeviation = Math.round(Math.sqrt(variance) * 10) / 10;
     }
 
-    // 3. New players
+    // 3. New players (PH + HN + GitHub + Indie Hackers)
     const phLaunches = phResult.data;
     const showHNPosts = hnResult.data;
     const fundingNews = fundingNewsResult.data;
-    const newEntrantsCount = phLaunches.length + showHNPosts.length;
+    const githubRepos = githubResult.data;
+    const indieHackersPosts = indieHackersResult.data;
+    const youtubeVideos = youtubeResult.data;
+    const autocompleteSuggestions = autocompleteResult.suggestions;
+    const newEntrantsCount = phLaunches.length + showHNPosts.length + githubRepos.length + indieHackersPosts.length;
 
     // === VERDICT (calculated) ===
     const demandVerdict = calcDemandVerdict(
@@ -131,6 +151,21 @@ export async function POST(request: NextRequest) {
           snippet: p.snippet,
           source: 'hacker_news' as const,
         })),
+        github_repos: githubRepos.map(r => ({
+          name: r.full_name,
+          url: r.url,
+          stars: r.stars,
+          forks: r.forks,
+          description: r.description,
+          language: r.language,
+          source: 'github' as const,
+        })),
+        indiehackers_posts: indieHackersPosts.map(p => ({
+          title: p.title,
+          url: p.url,
+          snippet: p.snippet,
+          source: 'indiehackers' as const,
+        })),
         funding_news: fundingNews.map(n => ({
           title: n.title,
           url: n.url,
@@ -140,11 +175,34 @@ export async function POST(request: NextRequest) {
         })),
         new_entrants_count: newEntrantsCount,
       },
+      youtube_content: youtubeVideos.map(v => ({
+        title: v.title,
+        url: v.url,
+        channel: v.channel,
+        publishedAt: v.publishedAt,
+        thumbnail: v.thumbnail,
+        source: 'youtube' as const,
+      })),
+      google_autocomplete: autocompleteSuggestions.length > 0 ? {
+        suggestions: autocompleteSuggestions.map(s => s.suggestion),
+        total: autocompleteSuggestions.length,
+      } : null,
       verdict: demandVerdict,
+      search_errors: [
+        ...(trends12mResult.error ? [`google_trends_12m: ${trends12mResult.error}`] : []),
+        ...(trends3mResult.error ? [`google_trends_3m: ${trends3mResult.error}`] : []),
+        ...(phResult.error ? [`producthunt: ${phResult.error}`] : []),
+        ...(hnResult.error ? [`hacker_news: ${hnResult.error}`] : []),
+        ...(youtubeResult.error ? [`youtube: ${youtubeResult.error}`] : []),
+        ...(githubResult.error ? [`github: ${githubResult.error}`] : []),
+        ...(indieHackersResult.error ? [`indiehackers: ${indieHackersResult.error}`] : []),
+      ],
       data_metadata: {
         growing_or_dying: { data_type: 'real_data', source: 'Google Trends via SerpAPI' },
         hype_or_stable: { data_type: 'calculated', formula: 'stability = 10 - (std_dev / mean * 10)' },
-        new_players: { data_type: 'real_data', source: 'Product Hunt + Hacker News + Google News' },
+        new_players: { data_type: 'real_data', source: 'Product Hunt + Hacker News + GitHub + Indie Hackers + Google News' },
+        youtube: { data_type: 'real_data', source: 'YouTube Data API' },
+        google_autocomplete: { data_type: 'real_data', source: 'Google Autocomplete via SerpAPI' },
         verdict: { data_type: 'calculated', formula: '(growth*0.5 + stability*0.3 + new_entrants*0.2) * entrants_factor' },
       },
       serpapi_calls_used: totalSerpApiCalls,

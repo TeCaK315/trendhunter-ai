@@ -14,22 +14,21 @@ import DemandGrowthBlock from '@/components/blocks/DemandGrowthBlock';
 import MarketSellabilityBlock from '@/components/blocks/MarketSellabilityBlock';
 import MarketOccupationBlock from '@/components/blocks/MarketOccupationBlock';
 import UnitEconomicsBlock from '@/components/blocks/UnitEconomicsBlock';
+import EvidenceBadge from '@/components/EvidenceBadge';
+import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
 
 interface Trend {
   id: string;
   title: string;
   category: string;
   popularity_score: number;
-  opportunity_score: number;
-  pain_score: number;
-  feasibility_score: number;
-  profit_potential: number;
   growth_rate: number;
   why_trending: string;
   why_trending_en?: string;
   status: string;
   first_detected_at: string;
   source?: string;
+  source_query?: string;
 }
 
 interface AnalysisSegment {
@@ -88,7 +87,7 @@ interface TrendAnalysis {
 
 // Оптимизированный flow: 4 основных шага вместо 8
 // Каждый шаг содержит подразделы с полным контентом
-type FlowStep = 'overview' | 'evidence' | 'research' | 'business' | 'project';
+type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'research' | 'business' | 'project';
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
@@ -148,10 +147,8 @@ interface FundingRound {
 
 interface ActiveFund {
   name: string;
-  focus_areas: string[];
   typical_check_size: string;
   website: string;
-  crunchbase_url: string;
 }
 
 interface VentureData {
@@ -270,6 +267,12 @@ export default function TrendPage() {
   const [evidenceData, setEvidenceData] = useState<Record<string, any>>({});
   const [evidenceLoading, setEvidenceLoading] = useState<Record<string, boolean>>({});
   const [evidenceErrors, setEvidenceErrors] = useState<Record<string, string>>({});
+
+  // Action Plan data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [actionPlanData, setActionPlanData] = useState<any>(null);
+  const [actionPlanLoading, setActionPlanLoading] = useState(false);
+  const [actionPlanError, setActionPlanError] = useState('');
 
   // Translation hooks for dynamic content
   const trendForTranslation = trend ? {
@@ -562,6 +565,9 @@ export default function TrendPage() {
   // Состояние для проекта (META-агент)
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [loadingProject, setLoadingProject] = useState(false);
+  const [projectGenStep, setProjectGenStep] = useState(0);
+  const [projectGenStartTime, setProjectGenStartTime] = useState<number | null>(null);
+  const [projectGenElapsed, setProjectGenElapsed] = useState(0);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [githubCreated, setGithubCreated] = useState(false);
   const [isGithubAuthenticated, setIsGithubAuthenticated] = useState(false);
@@ -583,6 +589,9 @@ export default function TrendPage() {
   const [isVercelAuthenticated, setIsVercelAuthenticated] = useState(false);
   const [vercelDeployed, setVercelDeployed] = useState(false);
   const [vercelUrl, setVercelUrl] = useState<string | null>(null);
+  const [showVercelTokenInput, setShowVercelTokenInput] = useState(false);
+  const [vercelTokenValue, setVercelTokenValue] = useState('');
+  const [vercelConnecting, setVercelConnecting] = useState(false);
   const [hasAutoSelectedType, setHasAutoSelectedType] = useState(false);
 
   // Маркетинговая стратегия
@@ -968,6 +977,49 @@ export default function TrendPage() {
     }
   }, [searchParams, checkGithubAuth, router]);
 
+  // Connect Vercel via Personal Access Token
+  const connectVercelToken = useCallback(async () => {
+    if (!vercelTokenValue.trim()) return;
+    setVercelConnecting(true);
+    try {
+      const res = await fetch('/api/auth/vercel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: vercelTokenValue.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsVercelAuthenticated(true);
+        setShowVercelTokenInput(false);
+        setVercelTokenValue('');
+      }
+    } catch { /* ignore */ }
+    finally { setVercelConnecting(false); }
+  }, [vercelTokenValue]);
+
+  // Timer and step progression for project generation
+  useEffect(() => {
+    if (!loadingProject) {
+      setProjectGenStartTime(null);
+      setProjectGenElapsed(0);
+      setProjectGenStep(0);
+      return;
+    }
+    if (!projectGenStartTime) {
+      setProjectGenStartTime(Date.now());
+    }
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - (projectGenStartTime || Date.now())) / 1000);
+      setProjectGenElapsed(elapsed);
+      // Auto-advance steps based on time
+      if (elapsed >= 90) setProjectGenStep(4);
+      else if (elapsed >= 50) setProjectGenStep(3);
+      else if (elapsed >= 25) setProjectGenStep(2);
+      else if (elapsed >= 8) setProjectGenStep(1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [loadingProject, projectGenStartTime]);
+
   // Хелпер: Построение накопительного контекста для передачи между экспертами
   const buildAnalysisContext = () => {
     const context: Record<string, unknown> = {
@@ -976,6 +1028,7 @@ export default function TrendPage() {
         title: trend?.title,
         category: trend?.category,
         why_trending: trend?.why_trending,
+        source_query: trend?.source_query,
       },
     };
 
@@ -1090,12 +1143,48 @@ export default function TrendPage() {
         const cachedStep = loadFromCache<FlowStep>('currentStep');
         if (cachedStep) setCurrentStep(cachedStep);
 
-        // Fetch trend
-        const trendsRes = await fetch('/api/trends');
-        const trendsData = await trendsRes.json();
-        const foundTrend = trendsData.trends?.find((t: Trend) => t.id === trendId);
+        // Fetch trend from API
+        let foundTrend: Trend | null = null;
+        try {
+          const trendsRes = await fetch('/api/trends');
+          const trendsData = await trendsRes.json();
+          foundTrend = trendsData.trends?.find((t: Trend) => t.id === trendId) || null;
+        } catch {
+          console.warn('[fetchData] API /api/trends failed, trying localStorage');
+        }
+
+        // Fallback: restore trend from localStorage (home page cache)
+        if (!foundTrend) {
+          try {
+            const cachedTrends = localStorage.getItem('th_trends');
+            if (cachedTrends) {
+              const parsed = JSON.parse(cachedTrends);
+              foundTrend = parsed.trends?.find((t: Trend) => t.id === trendId) || null;
+            }
+          } catch { /* ignore */ }
+        }
+
+        // Fallback: restore from favorites
+        if (!foundTrend) {
+          try {
+            const favData = localStorage.getItem('trendhunter_favorites_data');
+            if (favData) {
+              const favTrends = JSON.parse(favData);
+              foundTrend = favTrends.find((t: Trend) => t.id === trendId) || null;
+            }
+          } catch { /* ignore */ }
+        }
+
         if (foundTrend) {
           setTrend(foundTrend);
+          // Re-save to API so it persists on server side too
+          try {
+            await fetch('/api/trends', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(foundTrend),
+            });
+          } catch { /* ignore */ }
         }
 
         // Fetch analysis if exists (обновляем кеш если есть серверные данные)
@@ -1177,19 +1266,32 @@ export default function TrendPage() {
     if (!trend) return;
     setAnalyzing(true);
 
-    // Сразу переключаемся на Evidence и запускаем 5 блоков параллельно
+    // Переключаемся на Evidence и запускаем ТОЛЬКО 5 блоков параллельно
+    // Deep-analysis (3 AI агента) запускается ОТДЕЛЬНО пользователем после сбора Evidence
     setCurrentStep('evidence');
-    runAllEvidenceBlocks();
+    console.log('[runAnalysis] Starting 5 Evidence blocks (deep-analysis will be manual)');
+    await runAllEvidenceBlocks();
+    setAnalyzing(false);
+  };
+
+  // Отдельный запуск Deep Analysis (3 AI агента: Оптимист, Скептик, Арбитр)
+  // Вызывается вручную ПОСЛЕ сбора Evidence данных
+  const runDeepAnalysis = async () => {
+    if (!trend) return;
+    setAnalyzing(true);
 
     try {
-      // Параллельно запускаем deep-analysis (3 AI-агента)
+      // Передаём собранные Evidence данные как контекст для 3 агентов
       const evidencePayload = {
         problem: evidenceData.problem || undefined,
+        demand: evidenceData.demand || undefined,
+        sellability: evidenceData.sellability || undefined,
         occupation: evidenceData.occupation || undefined,
+        economics: evidenceData.economics || undefined,
       };
-      const hasEvidence = evidencePayload.problem?.who_hurts?.complaints?.length > 0;
+      const hasEvidence = Object.values(evidencePayload).some(v => v !== undefined);
 
-      console.log(`[runAnalysis] Starting deep-analysis + 5 Evidence blocks in parallel`);
+      console.log(`[runDeepAnalysis] Starting 3 AI agents with${hasEvidence ? '' : 'out'} Evidence context`);
 
       const response = await fetch('/api/deep-analysis', {
         method: 'POST',
@@ -1199,6 +1301,7 @@ export default function TrendPage() {
           trend_title: trend.title,
           trend_category: trend.category,
           why_trending: trend.why_trending,
+          source_query: trend.source_query,
           evidence_data: hasEvidence ? evidencePayload : undefined,
         }),
       });
@@ -1230,7 +1333,6 @@ export default function TrendPage() {
       }
     } catch (error) {
       console.error('Error running deep-analysis:', error);
-      // Evidence блоки уже запущены и работают независимо
     } finally {
       setAnalyzing(false);
     }
@@ -1270,7 +1372,7 @@ export default function TrendPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              query: trend.title,
+              query: trend.source_query || trend.title,
               context,
             }),
           });
@@ -1290,6 +1392,42 @@ export default function TrendPage() {
     );
   };
 
+  // Generate Action Plan from collected Evidence data
+  const generateActionPlan = async () => {
+    if (!trend) return;
+    setActionPlanLoading(true);
+    setActionPlanError('');
+
+    try {
+      const response = await fetch('/api/action-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: trend.source_query || trend.title,
+          evidenceData: {
+            problem: evidenceData.problem || null,
+            demand: evidenceData.demand || null,
+            sellability: evidenceData.sellability || null,
+            occupation: evidenceData.occupation || null,
+            economics: evidenceData.economics || null,
+          },
+          competition: competition || null,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setActionPlanData(data.data);
+      } else {
+        setActionPlanError(data.error || 'Error generating action plan');
+      }
+    } catch (e) {
+      setActionPlanError((e as Error).message);
+    } finally {
+      setActionPlanLoading(false);
+    }
+  };
+
   const collectSources = async () => {
     if (!trend) return;
     setCollectingSources(true);
@@ -1302,7 +1440,7 @@ export default function TrendPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: trend.title,
+          query: trend.source_query || trend.title,
           trend_title: trend.title,
           context, // Передаём контекст от анализа болей
         }),
@@ -1342,9 +1480,6 @@ export default function TrendPage() {
     }
   };
 
-  const getOverallScore = (t: Trend) => {
-    return ((t.opportunity_score + t.pain_score + t.feasibility_score + t.profit_potential) / 4).toFixed(1);
-  };
 
   // Fetch Product Specification (AI гипотезы о продукте) - вызывается перед созданием проекта
   const fetchProductSpec = async (): Promise<ProductSpecification | null> => {
@@ -1508,7 +1643,7 @@ export default function TrendPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          niche: trend.title,
+          niche: trend.source_query || trend.title,
           painPoint: analysis.main_pain,
           count: 10,
           context, // Передаём накопленный контекст
@@ -1607,6 +1742,8 @@ export default function TrendPage() {
     if (!trend || loadingProject) return;
     setLoadingProject(true);
     setProjectError(null);
+    setProjectGenStep(0);
+    setProjectGenStartTime(Date.now());
 
     try {
       // Сначала получаем Product Specification если ещё нет
@@ -1635,6 +1772,15 @@ export default function TrendPage() {
       if (data.success && data.data) {
         setProjectData(data.data);
         setGithubCreated(data.github_created || false);
+
+        // Если генерация кода частично провалилась — показываем предупреждение
+        if (data.data.code_generation_error) {
+          setCodeGenerationError(
+            language === 'ru'
+              ? `Генерация кода не удалась: ${data.data.code_generation_error}. Репозиторий создан с минимальным шаблоном.`
+              : `Code generation failed: ${data.data.code_generation_error}. Repository created with minimal template.`
+          );
+        }
 
         // Обновляем Vercel статус
         if (data.vercel_deployed && data.data.vercel_url) {
@@ -1912,6 +2058,13 @@ export default function TrendPage() {
         fetchLeads();
       }
     }
+    // Action Plan auto-fetch: generate plan when tab clicked and there is evidence data
+    if (currentStep === 'action-plan' && !actionPlanData && !actionPlanLoading) {
+      const hasEvidence = Object.values(evidenceData).filter(v => v).length >= 2;
+      if (hasEvidence) {
+        generateActionPlan();
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, businessSubTab]);
 
@@ -1919,6 +2072,7 @@ export default function TrendPage() {
   const flowSteps = [
     { id: 'overview', label: t.trendDetail.tabs.overview, icon: '📊', description: language === 'ru' ? 'Обзор тренда' : 'Trend Overview' },
     { id: 'evidence', label: language === 'ru' ? 'Доказательства' : 'Evidence', icon: '🔎', description: language === 'ru' ? '6 блоков проверки реальными данными' : '6 evidence-based analysis blocks' },
+    { id: 'action-plan', label: language === 'ru' ? 'План действий' : 'Action Plan', icon: '📋', description: language === 'ru' ? 'Стратегия на основе Evidence' : 'Evidence-based strategy' },
     { id: 'business', label: language === 'ru' ? 'Бизнес' : 'Business', icon: '💼', description: language === 'ru' ? 'Инвестиции и клиенты' : 'Venture & Leads' },
     { id: 'project', label: t.trendDetail.tabs.project, icon: '🚀', description: language === 'ru' ? 'Создать проект' : 'Create Project' },
   ];
@@ -1978,6 +2132,7 @@ export default function TrendPage() {
               const isPast = flowSteps.findIndex(s => s.id === currentStep) > index;
               const isClickable = isPast || step.id === 'overview' ||
                 step.id === 'evidence' ||
+                step.id === 'action-plan' ||
                 step.id === 'business' ||
                 (step.id === 'project' && analysis);
 
@@ -2098,8 +2253,8 @@ export default function TrendPage() {
                 </svg>
               </button>
               <div className="text-right">
-                <div className="text-3xl font-bold text-white">{getOverallScore(trend)}</div>
-                <div className="text-xs text-zinc-500">{t.trendDetail.overview.overallScore}</div>
+                <div className="text-3xl font-bold text-emerald-400">+{trend.growth_rate}%</div>
+                <div className="text-xs text-zinc-500">{t.trendDetail.overview.growth}</div>
               </div>
             </div>
           </div>
@@ -2169,6 +2324,78 @@ export default function TrendPage() {
             </div>
           )}
 
+          {/* Action Plan Content */}
+          {currentStep === 'action-plan' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    {language === 'ru' ? 'План действий' : 'Action Plan'}
+                  </h2>
+                  <p className="text-zinc-400 text-sm mt-1">
+                    {language === 'ru'
+                      ? 'Стратегия на основе собранных Evidence данных. Все рекомендации подкреплены источниками.'
+                      : 'Strategy based on collected Evidence data. All recommendations backed by sources.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => generateActionPlan()}
+                  disabled={actionPlanLoading}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  {actionPlanLoading && (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {actionPlanData
+                    ? (language === 'ru' ? 'Обновить план' : 'Refresh Plan')
+                    : (language === 'ru' ? 'Сгенерировать план' : 'Generate Plan')}
+                </button>
+              </div>
+
+              {/* Evidence readiness indicator */}
+              {!actionPlanData && !actionPlanLoading && (
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                  <p className="text-sm text-zinc-400 mb-3">
+                    {language === 'ru' ? 'Собранные Evidence данные:' : 'Collected Evidence data:'}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {[
+                      { key: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
+                      { key: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
+                      { key: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
+                      { key: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
+                      { key: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
+                    ].map((block) => (
+                      <div
+                        key={block.key}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                          evidenceData[block.key]
+                            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                            : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
+                        }`}
+                      >
+                        <span>{block.icon}</span>
+                        <span>{block.label}</span>
+                        {evidenceData[block.key] && <span className="ml-auto">✓</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-3">
+                    {language === 'ru'
+                      ? 'Минимум 2 блока для генерации плана. Чем больше данных — тем точнее рекомендации.'
+                      : 'Minimum 2 blocks needed. More data = better recommendations.'}
+                  </p>
+                </div>
+              )}
+
+              <ActionPlanBlock
+                data={actionPlanData}
+                loading={actionPlanLoading}
+                error={actionPlanError}
+              />
+            </div>
+          )}
+
           {/* Step Content */}
           {currentStep === 'overview' && (
             <div className="space-y-6">
@@ -2227,34 +2454,79 @@ export default function TrendPage() {
 
           {/* Evidence - Analysis subtab: No analysis yet */}
           {currentStep === 'evidence' && evidenceSubTab === 'analysis' && !analysis && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-6">
-                <span className="text-4xl">🔍</span>
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
+                <span className="text-4xl">⚔️</span>
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
-                {language === 'ru' ? 'Анализ ещё не выполнен' : 'Analysis not performed yet'}
+                {language === 'ru' ? 'Дебаты 3 AI-агентов' : '3 AI Agents Debate'}
               </h3>
-              <p className="text-zinc-400 text-center max-w-md mb-6">
-                {t.trendDetail.overview.runAnalysisDescription}
+              <p className="text-zinc-400 text-center max-w-md mb-4">
+                {language === 'ru'
+                  ? 'Оптимист, Скептик и Арбитр проанализируют собранные данные и определят главную боль, целевую аудиторию и ключевые возможности.'
+                  : 'Optimist, Skeptic, and Arbiter will analyze collected data to identify the main pain, target audience, and key opportunities.'}
               </p>
+
+              {/* Evidence readiness indicator */}
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-6 w-full max-w-md">
+                <p className="text-sm text-zinc-400 mb-3">
+                  {language === 'ru' ? 'Собранные данные:' : 'Collected data:'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
+                    { key: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
+                    { key: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
+                    { key: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
+                    { key: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
+                  ].map((block) => (
+                    <div
+                      key={block.key}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                        evidenceData[block.key]
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : evidenceLoading[block.key]
+                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                          : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
+                      }`}
+                    >
+                      <span>{block.icon}</span>
+                      <span>{block.label}</span>
+                      {evidenceData[block.key] ? (
+                        <span className="ml-auto">✓</span>
+                      ) : evidenceLoading[block.key] ? (
+                        <span className="ml-auto w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {Object.values(evidenceLoading).some(v => v) && (
+                  <p className="text-xs text-yellow-400/70 mt-3">
+                    {language === 'ru' ? 'Дождитесь завершения сбора данных для лучшего результата' : 'Wait for data collection to complete for best results'}
+                  </p>
+                )}
+              </div>
+
               <button
-                onClick={runAnalysis}
-                disabled={analyzing}
+                onClick={runDeepAnalysis}
+                disabled={analyzing || Object.values(evidenceLoading).some(v => v)}
                 className={`px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
                   analyzing
-                    ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                    ? 'bg-purple-600/50 text-purple-300 cursor-wait'
+                    : Object.values(evidenceLoading).some(v => v)
+                    ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
+                    : 'bg-purple-600 hover:bg-purple-500 text-white'
                 }`}
               >
                 {analyzing ? (
                   <>
                     <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                    {t.trendDetail.overview.analyzing}
+                    {language === 'ru' ? 'Агенты анализируют...' : 'Agents analyzing...'}
                   </>
                 ) : (
                   <>
-                    <span>🔍</span>
-                    {t.trendDetail.overview.runAnalysis}
+                    <span>⚔️</span>
+                    {language === 'ru' ? 'Запустить 3 AI-агентов' : 'Launch 3 AI Agents'}
                   </>
                 )}
               </button>
@@ -2284,6 +2556,7 @@ export default function TrendPage() {
                   <div className="p-4 border-b border-zinc-800 bg-zinc-800/30">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                       <span>⚔️</span> {t.trendDetail.analysis.aiDebate}
+                      <EvidenceBadge type="ai_synthesis" label={language === 'ru' ? 'AI-синтез на основе Evidence' : 'AI synthesis from Evidence'} />
                       {translatingRawAnalyses && (
                         <span className="inline-block w-4 h-4 ml-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                       )}
@@ -2368,7 +2641,10 @@ export default function TrendPage() {
                 <div className="flex items-center gap-3 mb-4">
                   <span className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-2xl">⚖️</span>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{t.trendDetail.analysis.arbiterVerdict}</h3>
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      {t.trendDetail.analysis.arbiterVerdict}
+                      <EvidenceBadge type="ai_synthesis" />
+                    </h3>
                     <p className="text-sm text-zinc-400">{t.trendDetail.analysis.arbiterRole}</p>
                   </div>
                   {analysis.sentiment_score && (
@@ -2599,14 +2875,7 @@ export default function TrendPage() {
                               <div className="text-white font-medium">{fund.name}</div>
                               <div className="text-sm text-emerald-400">{fund.typical_check_size}</div>
                             </div>
-                            <div className="flex flex-wrap gap-1 mb-3">
-                              {fund.focus_areas.map((area, i) => (
-                                <span key={i} className="px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded text-xs">
-                                  {area}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 mt-2">
                               <a
                                 href={fund.website}
                                 target="_blank"
@@ -2614,14 +2883,6 @@ export default function TrendPage() {
                                 className="text-xs text-indigo-400 hover:text-indigo-300"
                               >
                                 {t.trendDetail.venture.website}
-                              </a>
-                              <a
-                                href={fund.crunchbase_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-indigo-400 hover:text-indigo-300"
-                              >
-                                Crunchbase
                               </a>
                             </div>
                           </div>
@@ -2735,14 +2996,16 @@ export default function TrendPage() {
                               <p className="text-sm text-zinc-400 mb-3">{company.description}</p>
                             )}
                             {company.pain_match && (
-                              <p className="text-sm text-zinc-300 mb-3">
+                              <div className="text-sm text-zinc-300 mb-3">
                                 <span className="text-zinc-500">{language === 'ru' ? 'Совпадение боли:' : 'Pain match:'}</span> {company.pain_match}
-                              </p>
+                                <EvidenceBadge type="ai_synthesis" className="ml-2" />
+                              </div>
                             )}
                             {company.outreach_angle && (
-                              <p className="text-sm text-zinc-300 mb-3">
+                              <div className="text-sm text-zinc-300 mb-3">
                                 <span className="text-zinc-500">{language === 'ru' ? 'Подход:' : 'Approach:'}</span> {company.outreach_angle}
-                              </p>
+                                <EvidenceBadge type="ai_synthesis" className="ml-2" />
+                              </div>
                             )}
 
                             {/* Links */}
@@ -3157,14 +3420,49 @@ export default function TrendPage() {
                             }`} />
                           </button>
                         ) : (
-                          <a
-                            href="/api/auth/vercel"
+                          <button
+                            onClick={() => setShowVercelTokenInput(!showVercelTokenInput)}
                             className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2"
                           >
                             <span>▲</span>
                             {language === 'ru' ? 'Подключить' : 'Connect'}
-                          </a>
+                          </button>
                         )}
+                      </div>
+                    )}
+                    {showVercelTokenInput && !isVercelAuthenticated && isGithubAuthenticated && (
+                      <div className="p-4 bg-zinc-800/50 rounded-lg space-y-3">
+                        <div className="text-sm text-zinc-400">
+                          {language === 'ru'
+                            ? 'Вставьте Personal Access Token от Vercel:'
+                            : 'Paste your Vercel Personal Access Token:'}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="password"
+                            value={vercelTokenValue}
+                            onChange={(e) => setVercelTokenValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && connectVercelToken()}
+                            placeholder="xxxxxxxxxxxxxxxx"
+                            className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                            autoFocus
+                          />
+                          <button
+                            onClick={connectVercelToken}
+                            disabled={vercelConnecting || !vercelTokenValue.trim()}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white text-sm rounded-lg transition-colors"
+                          >
+                            {vercelConnecting ? '...' : 'OK'}
+                          </button>
+                        </div>
+                        <a
+                          href="https://vercel.com/account/tokens"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-indigo-400 hover:text-indigo-300"
+                        >
+                          {language === 'ru' ? 'Создать токен на vercel.com' : 'Create token at vercel.com'} →
+                        </a>
                       </div>
                     )}
                   </div>
@@ -3275,13 +3573,66 @@ export default function TrendPage() {
               )}
 
               {/* Загрузка */}
-              {loadingProject && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-12 text-center">
-                  <div className="animate-spin w-12 h-12 border-3 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">{t.trendDetail.project.generating}</h3>
-                  <p className="text-zinc-400">{language === 'ru' ? 'Анализирует данные от всех экспертов и генерирует спецификацию' : 'Analyzing data from all experts and generating specification'}</p>
-                </div>
-              )}
+              {loadingProject && (() => {
+                const steps = language === 'ru'
+                  ? ['Анализ данных тренда', 'Генерация спецификации', 'Создание архитектуры', 'Генерация кода', 'Финализация проекта']
+                  : ['Analyzing trend data', 'Generating specification', 'Creating architecture', 'Generating code', 'Finalizing project'];
+                const stepIcons = ['📊', '📝', '🏗️', '💻', '✅'];
+                const progressPercent = Math.min(((projectGenStep + 1) / steps.length) * 100, 100);
+                const minutes = Math.floor(projectGenElapsed / 60);
+                const seconds = projectGenElapsed % 60;
+                const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                return (
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8">
+                    {/* Timer */}
+                    <div className="flex items-center justify-center gap-3 mb-6">
+                      <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                      <span className="text-2xl font-mono font-bold text-white">{timeStr}</span>
+                    </div>
+
+                    <h3 className="text-xl font-semibold text-white text-center mb-2">{t.trendDetail.project.generating}</h3>
+                    <p className="text-zinc-400 text-center text-sm mb-6">
+                      {language === 'ru' ? 'META-агент анализирует данные и создаёт проект' : 'META agent is analyzing data and creating project'}
+                    </p>
+
+                    {/* Progress bar */}
+                    <div className="w-full bg-zinc-800 rounded-full h-2 mb-6">
+                      <div
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-1000 ease-out"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+
+                    {/* Steps */}
+                    <div className="space-y-3">
+                      {steps.map((step, i) => (
+                        <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-500 ${
+                          i === projectGenStep
+                            ? 'bg-indigo-500/10 border border-indigo-500/30'
+                            : i < projectGenStep
+                            ? 'bg-emerald-500/5 border border-emerald-500/20'
+                            : 'bg-zinc-800/30 border border-transparent'
+                        }`}>
+                          <span className="text-lg">{i < projectGenStep ? '✅' : stepIcons[i]}</span>
+                          <span className={`text-sm font-medium ${
+                            i === projectGenStep ? 'text-indigo-300' : i < projectGenStep ? 'text-emerald-400' : 'text-zinc-500'
+                          }`}>
+                            {step}
+                          </span>
+                          {i === projectGenStep && (
+                            <div className="ml-auto flex gap-1">
+                              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Результаты */}
               {projectData && (

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from '@/lib/i18n';
@@ -20,7 +21,13 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
   const [showProviders, setShowProviders] = useState(false);
   const [vercelAuth, setVercelAuth] = useState(false);
   const [vercelUser, setVercelUser] = useState<{ username: string } | null>(null);
+  const [showVercelInput, setShowVercelInput] = useState(false);
+  const [vercelToken, setVercelToken] = useState('');
+  const [vercelConnecting, setVercelConnecting] = useState(false);
+  const [vercelError, setVercelError] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations();
 
   // Check Vercel auth status
@@ -40,6 +47,32 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
   useEffect(() => {
     checkVercelAuth();
   }, [checkVercelAuth]);
+
+  const connectVercelToken = useCallback(async () => {
+    if (!vercelToken.trim()) return;
+    setVercelConnecting(true);
+    setVercelError('');
+    try {
+      const res = await fetch('/api/auth/vercel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: vercelToken.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVercelAuth(true);
+        setVercelUser(data.user);
+        setShowVercelInput(false);
+        setVercelToken('');
+      } else {
+        setVercelError(data.error || 'Неверный токен');
+      }
+    } catch {
+      setVercelError('Ошибка подключения');
+    } finally {
+      setVercelConnecting(false);
+    }
+  }, [vercelToken]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -94,7 +127,7 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
               {/* Google */}
               <button
                 onClick={() => {
-                  signIn('google');
+                  signIn('google', { callbackUrl: window.location.href });
                   setShowProviders(false);
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-zinc-800 rounded-lg transition-colors"
@@ -127,9 +160,8 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
               </button>
 
               {/* Vercel */}
-              <a
-                href="/api/auth/vercel"
-                onClick={() => setShowProviders(false)}
+              <button
+                onClick={() => setShowVercelInput(!showVercelInput)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-zinc-800 rounded-lg transition-colors"
               >
                 <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
@@ -138,7 +170,40 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
                   </svg>
                 </div>
                 <span>Vercel</span>
-              </a>
+              </button>
+              {showVercelInput && (
+                <div className="px-3 pb-2 space-y-2">
+                  <input
+                    type="password"
+                    value={vercelToken}
+                    onChange={(e) => setVercelToken(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && connectVercelToken()}
+                    placeholder="Вставьте токен..."
+                    className="w-full px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={connectVercelToken}
+                      disabled={vercelConnecting || !vercelToken.trim()}
+                      className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white text-xs rounded-lg transition-colors"
+                    >
+                      {vercelConnecting ? '...' : 'OK'}
+                    </button>
+                    <a
+                      href="https://vercel.com/account/tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-zinc-500 hover:text-zinc-400"
+                    >
+                      Создать токен
+                    </a>
+                  </div>
+                  {vercelError && (
+                    <p className="text-xs text-red-400">{vercelError}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -280,14 +345,47 @@ export default function UserMenu({ compact = false }: UserMenuProps) {
                     {vercelUser?.username || (t.auth.connected || 'Подключён')}
                   </span>
                 ) : (
-                  <a
-                    href="/api/auth/vercel"
+                  <button
+                    onClick={() => setShowVercelInput(!showVercelInput)}
                     className="text-xs text-indigo-400 hover:text-indigo-300"
                   >
                     {t.auth.connect || 'Подключить'}
-                  </a>
+                  </button>
                 )}
               </div>
+              {showVercelInput && !vercelAuth && (
+                <div className="mt-2 space-y-2">
+                  <input
+                    type="password"
+                    value={vercelToken}
+                    onChange={(e) => setVercelToken(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && connectVercelToken()}
+                    placeholder="Personal Access Token..."
+                    className="w-full px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={connectVercelToken}
+                      disabled={vercelConnecting || !vercelToken.trim()}
+                      className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white text-xs rounded transition-colors"
+                    >
+                      {vercelConnecting ? '...' : 'OK'}
+                    </button>
+                    <a
+                      href="https://vercel.com/account/tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-zinc-500 hover:text-zinc-400"
+                    >
+                      Создать токен
+                    </a>
+                  </div>
+                  {vercelError && (
+                    <p className="text-xs text-red-400">{vercelError}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

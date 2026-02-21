@@ -3,6 +3,7 @@ import {
   fetchReddit,
   fetchHackerNews,
   fetchG2Reviews,
+  fetchTrustpilot,
   fetchCompetitorPricing,
   fetchGoogleSearch,
   discoverCompetitors,
@@ -42,15 +43,18 @@ export async function POST(request: NextRequest) {
       buyerRedditResult,
       buyerHNResult,
       g2Result,
+      trustpilotResult,
     ] = await Promise.all([
       fetchReddit(`${searchQuery} pricing OR buy OR subscribe OR paid`),
       fetchHackerNews(`${searchQuery} pricing`),
       fetchG2Reviews(searchQuery),
+      fetchTrustpilot(searchQuery),
     ]);
 
     totalSerpApiCalls += buyerRedditResult.serpapi_calls_used;
     totalSerpApiCalls += buyerHNResult.serpapi_calls_used;
     totalSerpApiCalls += g2Result.serpapi_calls_used;
+    totalSerpApiCalls += trustpilotResult.serpapi_calls_used;
 
     // 2. Market segment detection — search for enterprise/teams/business keywords
     const segmentSearchResult = await fetchGoogleSearch(`${searchQuery} enterprise OR teams OR business pricing`);
@@ -86,12 +90,12 @@ export async function POST(request: NextRequest) {
       competitorNames = discovered.competitors.map(c => c.name);
     }
 
-    const pricingResults = [];
-
-    for (const name of competitorNames.slice(0, 3)) {
-      const pricingResult = await fetchCompetitorPricing(name);
-      totalSerpApiCalls += pricingResult.serpapi_calls_used;
-      pricingResults.push(pricingResult);
+    // Parallel pricing fetch (was sequential — slow)
+    const pricingResults = await Promise.all(
+      competitorNames.slice(0, 3).map(name => fetchCompetitorPricing(name))
+    );
+    for (const pr of pricingResults) {
+      totalSerpApiCalls += pr.serpapi_calls_used;
     }
 
     // Extract price mentions from pricing results
@@ -173,13 +177,21 @@ export async function POST(request: NextRequest) {
             engagement: h.points,
           })),
         ],
-        buyer_profiles: g2Result.data.map(g => ({
-          text: g.title,
-          source: 'g2' as const,
-          source_url: g.url,
-          rating: 'rating' in g ? (g as { rating?: number }).rating : undefined,
-        })),
-        total_data_points: buyerDataPoints,
+        buyer_profiles: [
+          ...g2Result.data.map(g => ({
+            text: g.title,
+            source: 'g2' as const,
+            source_url: g.url,
+            rating: 'rating' in g ? (g as { rating?: number }).rating : undefined,
+          })),
+          ...trustpilotResult.data.map(t => ({
+            text: t.title,
+            source: 'trustpilot' as const,
+            source_url: t.url,
+            rating: t.rating,
+          })),
+        ],
+        total_data_points: buyerDataPoints + trustpilotResult.data.length,
       },
       market_segment: {
         segment_type: segmentType,

@@ -3,32 +3,71 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * /api/auth/vercel
  *
- * OAuth авторизация через Vercel
- * Редирект на страницу авторизации Vercel
+ * POST — сохранить Vercel Personal Access Token
+ * DELETE — удалить токен (logout)
  */
 
-const VERCEL_CLIENT_ID = process.env.VERCEL_CLIENT_ID || '';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+export async function POST(request: NextRequest) {
+  try {
+    const { token } = await request.json();
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const returnTo = searchParams.get('returnTo') || '/';
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Token is required' },
+        { status: 400 }
+      );
+    }
 
-  if (!VERCEL_CLIENT_ID) {
+    // Проверяем токен — получаем инфо о пользователе
+    const userRes = await fetch('https://api.vercel.com/v2/user', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!userRes.ok) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    const userData = await userRes.json();
+    const username = userData.user?.username || 'unknown';
+
+    const response = NextResponse.json({
+      success: true,
+      user: { username },
+    });
+
+    // Сохраняем токен в httpOnly cookie
+    response.cookies.set('vercel_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    });
+
+    response.cookies.set('vercel_username', username, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Vercel auth error:', error);
     return NextResponse.json(
-      { success: false, error: 'Vercel OAuth not configured' },
+      { success: false, error: 'Failed to verify token' },
       { status: 500 }
     );
   }
+}
 
-  // Сохраняем returnTo в state для редиректа после авторизации
-  const state = Buffer.from(JSON.stringify({ returnTo })).toString('base64');
-
-  const authUrl = new URL('https://vercel.com/integrations/new');
-  authUrl.searchParams.set('client_id', VERCEL_CLIENT_ID);
-  authUrl.searchParams.set('redirect_uri', `${APP_URL}/api/auth/vercel/callback`);
-  authUrl.searchParams.set('state', state);
-  authUrl.searchParams.set('scope', 'user:read,project:read,project:write,deployment:read,deployment:write');
-
-  return NextResponse.redirect(authUrl.toString());
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  response.cookies.delete('vercel_token');
+  response.cookies.delete('vercel_username');
+  return response;
 }

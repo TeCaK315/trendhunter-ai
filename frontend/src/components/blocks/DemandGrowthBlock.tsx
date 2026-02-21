@@ -228,8 +228,8 @@ export default function DemandGrowthBlock({ data, loading, error }: Props) {
         >
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-white">Новые игроки</span>
-            <EvidenceBadge type="real_data" />
-            <span className="text-xs text-zinc-400">{data.new_players.new_entrants_count} найдено</span>
+            <EvidenceBadge type={data.new_players.new_entrants_count > 0 ? 'real_data' : 'no_data'} />
+            <span className="text-xs text-zinc-400">{data.new_players.new_entrants_count > 0 ? `${data.new_players.new_entrants_count} найдено` : 'Нет данных'}</span>
           </div>
           <span className="text-zinc-500">{expandedSection === 'new_players' ? '−' : '+'}</span>
         </button>

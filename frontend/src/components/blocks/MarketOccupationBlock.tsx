@@ -194,8 +194,8 @@ export default function MarketOccupationBlock({ data, loading, error }: Props) {
         <button onClick={() => toggle('gaps')} className="w-full flex items-center justify-between p-3 text-left">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-white">Пробелы конкурентов</span>
-            <EvidenceBadge type="real_data" />
-            <span className="text-xs text-zinc-400">{data.why_gaps_exist.total_signals} сигналов</span>
+            <EvidenceBadge type={data.why_gaps_exist.total_signals > 0 ? 'real_data' : 'no_data'} />
+            <span className="text-xs text-zinc-400">{data.why_gaps_exist.total_signals > 0 ? `${data.why_gaps_exist.total_signals} сигналов` : 'Нет данных'}</span>
           </div>
           <span className="text-zinc-500">{expandedSection === 'gaps' ? '−' : '+'}</span>
         </button>

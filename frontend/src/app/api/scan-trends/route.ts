@@ -195,20 +195,93 @@ function filterNoise(queries: RisingQuery[]): RisingQuery[] {
 }
 
 // ==========================================
-// Step 3: Deduplicate across niches
+// Step 3: Deduplicate across niches (exact + semantic)
 // ==========================================
+
+// Stop-words to ignore when comparing query meanings
+const QUERY_STOP_WORDS = new Set([
+  'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+  'should', 'may', 'might', 'shall', 'can', 'need', 'must',
+  'for', 'of', 'in', 'on', 'at', 'to', 'from', 'by', 'with', 'about',
+  'and', 'or', 'but', 'not', 'no', 'so', 'if', 'than', 'too', 'very',
+  'this', 'that', 'these', 'those', 'it', 'its',
+  'how', 'what', 'which', 'who', 'when', 'where', 'why',
+  'vs', 'versus', 'comparison', 'compare', 'review', 'reviews',
+  'best', 'top', 'new', 'free', 'online',
+  'tool', 'tools', 'software', 'platform', 'app', 'apps', 'service',
+  'ai', 'ml', 'saas',
+]);
+
+function getSignificantWords(query: string): Set<string> {
+  return new Set(
+    query.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+      .filter(w => w.length > 2 && !QUERY_STOP_WORDS.has(w))
+  );
+}
+
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 1;
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const w of a) { if (b.has(w)) intersection++; }
+  return intersection / (a.size + b.size - intersection);
+}
+
 function deduplicateQueries(queries: RisingQuery[]): RisingQuery[] {
-  const seen = new Map<string, RisingQuery>();
+  const result: RisingQuery[] = [];
 
   for (const q of queries) {
-    const key = q.query.toLowerCase().trim();
-    const existing = seen.get(key);
-    if (!existing || q.growthValue > existing.growthValue) {
-      seen.set(key, q);
+    const qWords = getSignificantWords(q.query);
+    let isDup = false;
+
+    for (const existing of result) {
+      // 1. Exact match
+      if (q.query.toLowerCase().trim() === existing.query.toLowerCase().trim()) {
+        // Keep higher growth
+        if (q.growthValue > existing.growthValue) {
+          const idx = result.indexOf(existing);
+          result[idx] = q;
+        }
+        isDup = true;
+        break;
+      }
+
+      // 2. Word-set similarity (Jaccard >= 0.7 = semantic duplicate)
+      const existingWords = getSignificantWords(existing.query);
+      if (jaccardSimilarity(qWords, existingWords) >= 0.7) {
+        // Keep higher growth
+        if (q.growthValue > existing.growthValue) {
+          const idx = result.indexOf(existing);
+          result[idx] = q;
+        }
+        isDup = true;
+        break;
+      }
+
+      // 3. One is a subset of the other (all significant words match)
+      if (qWords.size > 0 && existingWords.size > 0) {
+        const smallerSet = qWords.size <= existingWords.size ? qWords : existingWords;
+        const largerSet = qWords.size <= existingWords.size ? existingWords : qWords;
+        let allMatch = true;
+        for (const w of smallerSet) { if (!largerSet.has(w)) { allMatch = false; break; } }
+        if (allMatch && smallerSet.size >= 2) {
+          if (q.growthValue > existing.growthValue) {
+            const idx = result.indexOf(existing);
+            result[idx] = q;
+          }
+          isDup = true;
+          break;
+        }
+      }
+    }
+
+    if (!isDup) {
+      result.push(q);
     }
   }
 
-  return Array.from(seen.values());
+  return result;
 }
 
 // ==========================================
@@ -308,6 +381,62 @@ async function gptClassifyQueries(
 }
 
 // ==========================================
+// Step 4.5: GPT Semantic Deduplication
+// ==========================================
+async function gptDeduplicateQueries(
+  queries: RisingQuery[],
+): Promise<RisingQuery[]> {
+  if (!OPENAI_API_KEY || queries.length <= 5) return queries;
+
+  // Process all at once (should be < 50 after classification)
+  const queryList = queries.map((q, idx) =>
+    `${idx + 1}. "${q.query}"`
+  ).join('\n');
+
+  try {
+    const content = await callOpenAI([
+      {
+        role: 'system',
+        content: `Тебе дан список поисковых запросов. Найди группы запросов, которые означают ОДНО И ТО ЖЕ (одна и та же идея/продукт, просто слова переставлены или слегка изменены).
+
+Примеры дубликатов:
+- "CRM comparison tool" и "compare CRM features" и "CRM features comparison" — это ОДНА идея
+- "AI email writer" и "email writing AI" и "ai tool for writing emails" — это ОДНА идея
+- "invoice automation" и "automated invoicing" и "auto invoice generator" — это ОДНА идея
+
+НО: "CRM comparison" и "CRM integration" — это РАЗНЫЕ идеи!
+
+Для каждой группы дубликатов оставь ОДИН лучший запрос (наиболее конкретный и понятный).
+
+Верни JSON массив номеров запросов, которые нужно ОСТАВИТЬ. Уникальные запросы (без дубликатов) тоже включи.
+
+Пример: если из 10 запросов, 2+3+4 — одна группа (оставляем 2), 7+8 — другая группа (оставляем 7), остальные уникальны:
+[1, 2, 5, 6, 7, 9, 10]`,
+      },
+      {
+        role: 'user',
+        content: queryList,
+      },
+    ], 0.1);
+
+    const match = content.match(/\[[\d,\s]*\]/);
+    if (match) {
+      const keepIndices: number[] = JSON.parse(match[0]);
+      const kept = keepIndices
+        .filter(idx => idx >= 1 && idx <= queries.length)
+        .map(idx => queries[idx - 1]);
+      if (kept.length > 0) {
+        return kept;
+      }
+    }
+  } catch (err) {
+    console.error('GPT deduplication error:', err);
+  }
+
+  return queries;
+}
+
+// ==========================================
 // Step 5: Enrich with Timeline Data
 // ==========================================
 async function enrichWithTimeline(
@@ -386,12 +515,9 @@ async function gptGenerateTrends(
   title: string;
   category: string;
   popularity_score: number;
-  opportunity_score: number;
-  pain_score: number;
-  feasibility_score: number;
-  profit_potential: number;
   growth_rate: number;
   why_trending: string;
+  source_query?: string;
 }>> {
   if (!OPENAI_API_KEY || queries.length === 0) return [];
 
@@ -410,23 +536,17 @@ async function gptGenerateTrends(
 Каждый элемент:
 {
   "source_query": "оригинальный запрос",
-  "title": "Название продукта на английском (3-7 слов, конкретное и понятное)",
+  "title": "Название продукта на русском (3-7 слов, конкретное и понятное, БЕЗ кавычек)",
   "category": "одна из: AI & ML, SaaS, FinTech, EdTech, HealthTech, E-commerce, Technology, Business, Mobile Apps",
-  "popularity_score": число 50-100 (на основе роста запроса),
-  "opportunity_score": число 1-10 (насколько рынок открыт),
-  "pain_score": число 1-10 (насколько остра проблема),
-  "feasibility_score": число 1-10 (можно ли реализовать за 3-6 мес),
-  "profit_potential": число 1-10 (перспектива монетизации),
-  "growth_rate": число (% роста из timeline данных),
   "why_trending": "2-3 предложения на русском: почему этот тренд растёт и какую проблему решает продукт. Укажи реальные данные из Google Trends."
 }
 
 ВАЖНО:
+- title СТРОГО на русском языке, без кавычек, без скобок
 - title должен описывать ПРОДУКТ, а не поисковый запрос
 - why_trending должен опираться на данные Google Trends (рост X%)
 - Не придумывай статистику — используй только данные из запроса
-- Если несколько запросов про одну тему — объедини в одну идею
-- growth_rate бери из timeline данных (более точный показатель)`,
+- Если несколько запросов про одну тему — объедини в одну идею`,
       },
       {
         role: 'user',
@@ -439,7 +559,39 @@ async function gptGenerateTrends(
     if (!jsonMatch) return [];
 
     const parsed = JSON.parse(jsonMatch[0]);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+
+    // Build a lookup map: source_query → enriched query data
+    const queryMap = new Map<string, EnrichedQuery>();
+    for (const q of queries) {
+      queryMap.set(q.query.toLowerCase(), q);
+    }
+
+    // Calculate scores from real data, not GPT hallucinations
+    return parsed.map((item: { title?: string; category?: string; why_trending?: string; source_query?: string }) => {
+      const sourceQuery = item.source_query?.toLowerCase() || '';
+      const enriched = queryMap.get(sourceQuery);
+
+      // Calculate popularity_score from real growthValue (log scale 50-100)
+      const growthValue = enriched?.growthValue || 100;
+      const calculatedPopularity = Math.min(100, Math.round(50 + Math.log10(Math.max(1, growthValue)) * 12));
+
+      // Use real timeline growth rate
+      const calculatedGrowthRate = enriched?.timelineGrowthRate || 0;
+
+      // Clean title: remove quotes and ensure no wrapping punctuation
+      let cleanTitle = (item.title || '').replace(/^["«»""]|["«»""]$/g, '').trim();
+      cleanTitle = cleanTitle.replace(/^['']|['']$/g, '').trim();
+
+      return {
+        title: cleanTitle,
+        category: item.category || 'Technology',
+        popularity_score: calculatedPopularity,
+        growth_rate: calculatedGrowthRate,
+        why_trending: item.why_trending || '',
+        source_query: item.source_query,
+      };
+    });
   } catch (err) {
     console.error('GPT trend generation error:', err);
     return [];
@@ -517,8 +669,15 @@ export async function POST(request: NextRequest) {
   const gptFiltered = deduplicated.length - classified.length;
   console.log(`[scan-trends] After GPT filter: ${classified.length} (GPT removed ${gptFiltered})`);
 
+  // --- Step 4.5: GPT Semantic Dedup ---
+  const semanticDeduped = await gptDeduplicateQueries(classified);
+  const semanticRemoved = classified.length - semanticDeduped.length;
+  if (semanticRemoved > 0) {
+    console.log(`[scan-trends] After semantic dedup: ${semanticDeduped.length} (removed ${semanticRemoved} semantic duplicates)`);
+  }
+
   // --- Step 5: Enrich with Timeline ---
-  const { enriched, callsUsed: enrichCalls } = await enrichWithTimeline(classified, maxEnrich);
+  const { enriched, callsUsed: enrichCalls } = await enrichWithTimeline(semanticDeduped, maxEnrich);
   totalSerpApiCalls += enrichCalls;
   console.log(`[scan-trends] Enriched: ${enriched.length} (${enrichCalls} API calls)`);
 
@@ -536,15 +695,12 @@ export async function POST(request: NextRequest) {
       title: trend.title,
       category: trend.category,
       popularity_score: Math.min(100, Math.max(0, trend.popularity_score)),
-      opportunity_score: Math.min(10, Math.max(0, trend.opportunity_score)),
-      pain_score: Math.min(10, Math.max(0, trend.pain_score)),
-      feasibility_score: Math.min(10, Math.max(0, trend.feasibility_score)),
-      profit_potential: Math.min(10, Math.max(0, trend.profit_potential)),
       growth_rate: trend.growth_rate,
       why_trending: trend.why_trending,
       source: 'Google Trends',
       status: 'active',
       first_detected_at: new Date().toISOString(),
+      source_query: trend.source_query,
     }));
 
     // POST to internal /api/trends endpoint

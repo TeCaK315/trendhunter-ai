@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   fetchNegativeReviews,
   fetchReddit,
+  fetchTrustpilot,
   fetchGoogleSearch,
   discoverCompetitors,
 } from '@/lib/data-fetchers';
@@ -52,22 +53,25 @@ export async function POST(request: NextRequest) {
 
     const competitorsCount = competitors.length;
 
-    // Fetch data in parallel (including background design analysis)
+    // Fetch data in parallel (including background design analysis + Trustpilot)
     const [
       negativeReviewsResult,
       featureGapRedditResult,
       alternativesSearchResult,
+      trustpilotResult,
       designAnalysisResult,
     ] = await Promise.all([
       fetchNegativeReviews(searchQuery),
       fetchReddit(`${searchQuery} alternative OR wish OR missing feature OR lack`),
       fetchGoogleSearch(`${searchQuery} alternatives comparison`),
+      fetchTrustpilot(searchQuery),
       analyzeDesign(searchQuery, competitors), // Background design analysis
     ]);
 
     totalSerpApiCalls += negativeReviewsResult.serpapi_calls_used;
     totalSerpApiCalls += featureGapRedditResult.serpapi_calls_used;
     totalSerpApiCalls += alternativesSearchResult.serpapi_calls_used;
+    totalSerpApiCalls += trustpilotResult.serpapi_calls_used;
 
     // === CALCULATIONS (NO GPT) ===
 
@@ -75,8 +79,15 @@ export async function POST(request: NextRequest) {
     // No competitors is actually BAD — it might mean no market
     const noCompetitorsIsBad = competitorsCount === 0;
 
-    // 2. Why gaps exist — negative reviews
-    const negativeReviews = negativeReviewsResult.reviews;
+    // 2. Why gaps exist — negative reviews (G2 + Capterra + Trustpilot)
+    const negativeReviews = [
+      ...negativeReviewsResult.reviews,
+      ...trustpilotResult.data.map(t => ({
+        ...t,
+        source: 'trustpilot' as const,
+        rating: t.rating,
+      })),
+    ];
 
     // 3. Feature gaps from discussions
     const featureGapPosts = featureGapRedditResult.data;

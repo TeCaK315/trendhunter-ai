@@ -20,6 +20,7 @@ interface AnalysisContext {
     title: string;
     category?: string;
     why_trending?: string;
+    source_query?: string;
   };
   analysis?: AnalysisData;
 }
@@ -246,7 +247,7 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    const searchQuery = analysisContext.trend.title;
+    const searchQuery = analysisContext.trend.source_query || analysisContext.trend.title;
 
     if (!searchQuery) {
       return NextResponse.json(

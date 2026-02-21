@@ -50,7 +50,7 @@ export interface Translations {
     heroTitle3: string;
     heroDescription: string;
     ideas: string;
-    avgRating: string;
+    avgGrowth: string;
     categories: string;
     allNiches: string;
     found: string;
@@ -72,10 +72,8 @@ export interface Translations {
 
   // Trend card
   trendCard: {
-    opportunity: string;
-    pain: string;
-    feasibility: string;
-    profit: string;
+    popularity: string;
+    growth: string;
     excellent: string;
     good: string;
     average: string;
@@ -108,7 +106,6 @@ export interface Translations {
       competition: string;
       venture: string;
       leads: string;
-      pitchDeck: string;
       project: string;
     };
     // Breadcrumbs
@@ -123,9 +120,6 @@ export interface Translations {
     overview: {
       growth: string;
       overallScore: string;
-      opportunity: string;
-      painLevel: string;
-      feasibility: string;
       potential: string;
       information: string;
       source: string;
@@ -172,8 +166,6 @@ export interface Translations {
     };
     // Competition section
     competition: {
-      analyzeCompetitors: string;
-      analyzingCompetitors: string;
       marketSaturation: string;
       riskLevel: string;
       blueOceanHint: string;
@@ -221,36 +213,6 @@ export interface Translations {
       directories: string;
       searchTips: string;
       nextStep: string;
-      generatePitchDescription: string;
-      createPitchDeck: string;
-    };
-    // Pitch section
-    pitch: {
-      generating: string;
-      slide: string;
-      speakerNotes: string;
-      visualRecommendation: string;
-      back: string;
-      next: string;
-      exportPresentation: string;
-      copyText: string;
-      copyTextDescription: string;
-      downloadJson: string;
-      downloadJsonDescription: string;
-      selectTemplate: string;
-      openTemplates: string;
-      viaTextFast: string;
-      viaTextStep1: string;
-      viaTextStep2: string;
-      viaTextStep3: string;
-      viaTextStep4: string;
-      viaJsonAuto: string;
-      viaJsonStep1: string;
-      viaJsonStep2: string;
-      viaJsonStep3: string;
-      viaJsonStep4: string;
-      nextStep: string;
-      createProjectDescription: string;
     };
     // Project section
     project: {
@@ -488,10 +450,7 @@ export interface Translations {
   sort: {
     overallScore: string;
     byDate: string;
-    opportunity: string;
-    pain: string;
-    feasibility: string;
-    profit: string;
+    growth: string;
     highToLow: string;
     lowToHigh: string;
   };
@@ -564,7 +523,7 @@ export const translations: Record<Language, Translations> = {
       heroTitle3: 'за 20 минут',
       heroDescription: 'ИИ анализирует рынок, конкурентов и потребности пользователей - помогая собрать рабочий прототип без недель ресёрча.',
       ideas: 'Идей',
-      avgRating: 'Ср. рейтинг',
+      avgGrowth: 'Ср. рост',
       categories: 'Категорий',
       allNiches: 'Все ниши',
       found: 'Найдено',
@@ -584,10 +543,8 @@ export const translations: Record<Language, Translations> = {
       randomCategory: 'Случайная',
     },
     trendCard: {
-      opportunity: 'Возможность',
-      pain: 'Потребность',
-      feasibility: 'Выполнимость',
-      profit: 'Выгода',
+      popularity: 'Популярность',
+      growth: 'Рост тренда',
       excellent: 'Отличный',
       good: 'Хороший',
       average: 'Средний',
@@ -617,7 +574,6 @@ export const translations: Record<Language, Translations> = {
         competition: 'Конкуренты',
         venture: 'Инвестиции',
         leads: 'Клиенты',
-        pitchDeck: 'Pitch Deck',
         project: 'Проект',
       },
       breadcrumbs: {
@@ -628,10 +584,7 @@ export const translations: Record<Language, Translations> = {
       backToHome: 'Вернуться на главную',
       overview: {
         growth: 'рост',
-        overallScore: 'Общая оценка',
-        opportunity: 'Возможность',
-        painLevel: 'Потребность',
-        feasibility: 'Выполнимость',
+        overallScore: 'Популярность',
         potential: 'Потенциал',
         information: 'Информация',
         source: 'Источник',
@@ -675,8 +628,6 @@ export const translations: Record<Language, Translations> = {
         dataSources: 'Источники данных',
       },
       competition: {
-        analyzeCompetitors: 'Анализ конкурентов',
-        analyzingCompetitors: 'Анализируем конкурентов...',
         marketSaturation: 'Насыщенность рынка',
         riskLevel: 'Уровень риска',
         blueOceanHint: 'Чем выше - тем меньше конкуренция',
@@ -722,35 +673,6 @@ export const translations: Record<Language, Translations> = {
         directories: 'Каталоги для поиска',
         searchTips: 'Советы по поиску',
         nextStep: 'Следующий шаг',
-        generatePitchDescription: 'Сгенерируйте Pitch Deck на 10 слайдов для презентации инвесторам.',
-        createPitchDeck: 'Создать Pitch Deck',
-      },
-      pitch: {
-        generating: 'Генерируем Pitch Deck...',
-        slide: 'Слайд',
-        speakerNotes: 'Заметки спикера',
-        visualRecommendation: 'Рекомендация по визуалу',
-        back: 'Назад',
-        next: 'Вперёд',
-        exportPresentation: 'Экспорт презентации',
-        copyText: 'Копировать текст',
-        copyTextDescription: 'Для вставки в редактор',
-        downloadJson: 'Скачать JSON',
-        downloadJsonDescription: 'Полные данные презентации',
-        selectTemplate: 'Выберите шаблон и вставьте контент',
-        openTemplates: 'Открыть шаблоны →',
-        viaTextFast: 'Через текст (быстро):',
-        viaTextStep1: '1. Нажмите "Копировать текст"',
-        viaTextStep2: '2. Откройте шаблон (Slides/Figma/Canva)',
-        viaTextStep3: '3. Создайте копию шаблона',
-        viaTextStep4: '4. Вставьте контент в слайды',
-        viaJsonAuto: 'Через JSON (для автоматизации):',
-        viaJsonStep1: '1. Скачайте JSON файл',
-        viaJsonStep2: '2. Используйте с AI (ChatGPT/Claude): "Создай презентацию из этого JSON"',
-        viaJsonStep3: '3. Или импортируйте в Gamma.app, Tome.app',
-        viaJsonStep4: '4. Или используйте Google Slides API для автоматического создания',
-        nextStep: 'Следующий шаг',
-        createProjectDescription: 'Создайте проект с README, roadmap и GitHub репозиторием.',
       },
       project: {
         generating: 'Генерируем проект...',
@@ -944,7 +866,7 @@ export const translations: Record<Language, Translations> = {
         },
         trendCard: {
           title: 'Карточка тренда',
-          content: 'Каждая карточка содержит оценки: популярность, потребность, выполнимость, потенциал. Нажмите для детального анализа.',
+          content: 'Каждая карточка показывает популярность и рост тренда на основе данных Google Trends. Нажмите для детального анализа.',
         },
       },
     },
@@ -970,12 +892,9 @@ export const translations: Record<Language, Translations> = {
       language: 'Язык',
     },
     sort: {
-      overallScore: 'Общая оценка',
+      overallScore: 'Популярность',
       byDate: 'По дате',
-      opportunity: 'Возможность',
-      pain: 'Потребность',
-      feasibility: 'Выполнимость',
-      profit: 'Выгода',
+      growth: 'Рост тренда',
       highToLow: 'Высокие → Низкие',
       lowToHigh: 'Низкие → Высокие',
     },
@@ -1043,7 +962,7 @@ export const translations: Record<Language, Translations> = {
       heroTitle3: 'in 20 minutes',
       heroDescription: 'AI analyzes market, competitors, and user needs - helping build a working prototype without weeks of research.',
       ideas: 'Ideas',
-      avgRating: 'Avg. rating',
+      avgGrowth: 'Avg. growth',
       categories: 'Categories',
       allNiches: 'All niches',
       found: 'Found',
@@ -1063,10 +982,8 @@ export const translations: Record<Language, Translations> = {
       randomCategory: 'Random',
     },
     trendCard: {
-      opportunity: 'Opportunity',
-      pain: 'Need',
-      feasibility: 'Feasibility',
-      profit: 'Profit',
+      popularity: 'Popularity',
+      growth: 'Trend growth',
       excellent: 'Excellent',
       good: 'Good',
       average: 'Average',
@@ -1096,7 +1013,6 @@ export const translations: Record<Language, Translations> = {
         competition: 'Competitors',
         venture: 'Investments',
         leads: 'Clients',
-        pitchDeck: 'Pitch Deck',
         project: 'Project',
       },
       breadcrumbs: {
@@ -1107,10 +1023,7 @@ export const translations: Record<Language, Translations> = {
       backToHome: 'Back to home',
       overview: {
         growth: 'growth',
-        overallScore: 'Overall Score',
-        opportunity: 'Opportunity',
-        painLevel: 'Need',
-        feasibility: 'Feasibility',
+        overallScore: 'Popularity',
         potential: 'Potential',
         information: 'Information',
         source: 'Source',
@@ -1154,8 +1067,6 @@ export const translations: Record<Language, Translations> = {
         dataSources: 'Data Sources',
       },
       competition: {
-        analyzeCompetitors: 'Analyze Competitors',
-        analyzingCompetitors: 'Analyzing competitors...',
         marketSaturation: 'Market Saturation',
         riskLevel: 'Risk Level',
         blueOceanHint: 'Higher score = less competition',
@@ -1201,35 +1112,6 @@ export const translations: Record<Language, Translations> = {
         directories: 'Directories for search',
         searchTips: 'Search tips',
         nextStep: 'Next Step',
-        generatePitchDescription: 'Generate a 10-slide Pitch Deck for investor presentation.',
-        createPitchDeck: 'Create Pitch Deck',
-      },
-      pitch: {
-        generating: 'Generating Pitch Deck...',
-        slide: 'Slide',
-        speakerNotes: 'Speaker notes',
-        visualRecommendation: 'Visual recommendation',
-        back: 'Back',
-        next: 'Next',
-        exportPresentation: 'Export presentation',
-        copyText: 'Copy text',
-        copyTextDescription: 'For pasting into editor',
-        downloadJson: 'Download JSON',
-        downloadJsonDescription: 'Full presentation data',
-        selectTemplate: 'Select a template and paste content',
-        openTemplates: 'Open templates →',
-        viaTextFast: 'Via text (fast):',
-        viaTextStep1: '1. Click "Copy text"',
-        viaTextStep2: '2. Open template (Slides/Figma/Canva)',
-        viaTextStep3: '3. Create a copy of the template',
-        viaTextStep4: '4. Paste content into slides',
-        viaJsonAuto: 'Via JSON (for automation):',
-        viaJsonStep1: '1. Download JSON file',
-        viaJsonStep2: '2. Use with AI (ChatGPT/Claude): "Create presentation from this JSON"',
-        viaJsonStep3: '3. Or import to Gamma.app, Tome.app',
-        viaJsonStep4: '4. Or use Google Slides API for automatic creation',
-        nextStep: 'Next Step',
-        createProjectDescription: 'Create a project with README, roadmap and GitHub repository.',
       },
       project: {
         generating: 'Generating project...',
@@ -1423,7 +1305,7 @@ export const translations: Record<Language, Translations> = {
         },
         trendCard: {
           title: 'Trend Card',
-          content: 'Each card contains scores: popularity, need, feasibility, potential. Click for detailed analysis.',
+          content: 'Each card shows popularity and growth rate based on Google Trends data. Click for detailed analysis.',
         },
       },
     },
@@ -1449,12 +1331,9 @@ export const translations: Record<Language, Translations> = {
       language: 'Language',
     },
     sort: {
-      overallScore: 'Overall score',
+      overallScore: 'Popularity',
       byDate: 'By date',
-      opportunity: 'Opportunity',
-      pain: 'Need',
-      feasibility: 'Feasibility',
-      profit: 'Profit',
+      growth: 'Trend growth',
       highToLow: 'High → Low',
       lowToHigh: 'Low → High',
     },

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useGitHubAuth } from '@/hooks/useGitHubAuth';
 import { getItem, setItem, removeItem } from '@/lib/storage';
+import EvidenceBadge from '@/components/EvidenceBadge';
 
 // Interface for tracking which quick actions have responses
 interface QuickActionResponse {
@@ -17,10 +18,6 @@ interface Trend {
   title: string;
   category: string;
   popularity_score: number;
-  opportunity_score: number;
-  pain_score: number;
-  feasibility_score: number;
-  profit_potential: number;
   growth_rate: number;
   why_trending: string;
   status: string;
@@ -1791,22 +1788,14 @@ export default function ProjectPage() {
                 Информация о тренде
               </h3>
               <p className="text-[var(--text-secondary)] mb-4">{trend.why_trending}</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-[var(--bg-secondary)] rounded-xl p-4 text-center border border-[var(--border-color)] hover:border-indigo-500/30 transition-all">
-                  <div className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">{trend.opportunity_score}/10</div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">Возможность</div>
-                </div>
-                <div className="bg-[var(--bg-secondary)] rounded-xl p-4 text-center border border-[var(--border-color)] hover:border-red-500/30 transition-all">
-                  <div className="text-2xl font-bold text-red-400">{trend.pain_score}/10</div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">Потребность</div>
+                  <div className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">{trend.popularity_score}/100</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">Популярность</div>
                 </div>
                 <div className="bg-[var(--bg-secondary)] rounded-xl p-4 text-center border border-[var(--border-color)] hover:border-green-500/30 transition-all">
-                  <div className="text-2xl font-bold text-green-400">{trend.feasibility_score}/10</div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">Выполнимость</div>
-                </div>
-                <div className="bg-[var(--bg-secondary)] rounded-xl p-4 text-center border border-[var(--border-color)] hover:border-yellow-500/30 transition-all">
-                  <div className="text-2xl font-bold text-yellow-400">{trend.profit_potential}/10</div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">Прибыльность</div>
+                  <div className="text-2xl font-bold text-green-400">{trend.growth_rate}%</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">Рост тренда</div>
                 </div>
               </div>
             </div>
@@ -2127,7 +2116,10 @@ export default function ProjectPage() {
                             </a>
                           </div>
 
-                          <p className="text-sm text-[var(--text-secondary)] mb-3">{company.pain_match}</p>
+                          <div className="text-sm text-[var(--text-secondary)] mb-3 flex items-center gap-2">
+                            {company.pain_match}
+                            <EvidenceBadge type="ai_synthesis" />
+                          </div>
 
                           <div className="flex flex-wrap items-center gap-2">
                             <a

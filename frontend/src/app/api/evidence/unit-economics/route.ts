@@ -25,6 +25,8 @@ import {
  * Вердикт: рассчитанный score
  */
 
+const ROUTE_TIMEOUT_MS = 45_000; // 45 seconds max
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const routeStart = Date.now();
     let totalSerpApiCalls = 0;
 
     // Generate keyword variants for CPC
@@ -74,22 +77,16 @@ export async function POST(request: NextRequest) {
     totalSerpApiCalls += marketSizeResult.serpapi_calls_used;
     totalSerpApiCalls += trendsResult.serpapi_calls_used;
 
-    // Fetch competitor pricing
-    const pricingResults: Array<{
-      competitor: string;
-      pricing_url: string;
-      pricing_snippet: string;
-      prices_found: Array<{ amount: string; plan: string; period: string }>;
-      serpapi_calls_used: number;
-    }> = [];
-    for (const name of competitorNames.slice(0, 3)) {
-      const pricingResult = await fetchCompetitorPricing(name);
-      totalSerpApiCalls += pricingResult.serpapi_calls_used;
-      pricingResults.push(pricingResult);
+    // Fetch competitor pricing + business model in parallel (was sequential — slow)
+    const [pricingResults, businessModelResult] = await Promise.all([
+      Promise.all(
+        competitorNames.slice(0, 3).map(name => fetchCompetitorPricing(name))
+      ),
+      fetchGoogleSearch(`${searchQuery} subscription OR SaaS OR freemium OR one-time purchase`),
+    ]);
+    for (const pr of pricingResults) {
+      totalSerpApiCalls += pr.serpapi_calls_used;
     }
-
-    // Detect business model from competitor search results
-    const businessModelResult = await fetchGoogleSearch(`${searchQuery} subscription OR SaaS OR freemium OR one-time purchase`);
     totalSerpApiCalls += businessModelResult.serpapi_calls_used;
 
     // === CALCULATIONS (NO GPT) ===
@@ -153,32 +150,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Market Size Indicators (REPLACES LTV!)
-    // Call our new market-size API to get real revenue data
-    const marketSizeResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/evidence/market-size`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        competitors: competitorNames,
-        existing_pricing: competitorNames.reduce((acc: Record<string, { range: string; typical_price: string; source_url: string }>, name: string, idx: number) => {
-          const pr = pricingResults[idx];
-          if (pr && pr.prices_found.length > 0) {
-            const prices = pr.prices_found.map(p => parseFloat(p.amount.replace(/[^0-9.]/g, ''))).filter(p => p > 0);
-            const typical = prices.length > 0 ? prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)] : null;
-            if (typical) {
-              acc[name] = {
-                range: `$${Math.min(...prices)}-${Math.max(...prices)}/mo`,
-                typical_price: `$${typical}/mo`,
-                source_url: pr.pricing_url || '',
-              };
-            }
-          }
-          return acc;
-        }, {}),
-      }),
-    });
+    // 3. Market Size Indicators — skip if running low on time
+    let marketSizeData = null;
+    const elapsedBeforeMarketSize = Date.now() - routeStart;
+    if (elapsedBeforeMarketSize < ROUTE_TIMEOUT_MS - 20_000) { // Need 20s for market-size
+      try {
+        const marketSizeController = new AbortController();
+        const marketSizeTimeout = setTimeout(() => marketSizeController.abort(), 20_000); // 20s timeout for this sub-call
 
-    const marketSizeData = marketSizeResponse.ok ? await marketSizeResponse.json() : null;
+        const marketSizeResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/evidence/market-size`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: marketSizeController.signal,
+          body: JSON.stringify({
+            competitors: competitorNames.slice(0, 3), // Limit to 3
+            existing_pricing: competitorNames.slice(0, 3).reduce((acc: Record<string, { range: string; typical_price: string; source_url: string }>, name: string, idx: number) => {
+              const pr = pricingResults[idx];
+              if (pr && pr.prices_found.length > 0) {
+                const prices = pr.prices_found.map(p => parseFloat(p.amount.replace(/[^0-9.]/g, ''))).filter(p => p > 0);
+                const typical = prices.length > 0 ? prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)] : null;
+                if (typical) {
+                  acc[name] = {
+                    range: `$${Math.min(...prices)}-${Math.max(...prices)}/mo`,
+                    typical_price: `$${typical}/mo`,
+                    source_url: pr.pricing_url || '',
+                  };
+                }
+              }
+              return acc;
+            }, {}),
+          }),
+        });
+        clearTimeout(marketSizeTimeout);
+
+        marketSizeData = marketSizeResponse.ok ? await marketSizeResponse.json() : null;
+      } catch (e) {
+        console.log(`[unit-economics] Market size fetch skipped/timed out: ${e instanceof Error ? e.message : 'Unknown'}`);
+      }
+    } else {
+      console.log(`[unit-economics] Skipping market-size — ${elapsedBeforeMarketSize}ms elapsed`);
+    }
 
     // 4. Calculate average price for LTV/CAC ratio (use median from competitors)
     const avgMonthlyPrice = monthlyPrices.length > 0

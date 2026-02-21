@@ -10,6 +10,7 @@ interface PreviousContext {
   trend: {
     title: string;
     category?: string;
+    source_query?: string;
   };
   analysis?: {
     main_pain: string;
@@ -48,11 +49,9 @@ interface FundingRound {
 
 interface ActiveFund {
   name: string;
-  focus_areas: string[];
   recent_investments: string[];
   typical_check_size: string;
   website: string;
-  crunchbase_url: string;
 }
 
 interface VentureData {
@@ -381,11 +380,9 @@ async function searchActiveFunds(query: string): Promise<{ funds: ActiveFund[]; 
         if (text.includes(vc.toLowerCase()) && !funds.find(f => f.name === vc)) {
           funds.push({
             name: vc,
-            focus_areas: [query, 'Technology', 'SaaS'],
             recent_investments: [],
             typical_check_size: getTypicalCheckSize(vc),
             website: getVCWebsite(vc),
-            crunchbase_url: `https://www.crunchbase.com/organization/${vc.toLowerCase().replace(/\s+/g, '-')}`,
           });
         }
       }
@@ -440,24 +437,26 @@ function analyzeVentureLandscapeWithFormulas(
   // ФОРМУЛА: investment hotness
   const hotness = calcInvestmentHotness(rounds.length, totalMillions);
 
-  // Market signals — шаблонные на основе реальных данных
+  // Market signals — на основе реальных данных с указанием источника
   const signals: string[] = [];
   if (rounds.length > 0) {
-    signals.push(`${rounds.length} раундов финансирования найдено в нише`);
+    const topCompanies = rounds.slice(0, 3).map(r => r.company).join(', ');
+    signals.push(`На основе ${rounds.length} найденных раундов (${topCompanies})`);
   }
   if (totalMillions > 0) {
-    signals.push(`Общий объём финансирования: ${totalFunding.formatted}`);
+    signals.push(`Общий объём финансирования: ${totalFunding.formatted} (сумма ${validAmounts.length} раундов с известными суммами)`);
   }
   if (funds.length > 0) {
-    signals.push(`${funds.length} активных инвесторов в нише`);
+    const fundNames = funds.slice(0, 3).map(f => f.name).join(', ');
+    signals.push(`${funds.length} активных инвесторов упоминаются в нише: ${fundNames}`);
   }
-  if (trend.trend === 'growing') {
-    signals.push('Тренд финансирования растёт');
-  } else if (trend.trend === 'declining') {
-    signals.push('Тренд финансирования снижается');
+  if (trend.trend === 'growing' && roundDates.length >= 2) {
+    signals.push(`Тренд финансирования растёт (на основе ${roundDates.length} дат раундов)`);
+  } else if (trend.trend === 'declining' && roundDates.length >= 2) {
+    signals.push(`Тренд финансирования снижается (на основе ${roundDates.length} дат раундов)`);
   }
   if (rounds.length === 0 && funds.length === 0) {
-    signals.push('Недостаточно данных о финансировании в нише');
+    signals.push('Данные о финансировании в нише не найдены через Google/TechCrunch');
   }
 
   // Recommended round — на основе данных
@@ -542,10 +541,18 @@ function getTypicalCheckSize(vcName: string): string {
     'Bessemer': '$10M-$50M',
     'Index Ventures': '$10M-$50M',
     'Greylock': '$10M-$50M',
+    'NEA': '$10M-$50M',
+    'Lightspeed': '$10M-$100M',
+    'General Catalyst': '$10M-$50M',
+    'Benchmark': '$10M-$30M',
     'First Round': '$2M-$5M',
     'Founders Fund': '$20M-$100M',
+    'Insight Partners': '$50M-$200M',
+    'Tiger Global': '$50M-$200M',
+    'Coatue': '$20M-$100M',
+    'Addition': '$10M-$50M',
   };
-  return sizes[vcName] || '$5M-$20M';
+  return sizes[vcName] || 'Нет данных';
 }
 
 function getVCWebsite(vcName: string): string {
@@ -558,10 +565,18 @@ function getVCWebsite(vcName: string): string {
     'Bessemer': 'https://www.bvp.com',
     'Index Ventures': 'https://www.indexventures.com',
     'Greylock': 'https://greylock.com',
+    'NEA': 'https://www.nea.com',
+    'Lightspeed': 'https://lsvp.com',
+    'General Catalyst': 'https://www.generalcatalyst.com',
+    'Benchmark': 'https://www.benchmark.com',
     'First Round': 'https://firstround.com',
     'Founders Fund': 'https://foundersfund.com',
+    'Insight Partners': 'https://www.insightpartners.com',
+    'Tiger Global': 'https://www.tigerglobal.com',
+    'Coatue': 'https://www.coatue.com',
+    'Addition': 'https://www.addition.com',
   };
-  return websites[vcName] || `https://www.google.com/search?q=${encodeURIComponent(vcName)}`;
+  return websites[vcName] || '';
 }
 
 // getDefaultAnalysis removed — replaced by analyzeVentureLandscapeWithFormulas
@@ -587,7 +602,7 @@ export async function POST(request: NextRequest) {
     }
 
     const previousContext: PreviousContext | undefined = context;
-    const searchQuery = query || trend_title || context?.trend?.title;
+    const searchQuery = context?.trend?.source_query || query || trend_title || context?.trend?.title;
 
     // Check API keys
     const missingKeys: string[] = [];

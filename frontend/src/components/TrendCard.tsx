@@ -10,10 +10,6 @@ interface Trend {
   title: string;
   category: string;
   popularity_score: number;
-  opportunity_score: number;
-  pain_score: number;
-  feasibility_score: number;
-  profit_potential: number;
   growth_rate: number;
   why_trending: string;
   why_trending_en?: string; // English version for bilingual support

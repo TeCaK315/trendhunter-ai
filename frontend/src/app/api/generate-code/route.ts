@@ -1,492 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+import { generateCodeWithClaude, type ProjectSpec } from '@/lib/code-generator';
 
 /**
  * /api/generate-code
  *
- * Генерация полноценного кода проекта через Claude API
- * На основе спецификации от META-агента создаёт рабочий код
+ * HTTP endpoint for code generation.
+ * Uses the hybrid Architect → Coder → Reviewer pipeline from code-generator.ts
+ *
+ * Also handles pushing generated files to GitHub and optional Vercel deploy.
  */
 
-interface ProjectSpec {
-  project_name: string;
-  one_liner: string;
-  problem_statement: string;
-  solution_overview: string;
-  mvp_specification: {
-    core_features: Array<{
-      name: string;
-      description: string;
-      priority: string;
-      user_story: string;
-      acceptance_criteria: string[];
-    }>;
-    tech_stack: Array<{
-      category: string;
-      recommendation: string;
-      reasoning: string;
-    }>;
-    architecture: string;
-  };
-  target_audience?: string;
-  main_pain?: string;
-  // Design system for unique styling
-  design_system?: {
-    color_palette: {
-      primary: string;
-      secondary: string;
-      accent: string;
-      background: string;
-      text: string;
-    };
-    typography: {
-      headings: string;
-      body: string;
-      mono?: string;
-    };
-    unique_elements: string[];
-    design_rationale: string;
-  };
-  // NEW: Features derived from real pain data
-  derived_features?: Array<{
-    feature_name: string;
-    pain_source: string;
-    pain_quote: string;
-    solution: string;
-    priority: string;
-    implementation_hint: string;
-  }>;
-}
-
-interface GeneratedFiles {
-  [path: string]: string;
-}
-
-// Системный промпт для Claude
-const SYSTEM_PROMPT = `Ты - эксперт Full-Stack разработчик, специализирующийся на создании ФУНКЦИОНАЛЬНЫХ ПРОТОТИПОВ.
-
-Твоя задача - сгенерировать ПОЛНЫЙ, РАБОЧИЙ код проекта на основе спецификации.
-НЕ MVP с заглушками, а ФУНКЦИОНАЛЬНЫЙ ПРОТОТИП с реальными интеграциями.
-
-## ⚠️ КРИТИЧЕСКИ ВАЖНО: РЕАЛЬНЫЙ КОД, НЕ ЗАГЛУШКИ!
-
-### 🚫 АБСОЛЮТНО ЗАПРЕЩЕНО:
-1. **Fake Data** - НЕ создавай массивы с фейковыми данными (mockData, dummyUsers, sampleItems)
-2. **Placeholder onClick** - НЕ создавай кнопки без реальной логики
-3. **Декоративные компоненты** - НЕ создавай UI который ничего не делает
-4. **"Подключить позже"** - НЕ оставляй комментарии типа "// TODO: connect to API"
-5. **Имитация авторизации** - НЕ создавай fake login/logout без реального auth
-
-### ✅ ОБЯЗАТЕЛЬНО ДЛЯ КАЖДОЙ ИНТЕГРАЦИИ:
-
-**Если фича требует авторизации через сервис (Google, GitHub, Mailchimp, etc.):**
-1. \`/api/auth/[provider]/route.ts\` - инициация OAuth flow с redirect
-2. \`/api/auth/[provider]/callback/route.ts\` - обработка callback, получение токенов
-3. \`/lib/tokens.ts\` - сохранение токенов (cookies/localStorage/Supabase)
-4. \`/lib/[provider]-client.ts\` - API wrapper для работы с сервисом
-5. В UI: реальная кнопка "Connect" которая редиректит на OAuth
-
-**Если фича показывает данные из внешнего сервиса:**
-1. API route который РЕАЛЬНО запрашивает данные (fetch с токеном)
-2. Обработка ошибок (401 → redirect на реавторизацию)
-3. Loading states в UI
-4. Empty states если данных нет
-
-**Если фича требует платежей:**
-1. \`/api/stripe/create-checkout/route.ts\` - создание Stripe Checkout Session
-2. \`/api/stripe/webhook/route.ts\` - обработка успешных платежей
-3. \`/lib/stripe.ts\` - Stripe SDK initialization
-
-### 📁 ОБЯЗАТЕЛЬНЫЕ ФАЙЛЫ (ВСЕГДА СОЗДАВАЙ!):
-
-1. **package.json** - с ВСЕМИ нужными dependencies (stripe, @supabase/supabase-js, etc.)
-2. **.env.example** - ВСЕ ключи которые нужны для работы
-3. **supabase/schema.sql** - SQL для создания таблиц
-4. **src/lib/supabase.ts** - ОБЯЗАТЕЛЬНО! Клиент Supabase (createClientComponentClient, createServerComponentClient)
-5. **README.md** - инструкции по настройке КАЖДОГО сервиса
-6. **tailwind.config.ts** - конфигурация Tailwind с кастомными цветами
-7. **tsconfig.json** - с path aliases (@/*)
-8. **next.config.js** - конфигурация Next.js
-
-### ⚠️ КРИТИЧЕСКОЕ ПРАВИЛО: DEPENDENCY RESOLUTION
-
-**ПЕРЕД ОТПРАВКОЙ ОТВЕТА ПРОВЕРЬ:**
-Каждый файл который ты создаёшь может импортировать ТОЛЬКО:
-1. npm packages из package.json (react, next, @supabase/supabase-js, etc.)
-2. Другие файлы которые ты ТАКЖЕ создал в этом же ответе
-
-**ЗАПРЕЩЕНО:**
-- import { supabase } from '@/lib/supabase' → если src/lib/supabase.ts НЕ создан
-- import { stripe } from '@/lib/stripe' → если src/lib/stripe.ts НЕ создан
-- import { SomeComponent } from '@/components/X' → если X.tsx НЕ создан
-
-**Если API route использует Supabase, ты ДОЛЖЕН создать src/lib/supabase.ts:**
-\`\`\`typescript
-// src/lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-\`\`\`
-
-**Если используешь Stripe, ДОЛЖЕН создать src/lib/stripe.ts:**
-\`\`\`typescript
-// src/lib/stripe.ts
-import Stripe from 'stripe';
-
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
-\`\`\`
-
-### 🎯 DERIVED FEATURES = ПРИОРИТЕТ!
-
-Ты получаешь derived_features - фичи, ВЫВЕДЕННЫЕ ИЗ РЕАЛЬНЫХ БОЛЕЙ ПОЛЬЗОВАТЕЛЕЙ.
-Каждая фича = КОНКРЕТНАЯ ПРОБЛЕМА которую нужно РЕШИТЬ РЕАЛЬНЫМ КОДОМ.
-
-Пример ПРАВИЛЬНОЙ реализации:
-\`\`\`
-derived_feature: {
-  feature_name: "Интеграция с email-маркетингом",
-  pain_quote: "Невозможно быстро экспортировать контакты в Mailchimp",
-  solution: "One-click экспорт в Mailchimp",
-  implementation_hint: "OAuth + Mailchimp API"
-}
-
-Твоя реализация:
-- /api/auth/mailchimp/route.ts - OAuth инициация
-- /api/auth/mailchimp/callback/route.ts - получение токена
-- /api/mailchimp/lists/route.ts - получение списков
-- /api/mailchimp/export/route.ts - экспорт контактов
-- /lib/mailchimp.ts - API wrapper
-- /components/MailchimpConnect.tsx - UI с реальным Connect button
-- .env.example содержит MAILCHIMP_CLIENT_ID, MAILCHIMP_CLIENT_SECRET
-\`\`\`
-
-Пример НЕПРАВИЛЬНОЙ реализации (ЗАПРЕЩЕНО!):
-\`\`\`
-- /components/MailchimpConnect.tsx с onClick={() => alert("Coming soon")}
-- Фейковый список контактов в mockData
-\`\`\`
-
-## Технические требования:
-- Stack: Next.js 14 (App Router), TypeScript, Tailwind CSS
-- Auth: Supabase Auth или NextAuth.js
-- DB: Supabase (PostgreSQL)
-- Payments: Stripe Checkout
-- Компоненты: React Client Components для интерактивности
-- Styling: Tailwind CSS с кастомными цветами для бренда
-- lucide-react для иконок
-
-## Структура ответа:
-Верни JSON объект где ключи - пути к файлам, значения - содержимое файлов.
-
-{
-  "package.json": "...",
-  ".env.example": "...",
-  "supabase/schema.sql": "...",
-  "src/app/page.tsx": "...",
-  "src/app/api/auth/[provider]/route.ts": "...",
-  "src/lib/supabase.ts": "..."
-}
-
-## Финальная проверка перед ответом:
-1. ✅ Каждая кнопка имеет реальный onClick с логикой
-2. ✅ Каждый API route делает реальные запросы
-3. ✅ .env.example содержит ВСЕ нужные ключи
-4. ✅ Нет массивов с fake data
-5. ✅ OAuth интеграции имеют authorize + callback
-6. ✅ IMPORT CHECK: Каждый import '@/lib/X' → файл src/lib/X.ts СОЗДАН
-7. ✅ IMPORT CHECK: Каждый import '@/components/X' → файл СОЗДАН
-8. ✅ src/lib/supabase.ts СОЗДАН если хоть один файл использует Supabase
-9. ✅ Код компилируется: npm install && npm run build проходит без ошибок
-
-Верни ТОЛЬКО JSON без markdown блоков.`;
-
-// Валидация и авто-исправление сгенерированных файлов
-function validateAndFixGeneratedFiles(files: GeneratedFiles): GeneratedFiles {
-  const fixedFiles = { ...files };
-  const allFilePaths = Object.keys(files);
-  const missingImports: string[] = [];
-
-  // Стандартный supabase.ts если отсутствует
-  const SUPABASE_CLIENT = `import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Server-side client with service role (for API routes)
-export function createServerSupabaseClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
-`;
-
-  // Стандартный stripe.ts если отсутствует
-  const STRIPE_CLIENT = `import Stripe from 'stripe';
-
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
-}
-
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
-});
-`;
-
-  // Сканируем все файлы на импорты @/lib/* и @/components/*
-  for (const [filePath, content] of Object.entries(files)) {
-    if (typeof content !== 'string') continue;
-
-    // Ищем импорты @/lib/*
-    const libImports = content.match(/from\s+['"]@\/lib\/([^'"]+)['"]/g) || [];
-    for (const imp of libImports) {
-      const match = imp.match(/from\s+['"]@\/lib\/([^'"]+)['"]/);
-      if (match) {
-        const libName = match[1].replace(/\.ts$/, '');
-        const expectedPath = `src/lib/${libName}.ts`;
-        const altPath = `src/lib/${libName}/index.ts`;
-
-        if (!allFilePaths.includes(expectedPath) && !allFilePaths.includes(altPath)) {
-          missingImports.push(`${filePath} imports @/lib/${libName} but ${expectedPath} not found`);
-
-          // Авто-создаём критические файлы
-          if (libName === 'supabase' && !fixedFiles['src/lib/supabase.ts']) {
-            console.log('[generate-code] Auto-adding missing src/lib/supabase.ts');
-            fixedFiles['src/lib/supabase.ts'] = SUPABASE_CLIENT;
-          }
-          if (libName === 'stripe' && !fixedFiles['src/lib/stripe.ts']) {
-            console.log('[generate-code] Auto-adding missing src/lib/stripe.ts');
-            fixedFiles['src/lib/stripe.ts'] = STRIPE_CLIENT;
-          }
-        }
-      }
-    }
-
-    // Ищем импорты @/components/*
-    const componentImports = content.match(/from\s+['"]@\/components\/([^'"]+)['"]/g) || [];
-    for (const imp of componentImports) {
-      const match = imp.match(/from\s+['"]@\/components\/([^'"]+)['"]/);
-      if (match) {
-        const compName = match[1].replace(/\.tsx?$/, '');
-        const expectedPath = `src/components/${compName}.tsx`;
-        const altPath1 = `src/components/${compName}/index.tsx`;
-        const altPath2 = `src/components/${compName}.ts`;
-
-        if (!allFilePaths.includes(expectedPath) &&
-            !allFilePaths.includes(altPath1) &&
-            !allFilePaths.includes(altPath2)) {
-          missingImports.push(`${filePath} imports @/components/${compName} but file not found`);
-        }
-      }
-    }
-  }
-
-  if (missingImports.length > 0) {
-    console.warn('[generate-code] Import validation warnings:', missingImports);
-  }
-
-  console.log(`[generate-code] Validation complete: ${Object.keys(fixedFiles).length} files (${missingImports.length} warnings)`);
-  return fixedFiles;
-}
-
-// Генерация кода через Claude API
-async function generateCodeWithClaude(spec: ProjectSpec): Promise<GeneratedFiles> {
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error('ANTHROPIC_API_KEY not configured');
-  }
-
-  const userPrompt = `Создай ФУНКЦИОНАЛЬНЫЙ ПРОТОТИП (не MVP с заглушками!) на основе этой спецификации:
-
-## Название проекта
-${spec.project_name}
-
-## Описание (one-liner)
-${spec.one_liner}
-
-## Проблема
-${spec.problem_statement}
-
-## Решение
-${spec.solution_overview}
-
-## Целевая аудитория
-${spec.target_audience || 'Широкая аудитория'}
-
-## Главная боль пользователей
-${spec.main_pain || spec.problem_statement}
-
-${spec.derived_features?.length ? `## 🎯 DERIVED FEATURES — ФИЧИ ИЗ РЕАЛЬНЫХ БОЛЕЙ (ГЛАВНЫЙ ПРИОРИТЕТ!)
-
-${spec.derived_features.map((f, i) => `
-### ${i + 1}. ${f.feature_name} [${f.priority}]
-- **Источник боли:** ${f.pain_source}
-- **Цитата:** "${f.pain_quote}"
-- **Наше решение:** ${f.solution}
-- **Как реализовать:** ${f.implementation_hint}
-
-🔧 **Требования к реализации:**
-${f.implementation_hint.toLowerCase().includes('oauth') || f.implementation_hint.toLowerCase().includes('интеграц') || f.implementation_hint.toLowerCase().includes('api') ?
-`- Создай ПОЛНЫЙ OAuth flow (authorize + callback + token storage)
-- Создай API wrapper для работы с сервисом
-- Добавь ключи в .env.example` : ''}
-${f.implementation_hint.toLowerCase().includes('ai') || f.implementation_hint.toLowerCase().includes('генерац') ?
-`- Создай API route который реально вызывает OpenAI/Claude
-- Добавь OPENAI_API_KEY в .env.example` : ''}
-${f.implementation_hint.toLowerCase().includes('данн') || f.implementation_hint.toLowerCase().includes('сохран') ?
-`- Используй Supabase для хранения данных
-- Добавь SQL schema в supabase/schema.sql` : ''}
-`).join('\n')}
-
-⚠️ КРИТИЧЕСКИ ВАЖНО:
-- Каждая фича должна РАБОТАТЬ, а не быть заглушкой
-- Если нужна интеграция → полный OAuth flow
-- Если нужны данные → реальный API запрос
-- НИКАКИХ fake data или mock arrays!
-` : ''}
-
-## Core Features (ДОЛЖНЫ БЫТЬ РЕАЛИЗОВАНЫ):
-${spec.mvp_specification.core_features.map((f, i) => `
-${i + 1}. **${f.name}** (${f.priority})
-   - Описание: ${f.description}
-   - User Story: ${f.user_story}
-   - Критерии приёмки: ${f.acceptance_criteria.join('; ')}
-`).join('\n')}
-
-## Tech Stack
-${spec.mvp_specification.tech_stack.map(t => `- ${t.category}: ${t.recommendation} (${t.reasoning})`).join('\n')}
-
-## Архитектура
-${spec.mvp_specification.architecture}
-
-${spec.design_system ? `## ДИЗАЙН СИСТЕМА (ОБЯЗАТЕЛЬНО К ИСПОЛЬЗОВАНИЮ!)
-**Цветовая палитра (используй в tailwind.config.ts):**
-- Primary: ${spec.design_system.color_palette.primary}
-- Secondary: ${spec.design_system.color_palette.secondary}
-- Accent: ${spec.design_system.color_palette.accent}
-- Background: ${spec.design_system.color_palette.background}
-- Text: ${spec.design_system.color_palette.text}
-
-**Типографика (добавь Google Fonts):**
-- Headings: ${spec.design_system.typography.headings}
-- Body: ${spec.design_system.typography.body}
-${spec.design_system.typography.mono ? `- Mono: ${spec.design_system.typography.mono}` : ''}
-
-**Уникальные UI элементы (реализуй!):**
-${spec.design_system.unique_elements.map(el => `- ${el}`).join('\n')}
-
-**Обоснование дизайна:** ${spec.design_system.design_rationale}
-
-ВАЖНО: В tailwind.config.ts добавь эти цвета как кастомные (primary, secondary, accent).
-В layout.tsx добавь Google Fonts для указанных шрифтов.
-Используй эти цвета ВЕЗДЕ в проекте вместо дефолтных tailwind цветов.
-` : ''}
-
----
-
-## 📋 ЧЕКЛИСТ ПЕРЕД ГЕНЕРАЦИЕЙ:
-
-1. ✅ .env.example содержит ВСЕ ключи (Supabase, Stripe, OAuth providers, OpenAI)
-2. ✅ supabase/schema.sql если нужна БД
-3. ✅ Каждая интеграция = полный OAuth flow (authorize + callback + token)
-4. ✅ API routes делают РЕАЛЬНЫЕ запросы к сервисам
-5. ✅ НЕТ массивов с fake/mock/dummy data
-6. ✅ Каждая кнопка имеет РЕАЛЬНЫЙ onClick с логикой
-7. ✅ README.md с инструкциями настройки каждого сервиса
-
-${spec.derived_features?.length ? '⚠️ ПРИОРИТЕТ: Сначала реализуй derived_features, потом core_features!' : ''}
-Код должен компилироваться и работать после: npm install && настройка .env.local && npm run dev
-
-Верни JSON с файлами проекта.`;
-
-  // Log what Claude will receive
-  console.log('[generate-code] derived_features count:', spec.derived_features?.length || 0);
-  if (spec.derived_features?.length) {
-    console.log('[generate-code] Features to implement:');
-    spec.derived_features.forEach((f, i) => {
-      console.log(`  ${i + 1}. ${f.feature_name} [${f.priority}]: "${f.pain_quote}" → ${f.solution}`);
-    });
-  }
-
-  // Увеличиваем timeout до 15 минут для генерации функциональных прототипов
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15 * 60 * 1000); // 15 minutes
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 64000,
-        system: SYSTEM_PROMPT,
-        messages: [
-          { role: 'user', content: userPrompt }
-        ],
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('Claude API error:', error);
-      throw new Error(`Claude API error: ${error.error?.message || 'Unknown error'}`);
-    }
-
-    const data = await response.json();
-    const content = data.content?.[0]?.text || '';
-    const stopReason = data.stop_reason;
-
-    // Проверяем, был ли ответ обрезан
-    if (stopReason === 'max_tokens') {
-      console.error('[generate-code] Response was truncated (max_tokens reached)');
-      console.error('[generate-code] Response length:', content.length, 'chars');
-      throw new Error('Claude response truncated - need more tokens');
-    }
-
-    // Парсим JSON из ответа
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsedFiles = JSON.parse(jsonMatch[0]);
-      // Валидируем и авто-исправляем отсутствующие зависимости
-      return validateAndFixGeneratedFiles(parsedFiles);
-    }
-    throw new Error('No JSON found in response');
-
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.error('[generate-code] Request timed out after 15 minutes');
-      throw new Error('Claude API request timed out - generation took too long');
-    }
-    // Ошибка парсинга JSON
-    if (error instanceof SyntaxError) {
-      console.error('Failed to parse Claude response:', error);
-      throw new Error('Failed to parse generated code');
-    }
-    throw error;
-  }
-}
-
-// Добавляем файлы в GitHub репозиторий
+// Добавляем файлы в GitHub репозиторий (Git Data API — один коммит)
 async function addFilesToGitHub(
   token: string,
   owner: string,
   repo: string,
-  files: GeneratedFiles
+  files: Record<string, string>
 ): Promise<{ success: boolean; filesCreated: number; errors: string[] }> {
   const errors: string[] = [];
   const headers = {
@@ -496,10 +25,8 @@ async function addFilesToGitHub(
   };
 
   try {
-    // Небольшая задержка
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Получаем текущий коммит
     let baseBranch = 'main';
     let baseCommitSha: string | null = null;
 
@@ -508,7 +35,6 @@ async function addFilesToGitHub(
         `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
         { headers }
       );
-
       if (refResponse.ok) {
         const refData = await refResponse.json();
         baseBranch = branch;
@@ -521,9 +47,8 @@ async function addFilesToGitHub(
       return { success: false, filesCreated: 0, errors: ['Could not find base branch'] };
     }
 
-    // Создаём blob для каждого файла
+    // Create blobs
     const blobs: Array<{ path: string; sha: string }> = [];
-
     for (const [path, content] of Object.entries(files)) {
       const blobResponse = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/blobs`,
@@ -536,13 +61,11 @@ async function addFilesToGitHub(
           }),
         }
       );
-
       if (!blobResponse.ok) {
         const error = await blobResponse.json();
         errors.push(`Blob ${path}: ${error.message}`);
         continue;
       }
-
       const blob = await blobResponse.json();
       blobs.push({ path, sha: blob.sha });
     }
@@ -551,95 +74,69 @@ async function addFilesToGitHub(
       return { success: false, filesCreated: 0, errors: ['No files created'] };
     }
 
-    // Получаем текущее дерево
+    // Get base tree
     const commitResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/commits/${baseCommitSha}`,
       { headers }
     );
-
     if (!commitResponse.ok) {
       return { success: false, filesCreated: 0, errors: ['Could not get base commit'] };
     }
-
     const commitData = await commitResponse.json();
-    const baseTreeSha = commitData.tree.sha;
 
-    // Создаём новое дерево с базовым деревом
+    // Create tree
     const treeResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/trees`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          base_tree: baseTreeSha,
-          tree: blobs.map(b => ({
-            path: b.path,
-            mode: '100644',
-            type: 'blob',
-            sha: b.sha,
-          })),
+          base_tree: commitData.tree.sha,
+          tree: blobs.map(b => ({ path: b.path, mode: '100644', type: 'blob', sha: b.sha })),
         }),
       }
     );
-
     if (!treeResponse.ok) {
       const error = await treeResponse.json();
       return { success: false, filesCreated: 0, errors: [`Tree creation failed: ${error.message}`] };
     }
-
     const tree = await treeResponse.json();
 
-    // Создаём коммит
+    // Create commit
     const newCommitResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/commits`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          message: `🚀 Generated MVP code via Claude API
-
-- ${blobs.length} files added/updated
-- Ready for deployment
-- Run: npm install && npm run dev`,
+          message: `Generated MVP code (Architect → Coder → Reviewer pipeline)\n\n- ${blobs.length} files added/updated\n- Ready for deployment\n- Run: npm install && npm run dev`,
           tree: tree.sha,
           parents: [baseCommitSha],
         }),
       }
     );
-
     if (!newCommitResponse.ok) {
       const error = await newCommitResponse.json();
       return { success: false, filesCreated: 0, errors: [`Commit creation failed: ${error.message}`] };
     }
-
     const newCommit = await newCommitResponse.json();
 
-    // Обновляем ref
+    // Update ref
     const refUpdateResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${baseBranch}`,
       {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({
-          sha: newCommit.sha,
-          force: true,
-        }),
+        body: JSON.stringify({ sha: newCommit.sha, force: true }),
       }
     );
-
     if (!refUpdateResponse.ok) {
       const error = await refUpdateResponse.json();
       errors.push(`Failed to update branch: ${error.message}`);
     }
 
-    return {
-      success: errors.length === 0,
-      filesCreated: blobs.length,
-      errors,
-    };
-
+    return { success: errors.length === 0, filesCreated: blobs.length, errors };
   } catch (error) {
-    console.error('GitHub API error:', error);
     return {
       success: false,
       filesCreated: 0,
@@ -648,7 +145,6 @@ async function addFilesToGitHub(
   }
 }
 
-// Получение имени пользователя GitHub
 async function getGitHubUsername(token: string): Promise<string | null> {
   try {
     const response = await fetch('https://api.github.com/user', {
@@ -657,9 +153,7 @@ async function getGitHubUsername(token: string): Promise<string | null> {
         'Accept': 'application/vnd.github.v3+json',
       },
     });
-
     if (!response.ok) return null;
-
     const user = await response.json();
     return user.login;
   } catch {
@@ -672,7 +166,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { spec, github_repo, auto_deploy } = body;
 
-    // Получаем токены
     const githubToken = request.cookies.get('github_token')?.value;
     const vercelToken = request.cookies.get('vercel_token')?.value;
 
@@ -683,71 +176,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!ANTHROPIC_API_KEY) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { success: false, error: 'Code generation not configured (missing API key)' },
         { status: 503 }
       );
     }
 
-    console.log(`Generating code for: ${spec.project_name}`);
-    console.log(`Features to implement: ${spec.mvp_specification?.core_features?.length || 0}`);
+    console.log(`[generate-code] Starting for: ${spec.project_name}`);
+    console.log(`[generate-code] Features: ${spec.mvp_specification?.core_features?.length || 0} core, ${spec.derived_features?.length || 0} derived`);
 
-    // Генерируем код через Claude
-    const generatedFiles = await generateCodeWithClaude(spec);
+    // Generate code using hybrid pipeline
+    const generatedFiles = await generateCodeWithClaude(spec as ProjectSpec);
     const fileCount = Object.keys(generatedFiles).length;
 
-    console.log(`Generated ${fileCount} files`);
+    console.log(`[generate-code] Pipeline produced ${fileCount} files`);
 
     let github_url: string | undefined;
     let files_pushed = 0;
     let vercel_url: string | undefined;
 
-    // Если указан GitHub репозиторий, добавляем файлы
+    // Push to GitHub if requested
     if (github_repo && githubToken) {
       const username = await getGitHubUsername(githubToken);
-
       if (username) {
-        // Извлекаем имя репо из URL или используем как есть
         let repoName = github_repo;
         if (github_repo.includes('github.com')) {
           const match = github_repo.match(/github\.com\/[^/]+\/([^/]+)/);
           if (match) repoName = match[1].replace(/\.git$/, '');
         }
 
-        console.log(`Pushing to GitHub: ${username}/${repoName}`);
-
-        const pushResult = await addFilesToGitHub(
-          githubToken,
-          username,
-          repoName,
-          generatedFiles
-        );
+        console.log(`[generate-code] Pushing to GitHub: ${username}/${repoName}`);
+        const pushResult = await addFilesToGitHub(githubToken, username, repoName, generatedFiles);
 
         if (pushResult.success) {
           github_url = `https://github.com/${username}/${repoName}`;
           files_pushed = pushResult.filesCreated;
-          console.log(`Pushed ${files_pushed} files to ${github_url}`);
         } else {
-          console.warn('Failed to push to GitHub:', pushResult.errors);
+          console.warn('[generate-code] GitHub push failed:', pushResult.errors);
         }
 
-        // Автоматический деплой на Vercel
+        // Vercel deploy
         if (auto_deploy && vercelToken && github_url) {
           try {
             const { deployFromGitHub } = await import('@/lib/vercel');
-            const repoPath = `${username}/${repoName}`;
-
-            console.log(`Deploying to Vercel: ${repoPath}`);
-
-            const deployResult = await deployFromGitHub(vercelToken, repoName, repoPath);
-
+            const deployResult = await deployFromGitHub(vercelToken, repoName, `${username}/${repoName}`);
             if (deployResult.success) {
               vercel_url = deployResult.projectUrl;
-              console.log(`Vercel deployment started: ${vercel_url}`);
             }
           } catch (deployError) {
-            console.error('Vercel deployment error:', deployError);
+            console.error('[generate-code] Vercel deploy error:', deployError);
           }
         }
       }
@@ -760,18 +238,14 @@ export async function POST(request: NextRequest) {
       files_pushed,
       github_url,
       vercel_url,
-      // Возвращаем сами файлы если нет GitHub
       files: !github_repo ? generatedFiles : undefined,
       generated_at: new Date().toISOString(),
     });
 
   } catch (error) {
-    console.error('Generate code API error:', error);
+    console.error('[generate-code] Error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Code generation failed'
-      },
+      { success: false, error: error instanceof Error ? error.message : 'Code generation failed' },
       { status: 500 }
     );
   }
