@@ -17,6 +17,7 @@ import UnitEconomicsBlock from '@/components/blocks/UnitEconomicsBlock';
 import EvidenceBadge from '@/components/EvidenceBadge';
 import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
 import FinancialCalculator from '@/components/blocks/FinancialCalculator';
+import ExecutiveSummary from '@/components/blocks/ExecutiveSummary';
 
 interface Trend {
   id: string;
@@ -92,7 +93,7 @@ type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'research' | 'business
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
-type ActionPlanSubTab = 'plan' | 'calculator';
+type ActionPlanSubTab = 'plan' | 'calculator' | 'report';
 type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics';
 
 interface PotentialCompany {
@@ -2330,11 +2331,12 @@ export default function TrendPage() {
           {/* Action Plan Content */}
           {currentStep === 'action-plan' && (
             <div className="space-y-6">
-              {/* Sub-tabs: Plan | Calculator */}
-              <div className="flex items-center gap-4">
+              {/* Sub-tabs: Plan | Calculator | Report */}
+              <div className="flex items-center gap-4 flex-wrap">
                 {[
                   { id: 'plan' as ActionPlanSubTab, label: language === 'ru' ? 'Стратегия' : 'Strategy', icon: '📋' },
-                  { id: 'calculator' as ActionPlanSubTab, label: language === 'ru' ? 'Финансовый калькулятор' : 'Financial Calculator', icon: '🧮' },
+                  { id: 'calculator' as ActionPlanSubTab, label: language === 'ru' ? 'Калькулятор' : 'Calculator', icon: '🧮' },
+                  { id: 'report' as ActionPlanSubTab, label: language === 'ru' ? 'Отчёт' : 'Report', icon: '📄' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -2445,6 +2447,15 @@ export default function TrendPage() {
                     }}
                   />
                 </>
+              )}
+
+              {/* Executive Summary sub-tab */}
+              {actionPlanSubTab === 'report' && (
+                <ExecutiveSummary
+                  data={actionPlanData}
+                  trendTitle={trend.title}
+                  evidenceData={evidenceData}
+                />
               )}
             </div>
           )}
