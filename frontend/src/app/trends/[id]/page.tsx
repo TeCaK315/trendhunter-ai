@@ -18,6 +18,7 @@ import EvidenceBadge from '@/components/EvidenceBadge';
 import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
 import FinancialCalculator from '@/components/blocks/FinancialCalculator';
 import ExecutiveSummary from '@/components/blocks/ExecutiveSummary';
+import ScenarioComparison from '@/components/blocks/ScenarioComparison';
 
 interface Trend {
   id: string;
@@ -93,7 +94,7 @@ type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'research' | 'business
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
-type ActionPlanSubTab = 'plan' | 'calculator' | 'report';
+type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'report';
 type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics';
 
 interface PotentialCompany {
@@ -2331,11 +2332,12 @@ export default function TrendPage() {
           {/* Action Plan Content */}
           {currentStep === 'action-plan' && (
             <div className="space-y-6">
-              {/* Sub-tabs: Plan | Calculator | Report */}
-              <div className="flex items-center gap-4 flex-wrap">
+              {/* Sub-tabs: Plan | Calculator | Scenarios | Report */}
+              <div className="flex items-center gap-3 flex-wrap">
                 {[
                   { id: 'plan' as ActionPlanSubTab, label: language === 'ru' ? 'Стратегия' : 'Strategy', icon: '📋' },
                   { id: 'calculator' as ActionPlanSubTab, label: language === 'ru' ? 'Калькулятор' : 'Calculator', icon: '🧮' },
+                  { id: 'scenarios' as ActionPlanSubTab, label: language === 'ru' ? 'Сценарии' : 'Scenarios', icon: '🔀' },
                   { id: 'report' as ActionPlanSubTab, label: language === 'ru' ? 'Отчёт' : 'Report', icon: '📄' },
                 ].map((tab) => (
                   <button
@@ -2447,6 +2449,32 @@ export default function TrendPage() {
                     }}
                   />
                 </>
+              )}
+
+              {/* Scenario Comparison sub-tab */}
+              {actionPlanSubTab === 'scenarios' && (
+                <ScenarioComparison
+                  trendId={trend.id}
+                  baseInputs={(() => {
+                    // Try to load saved calculator inputs from localStorage
+                    const storageKey = `th_calc_${trend.id}`;
+                    try {
+                      const saved = localStorage.getItem(storageKey);
+                      if (saved) return JSON.parse(saved);
+                    } catch { /* ignore */ }
+                    // Fallback to defaults from Evidence
+                    return {
+                      monthlyPrice: evidenceData.sellability?.average_ticket?.median_price || 49,
+                      annualDiscount: 20,
+                      monthlyChurnRate: 5,
+                      cac: evidenceData.economics?.cac?.estimated_cac?.value || 150,
+                      monthlyFixedCosts: 3000,
+                      initialInvestment: 10000,
+                      customersMonth1: 10,
+                      monthlyGrowthRate: 15,
+                    };
+                  })()}
+                />
               )}
 
               {/* Executive Summary sub-tab */}

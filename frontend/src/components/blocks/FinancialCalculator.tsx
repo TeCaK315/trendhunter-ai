@@ -14,7 +14,7 @@ interface FinancialCalculatorProps {
   };
 }
 
-interface Inputs {
+export interface Inputs {
   monthlyPrice: number;
   annualDiscount: number; // % discount for annual plan
   monthlyChurnRate: number; // %
@@ -25,7 +25,7 @@ interface Inputs {
   monthlyGrowthRate: number; // % monthly customer growth
 }
 
-interface Calculations {
+export interface Calculations {
   // Unit Economics
   arpu: number; // Average Revenue Per User (monthly)
   ltv: number; // Lifetime Value
@@ -44,7 +44,7 @@ interface Calculations {
   runwayMonths: number | null; // null = profitable or infinite
 }
 
-interface MonthProjection {
+export interface MonthProjection {
   month: number;
   customers: number;
   newCustomers: number;
@@ -57,7 +57,7 @@ interface MonthProjection {
   cashRemaining: number;
 }
 
-function calculate(inputs: Inputs): Calculations {
+export function calculate(inputs: Inputs): Calculations {
   const {
     monthlyPrice,
     annualDiscount,
