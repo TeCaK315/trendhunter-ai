@@ -413,117 +413,172 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
           </div>
         )}
 
-        {/* Hero Section */}
-        <div className="relative px-4 sm:px-6 py-8 sm:py-12 hero-gradient overflow-hidden">
+        {/* Hero Section — Selling proposition */}
+        <div className="relative px-4 sm:px-6 py-12 sm:py-20 hero-gradient overflow-hidden">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
-              {t.home.heroTitle1} <span className="gradient-text">{t.home.heroTitle2}</span>
-              <span className="hidden sm:inline"><br /></span>
-              <span className="sm:hidden"> </span>
-              {t.home.heroTitle3}
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-6 leading-[1.1]">
+              {t.home.heroTitle1}{' '}
+              <span className="gradient-text">{t.home.heroTitle2}</span>
             </h1>
 
-            <p className="text-sm sm:text-lg text-zinc-400 mb-6 sm:mb-8 max-w-xl mx-auto">
+            <p className="text-base sm:text-xl text-zinc-400 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed">
               {t.home.heroDescription}
             </p>
 
-            {/* Stats */}
-            <div className="flex items-center justify-center gap-4 sm:gap-8 text-center">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-white">{totalIdeas}</div>
-                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.ideas}</div>
-              </div>
-              <div className="w-px h-10 bg-zinc-700"></div>
-              <div>
-                <div className="text-xl sm:text-2xl font-bold gradient-text">+{avgGrowth}%</div>
-                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.avgGrowth}</div>
-              </div>
-              <div className="w-px h-10 bg-zinc-700"></div>
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-white">{categoriesConfig.length - 1}</div>
-                <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{t.home.categories}</div>
-              </div>
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-12">
+              {!isAuthenticated ? (
+                <button
+                  onClick={() => signIn('google')}
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all text-base"
+                >
+                  {t.home.heroCta}
+                </button>
+              ) : (
+                <button
+                  onClick={() => generateNewTrends()}
+                  disabled={generating || refreshing}
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all text-base disabled:opacity-50"
+                >
+                  {generating ? `${t.home.generating}...` : t.home.newIdeas}
+                </button>
+              )}
+              <a
+                href="#trends-feed"
+                className="w-full sm:w-auto px-8 py-3.5 bg-zinc-800/80 hover:bg-zinc-700 text-white font-medium rounded-xl border border-zinc-700 transition-all text-base text-center"
+              >
+                {t.home.heroDemo} ↓
+              </a>
+            </div>
+
+            {/* Feature pills */}
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+              {[t.home.heroFeature1, t.home.heroFeature2, t.home.heroFeature3, t.home.heroFeature4].map((feature, i) => (
+                <div key={i} className="flex items-center gap-2 px-4 py-2 bg-zinc-800/40 rounded-full border border-zinc-700/50">
+                  <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm text-zinc-300">{feature}</span>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Decorative elements */}
-          <div className="hidden sm:block absolute right-10 top-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="hidden sm:block absolute right-40 bottom-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="hidden sm:block absolute right-10 top-10 w-72 h-72 bg-indigo-500/8 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="hidden sm:block absolute left-10 bottom-0 w-56 h-56 bg-purple-500/8 rounded-full blur-3xl pointer-events-none"></div>
         </div>
 
-        {/* Filters Section */}
-        <div className="sticky top-0 lg:top-[73px] z-20 glass border-b border-zinc-800/50 px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            {/* Category filters */}
-            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
-              {categoriesConfig.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  title={t.categories[cat.labelKey]}
-                  className={`filter-chip whitespace-nowrap flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm ${
-                    selectedCategory === cat.id ? 'active' : ''
-                  }`}
-                >
-                  <span>{cat.icon}</span>
-                  <span className="hidden xs:inline">{t.categories[cat.labelKey]}</span>
-                </button>
-              ))}
+        {/* How It Works — 3 steps */}
+        {!isAuthenticated && (
+          <div className="px-4 sm:px-6 py-12 sm:py-16 border-b border-zinc-800/50">
+            <h2 className="text-center text-xl sm:text-2xl font-bold text-white mb-10 sm:mb-12">
+              {t.home.howItWorksTitle}
+            </h2>
+            <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+              {/* Step 1 */}
+              <div className="relative text-center p-6 rounded-2xl bg-zinc-900/30 border border-zinc-800/50 hover:border-indigo-500/30 transition-colors group">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  🔍
+                </div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</div>
+                <h3 className="text-white font-semibold mb-2">{t.home.step1Title}</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">{t.home.step1Desc}</p>
+              </div>
+              {/* Arrow between steps (desktop only) */}
+              {/* Step 2 */}
+              <div className="relative text-center p-6 rounded-2xl bg-zinc-900/30 border border-zinc-800/50 hover:border-indigo-500/30 transition-colors group">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  📊
+                </div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</div>
+                <h3 className="text-white font-semibold mb-2">{t.home.step2Title}</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">{t.home.step2Desc}</p>
+              </div>
+              {/* Step 3 */}
+              <div className="relative text-center p-6 rounded-2xl bg-zinc-900/30 border border-zinc-800/50 hover:border-indigo-500/30 transition-colors group">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  🚀
+                </div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</div>
+                <h3 className="text-white font-semibold mb-2">{t.home.step3Title}</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">{t.home.step3Desc}</p>
+              </div>
             </div>
+          </div>
+        )}
 
-            {/* Sort dropdown */}
-            <div className="relative sort-dropdown flex-shrink-0">
-              <div className="flex items-center gap-1">
+        {/* Trending Section + Filters */}
+        <div id="trends-feed" className="sticky top-0 lg:top-[73px] z-20 glass border-b border-zinc-800/50">
+          <div className="px-4 sm:px-6 py-4 sm:py-5">
+            {/* Title row with sort */}
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-white leading-tight">{t.home.trendingSectionTitle}</h2>
+                <p className="text-xs text-zinc-500 mt-0.5 hidden sm:block">{t.home.trendingSectionDesc}</p>
+              </div>
+
+              {/* Sort control */}
+              <div className="relative sort-dropdown flex-shrink-0">
                 <button
                   onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-l-xl text-xs sm:text-sm text-white transition-all"
+                  className="flex items-center gap-2 px-3 py-2 bg-zinc-800/60 hover:bg-zinc-800 rounded-lg text-xs sm:text-sm text-zinc-300 hover:text-white transition-all border border-zinc-700/50"
                 >
-                  <span className="text-sm">{currentSortOption?.icon}</span>
+                  <span className="text-xs">{currentSortOption?.icon}</span>
                   <span className="hidden sm:inline whitespace-nowrap">{currentSortOption ? t.sort[currentSortOption.labelKey] : ''}</span>
-                  <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-3.5 h-3.5 transition-transform ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <button
-                  onClick={toggleSortDirection}
-                  className="flex items-center justify-center px-2 py-2 sm:py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 border-l-0 rounded-r-xl text-white transition-all"
-                  title={sortDirection === 'desc' ? t.sort.highToLow : t.sort.lowToHigh}
-                >
-                  {sortDirection === 'desc' ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </button>
-              </div>
 
-              {sortDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
-                  <div className="p-2">
-                    {sortOptionsConfig.map((option) => (
-                      <button
-                        key={option.id}
-                        onClick={() => handleSortChange(option.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-lg hover:bg-zinc-800 transition-colors ${
-                          sortField === option.id ? 'bg-indigo-500/20 text-indigo-400' : 'text-white'
-                        }`}
-                      >
-                        <span className="w-5 text-center">{option.icon}</span>
-                        <span className="flex-1">{t.sort[option.labelKey]}</span>
-                        {sortField === option.id && (
-                          <span className="text-xs opacity-60">
-                            {sortDirection === 'desc' ? '↓' : '↑'}
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                {sortDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
+                    <div className="p-1.5">
+                      {sortOptionsConfig.map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => handleSortChange(option.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-lg transition-colors ${
+                            sortField === option.id
+                              ? 'bg-indigo-500/15 text-indigo-400'
+                              : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                          }`}
+                        >
+                          <span className="w-5 text-center text-xs">{option.icon}</span>
+                          <span className="flex-1">{t.sort[option.labelKey]}</span>
+                          {sortField === option.id && (
+                            <span className="text-[10px] opacity-60">
+                              {sortDirection === 'desc' ? '↓ убыв.' : '↑ возр.'}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </div>
+
+            {/* Category filters — compact pills */}
+            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0 pb-0.5">
+              {categoriesConfig.map((cat) => {
+                const isActive = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    title={t.categories[cat.labelKey]}
+                    className={`whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                      isActive
+                        ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 shadow-sm shadow-indigo-500/10'
+                        : 'bg-zinc-800/40 border-zinc-700/30 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/70 hover:border-zinc-600/50'
+                    }`}
+                  >
+                    <span className="text-sm">{cat.icon}</span>
+                    <span className="hidden xs:inline">{t.categories[cat.labelKey]}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

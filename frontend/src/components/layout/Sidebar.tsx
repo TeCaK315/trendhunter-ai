@@ -31,7 +31,7 @@ export default function Sidebar() {
     setShowTour(true);
   };
 
-  const navItemsConfig: NavItemConfig[] = [
+  const discoverItems: NavItemConfig[] = [
     {
       href: '/',
       labelKey: 'home',
@@ -52,6 +52,9 @@ export default function Sidebar() {
         </svg>
       ),
     },
+  ];
+
+  const workspaceItems: NavItemConfig[] = [
     {
       href: '/favorites',
       labelKey: 'favorites',
@@ -103,35 +106,75 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItemsConfig.map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-tour={item.tourId}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
-                active
-                  ? 'bg-indigo-500/10 text-white'
-                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-              }`}
-            >
-              {/* Active indicator */}
-              {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-r-full" />
-              )}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        {/* Discover section */}
+        {!collapsed && (
+          <div className="px-3 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+            {t.nav.sectionDiscover}
+          </div>
+        )}
+        <div className="space-y-1 mb-4">
+          {discoverItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                data-tour={item.tourId}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+                  active
+                    ? 'bg-indigo-500/10 text-white'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                }`}
+              >
+                {active && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-r-full" />
+                )}
+                <span className={`flex-shrink-0 ${active ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`}>
+                  {item.icon}
+                </span>
+                {!collapsed && (
+                  <span className="font-medium text-sm">{t.nav[item.labelKey]}</span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
 
-              <span className={`flex-shrink-0 ${active ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`}>
-                {item.icon}
-              </span>
-
-              {!collapsed && (
-                <span className="font-medium text-sm">{t.nav[item.labelKey]}</span>
-              )}
-            </Link>
-          );
-        })}
+        {/* Workspace section */}
+        {!collapsed && (
+          <div className="px-3 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+            {t.nav.sectionWorkspace}
+          </div>
+        )}
+        {collapsed && <div className="border-t border-zinc-800/50 my-2" />}
+        <div className="space-y-1">
+          {workspaceItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                data-tour={item.tourId}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+                  active
+                    ? 'bg-indigo-500/10 text-white'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                }`}
+              >
+                {active && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-r-full" />
+                )}
+                <span className={`flex-shrink-0 ${active ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`}>
+                  {item.icon}
+                </span>
+                {!collapsed && (
+                  <span className="font-medium text-sm">{t.nav[item.labelKey]}</span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Footer: Help, Discord, Collapse */}

@@ -20,7 +20,7 @@ export default function MobileNav() {
   const t = useTranslations();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const navItemsConfig: NavItemConfig[] = [
+  const discoverItems: NavItemConfig[] = [
     {
       href: '/',
       labelKey: 'home',
@@ -39,6 +39,9 @@ export default function MobileNav() {
         </svg>
       ),
     },
+  ];
+
+  const workspaceItems: NavItemConfig[] = [
     {
       href: '/favorites',
       labelKey: 'favorites',
@@ -58,6 +61,8 @@ export default function MobileNav() {
       ),
     },
   ];
+
+  const allNavItems = [...discoverItems, ...workspaceItems];
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -115,8 +120,35 @@ export default function MobileNav() {
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <nav className="p-4 space-y-2">
-          {navItemsConfig.map((item) => {
+        <nav className="p-4 space-y-1">
+          <div className="px-3 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+            {t.nav.sectionDiscover}
+          </div>
+          {discoverItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                  active
+                    ? 'bg-indigo-500/10 text-white'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                }`}
+              >
+                <span className={active ? 'text-indigo-400' : ''}>
+                  {item.icon}
+                </span>
+                <span className="font-medium">{t.nav[item.labelKey]}</span>
+              </Link>
+            );
+          })}
+
+          <div className="px-3 mt-4 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+            {t.nav.sectionWorkspace}
+          </div>
+          {workspaceItems.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
@@ -162,7 +194,7 @@ export default function MobileNav() {
       {/* Bottom navigation for quick access */}
       <nav className="fixed bottom-0 left-0 right-0 h-16 bg-[#0a0a0c]/95 backdrop-blur-lg border-t border-zinc-800/50 z-40 safe-area-bottom">
         <div className="h-full flex items-center justify-around px-2">
-          {navItemsConfig.map((item) => {
+          {allNavItems.map((item) => {
             const active = isActive(item.href);
             return (
               <Link

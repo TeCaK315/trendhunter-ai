@@ -8,6 +8,8 @@ export interface Translations {
     favorites: string;
     projects: string;
     collapse: string;
+    sectionDiscover: string;
+    sectionWorkspace: string;
   };
 
   // Auth
@@ -49,6 +51,21 @@ export interface Translations {
     heroTitle2: string;
     heroTitle3: string;
     heroDescription: string;
+    heroCta: string;
+    heroDemo: string;
+    heroFeature1: string;
+    heroFeature2: string;
+    heroFeature3: string;
+    heroFeature4: string;
+    howItWorksTitle: string;
+    step1Title: string;
+    step1Desc: string;
+    step2Title: string;
+    step2Desc: string;
+    step3Title: string;
+    step3Desc: string;
+    trendingSectionTitle: string;
+    trendingSectionDesc: string;
     ideas: string;
     avgGrowth: string;
     categories: string;
@@ -94,6 +111,8 @@ export interface Translations {
     detailedMetrics: string;
     detected: string;
     openDetails: string;
+    analyzeNiche: string;
+    addToFavoritesShort: string;
   };
 
   // Trend detail page
@@ -428,6 +447,16 @@ export interface Translations {
         content: string;
       };
     };
+    // Welcome Wizard (first login)
+    welcome: {
+      step1Title: string;
+      step1Desc: string;
+      step2Title: string;
+      step2Desc: string;
+      step3Title: string;
+      step3Desc: string;
+      getStarted: string;
+    };
   };
 
   // Help button
@@ -495,6 +524,8 @@ export const translations: Record<Language, Translations> = {
       favorites: 'Избранное',
       projects: 'Проекты',
       collapse: 'Свернуть',
+      sectionDiscover: 'Обзор',
+      sectionWorkspace: 'Рабочее пространство',
     },
     auth: {
       signIn: 'Войти',
@@ -528,10 +559,25 @@ export const translations: Record<Language, Translations> = {
       refresh: 'Обновить',
       liveData: 'Live данные',
       updatesEvery6Hours: 'Обновляется каждые 6 часов',
-      heroTitle1: 'От тренда к',
-      heroTitle2: 'концепции продукта',
-      heroTitle3: 'за 20 минут',
-      heroDescription: 'ИИ анализирует рынок, конкурентов и потребности пользователей - помогая собрать рабочий прототип без недель ресёрча.',
+      heroTitle1: 'Найди прибыльную нишу',
+      heroTitle2: 'за 10 минут',
+      heroTitle3: '',
+      heroDescription: 'Не гадай — анализируй реальные данные. Google Trends, конкуренты, стоимость входа — всё в одном месте.',
+      heroCta: 'Начать бесплатно',
+      heroDemo: 'Посмотреть тренды',
+      heroFeature1: 'Google Trends',
+      heroFeature2: 'Анализ конкурентов',
+      heroFeature3: 'Оценка входа',
+      heroFeature4: 'Бизнес-калькулятор',
+      howItWorksTitle: 'Как это работает',
+      step1Title: 'Выбери тренд',
+      step1Desc: 'Смотри что растёт в поиске прямо сейчас',
+      step2Title: 'Получи анализ',
+      step2Desc: 'Конкуренты, стоимость входа, рыночная ситуация',
+      step3Title: 'Запусти проект',
+      step3Desc: 'Калькулятор, мониторинг, опросы — всё в одном месте',
+      trendingSectionTitle: 'Растущие ниши на этой неделе',
+      trendingSectionDesc: 'Реальные данные Google Trends. Обновляется каждые 6 часов.',
       ideas: 'Идей',
       avgGrowth: 'Ср. рост',
       categories: 'Категорий',
@@ -575,6 +621,8 @@ export const translations: Record<Language, Translations> = {
       detailedMetrics: 'Детальные метрики',
       detected: 'Обнаружено',
       openDetails: 'Открыть детали',
+      analyzeNiche: 'Анализировать нишу',
+      addToFavoritesShort: 'В избранное',
     },
     trendDetail: {
       tabs: {
@@ -888,6 +936,15 @@ export const translations: Record<Language, Translations> = {
           content: 'Каждая карточка показывает популярность и рост тренда на основе данных Google Trends. Нажмите для детального анализа.',
         },
       },
+      welcome: {
+        step1Title: 'Добро пожаловать в TrendHunter AI',
+        step1Desc: 'Мы находим прибыльные ниши на основе реальных данных Google Trends, анализируем конкуренцию и оцениваем стоимость входа — чтобы вы не тратили время на гадание.',
+        step2Title: 'Находите тренды за секунды',
+        step2Desc: 'Листайте ленту трендов, фильтруйте по 9 категориям, ищите по ключевым словам. Каждая карточка показывает уровень конкуренции, количество игроков и стоимость входа.',
+        step3Title: 'Анализируйте и запускайте',
+        step3Desc: 'Нажмите «Анализировать нишу» на любой карточке — получите глубокий анализ: реальные проблемы аудитории, бизнес-план, конкурентов и готовый MVP-проект.',
+        getStarted: 'Начать работу',
+      },
     },
     help: {
       title: 'Помощь',
@@ -944,6 +1001,8 @@ export const translations: Record<Language, Translations> = {
       favorites: 'Favorites',
       projects: 'Projects',
       collapse: 'Collapse',
+      sectionDiscover: 'Discover',
+      sectionWorkspace: 'Workspace',
     },
     auth: {
       signIn: 'Sign In',
@@ -977,10 +1036,25 @@ export const translations: Record<Language, Translations> = {
       refresh: 'Refresh',
       liveData: 'Live data',
       updatesEvery6Hours: 'Updates every 6 hours',
-      heroTitle1: 'From trend to',
-      heroTitle2: 'product concept',
-      heroTitle3: 'in 20 minutes',
-      heroDescription: 'AI analyzes market, competitors, and user needs - helping build a working prototype without weeks of research.',
+      heroTitle1: 'Find a profitable niche',
+      heroTitle2: 'in 10 minutes',
+      heroTitle3: '',
+      heroDescription: 'Don\'t guess — analyze real data. Google Trends, competitors, entry costs — all in one place.',
+      heroCta: 'Start for free',
+      heroDemo: 'View trends',
+      heroFeature1: 'Google Trends',
+      heroFeature2: 'Competitor analysis',
+      heroFeature3: 'Entry cost estimate',
+      heroFeature4: 'Business calculator',
+      howItWorksTitle: 'How it works',
+      step1Title: 'Pick a trend',
+      step1Desc: 'See what\'s growing in search right now',
+      step2Title: 'Get analysis',
+      step2Desc: 'Competitors, entry cost, market situation',
+      step3Title: 'Launch a project',
+      step3Desc: 'Calculator, monitoring, surveys — all in one place',
+      trendingSectionTitle: 'Trending niches this week',
+      trendingSectionDesc: 'Real Google Trends data. Updates every 6 hours.',
       ideas: 'Ideas',
       avgGrowth: 'Avg. growth',
       categories: 'Categories',
@@ -1024,6 +1098,8 @@ export const translations: Record<Language, Translations> = {
       detailedMetrics: 'Detailed metrics',
       detected: 'Detected',
       openDetails: 'Open details',
+      analyzeNiche: 'Analyze niche',
+      addToFavoritesShort: 'Bookmark',
     },
     trendDetail: {
       tabs: {
@@ -1336,6 +1412,15 @@ export const translations: Record<Language, Translations> = {
           title: 'Trend Card',
           content: 'Each card shows popularity and growth rate based on Google Trends data. Click for detailed analysis.',
         },
+      },
+      welcome: {
+        step1Title: 'Welcome to TrendHunter AI',
+        step1Desc: 'We find profitable niches using real Google Trends data, analyze competition, and estimate entry costs — so you don\'t waste time guessing.',
+        step2Title: 'Find trends in seconds',
+        step2Desc: 'Scroll the trend feed, filter by 9 categories, search by keywords. Each card shows competition level, player count, and entry cost.',
+        step3Title: 'Analyze and launch',
+        step3Desc: 'Click "Analyze niche" on any card — get deep analysis: real audience problems, business plan, competitors, and a ready MVP project.',
+        getStarted: 'Get started',
       },
     },
     help: {

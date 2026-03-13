@@ -61,9 +61,16 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
     ? (translatedTrend?.title || trend.title)
     : trend.title;
 
-  const displayWhyTrending = language === 'en'
+  const rawWhyTrending = language === 'en'
     ? (trend.why_trending_en || translatedTrend?.why_trending || trend.why_trending)
     : trend.why_trending;
+
+  // Remove "рост интереса на X% за неделю" / "interest grew by X% this week" from description
+  // since growth rate is already shown in the badge
+  const displayWhyTrending = rawWhyTrending
+    .replace(/\s*[Рр]ост интереса на \d+%\s*(за неделю|за месяц)?\.?\s*/g, ' ')
+    .replace(/\s*[Ii]nterest grew by \d+%\s*(this week|this month)?\.?\s*/g, ' ')
+    .trim();
 
   // Localized time ago
   const getTimeAgoLocalized = (dateString: string): string => {
@@ -111,7 +118,7 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
   return (
     <>
       <div
-        className="trend-card group"
+        className="trend-card group h-full flex flex-col"
         data-tour={dataTour}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -120,28 +127,31 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
         <div className={`absolute inset-0 bg-gradient-to-br ${config.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[20px]`} />
 
         {/* Content */}
-        <div className="relative">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-4">
-            {/* Project completed indicator */}
-            {isProjectCompleted && (
-              <div
-                className="text-2xl text-yellow-400 animate-pulse"
-                title={t.trendCard.projectCreated}
-              >
-                ★
+        <div className="relative flex-1 flex flex-col">
+          {/* Header — category + growth badge + time */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="category-pill inline-flex items-center gap-1.5" title={trend.category}>
+                <span className="text-base">{config.icon}</span>
+                <span className="hidden xs:inline">{trend.category}</span>
               </div>
-            )}
-          </div>
-
-          {/* Category */}
-          <div className="category-pill inline-flex items-center gap-1.5 mb-3 group/cat" title={trend.category}>
-            <span className="text-base">{config.icon}</span>
-            <span className="hidden xs:inline">{trend.category}</span>
-            {/* Tooltip for mobile - show category name on hover */}
-            <span className="xs:hidden absolute left-0 -bottom-6 text-[10px] bg-zinc-800 px-2 py-0.5 rounded opacity-0 group-hover/cat:opacity-100 transition-opacity whitespace-nowrap z-10">
-              {trend.category}
-            </span>
+              {trend.growth_rate !== undefined && trend.growth_rate !== 0 && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  trend.growth_rate > 0 ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+                }`}>
+                  {trend.growth_rate > 0 ? '+' : ''}{trend.growth_rate}% {t.trendCard.growth.toLowerCase()}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {isProjectCompleted && (
+                <span className="text-lg text-yellow-400" title={t.trendCard.projectCreated}>★</span>
+              )}
+              <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                <span>{getTimeAgoLocalized(trend.first_detected_at)}</span>
+              </div>
+            </div>
           </div>
 
           {/* Title */}
@@ -150,11 +160,12 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
           </h3>
 
           {/* Description */}
-          <p className="text-sm text-zinc-400 mb-5 line-clamp-3 group-hover:text-zinc-300 transition-colors">
+          <p className="text-sm text-zinc-400 line-clamp-3 group-hover:text-zinc-300 transition-colors flex-1">
             {displayWhyTrending}
           </p>
 
-          {/* Metrics Bar */}
+          {/* Metrics + CTA pinned to bottom */}
+          <div className="mt-auto pt-4">
           {trend.enriched_at ? (
             <div className="flex items-center gap-2 mb-4 p-2.5 bg-zinc-900/50 rounded-xl border border-zinc-800/30">
               {/* Competition Level */}
@@ -214,36 +225,16 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
             </div>
           )}
 
-          {/* Footer */}
-          <div className="flex justify-between items-center pt-4 border-t border-zinc-800/50">
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-              <span>{getTimeAgoLocalized(trend.first_detected_at)}</span>
-              {trend.source && (
-                <>
-                  <span className="text-zinc-700">•</span>
-                  <span className="text-zinc-600">{trend.source}</span>
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowModal(true)}
-                className="px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                title={t.trendCard.details}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => router.push(`/trends/${trend.id}`)}
-                className="detail-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105"
-              >
-                {t.trendCard.details}
-              </button>
-            </div>
+          {/* Primary CTA */}
+          <button
+            onClick={() => router.push(`/trends/${trend.id}`)}
+            className="w-full py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/30 hover:scale-[1.02]"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            {t.trendCard.analyzeNiche}
+          </button>
           </div>
         </div>
       </div>
