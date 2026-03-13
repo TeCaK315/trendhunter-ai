@@ -314,6 +314,53 @@ export async function deployFiles(
   }
 }
 
+// Прямой деплой статических файлов (без фреймворка)
+export async function deployStaticFiles(
+  token: string,
+  projectName: string,
+  files: Record<string, string>
+): Promise<DeployResult> {
+  try {
+    const vercelFiles = Object.entries(files).map(([filePath, content]) => ({
+      file: filePath,
+      data: content,
+    }));
+
+    const response = await fetch(`${VERCEL_API_URL}/v13/deployments`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+        files: vercelFiles,
+        projectSettings: {
+          framework: null,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Vercel static deployment error:', error);
+      return { success: false, error: error.error?.message || 'Failed to deploy static site' };
+    }
+
+    const deployment: VercelDeployment = await response.json();
+
+    return {
+      success: true,
+      deploymentId: deployment.id,
+      deploymentUrl: `https://${deployment.url}`,
+      projectUrl: `https://${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}.vercel.app`,
+    };
+  } catch (error) {
+    console.error('Vercel static deployment error:', error);
+    return { success: false, error: 'Failed to deploy static site to Vercel' };
+  }
+}
+
 // Получение статуса деплоя
 export async function getDeploymentStatus(
   token: string,

@@ -1,0 +1,99 @@
+[
+  {
+    "survey_id": "9613315c-50bf-4e93-be8c-4a25e5b91e48",
+    "token": "17ab8e68-8dfd-4af7-84c5-82a024e84fe9",
+    "answers": {
+      "1": "Никогда не пользовался, но интересуюсь",
+      "2": "Другое",
+      "3": "10",
+      "4": [
+        "Packing/ Vacation App Recommendations",
+        "Best trip organizer apps that are free?",
+        "What are your must have travel apps?"
+      ],
+      "5": "Travel Apps - Are They Really Necessary?",
+      "6": "Несколько раз в неделю",
+      "7": "10",
+      "8": "$16-34",
+      "9": "$98+",
+      "10": [
+        "Низкая цена",
+        "Простота использования",
+        "Функциональность",
+        "Интеграции с другими сервисами",
+        "Поддержка на русском / родном языке",
+        "Скорость работы",
+        "Безопасность данных",
+        "Репутация / отзывы"
+      ],
+      "11": [
+        "Google поиск",
+        "YouTube",
+        "Рекомендации коллег",
+        "Product Hunt"
+      ]
+    },
+    "completed_at": "2026-02-23T22:34:54.593Z"
+  },
+  {
+    "survey_id": "c41f01a4-325a-4666-93e9-44e51fca1e37",
+    "token": "a7f895d8-c0f2-465d-b23b-1d649b756e75",
+    "answers": {
+      "1": "Использую подобные продукты регулярно",
+      "2": "TripIt",
+      "3": "2",
+      "4": [
+        "Travel Apps - Are They Really Necessary?",
+        "Best trip organizer apps that are free?",
+        "Packing/ Vacation App Recommendations"
+      ],
+      "5": "Best travel apps which you use ?",
+      "6": "Несколько раз в неделю",
+      "7": "2",
+      "8": "$35-74",
+      "9": "$26-39",
+      "10": [
+        "Скорость работы",
+        "Низкая цена",
+        "Простота использования"
+      ],
+      "11": [
+        "Рекомендации коллег",
+        "Reddit / форумы",
+        "App Store / Google Play"
+      ]
+    },
+    "completed_at": "2026-02-23T23:05:13.551Z"
+  },
+  {
+    "survey_id": "e42765f4-0802-4456-98ea-123347eef123",
+    "token": "96fe8b28-3d48-468c-b8ee-25a396e079ec",
+    "answers": {
+      "1": "Никогда не пользовался, но интересуюсь",
+      "2": "Babbel",
+      "3": "5",
+      "4": [
+        "What are some good AI-powered tools that can help with ... (1 реакций на quora)",
+        "I want to improve my English. Do you know any free apps ... (1 реакций на quora)",
+        "What is the easiest way to get foreign language practice ... (1 реакций на quora)"
+      ],
+      "5": "Which completely free application can teach me in the best ...",
+      "6": "Несколько раз в неделю",
+      "7": "7",
+      "8": "$0 — бесплатно / ничего не использую",
+      "9": "$67-105",
+      "10": [
+        "Интеграции с другими сервисами",
+        "Скорость работы",
+        "Простота использования"
+      ],
+      "11": [
+        "Рекомендации коллег",
+        "App Store / Google Play"
+      ],
+      "12": "123",
+      "13": "123"
+    },
+    "completed_at": "2026-03-11T15:25:51.006Z"
+  }
+]

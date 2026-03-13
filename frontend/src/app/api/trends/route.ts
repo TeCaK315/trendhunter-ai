@@ -2,19 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import fs from 'fs';
 import path from 'path';
+import type { Trend } from '@/types/trend';
 
-export interface Trend {
-  id: string;
-  title: string;
-  category: string;
-  popularity_score: number;
-  growth_rate: number;
-  why_trending: string;
-  status: string;
-  first_detected_at: string;
-  source?: string;
-  source_query?: string;
-}
+export type { Trend };
 
 interface TrendsData {
   trends: Trend[];
@@ -70,6 +60,11 @@ async function saveTrendsData(data: TrendsData): Promise<void> {
     }
   } else {
     localTrendsStorage = data;
+    // Also persist to file for SSR access
+    try {
+      const filePath = path.join(process.cwd(), 'data', 'trends.json');
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch { /* ignore write errors */ }
   }
 }
 
@@ -132,10 +127,14 @@ function getSignificantWords(text: string): Set<string> {
     'the', 'a', 'an', 'is', 'are', 'for', 'of', 'in', 'on', 'to', 'and', 'or', 'with',
     'tool', 'tools', 'software', 'platform', 'app', 'service', 'ai', 'ml', 'saas',
     'best', 'top', 'new', 'free', 'vs', 'comparison', 'compare', 'review',
-    // Russian
+    // Russian — common function words
     'для', 'на', 'по', 'из', 'от', 'до', 'при', 'без', 'над', 'под', 'через',
-    'инструмент', 'платформа', 'сервис', 'система', 'приложение',
-    'на', 'основе', 'помощью', 'помощи',
+    'это', 'как', 'что', 'где', 'когда', 'так', 'все', 'уже', 'ещё', 'еще',
+    // Russian — generic product nouns (should be stripped to find core domain)
+    'инструмент', 'инструменты', 'платформа', 'сервис', 'система', 'приложение',
+    'программное', 'обеспечение', 'список', 'решение', 'решения',
+    'основе', 'помощью', 'помощи', 'управление', 'управления',
+    'автоматизация', 'автоматизации', 'оптимизация', 'мониторинг',
   ]);
 
   return new Set(
@@ -178,11 +177,21 @@ function isDuplicate(newTrend: Trend, existingTrend: Trend): boolean {
     }
   }
 
-  // 4. Title word-set comparison (Russian/English words)
+  // 4. Title word-set comparison (Russian/English words) — lower threshold to catch near-duplicates
   const newTitleWords = getSignificantWords(newTrend.title);
   const existingTitleWords = getSignificantWords(existingTrend.title);
   if (newTitleWords.size >= 2 && existingTitleWords.size >= 2) {
-    if (wordSetSimilarity(newTitleWords, existingTitleWords) >= 0.7) return true;
+    if (wordSetSimilarity(newTitleWords, existingTitleWords) >= 0.5) return true;
+  }
+
+  // 5. Same category + shared core domain word (catches "HR льготы" vs "HR зарплаты")
+  if (newTrend.category === existingTrend.category && newTitleWords.size >= 1 && existingTitleWords.size >= 1) {
+    // If one set is a subset of the other (all significant words match)
+    const smaller = newTitleWords.size <= existingTitleWords.size ? newTitleWords : existingTitleWords;
+    const larger = newTitleWords.size <= existingTitleWords.size ? existingTitleWords : newTitleWords;
+    let allMatch = true;
+    for (const w of smaller) { if (!larger.has(w)) { allMatch = false; break; } }
+    if (allMatch) return true;
   }
 
   return false;
@@ -310,6 +319,37 @@ export async function POST(request: NextRequest) {
     console.error('Error saving trends:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to save trends' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT - Replace all trends (used by enrichment pipeline)
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { trends, lastUpdated } = body;
+
+    if (!Array.isArray(trends)) {
+      return NextResponse.json(
+        { success: false, error: 'trends array is required' },
+        { status: 400 }
+      );
+    }
+
+    await saveTrendsData({
+      trends,
+      lastUpdated: lastUpdated || new Date().toISOString(),
+    });
+
+    return NextResponse.json({
+      success: true,
+      total: trends.length,
+    });
+  } catch (error) {
+    console.error('Error updating trends:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update trends' },
       { status: 500 }
     );
   }

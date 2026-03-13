@@ -20,6 +20,9 @@ import FinancialCalculator from '@/components/blocks/FinancialCalculator';
 import ExecutiveSummary from '@/components/blocks/ExecutiveSummary';
 import ScenarioComparison from '@/components/blocks/ScenarioComparison';
 import SurveyGenerator from '@/components/blocks/SurveyGenerator';
+import GtmPlanGenerator from '@/components/blocks/GtmPlanGenerator';
+import MonitoringDashboard from '@/components/blocks/MonitoringDashboard';
+import LandingPageGenerator from '@/components/blocks/LandingPageGenerator';
 
 interface Trend {
   id: string;
@@ -91,11 +94,11 @@ interface TrendAnalysis {
 
 // Оптимизированный flow: 4 основных шага вместо 8
 // Каждый шаг содержит подразделы с полным контентом
-type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'research' | 'business' | 'project';
+type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'monitoring' | 'research' | 'business' | 'project';
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
-type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'survey' | 'report';
+type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'survey' | 'gtm' | 'report';
 type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics';
 
 interface PotentialCompany {
@@ -569,6 +572,7 @@ export default function TrendPage() {
   ) : [];
 
   // Состояние для проекта (META-агент)
+  const [projectMode, setProjectMode] = useState<'landing' | 'full-mvp' | null>(null);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [loadingProject, setLoadingProject] = useState(false);
   const [projectGenStep, setProjectGenStep] = useState(0);
@@ -841,6 +845,28 @@ export default function TrendPage() {
       ? ((translatedEmail?.tips as string[]) || generatedEmail.tips)
       : generatedEmail.tips
   ) : [];
+
+  // Прогресс сбора Evidence данных
+  const evidenceProgress = useMemo(() => {
+    const blocks = ['problem', 'demand', 'sellability', 'occupation', 'economics'] as const;
+    const done = blocks.filter(b => evidenceData[b]).length;
+    const loading = blocks.some(b => evidenceLoading[b]);
+    return { done, total: 5, percent: Math.round((done / 5) * 100), loading };
+  }, [evidenceData, evidenceLoading]);
+
+  // Определение статуса шага
+  const getStepStatus = useCallback((stepId: string): 'completed' | 'active' | 'pending' => {
+    if (stepId === currentStep) return 'active';
+    switch (stepId) {
+      case 'overview': return 'completed'; // всегда "done" после первого визита
+      case 'evidence': return evidenceProgress.done > 0 ? 'completed' : 'pending';
+      case 'action-plan': return actionPlanData ? 'completed' : 'pending';
+      case 'monitoring': return 'pending';
+      case 'business': return 'pending';
+      case 'project': return 'pending';
+      default: return 'pending';
+    }
+  }, [currentStep, evidenceProgress.done, actionPlanData]);
 
   // Рекомендация типа продукта на основе анализа тренда
   const productRecommendation = useMemo(() => {
@@ -2077,8 +2103,9 @@ export default function TrendPage() {
   // Оптимизированный flow: 4 основных шага
   const flowSteps = [
     { id: 'overview', label: t.trendDetail.tabs.overview, icon: '📊', description: language === 'ru' ? 'Обзор тренда' : 'Trend Overview' },
-    { id: 'evidence', label: language === 'ru' ? 'Доказательства' : 'Evidence', icon: '🔎', description: language === 'ru' ? '6 блоков проверки реальными данными' : '6 evidence-based analysis blocks' },
-    { id: 'action-plan', label: language === 'ru' ? 'План действий' : 'Action Plan', icon: '📋', description: language === 'ru' ? 'Стратегия на основе Evidence' : 'Evidence-based strategy' },
+    { id: 'evidence', label: language === 'ru' ? 'Исследование' : 'Research', icon: '🔎', description: language === 'ru' ? '5 блоков: проблема, спрос, продаваемость, конкуренция, экономика' : '5 blocks: problem, demand, sellability, competition, economics' },
+    { id: 'action-plan', label: language === 'ru' ? 'Стратегия' : 'Strategy', icon: '📋', description: language === 'ru' ? 'GO/NO GO вердикт, финансы, GTM план' : 'GO/NO GO verdict, financials, GTM plan' },
+    { id: 'monitoring', label: language === 'ru' ? 'Мониторинг' : 'Monitoring', icon: '📡', description: language === 'ru' ? 'Отслеживание трендов, конкурентов и цен' : 'Track trends, competitors and prices' },
     { id: 'business', label: language === 'ru' ? 'Бизнес' : 'Business', icon: '💼', description: language === 'ru' ? 'Инвестиции и клиенты' : 'Venture & Leads' },
     { id: 'project', label: t.trendDetail.tabs.project, icon: '🚀', description: language === 'ru' ? 'Создать проект' : 'Create Project' },
   ];
@@ -2136,10 +2163,12 @@ export default function TrendPage() {
             {flowSteps.map((step, index) => {
               const isActive = step.id === currentStep;
               const isPast = flowSteps.findIndex(s => s.id === currentStep) > index;
+              const stepStatus = getStepStatus(step.id);
               const isClickable = isPast || step.id === 'overview' ||
                 step.id === 'evidence' ||
                 step.id === 'action-plan' ||
                 step.id === 'business' ||
+                step.id === 'monitoring' ||
                 (step.id === 'project' && analysis);
 
               return (
@@ -2147,26 +2176,48 @@ export default function TrendPage() {
                   <button
                     onClick={() => isClickable && setCurrentStep(step.id as FlowStep)}
                     disabled={!isClickable}
-                    className={`flex flex-col items-center gap-1 px-5 py-3 rounded-xl transition-all ${
+                    title={step.description}
+                    className={`flex flex-col items-center gap-1 px-5 py-3 rounded-xl transition-all relative ${
                       isActive
                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                        : isPast
+                        : stepStatus === 'completed' && !isActive
                         ? 'bg-zinc-800 text-white'
                         : isClickable
                         ? 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 hover:text-white'
                         : 'bg-zinc-900/50 text-zinc-600 cursor-not-allowed'
                     }`}
                   >
-                    <span className="text-xl">{step.icon}</span>
-                    <span className="whitespace-nowrap font-medium">{step.label}</span>
+                    {stepStatus === 'completed' && !isActive ? (
+                      <span className="text-xl text-green-400">✓</span>
+                    ) : (
+                      <span className="text-xl">{step.icon}</span>
+                    )}
+                    <span className="whitespace-nowrap font-medium text-xs">{step.label}</span>
                   </button>
                   {index < flowSteps.length - 1 && (
-                    <div className={`w-12 h-0.5 mx-2 ${isPast ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
+                    <div className={`w-12 h-0.5 mx-2 ${
+                      stepStatus === 'completed' || isPast ? 'bg-indigo-500' : 'bg-zinc-700'
+                    }`} />
                   )}
                 </div>
               );
             })}
           </div>
+
+          {/* Progress indicator */}
+          {currentStep === 'evidence' && (
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${evidenceProgress.percent}%` }}
+                />
+              </div>
+              <span className="text-xs text-zinc-400 whitespace-nowrap">
+                {t.trendDetail.overview.dataCollected} {evidenceProgress.done}/{evidenceProgress.total} {t.trendDetail.overview.dataBlocks}
+              </span>
+            </div>
+          )}
 
           {/* Подразделы для Business */}
           {currentStep === 'business' && (
@@ -2194,10 +2245,10 @@ export default function TrendPage() {
               {[
                 { id: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
                 { id: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
-                { id: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
-                { id: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
+                { id: 'sellability', label: language === 'ru' ? 'Продаваемость' : 'Sellability', icon: '💳' },
+                { id: 'occupation', label: language === 'ru' ? 'Конкуренция' : 'Competition', icon: '🏟️' },
                 { id: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
-                { id: 'analysis', label: language === 'ru' ? 'Анализ' : 'Analysis', icon: '🔍' },
+                { id: 'analysis', label: language === 'ru' ? 'AI Синтез' : 'AI Synthesis', icon: '🧠' },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -2327,6 +2378,49 @@ export default function TrendPage() {
                   error={evidenceErrors.economics}
                 />
               )}
+
+              {/* Banner: all data collected, suggest AI Synthesis */}
+              {evidenceProgress.done === 5 && !analysis && !evidenceProgress.loading && evidenceSubTab !== 'analysis' && (
+                <div className="mt-6 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🧠</span>
+                    <div>
+                      <p className="text-sm font-medium text-white">{t.trendDetail.overview.allDataReady}</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {language === 'ru' ? '3 AI-агента проанализируют все собранные данные' : '3 AI agents will analyze all collected data'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEvidenceSubTab('analysis')}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {language === 'ru' ? 'AI Синтез →' : 'AI Synthesis →'}
+                  </button>
+                </div>
+              )}
+
+              {/* NextStepCard: after analysis done */}
+              {analysis && (
+                <div className="mt-6 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 border border-indigo-500/20 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📋</span>
+                    <div>
+                      <p className="text-xs text-indigo-400 font-medium">{t.trendDetail.overview.nextStepHint}</p>
+                      <p className="text-sm font-medium text-white">{t.trendDetail.overview.nextStepStrategy}</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {language === 'ru' ? 'GO/NO GO вердикт, финансовый калькулятор, GTM план' : 'GO/NO GO verdict, financial calculator, GTM plan'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setCurrentStep('action-plan')}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {t.trendDetail.overview.nextStepStrategy} →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -2339,7 +2433,8 @@ export default function TrendPage() {
                   { id: 'plan' as ActionPlanSubTab, label: language === 'ru' ? 'Стратегия' : 'Strategy', icon: '📋' },
                   { id: 'calculator' as ActionPlanSubTab, label: language === 'ru' ? 'Калькулятор' : 'Calculator', icon: '🧮' },
                   { id: 'scenarios' as ActionPlanSubTab, label: language === 'ru' ? 'Сценарии' : 'Scenarios', icon: '🔀' },
-                  { id: 'survey' as ActionPlanSubTab, label: language === 'ru' ? 'Опросник' : 'Survey', icon: '📝' },
+                  { id: 'survey' as ActionPlanSubTab, label: language === 'ru' ? 'Опрос + Рассылка' : 'Survey + Send', icon: '📝' },
+                  { id: 'gtm' as ActionPlanSubTab, label: language === 'ru' ? 'GTM План' : 'GTM Plan', icon: '🚀' },
                   { id: 'report' as ActionPlanSubTab, label: language === 'ru' ? 'Отчёт' : 'Report', icon: '📄' },
                 ].map((tab) => (
                   <button
@@ -2487,6 +2582,14 @@ export default function TrendPage() {
                 />
               )}
 
+              {/* GTM Plan sub-tab */}
+              {actionPlanSubTab === 'gtm' && (
+                <GtmPlanGenerator
+                  trendTitle={trend.source_query || trend.title}
+                  evidenceData={evidenceData}
+                />
+              )}
+
               {/* Executive Summary sub-tab */}
               {actionPlanSubTab === 'report' && (
                 <ExecutiveSummary
@@ -2495,7 +2598,50 @@ export default function TrendPage() {
                   evidenceData={evidenceData}
                 />
               )}
+
+              {/* NextStepCard: after action plan */}
+              {actionPlanData && (
+                <div className="mt-6 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📡</span>
+                    <div>
+                      <p className="text-xs text-emerald-400 font-medium">{t.trendDetail.overview.nextStepHint}</p>
+                      <p className="text-sm font-medium text-white">
+                        {language === 'ru' ? 'Мониторинг или Проект' : 'Monitoring or Project'}
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {language === 'ru'
+                          ? 'Настройте отслеживание тренда или создайте проект для запуска'
+                          : 'Set up trend tracking or create a project to launch'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentStep('monitoring')}
+                      className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-xs font-medium transition-colors"
+                    >
+                      📡 {t.trendDetail.overview.nextStepMonitoring}
+                    </button>
+                    <button
+                      onClick={() => setCurrentStep('project')}
+                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition-colors"
+                    >
+                      🚀 {t.trendDetail.overview.nextStepProject}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
+
+          {/* Monitoring Step */}
+          {currentStep === 'monitoring' && (
+            <MonitoringDashboard
+              trendId={trend.id}
+              trendTitle={trend.source_query || trend.title}
+              evidenceData={evidenceData}
+            />
           )}
 
           {/* Step Content */}
@@ -3413,9 +3559,97 @@ export default function TrendPage() {
 
           {currentStep === 'project' && (
             <div className="space-y-6">
-              {/* Если проект ещё не создан */}
-              {!projectData && !loadingProject && (
+              {/* Выбор режима: Landing Page vs Full MVP */}
+              {projectMode === null && !projectData && !loadingProject && (
+                <div className="space-y-6">
+                  <div className="text-center mb-2">
+                    <h2 className="text-2xl font-bold text-white">
+                      {language === 'ru' ? 'Создать проект' : 'Create Project'}
+                    </h2>
+                    <p className="text-zinc-400 text-sm mt-2">
+                      {language === 'ru' ? 'Выберите тип проекта для создания' : 'Choose project type to create'}
+                    </p>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Landing Page option */}
+                    <button
+                      onClick={() => setProjectMode('landing')}
+                      className="text-left bg-zinc-900/50 border border-zinc-800 hover:border-indigo-500/40 rounded-xl p-6 transition-all group"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl">🎯</span>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white group-hover:text-indigo-300 transition-colors">Landing Page</h3>
+                          <span className="text-xs text-zinc-500">~30 сек</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-zinc-400 mb-4">
+                        {language === 'ru'
+                          ? 'Быстрая валидация спроса: лендинг с waitlist формой, деплой на Vercel, встроенная аналитика CR%.'
+                          : 'Quick demand validation: landing page with waitlist form, Vercel deploy, built-in CR% analytics.'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">HTML page</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">Vercel deploy</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">PMF validation</span>
+                      </div>
+                    </button>
+                    {/* Full MVP option */}
+                    <button
+                      onClick={() => setProjectMode('full-mvp')}
+                      className="text-left bg-zinc-900/50 border border-zinc-800 hover:border-purple-500/40 rounded-xl p-6 transition-all group"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl">💻</span>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
+                            {language === 'ru' ? 'Полный MVP' : 'Full MVP'}
+                          </h3>
+                          <span className="text-xs text-zinc-500">~3-5 мин</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-zinc-400 mb-4">
+                        {language === 'ru'
+                          ? 'Рабочий проект с кодом: Next.js, Supabase, UI компоненты. GitHub репо + опциональный Vercel деплой.'
+                          : 'Working project with code: Next.js, Supabase, UI components. GitHub repo + optional Vercel deploy.'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">Next.js</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">GitHub</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">Supabase</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">Vercel</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Landing Page Mode */}
+              {projectMode === 'landing' && !projectData && !loadingProject && (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setProjectMode(null)}
+                    className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1"
+                  >
+                    ← {language === 'ru' ? 'Назад к выбору' : 'Back to selection'}
+                  </button>
+                  <LandingPageGenerator
+                    trendId={trend.id}
+                    trendTitle={trend.source_query || trend.title}
+                    evidenceData={evidenceData}
+                  />
+                </div>
+              )}
+
+              {/* Full MVP Mode - existing code */}
+              {projectMode === 'full-mvp' && !projectData && !loadingProject && (
                 <>
+                  <button
+                    onClick={() => setProjectMode(null)}
+                    className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1"
+                  >
+                    ← {language === 'ru' ? 'Назад к выбору' : 'Back to selection'}
+                  </button>
                   {/* META Agent Auto Mode */}
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">

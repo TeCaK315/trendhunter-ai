@@ -4,19 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getItem } from '@/lib/storage';
 import { useTranslations, useLanguage, useTranslateContent } from '@/lib/i18n';
-
-interface Trend {
-  id: string;
-  title: string;
-  category: string;
-  popularity_score: number;
-  growth_rate: number;
-  why_trending: string;
-  why_trending_en?: string; // English version for bilingual support
-  status: string;
-  first_detected_at: string;
-  source?: string;
-}
+import type { Trend } from '@/types/trend';
 
 interface ProjectData {
   trend_id: string;
@@ -165,6 +153,66 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
           <p className="text-sm text-zinc-400 mb-5 line-clamp-3 group-hover:text-zinc-300 transition-colors">
             {displayWhyTrending}
           </p>
+
+          {/* Metrics Bar */}
+          {trend.enriched_at ? (
+            <div className="flex items-center gap-2 mb-4 p-2.5 bg-zinc-900/50 rounded-xl border border-zinc-800/30">
+              {/* Competition Level */}
+              <div
+                className="flex-1 flex items-center gap-1.5 min-w-0 cursor-help group/comp relative"
+                title={`Уровень конкуренции: ${
+                  trend.competition_level === 'low' ? 'низкий (мало конкурентов в поиске Google)' :
+                  trend.competition_level === 'medium' ? 'средний (умеренное количество конкурентов)' :
+                  'высокий (много существующих продуктов)'
+                }. Источник: Google Search (SerpAPI)`}
+              >
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  trend.competition_level === 'low' ? 'bg-green-400' :
+                  trend.competition_level === 'medium' ? 'bg-yellow-400' :
+                  'bg-red-400'
+                }`} />
+                <span className={`text-[11px] font-medium truncate ${
+                  trend.competition_level === 'low' ? 'text-green-400' :
+                  trend.competition_level === 'medium' ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>
+                  {trend.competition_level === 'low' ? 'Low' :
+                   trend.competition_level === 'medium' ? 'Mid' : 'High'}
+                </span>
+              </div>
+              {/* Separator */}
+              <div className="w-px h-4 bg-zinc-700/50" />
+              {/* Players Count */}
+              <div
+                className="flex-1 flex items-center gap-1.5 min-w-0 justify-center cursor-help"
+                title={`${trend.top_players_count ?? 0} прямых конкурентов найдено в Google. Считаются сайты с признаками SaaS/продукта (pricing, signup, free trial и т.д.). Источник: Google Search (SerpAPI)`}
+              >
+                <span className="text-[11px] text-zinc-500">📊</span>
+                <span className="text-[11px] text-zinc-300 font-medium">{trend.top_players_count ?? '—'}</span>
+                <span className="text-[11px] text-zinc-500 hidden xs:inline">players</span>
+              </div>
+              {/* Separator */}
+              <div className="w-px h-4 bg-zinc-700/50" />
+              {/* Entry Cost */}
+              <div
+                className="flex-1 flex items-center gap-1 min-w-0 justify-end cursor-help"
+                title={`${trend.entry_cost_estimate || '—'} — рекомендуемый бюджет на MVP (разработка, API, хостинг, домен). AI-оценка на основе сложности ниши и конкуренции. Источник: GPT-4o-mini`}
+              >
+                <span className="text-[11px] text-zinc-500">💰</span>
+                <span className="text-[11px] text-zinc-300 font-medium truncate">{trend.entry_cost_estimate || '—'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-4 p-2.5 bg-zinc-900/30 rounded-xl border border-zinc-800/20">
+              <div className="flex-1 flex items-center justify-center gap-2">
+                <div className="w-12 h-2 bg-zinc-800 rounded animate-pulse" />
+                <div className="w-px h-4 bg-zinc-800/50" />
+                <div className="w-10 h-2 bg-zinc-800 rounded animate-pulse" />
+                <div className="w-px h-4 bg-zinc-800/50" />
+                <div className="w-14 h-2 bg-zinc-800 rounded animate-pulse" />
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex justify-between items-center pt-4 border-t border-zinc-800/50">

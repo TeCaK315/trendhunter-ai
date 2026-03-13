@@ -1,0 +1,629 @@
+[
+  {
+    "survey_id": "9613315c-50bf-4e93-be8c-4a25e5b91e48",
+    "trend_id": "best travel apps for planning",
+    "title": "Опросник: best travel apps for planning",
+    "description": "Опрос для валидации ниши \"best travel apps for planning\". Сгенерирован на основе 8 реальных жалоб, 6 конкурентов и 1 ценовых точек.",
+    "questions": [
+      {
+        "id": 1,
+        "category": "demographics",
+        "question": "К какой категории вы относитесь?",
+        "type": "single_choice",
+        "options": [
+          "Использую подобные продукты регулярно",
+          "Использовал(а) раньше, но бросил(а)",
+          "Никогда не пользовался, но интересуюсь",
+          "Другое"
+        ],
+        "required": true
+      },
+      {
+        "id": 2,
+        "category": "current_solution",
+        "question": "Какое решение для \"best travel apps for planning\" вы используете сейчас?",
+        "type": "single_choice",
+        "options": [
+          "Kayak",
+          "TripIt",
+          "Wanderlog",
+          "Roadtrippers",
+          "Google Maps",
+          "Sygic Travel",
+          "Делаю вручную (Excel, таблицы, etc.)",
+          "Ничего не использую",
+          "Другое"
+        ],
+        "evidence_source": "6 конкурентов из Evidence (market-occupation)",
+        "required": true
+      },
+      {
+        "id": 3,
+        "category": "current_solution",
+        "question": "Насколько вы довольны текущим решением?",
+        "type": "scale",
+        "options": [
+          "1 — Совсем не доволен",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10 — Полностью доволен"
+        ],
+        "required": true
+      },
+      {
+        "id": 4,
+        "category": "pain_points",
+        "question": "С какими из этих проблем вы сталкиваетесь? (выберите все подходящие)",
+        "type": "multiple_choice",
+        "options": [
+          "A Guide to 50+ Travel Apps and Resources",
+          "Best travel apps which you use ?",
+          "Travel Apps - Are They Really Necessary?",
+          "What are your must have travel apps?",
+          "Best trip organizer apps that are free?",
+          "The must have apps for travel?",
+          "Packing/ Vacation App Recommendations",
+          "Best apps for constant travel",
+          "Ни одна из перечисленных",
+          "Другое"
+        ],
+        "evidence_source": "8 жалоб из Reddit/HN/SO (real-problem)",
+        "required": true
+      },
+      {
+        "id": 5,
+        "category": "pain_points",
+        "question": "Какая из проблем для вас самая критичная?",
+        "type": "single_choice",
+        "options": [
+          "A Guide to 50+ Travel Apps and Resources",
+          "Best travel apps which you use ?",
+          "Travel Apps - Are They Really Necessary?",
+          "What are your must have travel apps?",
+          "Best trip organizer apps that are free?",
+          "Другое"
+        ],
+        "evidence_source": "Топ-5 жалоб по engagement",
+        "required": true
+      },
+      {
+        "id": 6,
+        "category": "pain_points",
+        "question": "Как часто вы сталкиваетесь с этой проблемой?",
+        "type": "single_choice",
+        "options": [
+          "Каждый день",
+          "Несколько раз в неделю",
+          "Раз в неделю",
+          "Несколько раз в месяц",
+          "Раз в месяц или реже"
+        ],
+        "required": true
+      },
+      {
+        "id": 7,
+        "category": "pain_points",
+        "question": "Насколько критична эта проблема для вас? (1 = мелкое неудобство, 10 = серьёзно мешает работе)",
+        "type": "scale",
+        "options": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "required": true
+      },
+      {
+        "id": 8,
+        "category": "pricing",
+        "question": "Сколько вы платите сейчас за решение этой задачи? (в месяц)",
+        "type": "single_choice",
+        "options": [
+          "$0 — бесплатно / ничего не использую",
+          "$1-15",
+          "$16-34",
+          "$35-74",
+          "$75-123",
+          "$123+"
+        ],
+        "evidence_source": "Медиана цен конкурентов: $49/мес (market-sellability)",
+        "required": true
+      },
+      {
+        "id": 9,
+        "category": "willingness",
+        "question": "Если бы существовал продукт, который решает \"A Guide to 50+ Travel Apps and Resources\", сколько бы вы были готовы платить в месяц?",
+        "type": "single_choice",
+        "options": [
+          "$0 — только бесплатно",
+          "$1-25",
+          "$26-39",
+          "$40-59",
+          "$60-98",
+          "$98+"
+        ],
+        "evidence_source": "Топ-1 жалоба + медиана $49/мес",
+        "required": true
+      },
+      {
+        "id": 10,
+        "category": "willingness",
+        "question": "Что для вас важнее всего при выборе решения? (выберите до 3)",
+        "type": "multiple_choice",
+        "options": [
+          "Низкая цена",
+          "Простота использования",
+          "Функциональность",
+          "Интеграции с другими сервисами",
+          "Поддержка на русском / родном языке",
+          "Скорость работы",
+          "Безопасность данных",
+          "Репутация / отзывы"
+        ],
+        "required": true
+      },
+      {
+        "id": 11,
+        "category": "willingness",
+        "question": "Где вы обычно ищете новые инструменты / решения?",
+        "type": "multiple_choice",
+        "options": [
+          "Google поиск",
+          "Reddit / форумы",
+          "YouTube",
+          "Рекомендации коллег",
+          "Product Hunt",
+          "App Store / Google Play",
+          "Другое"
+        ],
+        "required": false
+      },
+      {
+        "id": 12,
+        "category": "closing",
+        "question": "Есть ли что-то ещё, что мы должны знать о вашем опыте?",
+        "type": "open_text",
+        "required": false
+      },
+      {
+        "id": 13,
+        "category": "closing",
+        "question": "Оставьте email, если хотите узнать о результатах исследования и получить ранний доступ:",
+        "type": "open_text",
+        "required": false
+      }
+    ],
+    "target_icp": "Сегмент: Mixed | Боли: A Guide to 50+ Travel Apps and Resources; Best travel apps which you use ?; Travel Apps - Are They Really Necessary? | Бюджет: ~$49/мес",
+    "created_at": "2026-02-23T22:27:46.953Z"
+  },
+  {
+    "survey_id": "c41f01a4-325a-4666-93e9-44e51fca1e37",
+    "trend_id": "best travel apps for planning",
+    "title": "Опросник: best travel apps for planning",
+    "description": "Опрос для валидации ниши \"best travel apps for planning\". Сгенерирован на основе 8 реальных жалоб, 6 конкурентов и 1 ценовых точек.",
+    "questions": [
+      {
+        "id": 1,
+        "category": "demographics",
+        "question": "К какой категории вы относитесь?",
+        "type": "single_choice",
+        "options": [
+          "Использую подобные продукты регулярно",
+          "Использовал(а) раньше, но бросил(а)",
+          "Никогда не пользовался, но интересуюсь",
+          "Другое"
+        ],
+        "required": true
+      },
+      {
+        "id": 2,
+        "category": "current_solution",
+        "question": "Какое решение для \"best travel apps for planning\" вы используете сейчас?",
+        "type": "single_choice",
+        "options": [
+          "Kayak",
+          "TripIt",
+          "Wanderlog",
+          "Roadtrippers",
+          "Google Maps",
+          "Sygic Travel",
+          "Делаю вручную (Excel, таблицы, etc.)",
+          "Ничего не использую",
+          "Другое"
+        ],
+        "evidence_source": "6 конкурентов из Evidence (market-occupation)",
+        "required": true
+      },
+      {
+        "id": 3,
+        "category": "current_solution",
+        "question": "Насколько вы довольны текущим решением?",
+        "type": "scale",
+        "options": [
+          "1 — Совсем не доволен",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10 — Полностью доволен"
+        ],
+        "required": true
+      },
+      {
+        "id": 4,
+        "category": "pain_points",
+        "question": "С какими из этих проблем вы сталкиваетесь? (выберите все подходящие)",
+        "type": "multiple_choice",
+        "options": [
+          "A Guide to 50+ Travel Apps and Resources",
+          "Best travel apps which you use ?",
+          "Travel Apps - Are They Really Necessary?",
+          "What are your must have travel apps?",
+          "Best trip organizer apps that are free?",
+          "The must have apps for travel?",
+          "Packing/ Vacation App Recommendations",
+          "Best apps for constant travel",
+          "Ни одна из перечисленных",
+          "Другое"
+        ],
+        "evidence_source": "8 жалоб из Reddit/HN/SO (real-problem)",
+        "required": true
+      },
+      {
+        "id": 5,
+        "category": "pain_points",
+        "question": "Какая из проблем для вас самая критичная?",
+        "type": "single_choice",
+        "options": [
+          "A Guide to 50+ Travel Apps and Resources",
+          "Best travel apps which you use ?",
+          "Travel Apps - Are They Really Necessary?",
+          "What are your must have travel apps?",
+          "Best trip organizer apps that are free?",
+          "Другое"
+        ],
+        "evidence_source": "Топ-5 жалоб по engagement",
+        "required": true
+      },
+      {
+        "id": 6,
+        "category": "pain_points",
+        "question": "Как часто вы сталкиваетесь с этой проблемой?",
+        "type": "single_choice",
+        "options": [
+          "Каждый день",
+          "Несколько раз в неделю",
+          "Раз в неделю",
+          "Несколько раз в месяц",
+          "Раз в месяц или реже"
+        ],
+        "required": true
+      },
+      {
+        "id": 7,
+        "category": "pain_points",
+        "question": "Насколько критична эта проблема для вас? (1 = мелкое неудобство, 10 = серьёзно мешает работе)",
+        "type": "scale",
+        "options": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "required": true
+      },
+      {
+        "id": 8,
+        "category": "pricing",
+        "question": "Сколько вы платите сейчас за решение этой задачи? (в месяц)",
+        "type": "single_choice",
+        "options": [
+          "$0 — бесплатно / ничего не использую",
+          "$1-15",
+          "$16-34",
+          "$35-74",
+          "$75-123",
+          "$123+"
+        ],
+        "evidence_source": "Медиана цен конкурентов: $49/мес (market-sellability)",
+        "required": true
+      },
+      {
+        "id": 9,
+        "category": "willingness",
+        "question": "Если бы существовал продукт, который решает \"A Guide to 50+ Travel Apps and Resources\", сколько бы вы были готовы платить в месяц?",
+        "type": "single_choice",
+        "options": [
+          "$0 — только бесплатно",
+          "$1-25",
+          "$26-39",
+          "$40-59",
+          "$60-98",
+          "$98+"
+        ],
+        "evidence_source": "Топ-1 жалоба + медиана $49/мес",
+        "required": true
+      },
+      {
+        "id": 10,
+        "category": "willingness",
+        "question": "Что для вас важнее всего при выборе решения? (выберите до 3)",
+        "type": "multiple_choice",
+        "options": [
+          "Низкая цена",
+          "Простота использования",
+          "Функциональность",
+          "Интеграции с другими сервисами",
+          "Поддержка на русском / родном языке",
+          "Скорость работы",
+          "Безопасность данных",
+          "Репутация / отзывы"
+        ],
+        "required": true
+      },
+      {
+        "id": 11,
+        "category": "willingness",
+        "question": "Где вы обычно ищете новые инструменты / решения?",
+        "type": "multiple_choice",
+        "options": [
+          "Google поиск",
+          "Reddit / форумы",
+          "YouTube",
+          "Рекомендации коллег",
+          "Product Hunt",
+          "App Store / Google Play",
+          "Другое"
+        ],
+        "required": false
+      },
+      {
+        "id": 12,
+        "category": "closing",
+        "question": "Есть ли что-то ещё, что мы должны знать о вашем опыте?",
+        "type": "open_text",
+        "required": false
+      },
+      {
+        "id": 13,
+        "category": "closing",
+        "question": "Оставьте email, если хотите узнать о результатах исследования и получить ранний доступ:",
+        "type": "open_text",
+        "required": false
+      }
+    ],
+    "target_icp": "Сегмент: Mixed | Боли: A Guide to 50+ Travel Apps and Resources; Best travel apps which you use ?; Travel Apps - Are They Really Necessary? | Бюджет: ~$49/мес",
+    "created_at": "2026-02-23T23:03:01.321Z"
+  },
+  {
+    "survey_id": "e42765f4-0802-4456-98ea-123347eef123",
+    "trend_id": "language learning site",
+    "title": "Опросник: language learning site",
+    "description": "Опрос для валидации ниши \"language learning site\". Сгенерирован на основе 8 реальных жалоб, 6 конкурентов и 3 ценовых точек.",
+    "questions": [
+      {
+        "id": 1,
+        "category": "demographics",
+        "question": "К какой категории вы относитесь?",
+        "type": "single_choice",
+        "options": [
+          "Использую подобные продукты регулярно",
+          "Использовал(а) раньше, но бросил(а)",
+          "Никогда не пользовался, но интересуюсь",
+          "Другое"
+        ],
+        "required": true
+      },
+      {
+        "id": 2,
+        "category": "current_solution",
+        "question": "Какое решение для \"language learning site\" вы используете сейчас?",
+        "type": "single_choice",
+        "options": [
+          "Duolingo",
+          "Polychat",
+          "Rosetta Stone",
+          "Fluenz",
+          "Babbel",
+          "Univerbal",
+          "Делаю вручную (Excel, таблицы, etc.)",
+          "Ничего не использую",
+          "Другое"
+        ],
+        "evidence_source": "6 конкурентов из Evidence (market-occupation)",
+        "required": true
+      },
+      {
+        "id": 3,
+        "category": "current_solution",
+        "question": "Насколько вы довольны текущим решением?",
+        "type": "scale",
+        "options": [
+          "1 — Совсем не доволен",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10 — Полностью доволен"
+        ],
+        "required": true
+      },
+      {
+        "id": 4,
+        "category": "pain_points",
+        "question": "С какими из этих проблем вы сталкиваетесь? (выберите все подходящие)",
+        "type": "multiple_choice",
+        "options": [
+          "I made a site for learning languages like C++, Rust, 86-64 ... (1 реакций на hacker_news)",
+          "What is the easiest way to get foreign language practice ... (1 реакций на quora)",
+          "Which completely free application can teach me in the best ... (1 реакций на quora)",
+          "Which online platforms for teaching English are the most ... (1 реакций на quora)",
+          "What are some good AI-powered tools that can help with ... (1 реакций на quora)",
+          "Can you share your experience with using Babbel, ... (1 реакций на quora)",
+          "I want to improve my English. Do you know any free apps ... (1 реакций на quora)",
+          "What are some fun and effective ways to learn a new ... (1 реакций на quora)",
+          "Ни одна из перечисленных",
+          "Другое"
+        ],
+        "evidence_source": "8 жалоб из Reddit/HN/SO (real-problem)",
+        "required": true
+      },
+      {
+        "id": 5,
+        "category": "pain_points",
+        "question": "Какая из проблем для вас самая критичная?",
+        "type": "single_choice",
+        "options": [
+          "I made a site for learning languages like C++, Rust, 86-64 ...",
+          "What is the easiest way to get foreign language practice ...",
+          "Which completely free application can teach me in the best ...",
+          "Which online platforms for teaching English are the most ...",
+          "What are some good AI-powered tools that can help with ...",
+          "Другое"
+        ],
+        "evidence_source": "Топ-5 жалоб по engagement",
+        "required": true
+      },
+      {
+        "id": 6,
+        "category": "pain_points",
+        "question": "Как часто вы сталкиваетесь с этой проблемой?",
+        "type": "single_choice",
+        "options": [
+          "Каждый день",
+          "Несколько раз в неделю",
+          "Раз в неделю",
+          "Несколько раз в месяц",
+          "Раз в месяц или реже"
+        ],
+        "required": true
+      },
+      {
+        "id": 7,
+        "category": "pain_points",
+        "question": "Насколько критична эта проблема для вас? (1 = мелкое неудобство, 10 = серьёзно мешает работе)",
+        "type": "scale",
+        "options": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "required": true
+      },
+      {
+        "id": 8,
+        "category": "pricing",
+        "question": "Сколько вы платите сейчас за решение этой задачи? (в месяц)",
+        "type": "single_choice",
+        "options": [
+          "$0 — бесплатно / ничего не использую",
+          "$1-39",
+          "$40-92",
+          "$93-197",
+          "$198-329",
+          "$329+"
+        ],
+        "evidence_source": "Медиана цен конкурентов: $131.4/мес (market-sellability)",
+        "required": true
+      },
+      {
+        "id": 9,
+        "category": "willingness",
+        "question": "Если бы существовал продукт, который решает \"I made a site for learning languages like C++, Rust, 86-64 ....\", сколько бы вы были готовы платить в месяц?",
+        "type": "single_choice",
+        "options": [
+          "$0 — только бесплатно",
+          "$1-66",
+          "$67-105",
+          "$106-158",
+          "$159-263",
+          "$263+"
+        ],
+        "evidence_source": "Топ-1 жалоба + медиана $131.4/мес",
+        "required": true
+      },
+      {
+        "id": 10,
+        "category": "willingness",
+        "question": "Что для вас важнее всего при выборе решения? (выберите до 3)",
+        "type": "multiple_choice",
+        "options": [
+          "Низкая цена",
+          "Простота использования",
+          "Функциональность",
+          "Интеграции с другими сервисами",
+          "Поддержка на русском / родном языке",
+          "Скорость работы",
+          "Безопасность данных",
+          "Репутация / отзывы"
+        ],
+        "required": true
+      },
+      {
+        "id": 11,
+        "category": "willingness",
+        "question": "Где вы обычно ищете новые инструменты / решения?",
+        "type": "multiple_choice",
+        "options": [
+          "Google поиск",
+          "Reddit / форумы",
+          "YouTube",
+          "Рекомендации коллег",
+          "Product Hunt",
+          "App Store / Google Play",
+          "Другое"
+        ],
+        "required": false
+      },
+      {
+        "id": 12,
+        "category": "closing",
+        "question": "Есть ли что-то ещё, что мы должны знать о вашем опыте?",
+        "type": "open_text",
+        "required": false
+      },
+      {
+        "id": 13,
+        "category": "closing",
+        "question": "Оставьте email, если хотите узнать о результатах исследования и получить ранний доступ:",
+        "type": "open_text",
+        "required": false
+      }
+    ],
+    "target_icp": "Сегмент: Mixed | Боли: I made a site for learning languages like C++, Rust, 86-64 .; What is the easiest way to get foreign language practice ...; Which completely free application can teach me in the best . | Бюджет: ~$131.4/мес",
+    "created_at": "2026-03-11T15:25:02.900Z"
+  }
+]

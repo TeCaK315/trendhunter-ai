@@ -1,0 +1,301 @@
+{
+  "monitors": {
+    "trend-1771533041351-0": {
+      "trend_id": "trend-1771533041351-0",
+      "trend_title": "best travel apps for planning",
+      "created_at": "2026-02-21T22:30:06.837Z",
+      "last_checked": "2026-02-23T22:37:13.343Z",
+      "check_interval_days": 7,
+      "status": "alert",
+      "alert_threshold": 20,
+      "snapshots": [
+        {
+          "date": "2026-02-21T22:30:06.837Z",
+          "google_trends_value": 13,
+          "reddit_mentions": 1000,
+          "sentiment": "neutral",
+          "new_competitors_found": 0,
+          "new_launches": 0,
+          "competitor_price_changes": []
+        },
+        {
+          "date": "2026-02-21T22:30:20.192Z",
+          "google_trends_value": 13,
+          "reddit_mentions": 1000,
+          "sentiment": "neutral",
+          "new_competitors_found": 5,
+          "new_launches": 5,
+          "competitor_price_changes": []
+        },
+        {
+          "date": "2026-02-22T01:20:52.937Z",
+          "google_trends_value": 18,
+          "reddit_mentions": 1000,
+          "sentiment": "positive",
+          "new_competitors_found": 5,
+          "new_launches": 5,
+          "competitor_price_changes": []
+        },
+        {
+          "date": "2026-02-22T01:21:58.143Z",
+          "google_trends_value": 18,
+          "reddit_mentions": 1000,
+          "sentiment": "neutral",
+          "new_competitors_found": 5,
+          "new_launches": 5,
+          "competitor_price_changes": []
+        },
+        {
+          "date": "2026-02-22T20:20:02.009Z",
+          "google_trends_value": 11,
+          "reddit_mentions": 1000,
+          "sentiment": "negative",
+          "new_competitors_found": 5,
+          "new_launches": 5,
+          "competitor_price_changes": []
+        },
+        {
+          "date": "2026-02-23T00:21:16.338Z",
+          "google_trends_value": 13,
+          "reddit_mentions": 1000,
+          "sentiment": "positive",
+          "new_competitors_found": 5,
+          "new_launches": 5,
+          "competitor_price_changes": []
+        },
+        {
+          "date": "2026-02-23T22:37:13.342Z",
+          "google_trends_value": 9,
+          "reddit_mentions": 1000,
+          "sentiment": "negative",
+          "new_competitors_found": 1,
+          "new_launches": 5,
+          "competitor_price_changes": []
+        }
+      ],
+      "current_trend": "declining",
+      "change_percent": -31,
+      "sources": {
+        "google_trends_url": "https://trends.google.com/trends/embed/explore/TIMESERIES?hl=en&tz=420&req=%7B%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22best+travel+apps+for+planning%22%2C%22geo%22%3A%22%22%2C%22time%22%3A%22now+7-d%22%7D%5D%2C%22category%22%3A0%2C%22property%22%3A%22%22%7D",
+        "reddit_search_url": "https://www.reddit.com/search/?q=best%20travel%20apps%20for%20planning&t=week"
+      },
+      "tracked_competitors": [
+        "Kayak",
+        "TripIt",
+        "Wanderlog",
+        "Roadtrippers",
+        "Google Maps"
+      ],
+      "price_history": [
+        [
+          {
+            "competitor": "Kayak",
+            "prices": [
+              {
+                "amount": "$1",
+                "plan": "Standard",
+                "period": "mo"
+              }
+            ],
+            "pricing_url": "https://www.kayak.com/c/help/pricing/",
+            "fetched_at": "2026-02-21T22:30:06.836Z"
+          },
+          {
+            "competitor": "TripIt",
+            "prices": [
+              {
+                "amount": "$49",
+                "plan": "Pro",
+                "period": "yr"
+              }
+            ],
+            "pricing_url": "https://www.tripit.com/web/pro/pricing",
+            "fetched_at": "2026-02-21T22:30:05.511Z"
+          },
+          {
+            "competitor": "Wanderlog",
+            "prices": [],
+            "pricing_url": "",
+            "fetched_at": "2026-02-21T22:30:05.834Z"
+          }
+        ],
+        [
+          {
+            "competitor": "Kayak",
+            "prices": [
+              {
+                "amount": "$1",
+                "plan": "Standard",
+                "period": "mo"
+              }
+            ],
+            "pricing_url": "https://www.kayak.com/c/help/pricing/",
+            "fetched_at": "2026-02-21T22:30:20.174Z"
+          },
+          {
+            "competitor": "TripIt",
+            "prices": [
+              {
+                "amount": "$49",
+                "plan": "Pro",
+                "period": "yr"
+              }
+            ],
+            "pricing_url": "https://www.tripit.com/web/pro/pricing",
+            "fetched_at": "2026-02-21T22:30:20.183Z"
+          },
+          {
+            "competitor": "Wanderlog",
+            "prices": [],
+            "pricing_url": "",
+            "fetched_at": "2026-02-21T22:30:20.166Z"
+          }
+        ],
+        [
+          {
+            "competitor": "Kayak",
+            "prices": [],
+            "pricing_url": "https://www.kayak.com/c/help/pricing/",
+            "fetched_at": "2026-02-22T01:20:52.180Z"
+          },
+          {
+            "competitor": "TripIt",
+            "prices": [
+              {
+                "amount": "$49",
+                "plan": "Pro",
+                "period": "yr"
+              }
+            ],
+            "pricing_url": "https://www.tripit.com/web/pro/pricing",
+            "fetched_at": "2026-02-22T01:20:51.445Z"
+          },
+          {
+            "competitor": "Wanderlog",
+            "prices": [],
+            "pricing_url": "",
+            "fetched_at": "2026-02-22T01:20:52.115Z"
+          }
+        ],
+        [
+          {
+            "competitor": "Kayak",
+            "prices": [],
+            "pricing_url": "https://www.kayak.com/c/help/pricing/",
+            "fetched_at": "2026-02-22T01:21:58.129Z"
+          },
+          {
+            "competitor": "TripIt",
+            "prices": [
+              {
+                "amount": "$49",
+                "plan": "Pro",
+                "period": "yr"
+              }
+            ],
+            "pricing_url": "https://www.tripit.com/web/pro/pricing",
+            "fetched_at": "2026-02-22T01:21:58.142Z"
+          },
+          {
+            "competitor": "Wanderlog",
+            "prices": [],
+            "pricing_url": "",
+            "fetched_at": "2026-02-22T01:21:58.138Z"
+          }
+        ],
+        [
+          {
+            "competitor": "Kayak",
+            "prices": [
+              {
+                "amount": "$1",
+                "plan": "Standard",
+                "period": "mo"
+              }
+            ],
+            "pricing_url": "https://www.kayak.com/c/help/pricing/",
+            "fetched_at": "2026-02-22T20:19:51.464Z"
+          },
+          {
+            "competitor": "TripIt",
+            "prices": [
+              {
+                "amount": "$49",
+                "plan": "Pro",
+                "period": "yr"
+              }
+            ],
+            "pricing_url": "https://www.tripit.com/web/pro/pricing",
+            "fetched_at": "2026-02-22T20:19:51.083Z"
+          },
+          {
+            "competitor": "Wanderlog",
+            "prices": [],
+            "pricing_url": "",
+            "fetched_at": "2026-02-22T20:20:02.008Z"
+          }
+        ],
+        [
+          {
+            "competitor": "Kayak",
+            "prices": [
+              {
+                "amount": "$1",
+                "plan": "Standard",
+                "period": "mo"
+              }
+            ],
+            "pricing_url": "https://www.outdoorplay.com/blogs/news/how-much-is-a-kayak?srsltid=AfmBOoqTSaJLiIcfvz-99H6tldubwK0omBTtkpmS06tM0FFpNq9oevg0",
+            "fetched_at": "2026-02-23T00:21:12.236Z"
+          },
+          {
+            "competitor": "TripIt",
+            "prices": [
+              {
+                "amount": "$49",
+                "plan": "Pro",
+                "period": "yr"
+              }
+            ],
+            "pricing_url": "https://www.tripit.com/web/pro/pricing",
+            "fetched_at": "2026-02-23T00:21:11.231Z"
+          },
+          {
+            "competitor": "Wanderlog",
+            "prices": [],
+            "pricing_url": "",
+            "fetched_at": "2026-02-23T00:21:11.438Z"
+          }
+        ],
+        [
+          {
+            "competitor": "Kayak",
+            "prices": [],
+            "pricing_url": "https://www.kayak.com/c/help/pricing/",
+            "fetched_at": "2026-02-23T22:37:08.575Z"
+          },
+          {
+            "competitor": "TripIt",
+            "prices": [
+              {
+                "amount": "$49",
+                "plan": "Pro",
+                "period": "yr"
+              }
+            ],
+            "pricing_url": "https://www.tripit.com/web/pro/pricing",
+            "fetched_at": "2026-02-23T22:37:08.945Z"
+          },
+          {
+            "competitor": "Wanderlog",
+            "prices": [],
+            "pricing_url": "",
+            "fetched_at": "2026-02-23T22:37:13.342Z"
+          }
+        ]
+      ],
+      "alert_message": "Тренд \"best travel apps for planning\" упал на 31%. Рассмотрите альтернативы."
+    }
+  },
+  "lastUpdated": "2026-03-11T15:38:19.061Z"
+}

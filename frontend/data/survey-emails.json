@@ -1,0 +1,23 @@
+[
+  {
+    "survey_id": "9613315c-50bf-4e93-be8c-4a25e5b91e48",
+    "email": "belousevgeniy315@gmail.com",
+    "token": "17ab8e68-8dfd-4af7-84c5-82a024e84fe9",
+    "sent_at": "2026-02-23T22:29:43.481Z",
+    "status": "sent"
+  },
+  {
+    "survey_id": "c41f01a4-325a-4666-93e9-44e51fca1e37",
+    "email": "belousevgeniy315@gmail.com",
+    "token": "a7f895d8-c0f2-465d-b23b-1d649b756e75",
+    "sent_at": "2026-02-23T23:03:01.797Z",
+    "status": "sent"
+  },
+  {
+    "survey_id": "e42765f4-0802-4456-98ea-123347eef123",
+    "email": "belousevgeniy315@gmail.com",
+    "token": "96fe8b28-3d48-468c-b8ee-25a396e079ec",
+    "sent_at": "2026-03-11T15:25:03.560Z",
+    "status": "sent"
+  }
+]

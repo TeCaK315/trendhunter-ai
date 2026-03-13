@@ -397,20 +397,26 @@ async function gptDeduplicateQueries(
     const content = await callOpenAI([
       {
         role: 'system',
-        content: `Тебе дан список поисковых запросов. Найди группы запросов, которые означают ОДНО И ТО ЖЕ (одна и та же идея/продукт, просто слова переставлены или слегка изменены).
+        content: `Тебе дан список поисковых запросов. Найди группы запросов, которые относятся к ОДНОЙ И ТОЙ ЖЕ ПРЕДМЕТНОЙ ОБЛАСТИ / ОДНОМУ ТИПУ ПРОДУКТА.
 
-Примеры дубликатов:
-- "CRM comparison tool" и "compare CRM features" и "CRM features comparison" — это ОДНА идея
-- "AI email writer" и "email writing AI" и "ai tool for writing emails" — это ОДНА идея
-- "invoice automation" и "automated invoicing" и "auto invoice generator" — это ОДНА идея
+КРИТЕРИЙ ДУБЛИКАТА: если два запроса приведут к созданию ОДНОГО И ТОГО ЖЕ типа продукта/SaaS — это дубликаты.
 
-НО: "CRM comparison" и "CRM integration" — это РАЗНЫЕ идеи!
+Примеры дубликатов (ОДНА предметная область):
+- "CRM comparison tool" и "compare CRM features" и "best CRM software" — всё про CRM
+- "AI email writer" и "email writing AI" и "ai tool for writing emails" — всё про email
+- "invoice automation" и "automated invoicing" и "auto invoice generator" — всё про invoicing
+- "HR benefits software" и "HR payroll software" и "HR software list" и "HR management tool" — ВСЁ про HR софт, это ОДНА идея!
+- "expense tracking app" и "expense management software" и "business expense tracker" — всё про expense tracking
 
-Для каждой группы дубликатов оставь ОДИН лучший запрос (наиболее конкретный и понятный).
+НЕ дубликаты (РАЗНЫЕ предметные области):
+- "CRM comparison" и "CRM integration" — comparison vs integration, РАЗНЫЕ задачи
+- "email marketing" и "email security" — marketing vs security
 
-Верни JSON массив номеров запросов, которые нужно ОСТАВИТЬ. Уникальные запросы (без дубликатов) тоже включи.
+БУДЬ ОЧЕНЬ СТРОГИМ: если запросы из одной предметной области (HR, CRM, email, invoice и т.д.) — группируй их!
 
-Пример: если из 10 запросов, 2+3+4 — одна группа (оставляем 2), 7+8 — другая группа (оставляем 7), остальные уникальны:
+Для каждой группы оставь ОДИН лучший запрос (наиболее конкретный).
+
+Верни JSON массив номеров запросов, которые нужно ОСТАВИТЬ:
 [1, 2, 5, 6, 7, 9, 10]`,
       },
       {
@@ -457,10 +463,11 @@ async function enrichWithTimeline(
   for (let i = 0; i < toEnrich.length; i += parallelBatch) {
     const batch = toEnrich.slice(i, i + parallelBatch);
     const promises = batch.map(async (q): Promise<EnrichedQuery | null> => {
+      // Use last 1 month (daily resolution) to compare week-over-week
       const params = new URLSearchParams({
         engine: 'google_trends',
         q: q.query,
-        date: 'today 12-m',
+        date: 'today 1-m',
         api_key: SERPAPI_KEY,
       });
 
@@ -471,19 +478,22 @@ async function enrichWithTimeline(
 
         const data = await response.json();
         const timelineData = data.interest_over_time?.timeline_data || [];
-        if (timelineData.length < 6) return null;
+        // Need at least 14 days of data for week-over-week comparison
+        if (timelineData.length < 10) return null;
 
-        // Calculate growth rate from timeline
-        const values = timelineData.slice(-13, -1).map((point: { values?: Array<{ extracted_value?: number; value?: string }> }) => {
+        // Extract daily values
+        const values = timelineData.map((point: { values?: Array<{ extracted_value?: number; value?: string }> }) => {
           const vals = point.values || [];
           return vals[0]?.extracted_value ?? parseInt(vals[0]?.value || '0') ?? 0;
         });
 
-        const firstHalf = values.slice(0, Math.floor(values.length / 2));
-        const secondHalf = values.slice(Math.floor(values.length / 2));
-        const avgOld = firstHalf.reduce((s: number, v: number) => s + v, 0) / firstHalf.length || 1;
-        const avgNew = secondHalf.reduce((s: number, v: number) => s + v, 0) / secondHalf.length || 0;
-        const timelineGrowthRate = Math.round(((avgNew - avgOld) / avgOld) * 100);
+        // Week-over-week: last 7 days vs previous 7 days
+        const lastWeek = values.slice(-7);
+        const prevWeek = values.slice(-14, -7);
+
+        const avgLastWeek = lastWeek.reduce((s: number, v: number) => s + v, 0) / lastWeek.length || 0;
+        const avgPrevWeek = prevWeek.reduce((s: number, v: number) => s + v, 0) / prevWeek.length || 1;
+        const timelineGrowthRate = Math.round(((avgLastWeek - avgPrevWeek) / avgPrevWeek) * 100);
 
         const searchMetadata = data.search_metadata as { google_trends_url?: string } | undefined;
 
@@ -491,7 +501,7 @@ async function enrichWithTimeline(
           ...q,
           timelineGrowthRate,
           googleTrendsUrl: searchMetadata?.google_trends_url ||
-            `https://trends.google.com/trends/explore?q=${encodeURIComponent(q.query)}&date=today%2012-m`,
+            `https://trends.google.com/trends/explore?q=${encodeURIComponent(q.query)}&date=today%201-m`,
         };
       } catch {
         callsUsed++;
@@ -522,7 +532,7 @@ async function gptGenerateTrends(
   if (!OPENAI_API_KEY || queries.length === 0) return [];
 
   const queryData = queries.map((q, i) =>
-    `${i + 1}. Запрос: "${q.query}" | Рост: ${q.growth} | Timeline рост: ${q.timelineGrowthRate}% | Ниша: ${q.sourceNiche} | Категория: ${q.sourceCategory} | Google Trends: ${q.googleTrendsUrl}`
+    `${i + 1}. Запрос: "${q.query}" | Недельный рост: ${q.timelineGrowthRate}% (реальные данные Google Trends, неделя к неделе) | Ниша: ${q.sourceNiche} | Категория: ${q.sourceCategory}`
   ).join('\n');
 
   try {
@@ -538,15 +548,15 @@ async function gptGenerateTrends(
   "source_query": "оригинальный запрос",
   "title": "Название продукта на русском (3-7 слов, конкретное и понятное, БЕЗ кавычек)",
   "category": "одна из: AI & ML, SaaS, FinTech, EdTech, HealthTech, E-commerce, Technology, Business, Mobile Apps",
-  "why_trending": "2-3 предложения на русском: почему этот тренд растёт и какую проблему решает продукт. Укажи реальные данные из Google Trends."
+  "why_trending": "2-3 предложения на русском: почему этот тренд растёт и какую проблему решает продукт."
 }
 
 ВАЖНО:
 - title СТРОГО на русском языке, без кавычек, без скобок
 - title должен описывать ПРОДУКТ, а не поисковый запрос
-- why_trending должен опираться на данные Google Trends (рост X%)
-- Не придумывай статистику — используй только данные из запроса
-- Если несколько запросов про одну тему — объедини в одну идею`,
+- В why_trending используй ТОЛЬКО процент "Недельный рост: X%" который дан в данных. НЕ ПРИДУМЫВАЙ другие проценты и числа! Если в данных написано "Недельный рост: 45%", пиши "рост интереса на 45% за неделю". Не пиши 1000%, 500% или другие числа которых нет в данных.
+- КРИТИЧЕСКИ ВАЖНО: если несколько запросов про ОДНУ предметную область (например, несколько запросов про HR, или про CRM, или про email) — создай ТОЛЬКО ОДНУ идею на эту область! НЕ создавай 3 разные HR-идеи из 3 HR-запросов.
+- Каждая идея должна быть из УНИКАЛЬНОЙ предметной области. Максимум 1 идея на область.`,
       },
       {
         role: 'user',
@@ -623,7 +633,7 @@ export async function POST(request: NextRequest) {
 
   const categories = (body.categories as string[]) || Object.keys(CATEGORY_NICHES);
   const maxNichesPerCategory = (body.maxNichesPerCategory as number) || 5;
-  const maxEnrich = (body.maxEnrich as number) || 25;
+  const maxEnrich = (body.maxEnrich as number) || 10;
   const dryRun = (body.dryRun as boolean) || false;
 
   let totalSerpApiCalls = 0;
@@ -682,8 +692,10 @@ export async function POST(request: NextRequest) {
   console.log(`[scan-trends] Enriched: ${enriched.length} (${enrichCalls} API calls)`);
 
   // --- Step 6: GPT Generate Trend Objects ---
-  const generatedTrends = await gptGenerateTrends(enriched);
-  console.log(`[scan-trends] Generated ${generatedTrends.length} trend objects`);
+  const allGeneratedTrends = await gptGenerateTrends(enriched);
+  // Hard limit: max 10 ideas per scan
+  const generatedTrends = allGeneratedTrends.slice(0, 10);
+  console.log(`[scan-trends] Generated ${generatedTrends.length} trend objects (from ${allGeneratedTrends.length} GPT results, capped at 10)`);
 
   // --- Step 7: Save to /api/trends ---
   let savedCount = 0;
@@ -722,6 +734,81 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // --- Step 8: Enrich new trends with competition & entry cost ---
+  let enrichedCount = 0;
+  if (!dryRun && savedCount > 0) {
+    const baseUrl = request.nextUrl.origin;
+    const MAX_ENRICH_PER_SCAN = 10;
+
+    try {
+      // Get current trends to find un-enriched ones
+      const trendsResponse = await fetch(`${baseUrl}/api/trends`);
+      if (trendsResponse.ok) {
+        const trendsData = await trendsResponse.json();
+        const unenriched = (trendsData.trends || [])
+          .filter((t: { enriched_at?: string }) => !t.enriched_at)
+          .slice(0, MAX_ENRICH_PER_SCAN);
+
+        // Enrich in parallel batches of 3
+        for (let i = 0; i < unenriched.length; i += 3) {
+          const batch = unenriched.slice(i, i + 3);
+          const enrichPromises = batch.map(async (trend: { id: string; title: string; category: string }) => {
+            try {
+              const enrichRes = await fetch(`${baseUrl}/api/enrich-trend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: trend.title, category: trend.category }),
+              });
+              if (enrichRes.ok) {
+                const enrichData = await enrichRes.json();
+                return { id: trend.id, ...enrichData };
+              }
+            } catch { /* skip failed enrichment */ }
+            return null;
+          });
+
+          const results = await Promise.all(enrichPromises);
+          const successfulEnrichments = results.filter(Boolean);
+          enrichedCount += successfulEnrichments.length;
+          totalSerpApiCalls += successfulEnrichments.length; // 1 SerpAPI call per enrichment
+
+          // Update trends with enrichment data
+          if (successfulEnrichments.length > 0) {
+            const currentData = await fetch(`${baseUrl}/api/trends`).then(r => r.json());
+            const updatedTrends = (currentData.trends || []).map((t: Record<string, unknown>) => {
+              const enrichment = successfulEnrichments.find((e: Record<string, unknown> | null) => e && e.id === t.id);
+              if (enrichment) {
+                return {
+                  ...t,
+                  competition_level: enrichment.competition_level,
+                  entry_cost_estimate: enrichment.entry_cost_estimate,
+                  top_players_count: enrichment.top_players_count,
+                  monthly_searches: enrichment.monthly_searches,
+                  enriched_at: enrichment.enriched_at,
+                };
+              }
+              return t;
+            });
+
+            // Save updated trends back via internal POST (we need to use saveTrendsData-like approach)
+            // Since we can't import saveTrendsData from trends route, we use a direct approach
+            await fetch(`${baseUrl}/api/trends`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ trends: updatedTrends, lastUpdated: currentData.lastUpdated }),
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[scan-trends] Enrichment step error:', err);
+    }
+
+    if (enrichedCount > 0) {
+      console.log(`[scan-trends] Enriched ${enrichedCount} trends with competition & entry cost data`);
+    }
+  }
+
   const scanDurationMs = Date.now() - startTime;
 
   const result: ScanResult = {
@@ -737,7 +824,7 @@ export async function POST(request: NextRequest) {
     categories,
   };
 
-  console.log(`[scan-trends] Complete: ${result.newTrendsCount} new trends, ${totalSerpApiCalls} API calls, ${scanDurationMs}ms`);
+  console.log(`[scan-trends] Complete: ${result.newTrendsCount} new trends, ${enrichedCount} enriched, ${totalSerpApiCalls} API calls, ${scanDurationMs}ms`);
 
   return NextResponse.json(result);
 }

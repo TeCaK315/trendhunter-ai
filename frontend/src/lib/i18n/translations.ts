@@ -129,6 +129,15 @@ export interface Translations {
       runAnalysisDescription: string;
       analyzing: string;
       runAnalysis: string;
+      progressStep: string;
+      progressOf: string;
+      dataCollected: string;
+      dataBlocks: string;
+      allDataReady: string;
+      nextStepStrategy: string;
+      nextStepMonitoring: string;
+      nextStepProject: string;
+      nextStepHint: string;
     };
     // Analysis section
     analysis: {
@@ -466,6 +475,7 @@ export interface Translations {
     healthtech: string;
     aiml: string;
     fintech: string;
+    business: string;
   };
 
   // Errors
@@ -591,9 +601,18 @@ export const translations: Record<Language, Translations> = {
         detected: 'Обнаружен',
         status: 'Статус',
         nextStep: 'Следующий шаг',
-        runAnalysisDescription: 'Запустите AI-анализ для выявления болевых точек и целевой аудитории.',
-        analyzing: 'Анализирую...',
-        runAnalysis: 'Запустить анализ',
+        runAnalysisDescription: 'Запустите исследование рынка: сбор жалоб, спроса, конкурентов, цен и экономики.',
+        analyzing: 'Исследую рынок...',
+        runAnalysis: 'Начать исследование',
+        progressStep: 'Шаг',
+        progressOf: 'из',
+        dataCollected: 'Собрано',
+        dataBlocks: 'блоков данных',
+        allDataReady: 'Все данные собраны! Запустите AI-синтез для получения вердикта.',
+        nextStepStrategy: 'Перейти к стратегии',
+        nextStepMonitoring: 'Настроить мониторинг',
+        nextStepProject: 'Создать проект',
+        nextStepHint: 'Следующий шаг',
       },
       analysis: {
         deepAnalysis: 'Глубокий анализ: 3 AI-агента',
@@ -908,6 +927,7 @@ export const translations: Record<Language, Translations> = {
       healthtech: 'HealthTech',
       aiml: 'AI/ML',
       fintech: 'FinTech',
+      business: 'Бизнес',
     },
     errors: {
       apiKeyNotConfigured: 'API ключ не настроен',
@@ -1030,9 +1050,18 @@ export const translations: Record<Language, Translations> = {
         detected: 'Detected',
         status: 'Status',
         nextStep: 'Next Step',
-        runAnalysisDescription: 'Run AI analysis to identify pain points and target audience.',
-        analyzing: 'Analyzing...',
-        runAnalysis: 'Run Analysis',
+        runAnalysisDescription: 'Start market research: complaints, demand, competitors, pricing and economics.',
+        analyzing: 'Researching market...',
+        runAnalysis: 'Start Research',
+        progressStep: 'Step',
+        progressOf: 'of',
+        dataCollected: 'Collected',
+        dataBlocks: 'data blocks',
+        allDataReady: 'All data collected! Run AI Synthesis to get the verdict.',
+        nextStepStrategy: 'Go to Strategy',
+        nextStepMonitoring: 'Set up monitoring',
+        nextStepProject: 'Create project',
+        nextStepHint: 'Next step',
       },
       analysis: {
         deepAnalysis: 'Deep Analysis: 3 AI Agents',
@@ -1347,6 +1376,7 @@ export const translations: Record<Language, Translations> = {
       healthtech: 'HealthTech',
       aiml: 'AI/ML',
       fintech: 'FinTech',
+      business: 'Business',
     },
     errors: {
       apiKeyNotConfigured: 'API key not configured',

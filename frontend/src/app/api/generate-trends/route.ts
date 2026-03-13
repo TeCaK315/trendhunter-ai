@@ -33,19 +33,22 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           categories: scanCategories,
           maxNichesPerCategory: category === 'random' ? 3 : 5,
-          maxEnrich: 20,
+          maxEnrich: 10,
         }),
       });
 
       if (scanResponse.ok) {
         const result = await scanResponse.json();
-        if (result.success && result.newTrendsCount > 0) {
+        if (result.success) {
           return NextResponse.json({
             success: true,
             data: {
-              message: `Обнаружено ${result.newTrendsCount} новых трендов из Google Trends`,
+              message: result.newTrendsCount > 0
+                ? `Обнаружено ${result.newTrendsCount} новых трендов из Google Trends`
+                : `Скан завершён. Все ${result.totalScanned} найденных трендов уже в базе.`,
               newTrends: result.newTrendsCount,
               totalScanned: result.totalScanned,
+              duplicatesSkipped: result.duplicatesSkipped,
               serpApiCalls: result.serpApiCallsUsed,
               duration: `${(result.scanDurationMs / 1000).toFixed(1)}s`,
               source: 'google_trends_rising_queries',
