@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import TrendChat from '@/components/TrendChat';
+import ProjectIterateChat from '@/components/ProjectIterateChat';
+import MarketingPlan from '@/components/MarketingPlan';
+import type { MarketingPlanResult } from '@/app/api/marketing-plan/route';
 import MVPTypeSelector from '@/components/MVPTypeSelector';
 import { recommendProductType, type ProductType } from '@/lib/productRecommendation';
 import { MVPType, MVPGenerationContext, ProductSpecification } from '@/lib/mvp-templates';
@@ -14,6 +17,7 @@ import DemandGrowthBlock from '@/components/blocks/DemandGrowthBlock';
 import MarketSellabilityBlock from '@/components/blocks/MarketSellabilityBlock';
 import MarketOccupationBlock from '@/components/blocks/MarketOccupationBlock';
 import UnitEconomicsBlock from '@/components/blocks/UnitEconomicsBlock';
+import TechFeasibilityBlock from '@/components/blocks/TechFeasibilityBlock';
 import EvidenceBadge from '@/components/EvidenceBadge';
 import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
 import FinancialCalculator from '@/components/blocks/FinancialCalculator';
@@ -23,6 +27,8 @@ import SurveyGenerator from '@/components/blocks/SurveyGenerator';
 import GtmPlanGenerator from '@/components/blocks/GtmPlanGenerator';
 import MonitoringDashboard from '@/components/blocks/MonitoringDashboard';
 import LandingPageGenerator from '@/components/blocks/LandingPageGenerator';
+import DashboardSidebar from '@/components/layout/DashboardSidebar';
+import DifferentiationBlock from '@/components/blocks/DifferentiationBlock';
 
 interface Trend {
   id: string;
@@ -98,8 +104,8 @@ type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'monitoring' | 'resear
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
-type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'survey' | 'gtm' | 'report';
-type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics';
+type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'survey' | 'gtm' | 'report' | 'differentiation';
+type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics' | 'tech';
 
 interface PotentialCompany {
   name: string;
@@ -270,6 +276,7 @@ export default function TrendPage() {
   const [actionPlanSubTab, setActionPlanSubTab] = useState<ActionPlanSubTab>('plan');
   const [evidenceSubTab, setEvidenceSubTab] = useState<EvidenceSubTab>('problem'); // Default to first Evidence tab
   const [isFavorite, setIsFavorite] = useState(false);
+  const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
 
   // Evidence block data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -282,6 +289,12 @@ export default function TrendPage() {
   const [actionPlanData, setActionPlanData] = useState<any>(null);
   const [actionPlanLoading, setActionPlanLoading] = useState(false);
   const [actionPlanError, setActionPlanError] = useState('');
+
+  // Differentiation data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [differentiationData, setDifferentiationData] = useState<any>(null);
+  const [differentiationLoading, setDifferentiationLoading] = useState(false);
+  const [differentiationError, setDifferentiationError] = useState('');
 
   // Translation hooks for dynamic content
   const trendForTranslation = trend ? {
@@ -579,6 +592,9 @@ export default function TrendPage() {
   const [projectGenStartTime, setProjectGenStartTime] = useState<number | null>(null);
   const [projectGenElapsed, setProjectGenElapsed] = useState(0);
   const [projectError, setProjectError] = useState<string | null>(null);
+  const [marketingPlan, setMarketingPlan] = useState<MarketingPlanResult | null>(null);
+  const [loadingMarketingPlan, setLoadingMarketingPlan] = useState(false);
+  const [marketingPlanError, setMarketingPlanError] = useState<string | null>(null);
   const [githubCreated, setGithubCreated] = useState(false);
   const [isGithubAuthenticated, setIsGithubAuthenticated] = useState(false);
   const [creatingGithubRepo, setCreatingGithubRepo] = useState(false);
@@ -848,10 +864,10 @@ export default function TrendPage() {
 
   // Прогресс сбора Evidence данных
   const evidenceProgress = useMemo(() => {
-    const blocks = ['problem', 'demand', 'sellability', 'occupation', 'economics'] as const;
+    const blocks = ['problem', 'demand', 'sellability', 'occupation', 'economics', 'tech'] as const;
     const done = blocks.filter(b => evidenceData[b]).length;
     const loading = blocks.some(b => evidenceLoading[b]);
-    return { done, total: 5, percent: Math.round((done / 5) * 100), loading };
+    return { done, total: 6, percent: Math.round((done / 6) * 100), loading };
   }, [evidenceData, evidenceLoading]);
 
   // Определение статуса шага
@@ -1043,10 +1059,10 @@ export default function TrendPage() {
     const timer = setInterval(() => {
       const elapsed = Math.floor((Date.now() - (projectGenStartTime || Date.now())) / 1000);
       setProjectGenElapsed(elapsed);
-      // Auto-advance steps based on time
-      if (elapsed >= 90) setProjectGenStep(4);
-      else if (elapsed >= 50) setProjectGenStep(3);
-      else if (elapsed >= 25) setProjectGenStep(2);
+      // Auto-advance steps based on time (block assembler ~2 min total)
+      if (elapsed >= 100) setProjectGenStep(4);
+      else if (elapsed >= 60) setProjectGenStep(3);
+      else if (elapsed >= 30) setProjectGenStep(2);
       else if (elapsed >= 8) setProjectGenStep(1);
     }, 1000);
     return () => clearInterval(timer);
@@ -1380,6 +1396,7 @@ export default function TrendPage() {
       sellability: '/api/evidence/market-sellability',
       occupation: '/api/evidence/market-occupation',
       economics: '/api/evidence/unit-economics',
+      tech: '/api/evidence/tech-feasibility',
     };
 
     const blocks = Object.keys(blockEndpoints) as EvidenceSubTab[];
@@ -1457,6 +1474,38 @@ export default function TrendPage() {
       setActionPlanError((e as Error).message);
     } finally {
       setActionPlanLoading(false);
+    }
+  };
+
+  const generateDifferentiation = async () => {
+    if (!trend) return;
+    setDifferentiationLoading(true);
+    setDifferentiationError('');
+
+    try {
+      const response = await fetch('/api/differentiation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: trend.source_query || trend.title,
+          evidenceData: {
+            occupation: evidenceData.occupation || null,
+            problem: evidenceData.problem || null,
+            sellability: evidenceData.sellability || null,
+          },
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setDifferentiationData(data.data);
+      } else {
+        setDifferentiationError(data.error || 'Error generating differentiation');
+      }
+    } catch (e) {
+      setDifferentiationError((e as Error).message);
+    } finally {
+      setDifferentiationLoading(false);
     }
   };
 
@@ -1546,6 +1595,48 @@ export default function TrendPage() {
           consensus: analysis.main_pain,
           key_insights: analysis.key_pain_points || [],
         } : undefined,
+
+        // Block 2: Demand Growth — рост спроса, коммерческий интерес, новые игроки
+        demand_growth: evidenceData.demand ? {
+          growth_rate_12m: evidenceData.demand.growing_or_dying?.trends_12m?.growth_rate ?? null,
+          growth_rate_3m: evidenceData.demand.growing_or_dying?.trends_3m?.growth_rate ?? null,
+          stability_score: evidenceData.demand.hype_or_stable?.stability_score?.value ?? null,
+          search_intent: evidenceData.demand.search_intent || null,
+          new_players_count: evidenceData.demand.new_players?.new_entrants_count ?? null,
+          geo_top_regions: evidenceData.demand.geo_breakdown?.slice(0, 5) || [],
+        } : undefined,
+
+        // Block 3: Market Sellability — сегмент, медианная цена, цикл продаж
+        sellability: evidenceData.sellability ? {
+          market_segment: evidenceData.sellability.market_segment?.segment_type || null,
+          segment_confidence: evidenceData.sellability.market_segment?.confidence ?? null,
+          median_price: evidenceData.sellability.average_ticket?.median_price ?? null,
+          competitor_prices: evidenceData.sellability.average_ticket?.competitor_prices?.slice(0, 6)?.map((p: any) => ({
+            competitor: p.competitor,
+            price: p.price,
+            plan_type: p.plan_type || 'unknown',
+          })) || [],
+          sales_cycle: evidenceData.sellability.sales_cycle?.complexity || null,
+        } : undefined,
+
+        // Block 5: Unit Economics — CAC, LTV, бизнес-модель
+        economics: evidenceData.economics ? {
+          estimated_cac: evidenceData.economics.cac?.estimated_cac?.value ?? null,
+          ltv_cac_ratio: evidenceData.economics.ltv_cac_ratio?.value ?? null,
+          business_model: evidenceData.economics.repeat_sales?.business_model || null,
+          market_size_revenue: evidenceData.economics.market_size_indicators?.total_market_revenue ?? null,
+          scalability_score: evidenceData.economics.scalability?.scalability_score?.value ?? null,
+        } : undefined,
+
+        // Block 6: Tech Feasibility — сложность, стек, регуляторика
+        tech_feasibility: evidenceData.tech ? {
+          complexity_level: evidenceData.tech.complexity?.level || null,
+          complexity_score: evidenceData.tech.complexity?.score ?? null,
+          stack_recommendations: evidenceData.tech.stack_recommendations || null,
+          regulatory_blockers: evidenceData.tech.regulatory?.has_blockers || false,
+          regulatory_checks: evidenceData.tech.regulatory?.checks?.filter((r: any) => r.applies) || [],
+          mvp_weeks: evidenceData.tech.mvp_timeline?.weeks ?? null,
+        } : undefined,
       };
 
       const response = await fetch('/api/product-spec', {
@@ -1561,6 +1652,7 @@ export default function TrendPage() {
           competition: context.competition,
           design_analysis: designAnalysis, // Pass design data from background analysis
           evidence, // NEW: Pass Evidence data for contextual feature extraction
+          differentiation: differentiationData || null, // Differentiation strategy (USP, Blue Ocean, positioning)
         }),
       });
 
@@ -1582,6 +1674,77 @@ export default function TrendPage() {
       return null;
     } finally {
       setLoadingProductSpec(false);
+    }
+  };
+
+  // Fetch Marketing Plan — вызывается после генерации проекта
+  const fetchMarketingPlan = async () => {
+    if (!trend || marketingPlan) return;
+    setLoadingMarketingPlan(true);
+    setMarketingPlanError(null);
+
+    try {
+      const response = await fetch('/api/marketing-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trend_title: trend.title,
+          trend_category: trend.category,
+          evidence: {
+            complaints: evidenceData.problem?.who_hurts?.complaints || [],
+            negative_reviews: evidenceData.occupation?.negative_reviews || [],
+            unmet_needs: evidenceData.occupation?.unmet_needs || [],
+            pricing_data: evidenceData.problem?.willingness_to_pay?.pricing_data || [],
+            demand_growth: evidenceData.demand ? {
+              growth_rate_12m: evidenceData.demand.growing_or_dying?.trends_12m?.growth_rate ?? null,
+              search_intent: evidenceData.demand.search_intent || null,
+              new_players_count: evidenceData.demand.new_players?.new_entrants_count ?? null,
+            } : undefined,
+            sellability: evidenceData.sellability ? {
+              market_segment: evidenceData.sellability.market_segment?.segment_type || null,
+              median_price: evidenceData.sellability.average_ticket?.median_price ?? null,
+              competitor_prices: evidenceData.sellability.average_ticket?.competitor_prices?.slice(0, 6)?.map((p: any) => ({
+                competitor: p.competitor,
+                price: p.price,
+                plan_type: p.plan_type || 'unknown',
+              })) || [],
+              sales_cycle: evidenceData.sellability.sales_cycle?.complexity || null,
+            } : undefined,
+            economics: evidenceData.economics ? {
+              estimated_cac: evidenceData.economics.cac?.estimated_cac?.value ?? null,
+              ltv_cac_ratio: evidenceData.economics.ltv_cac_ratio?.value ?? null,
+              business_model: evidenceData.economics.repeat_sales?.business_model || null,
+            } : undefined,
+          },
+          analysis: analysis ? {
+            main_pain: analysis.main_pain,
+            key_pain_points: analysis.key_pain_points || [],
+            target_audience: analysis.target_audience,
+          } : undefined,
+          product_spec: productSpec ? {
+            user_output: productSpec.user_output,
+            monetization: productSpec.monetization,
+            derived_features: productSpec.derived_features,
+          } : undefined,
+          differentiation: differentiationData || undefined,
+          project_name: projectData?.project_name,
+          project_url: projectData?.vercel_url || vercelUrl || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.marketing_plan) {
+        setMarketingPlan(data.marketing_plan);
+        console.log('[MarketingPlan] Generated:', data.metadata);
+      } else {
+        setMarketingPlanError(data.error || (language === 'ru' ? 'Не удалось создать маркетинговый план' : 'Failed to create marketing plan'));
+      }
+    } catch (error) {
+      console.error('Error fetching marketing plan:', error);
+      setMarketingPlanError(language === 'ru' ? 'Ошибка при создании маркетингового плана' : 'Error creating marketing plan');
+    } finally {
+      setLoadingMarketingPlan(false);
     }
   };
 
@@ -1978,6 +2141,8 @@ export default function TrendPage() {
         derived_features: productSpec?.derived_features || undefined,
       };
 
+      const genMode = productSpec ? 'blocks' : 'claude';
+      console.log(`[GenerateCode] Mode: ${genMode}, productSpec available: ${!!productSpec}`);
       console.log('[GenerateCode] Spec being sent:', spec);
       console.log('[GenerateCode] derived_features:', spec.derived_features);
       console.log('[GenerateCode] design_system:', spec.design_system);
@@ -1987,6 +2152,8 @@ export default function TrendPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           spec,
+          mode: productSpec ? 'blocks' : 'claude',
+          product_spec: productSpec || undefined,
           github_repo: projectData.github_url, // Если есть - добавляем файлы туда
           auto_deploy: autoDeploy && isVercelAuthenticated,
         }),
@@ -2008,9 +2175,11 @@ export default function TrendPage() {
         }
 
         // Показываем успех
+        const modeLabel = data.mode === 'blocks' ? 'Block Assembler' : 'Claude Pipeline';
+        const blocksInfo = data.blocks_used ? `\nBlocks: ${data.blocks_used.length}, Claude calls: ${data.claude_calls || 0}` : '';
         alert(language === 'ru'
-          ? `✅ Код сгенерирован! ${data.files_generated} файлов создано.${data.github_url ? `\n\nGitHub: ${data.github_url}` : ''}${data.vercel_url ? `\nVercel: ${data.vercel_url}` : ''}`
-          : `✅ Code generated! ${data.files_generated} files created.${data.github_url ? `\n\nGitHub: ${data.github_url}` : ''}${data.vercel_url ? `\nVercel: ${data.vercel_url}` : ''}`
+          ? `✅ Код сгенерирован! ${data.files_generated} файлов (${modeLabel}).${blocksInfo}${data.github_url ? `\n\nGitHub: ${data.github_url}` : ''}${data.vercel_url ? `\nVercel: ${data.vercel_url}` : ''}`
+          : `✅ Code generated! ${data.files_generated} files (${modeLabel}).${blocksInfo}${data.github_url ? `\n\nGitHub: ${data.github_url}` : ''}${data.vercel_url ? `\nVercel: ${data.vercel_url}` : ''}`
         );
       } else {
         setCodeGenerationError(data.error || (language === 'ru' ? 'Не удалось сгенерировать код' : 'Failed to generate code'));
@@ -2157,79 +2326,92 @@ export default function TrendPage() {
           </div>
         </div>
 
-        {/* Flow Steps - Оптимизированная навигация */}
-        <div className="px-6 py-4 border-b border-zinc-800/50 bg-zinc-900/30">
+        {/* Mobile Flow Steps - visible only on small screens */}
+        <div className="lg:hidden px-4 py-3 border-b border-zinc-800/50 bg-zinc-900/30">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            {flowSteps.map((step, index) => {
+            {flowSteps.map((step) => {
               const isActive = step.id === currentStep;
-              const isPast = flowSteps.findIndex(s => s.id === currentStep) > index;
               const stepStatus = getStepStatus(step.id);
-              const isClickable = isPast || step.id === 'overview' ||
+              const isClickable = step.id === 'overview' ||
                 step.id === 'evidence' ||
                 step.id === 'action-plan' ||
                 step.id === 'business' ||
                 step.id === 'monitoring' ||
-                (step.id === 'project' && analysis);
+                (step.id === 'project' && !!analysis);
 
               return (
-                <div key={step.id} className="flex items-center">
-                  <button
-                    onClick={() => isClickable && setCurrentStep(step.id as FlowStep)}
-                    disabled={!isClickable}
-                    title={step.description}
-                    className={`flex flex-col items-center gap-1 px-5 py-3 rounded-xl transition-all relative ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                        : stepStatus === 'completed' && !isActive
-                        ? 'bg-zinc-800 text-white'
-                        : isClickable
-                        ? 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                        : 'bg-zinc-900/50 text-zinc-600 cursor-not-allowed'
-                    }`}
-                  >
-                    {stepStatus === 'completed' && !isActive ? (
-                      <span className="text-xl text-green-400">✓</span>
-                    ) : (
-                      <span className="text-xl">{step.icon}</span>
-                    )}
-                    <span className="whitespace-nowrap font-medium text-xs">{step.label}</span>
-                  </button>
-                  {index < flowSteps.length - 1 && (
-                    <div className={`w-12 h-0.5 mx-2 ${
-                      stepStatus === 'completed' || isPast ? 'bg-indigo-500' : 'bg-zinc-700'
-                    }`} />
-                  )}
-                </div>
+                <button
+                  key={step.id}
+                  onClick={() => isClickable && setCurrentStep(step.id as FlowStep)}
+                  disabled={!isClickable}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all whitespace-nowrap text-xs ${
+                    isActive
+                      ? 'bg-indigo-600 text-white'
+                      : stepStatus === 'completed'
+                      ? 'bg-zinc-800 text-white'
+                      : isClickable
+                      ? 'bg-zinc-800/50 text-zinc-400'
+                      : 'bg-zinc-900/50 text-zinc-600 cursor-not-allowed'
+                  }`}
+                >
+                  <span>{stepStatus === 'completed' && !isActive ? '✓' : step.icon}</span>
+                  <span className="font-medium">{step.label}</span>
+                </button>
               );
             })}
           </div>
-
-          {/* Progress indicator */}
+          {/* Mobile sub-tabs for evidence */}
           {currentStep === 'evidence' && (
-            <div className="mt-3 flex items-center gap-3">
-              <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500"
-                  style={{ width: `${evidenceProgress.percent}%` }}
-                />
-              </div>
-              <span className="text-xs text-zinc-400 whitespace-nowrap">
-                {t.trendDetail.overview.dataCollected} {evidenceProgress.done}/{evidenceProgress.total} {t.trendDetail.overview.dataBlocks}
-              </span>
-            </div>
-          )}
-
-          {/* Подразделы для Business */}
-          {currentStep === 'business' && (
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-800/50">
-              {businessSubTabs.map((tab) => (
+            <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-800/50 overflow-x-auto scrollbar-hide">
+              {[
+                { id: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
+                { id: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
+                { id: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
+                { id: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
+                { id: 'economics', label: language === 'ru' ? 'Эконом.' : 'Econ.', icon: '📊' },
+                { id: 'tech', label: language === 'ru' ? 'Тех.' : 'Tech', icon: '⚙️' },
+                { id: 'analysis', label: 'AI', icon: '🧠' },
+              ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setBusinessSubTab(tab.id as BusinessSubTab)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
-                    businessSubTab === tab.id
-                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                  onClick={() => setEvidenceSubTab(tab.id as EvidenceSubTab)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs transition-all whitespace-nowrap ${
+                    evidenceSubTab === tab.id
+                      ? 'bg-green-500/20 text-green-300'
+                      : 'text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                  {evidenceLoading[tab.id] && (
+                    <span className="w-2 h-2 border border-green-400 border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {!evidenceLoading[tab.id] && evidenceData[tab.id] && (
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Mobile sub-tabs for action-plan */}
+          {currentStep === 'action-plan' && (
+            <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-800/50 overflow-x-auto scrollbar-hide">
+              {[
+                { id: 'plan', label: language === 'ru' ? 'План' : 'Plan', icon: '📋' },
+                { id: 'differentiation', label: language === 'ru' ? 'Диф.' : 'Diff.', icon: '🎯' },
+                { id: 'calculator', label: language === 'ru' ? 'Калк.' : 'Calc.', icon: '🧮' },
+                { id: 'scenarios', label: language === 'ru' ? 'Сцен.' : 'Scen.', icon: '🔀' },
+                { id: 'survey', label: language === 'ru' ? 'Опрос' : 'Survey', icon: '📝' },
+                { id: 'gtm', label: 'GTM', icon: '🚀' },
+                { id: 'report', label: language === 'ru' ? 'Отчёт' : 'Report', icon: '📄' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActionPlanSubTab(tab.id as ActionPlanSubTab)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs transition-all whitespace-nowrap ${
+                    actionPlanSubTab === tab.id
+                      ? 'bg-indigo-500/20 text-indigo-300'
+                      : 'text-zinc-500 hover:text-white'
                   }`}
                 >
                   <span>{tab.icon}</span>
@@ -2238,44 +2420,52 @@ export default function TrendPage() {
               ))}
             </div>
           )}
-
-          {/* Подразделы для Evidence */}
-          {currentStep === 'evidence' && (
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-800/50 overflow-x-auto scrollbar-hide">
-              {[
-                { id: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
-                { id: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
-                { id: 'sellability', label: language === 'ru' ? 'Продаваемость' : 'Sellability', icon: '💳' },
-                { id: 'occupation', label: language === 'ru' ? 'Конкуренция' : 'Competition', icon: '🏟️' },
-                { id: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
-                { id: 'analysis', label: language === 'ru' ? 'AI Синтез' : 'AI Synthesis', icon: '🧠' },
-              ].map((tab) => (
+          {/* Mobile sub-tabs for business */}
+          {currentStep === 'business' && (
+            <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-800/50 overflow-x-auto scrollbar-hide">
+              {businessSubTabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setEvidenceSubTab(tab.id as EvidenceSubTab)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all whitespace-nowrap ${
-                    evidenceSubTab === tab.id
-                      ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                  onClick={() => setBusinessSubTab(tab.id as BusinessSubTab)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs transition-all whitespace-nowrap ${
+                    businessSubTab === tab.id
+                      ? 'bg-indigo-500/20 text-indigo-300'
+                      : 'text-zinc-500 hover:text-white'
                   }`}
                 >
                   <span>{tab.icon}</span>
                   <span>{tab.label}</span>
-                  {evidenceLoading[tab.id] ? (
-                    <span className="w-3 h-3 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
-                  ) : evidenceData[tab.id] ? (
-                    <span className="w-2 h-2 bg-green-400 rounded-full" />
-                  ) : evidenceErrors[tab.id] ? (
-                    <span className="w-2 h-2 bg-red-400 rounded-full" />
-                  ) : null}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Dashboard: Sidebar + Content */}
+        <div className="flex flex-1 min-h-0">
+          {/* Desktop Sidebar */}
+          <DashboardSidebar
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
+            evidenceSubTab={evidenceSubTab}
+            setEvidenceSubTab={setEvidenceSubTab}
+            actionPlanSubTab={actionPlanSubTab}
+            setActionPlanSubTab={setActionPlanSubTab}
+            businessSubTab={businessSubTab}
+            setBusinessSubTab={setBusinessSubTab}
+            getStepStatus={getStepStatus}
+            evidenceProgress={evidenceProgress}
+            evidenceData={evidenceData}
+            evidenceLoading={evidenceLoading}
+            evidenceErrors={evidenceErrors}
+            analysis={analysis}
+            language={language}
+            collapsed={dashboardCollapsed}
+            onToggleCollapse={() => setDashboardCollapsed(!dashboardCollapsed)}
+          />
+
+          {/* Content */}
+          <div className="flex-1 min-w-0 p-6">
           {/* Header */}
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-8">
             <div className="flex-1">
@@ -2378,9 +2568,16 @@ export default function TrendPage() {
                   error={evidenceErrors.economics}
                 />
               )}
+              {evidenceSubTab === 'tech' && (
+                <TechFeasibilityBlock
+                  data={evidenceData.tech}
+                  loading={evidenceLoading.tech}
+                  error={evidenceErrors.tech}
+                />
+              )}
 
               {/* Banner: all data collected, suggest AI Synthesis */}
-              {evidenceProgress.done === 5 && !analysis && !evidenceProgress.loading && evidenceSubTab !== 'analysis' && (
+              {evidenceProgress.done === 6 && !analysis && !evidenceProgress.loading && evidenceSubTab !== 'analysis' && (
                 <div className="mt-6 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">🧠</span>
@@ -2427,31 +2624,6 @@ export default function TrendPage() {
           {/* Action Plan Content */}
           {currentStep === 'action-plan' && (
             <div className="space-y-6">
-              {/* Sub-tabs: Plan | Calculator | Scenarios | Report */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {[
-                  { id: 'plan' as ActionPlanSubTab, label: language === 'ru' ? 'Стратегия' : 'Strategy', icon: '📋' },
-                  { id: 'calculator' as ActionPlanSubTab, label: language === 'ru' ? 'Калькулятор' : 'Calculator', icon: '🧮' },
-                  { id: 'scenarios' as ActionPlanSubTab, label: language === 'ru' ? 'Сценарии' : 'Scenarios', icon: '🔀' },
-                  { id: 'survey' as ActionPlanSubTab, label: language === 'ru' ? 'Опрос + Рассылка' : 'Survey + Send', icon: '📝' },
-                  { id: 'gtm' as ActionPlanSubTab, label: language === 'ru' ? 'GTM План' : 'GTM Plan', icon: '🚀' },
-                  { id: 'report' as ActionPlanSubTab, label: language === 'ru' ? 'Отчёт' : 'Report', icon: '📄' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActionPlanSubTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
-                      actionPlanSubTab === tab.id
-                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </div>
-
               {/* Strategy sub-tab */}
               {actionPlanSubTab === 'plan' && (
                 <>
@@ -2522,6 +2694,17 @@ export default function TrendPage() {
                     error={actionPlanError}
                   />
                 </>
+              )}
+
+              {/* Differentiation sub-tab */}
+              {actionPlanSubTab === 'differentiation' && (
+                <DifferentiationBlock
+                  data={differentiationData}
+                  loading={differentiationLoading}
+                  error={differentiationError}
+                  onGenerate={generateDifferentiation}
+                  hasEvidenceData={!!(evidenceData.occupation || evidenceData.problem)}
+                />
               )}
 
               {/* Financial Calculator sub-tab */}
@@ -2812,7 +2995,11 @@ export default function TrendPage() {
                     <p className="text-sm text-zinc-400 mt-1">{t.trendDetail.analysis.aiDebateDescription}</p>
                   </div>
 
-                  <div className="grid md:grid-cols-2 divide-x divide-zinc-800">
+                  <div className="grid md:grid-cols-2 divide-x divide-zinc-800 relative">
+                    {/* VS badge */}
+                    <div className="hidden md:flex absolute left-1/2 top-6 -translate-x-1/2 z-10 w-10 h-10 rounded-full bg-zinc-700 border-2 border-zinc-600 items-center justify-center">
+                      <span className="text-xs font-bold text-zinc-300">VS</span>
+                    </div>
                     {/* Optimist */}
                     <div className="p-5">
                       <div className="flex items-center gap-2 mb-4">
@@ -3605,19 +3792,19 @@ export default function TrendPage() {
                           <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
                             {language === 'ru' ? 'Полный MVP' : 'Full MVP'}
                           </h3>
-                          <span className="text-xs text-zinc-500">~3-5 мин</span>
+                          <span className="text-xs text-zinc-500">~30-60 сек</span>
                         </div>
                       </div>
                       <p className="text-sm text-zinc-400 mb-4">
                         {language === 'ru'
-                          ? 'Рабочий проект с кодом: Next.js, Supabase, UI компоненты. GitHub репо + опциональный Vercel деплой.'
-                          : 'Working project with code: Next.js, Supabase, UI components. GitHub repo + optional Vercel deploy.'}
+                          ? 'Сборка из готовых блоков: 47 модулей (auth, payments, UI, API). Уникальный дизайн из анализа конкурентов.'
+                          : 'Assembled from pre-built blocks: 47 modules (auth, payments, UI, API). Unique design from competitor analysis.'}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">Next.js</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">GitHub</span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">Supabase</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">Vercel</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">Stripe</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">GitHub</span>
                       </div>
                     </button>
                   </div>
@@ -3911,9 +4098,9 @@ export default function TrendPage() {
               {/* Загрузка */}
               {loadingProject && (() => {
                 const steps = language === 'ru'
-                  ? ['Анализ данных тренда', 'Генерация спецификации', 'Создание архитектуры', 'Генерация кода', 'Финализация проекта']
-                  : ['Analyzing trend data', 'Generating specification', 'Creating architecture', 'Generating code', 'Finalizing project'];
-                const stepIcons = ['📊', '📝', '🏗️', '💻', '✅'];
+                  ? ['Анализ данных тренда', 'Генерация спецификации', 'Сборка блоков и инжекция дизайна', 'Загрузка в GitHub', 'Финализация проекта']
+                  : ['Analyzing trend data', 'Generating specification', 'Assembling blocks & injecting design', 'Pushing to GitHub', 'Finalizing project'];
+                const stepIcons = ['📊', '📝', '🧩', '📤', '✅'];
                 const progressPercent = Math.min(((projectGenStep + 1) / steps.length) * 100, 100);
                 const minutes = Math.floor(projectGenElapsed / 60);
                 const seconds = projectGenElapsed % 60;
@@ -3929,7 +4116,7 @@ export default function TrendPage() {
 
                     <h3 className="text-xl font-semibold text-white text-center mb-2">{t.trendDetail.project.generating}</h3>
                     <p className="text-zinc-400 text-center text-sm mb-6">
-                      {language === 'ru' ? 'META-агент анализирует данные и создаёт проект' : 'META agent is analyzing data and creating project'}
+                      {language === 'ru' ? 'Сборка проекта из 47 готовых блоков с уникальным дизайном' : 'Assembling project from 47 pre-built blocks with unique design'}
                     </p>
 
                     {/* Progress bar */}
@@ -4058,80 +4245,6 @@ export default function TrendPage() {
                       </div>
                     )}
 
-                    {/* Секция генерации кода через Claude */}
-                    <div className="mt-6 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl">
-                      <h4 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                        <span>🤖</span>
-                        {language === 'ru' ? 'Генерация рабочего кода' : 'Generate Working Code'}
-                      </h4>
-                      <p className="text-zinc-400 text-sm mb-4">
-                        {language === 'ru'
-                          ? 'Claude API сгенерирует полноценный рабочий код на основе спецификации. Все фичи будут реализованы.'
-                          : 'Claude API will generate fully working code based on the specification. All features will be implemented.'}
-                      </p>
-
-                      {generatedCodeFiles.length > 0 ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-emerald-400">
-                            <span>✅</span>
-                            <span className="font-medium">
-                              {language === 'ru'
-                                ? `Сгенерировано ${generatedCodeFiles.length} файлов`
-                                : `Generated ${generatedCodeFiles.length} files`}
-                            </span>
-                          </div>
-                          <div className="max-h-32 overflow-y-auto bg-zinc-800/50 rounded-lg p-3">
-                            <ul className="text-sm text-zinc-400 space-y-1">
-                              {generatedCodeFiles.slice(0, 15).map((file, i) => (
-                                <li key={i} className="font-mono text-xs">📄 {file}</li>
-                              ))}
-                              {generatedCodeFiles.length > 15 && (
-                                <li className="text-zinc-500">...{language === 'ru' ? 'и ещё' : 'and'} {generatedCodeFiles.length - 15} {language === 'ru' ? 'файлов' : 'more files'}</li>
-                              )}
-                            </ul>
-                          </div>
-                          <button
-                            onClick={generateCode}
-                            disabled={generatingCode}
-                            className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm font-medium transition-all inline-flex items-center gap-2"
-                          >
-                            <span>🔄</span>
-                            {language === 'ru' ? 'Перегенерировать' : 'Regenerate'}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={generateCode}
-                          disabled={generatingCode || !projectData.github_url}
-                          className={`px-6 py-3 rounded-xl font-medium transition-all inline-flex items-center gap-2 ${
-                            generatingCode || !projectData.github_url
-                              ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/25'
-                          }`}
-                        >
-                          {generatingCode ? (
-                            <>
-                              <div className="animate-spin w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full" />
-                              {language === 'ru' ? 'Claude генерирует код...' : 'Claude is generating code...'}
-                            </>
-                          ) : (
-                            <>
-                              <span>✨</span>
-                              {language === 'ru' ? 'Сгенерировать код через Claude' : 'Generate Code via Claude'}
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {!projectData.github_url && (
-                        <p className="mt-3 text-sm text-zinc-500">
-                          {language === 'ru'
-                            ? '⚠️ Сначала создайте GitHub репозиторий для сохранения кода'
-                            : '⚠️ First create a GitHub repository to save the code'}
-                        </p>
-                      )}
-                    </div>
-
                     {/* Кнопка сброса проекта */}
                     <div className="mt-4 pt-4 border-t border-zinc-700/50">
                       <button
@@ -4144,6 +4257,15 @@ export default function TrendPage() {
                         {language === 'ru' ? 'Сбросить проект' : 'Reset project'}
                       </button>
                     </div>
+
+                    {/* META Agent — итеративная доработка проекта */}
+                    {projectData.github_url && isGithubAuthenticated && (
+                      <ProjectIterateChat
+                        repoUrl={projectData.github_url}
+                        projectName={projectData.project_name || ''}
+                        language={language}
+                      />
+                    )}
                   </div>
 
                   {/* Problem & Solution */}
@@ -4163,174 +4285,6 @@ export default function TrendPage() {
                       )}
                     </div>
                   )}
-
-                  {/* === SECTION 1: Design Theme Selector === */}
-                  <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <span>🎨</span> {language === 'ru' ? 'Дизайн проекта' : 'Project Design'}
-                    </h3>
-
-                    {!generatedTheme ? (
-                      <div className="space-y-4">
-                        <p className="text-zinc-400 text-sm">
-                          {language === 'ru'
-                            ? 'Выберите стиль или опишите желаемый дизайн, и AI сгенерирует цветовую схему'
-                            : 'Choose a style or describe your desired design, and AI will generate a color scheme'}
-                        </p>
-
-                        {/* Preset styles */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                          {[
-                            { id: 'corporate', name: language === 'ru' ? 'Корпоративный' : 'Corporate', colors: ['#2563eb', '#1e40af', '#3b82f6'] },
-                            { id: 'startup', name: language === 'ru' ? 'Стартап' : 'Startup', colors: ['#8b5cf6', '#6366f1', '#a855f7'] },
-                            { id: 'dark-tech', name: language === 'ru' ? 'Тёмный тех' : 'Dark Tech', colors: ['#10b981', '#059669', '#34d399'] },
-                            { id: 'minimal', name: language === 'ru' ? 'Минимализм' : 'Minimal', colors: ['#18181b', '#27272a', '#71717a'] },
-                            { id: 'warm', name: language === 'ru' ? 'Тёплый' : 'Warm', colors: ['#f59e0b', '#d97706', '#fbbf24'] },
-                            { id: 'nature', name: language === 'ru' ? 'Природа' : 'Nature', colors: ['#16a34a', '#15803d', '#22c55e'] },
-                          ].map((style) => (
-                            <button
-                              key={style.id}
-                              onClick={() => {
-                                setSelectedStyle(style.id);
-                                generateTheme(style.id);
-                              }}
-                              disabled={loadingTheme}
-                              className={`p-3 rounded-lg border transition-all ${
-                                selectedStyle === style.id
-                                  ? 'border-cyan-500 bg-cyan-500/10'
-                                  : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
-                              }`}
-                            >
-                              <div className="flex gap-1 mb-2 justify-center">
-                                {style.colors.map((color, i) => (
-                                  <div
-                                    key={i}
-                                    className="w-4 h-4 rounded-full"
-                                    style={{ backgroundColor: color }}
-                                  />
-                                ))}
-                              </div>
-                              <div className="text-xs text-zinc-300 text-center">{style.name}</div>
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Custom prompt */}
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <input
-                            type="text"
-                            value={customStylePrompt}
-                            onChange={(e) => setCustomStylePrompt(e.target.value)}
-                            placeholder={language === 'ru' ? 'Или опишите стиль: "Элегантный и современный с оттенками синего"' : 'Or describe style: "Elegant and modern with blue tones"'}
-                            className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-cyan-500 focus:outline-none"
-                          />
-                          <button
-                            onClick={() => {
-                              setSelectedStyle('custom');
-                              generateTheme(customStylePrompt);
-                            }}
-                            disabled={!customStylePrompt || loadingTheme}
-                            className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all inline-flex items-center justify-center gap-2"
-                          >
-                            {loadingTheme ? (
-                              <>
-                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                                {language === 'ru' ? 'Генерируем...' : 'Generating...'}
-                              </>
-                            ) : (
-                              <>
-                                <span>✨</span>
-                                {language === 'ru' ? 'Создать' : 'Generate'}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {/* Theme preview */}
-                        <div className="p-4 rounded-lg" style={{ backgroundColor: generatedTheme.preview.background }}>
-                          <h4 className="text-lg font-semibold mb-3" style={{ color: generatedTheme.preview.text }}>
-                            {generatedTheme.name}
-                          </h4>
-                          <div className="flex flex-wrap gap-3 mb-4">
-                            {Object.entries(generatedTheme.preview).map(([key, color]) => (
-                              <div key={key} className="text-center">
-                                <div
-                                  className="w-12 h-12 rounded-lg shadow-lg mb-1"
-                                  style={{ backgroundColor: color }}
-                                />
-                                <div className="text-xs" style={{ color: generatedTheme.preview.text }}>
-                                  {key}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              className="px-4 py-2 rounded-lg font-medium"
-                              style={{
-                                backgroundColor: generatedTheme.preview.primary,
-                                color: '#ffffff',
-                              }}
-                            >
-                              Primary Button
-                            </button>
-                            <button
-                              className="px-4 py-2 rounded-lg font-medium"
-                              style={{
-                                backgroundColor: generatedTheme.preview.secondary,
-                                color: '#ffffff',
-                              }}
-                            >
-                              Secondary
-                            </button>
-                            <button
-                              className="px-4 py-2 rounded-lg font-medium border"
-                              style={{
-                                borderColor: generatedTheme.preview.accent,
-                                color: generatedTheme.preview.accent,
-                              }}
-                            >
-                              Outline
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* CSS Variables */}
-                        <details className="bg-zinc-800/50 rounded-lg">
-                          <summary className="p-4 cursor-pointer text-sm text-zinc-400 hover:text-white transition-colors">
-                            {language === 'ru' ? 'Показать CSS переменные' : 'Show CSS Variables'}
-                          </summary>
-                          <div className="px-4 pb-4">
-                            <pre className="bg-zinc-900 p-3 rounded text-xs text-zinc-300 overflow-x-auto">
-{`:root {
-${Object.entries(generatedTheme.cssVariables).map(([key, value]) => `  ${key}: ${value};`).join('\n')}
-}`}
-                            </pre>
-                            <button
-                              onClick={() => navigator.clipboard.writeText(`:root {\n${Object.entries(generatedTheme.cssVariables).map(([key, value]) => `  ${key}: ${value};`).join('\n')}\n}`)}
-                              className="mt-2 px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-xs rounded transition-colors"
-                            >
-                              {language === 'ru' ? 'Копировать' : 'Copy'}
-                            </button>
-                          </div>
-                        </details>
-
-                        {/* Reset button */}
-                        <button
-                          onClick={() => {
-                            setGeneratedTheme(null);
-                            setSelectedStyle('');
-                            setCustomStylePrompt('');
-                          }}
-                          className="text-sm text-zinc-500 hover:text-cyan-400 transition-colors"
-                        >
-                          {language === 'ru' ? '↻ Выбрать другой стиль' : '↻ Choose different style'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
 
                   {/* === SECTION 2: Deploy Guide === */}
                   <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-6">
@@ -4503,336 +4457,6 @@ ${Object.entries(generatedTheme.cssVariables).map(([key, value]) => `  ${key}: $
                     )}
                   </div>
 
-                  {/* === SECTION 3: Marketing Strategy === */}
-                  <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <span>📣</span> {language === 'ru' ? 'Маркетинговая стратегия' : 'Marketing Strategy'}
-                    </h3>
-
-                    {!marketingStrategy ? (
-                      <div className="space-y-4">
-                        <p className="text-zinc-400 text-sm">
-                          {language === 'ru'
-                            ? 'Введите ваш месячный бюджет на маркетинг, и AI сгенерирует стратегию с конкретными каналами и тактиками'
-                            : 'Enter your monthly marketing budget, and AI will generate a strategy with specific channels and tactics'}
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
-                            <input
-                              type="number"
-                              value={marketingBudget}
-                              onChange={(e) => setMarketingBudget(e.target.value)}
-                              placeholder={language === 'ru' ? 'Бюджет в месяц' : 'Monthly budget'}
-                              className="w-full pl-8 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none"
-                              min="0"
-                              step="50"
-                            />
-                          </div>
-                          <button
-                            onClick={generateMarketingStrategy}
-                            disabled={!marketingBudget || loadingMarketing}
-                            className="px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all inline-flex items-center justify-center gap-2"
-                          >
-                            {loadingMarketing ? (
-                              <>
-                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                                {language === 'ru' ? 'Генерируем...' : 'Generating...'}
-                              </>
-                            ) : (
-                              <>
-                                <span>✨</span>
-                                {language === 'ru' ? 'Создать стратегию' : 'Generate Strategy'}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          {['100', '300', '500', '1000', '2000'].map((amount) => (
-                            <button
-                              key={amount}
-                              onClick={() => setMarketingBudget(amount)}
-                              className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-full transition-colors"
-                            >
-                              ${amount}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {/* Общий бюджет и результаты */}
-                        <div className="grid sm:grid-cols-2 gap-4">
-                          <div className="p-4 bg-zinc-800/50 rounded-lg">
-                            <div className="text-2xl font-bold text-purple-400">{marketingStrategy.totalBudget}</div>
-                            <div className="text-xs text-zinc-500">{language === 'ru' ? 'Общий бюджет' : 'Total Budget'}</div>
-                          </div>
-                          <div className="p-4 bg-zinc-800/50 rounded-lg">
-                            <div className="text-sm text-zinc-300">{marketingStrategy.expectedResults}</div>
-                            <div className="text-xs text-zinc-500">{language === 'ru' ? 'Ожидаемые результаты' : 'Expected Results'}</div>
-                          </div>
-                        </div>
-
-                        {/* Каналы */}
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-medium text-zinc-400">{language === 'ru' ? 'Рекомендуемые каналы:' : 'Recommended Channels:'}</h4>
-                          {marketingStrategy.channels.map((channel, i) => (
-                            <div key={i} className="p-4 bg-zinc-800/50 rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-white">{channel.name}</span>
-                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                    channel.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                                    channel.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                    'bg-zinc-700 text-zinc-400'
-                                  }`}>
-                                    {channel.priority}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm">
-                                  <span className="text-purple-400">{channel.budget}</span>
-                                  <span className="text-emerald-400">ROI: {channel.roi}</span>
-                                </div>
-                              </div>
-                              {channel.tactics && channel.tactics.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-2">
-                                  {channel.tactics.map((tactic, j) => (
-                                    <span key={j} className="text-xs px-2 py-1 bg-zinc-700/50 text-zinc-400 rounded">
-                                      {tactic}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Timeline */}
-                        <div className="p-4 bg-zinc-800/50 rounded-lg">
-                          <h4 className="text-sm font-medium text-zinc-400 mb-2">{language === 'ru' ? 'Временная шкала:' : 'Timeline:'}</h4>
-                          <p className="text-sm text-zinc-300">{marketingStrategy.timeline}</p>
-                        </div>
-
-                        {/* Key Metrics */}
-                        {marketingStrategy.keyMetrics && marketingStrategy.keyMetrics.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-medium text-zinc-400 mb-2">{language === 'ru' ? 'Ключевые метрики:' : 'Key Metrics:'}</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {marketingStrategy.keyMetrics.map((metric, i) => (
-                                <span key={i} className="px-3 py-1 bg-purple-500/10 text-purple-300 text-sm rounded-full">
-                                  {metric}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Recommendations */}
-                        {marketingStrategy.recommendations && marketingStrategy.recommendations.length > 0 && (
-                          <div className="p-4 bg-zinc-800/50 rounded-lg">
-                            <h4 className="text-sm font-medium text-zinc-400 mb-2">{language === 'ru' ? 'Рекомендации:' : 'Recommendations:'}</h4>
-                            <ul className="space-y-1">
-                              {marketingStrategy.recommendations.map((rec, i) => (
-                                <li key={i} className="text-sm text-zinc-300 flex items-start gap-2">
-                                  <span className="text-purple-400">→</span> {rec}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Пересоздать */}
-                        <button
-                          onClick={() => setMarketingStrategy(null)}
-                          className="text-sm text-zinc-500 hover:text-purple-400 transition-colors"
-                        >
-                          {language === 'ru' ? '↻ Изменить бюджет и пересоздать' : '↻ Change budget and regenerate'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* === SECTION 4: Roadmap === */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <span>🗺️</span> {t.trendDetail.project.roadmap}
-                    </h3>
-                    <div className="space-y-4">
-                      {[
-                        { key: 'mvp', label: 'MVP', color: 'indigo', goals: displayRoadmapMvpGoals, deliverables: displayRoadmapMvpDeliverables, success_metrics: displayRoadmapMvpSuccessMetrics },
-                        { key: 'alpha', label: 'Alpha', color: 'purple', goals: displayRoadmapAlphaGoals, deliverables: displayRoadmapAlphaDeliverables, success_metrics: displayRoadmapAlphaSuccessMetrics },
-                        { key: 'beta', label: 'Beta', color: 'amber', goals: displayRoadmapBetaGoals, deliverables: displayRoadmapBetaDeliverables, success_metrics: displayRoadmapBetaSuccessMetrics },
-                        { key: 'production', label: 'Production', color: 'emerald', goals: displayRoadmapProductionGoals, deliverables: displayRoadmapProductionDeliverables, success_metrics: displayRoadmapProductionSuccessMetrics },
-                      ].map((phase, i) => {
-                        const phaseData = projectData.roadmap?.[phase.key as keyof ProjectRoadmap];
-                        if (!phaseData) return null;
-                        return (
-                          <div key={i} className="relative pl-8 pb-4 border-l-2 border-indigo-500/30 last:border-l-transparent">
-                            <div className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-${phase.color}-500`} style={{backgroundColor: phase.color === 'indigo' ? '#6366f1' : phase.color === 'purple' ? '#a855f7' : phase.color === 'amber' ? '#f59e0b' : '#10b981'}} />
-                            <div className="flex items-center gap-3 mb-2">
-                              <h4 className="font-semibold text-white">{phase.label}</h4>
-                              {phaseData.duration && (
-                                <span className="text-xs px-2 py-1 bg-zinc-800 text-zinc-400 rounded">{phaseData.duration}</span>
-                              )}
-                            </div>
-                            <div className="grid md:grid-cols-3 gap-4">
-                              <div>
-                                <span className="text-xs text-zinc-500">{t.trendDetail.project.goals}:</span>
-                                <ul className="mt-1 space-y-1">
-                                  {phase.goals.map((g, j) => (
-                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
-                                      <span className="text-emerald-400">→</span> {g}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <span className="text-xs text-zinc-500">{t.trendDetail.project.deliverables}:</span>
-                                <ul className="mt-1 space-y-1">
-                                  {phase.deliverables.map((d, j) => (
-                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
-                                      <span className="text-indigo-400">✓</span> {d}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <span className="text-xs text-zinc-500">{t.trendDetail.project.successMetrics}:</span>
-                                <ul className="mt-1 space-y-1">
-                                  {phase.success_metrics.map((m, j) => (
-                                    <li key={j} className="text-sm text-zinc-300 flex items-start gap-2">
-                                      <span className="text-amber-400">📊</span> {m}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* === SECTION 5: MVP Specification === */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <span>⚙️</span> MVP Specification
-                    </h3>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="text-sm text-zinc-400 mb-2">{t.trendDetail.project.coreFeatures}</h4>
-                        <div className="space-y-2">
-                          {displayCoreFeatures.map((f, i) => (
-                            <div key={i} className="p-3 bg-zinc-800/50 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-white">{f.name}</span>
-                                <span className={`text-xs px-2 py-1 rounded ${
-                                  f.priority === 'must-have' || f.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                                  f.priority === 'should-have' || f.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                  'bg-zinc-700 text-zinc-400'
-                                }`}>{f.priority}</span>
-                              </div>
-                              <p className="text-sm text-zinc-400 mt-1">{f.description}</p>
-                              {f.user_story && (
-                                <p className="text-xs text-zinc-500 mt-2 italic">{f.user_story}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-sm text-zinc-400 mb-2">{t.trendDetail.project.techStack}</h4>
-                        <div className="space-y-2">
-                          {displayTechStack.map((item, i) => (
-                            <div key={i} className="p-3 bg-zinc-800/50 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-zinc-500">{item.category}:</span>
-                                <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded">{item.recommendation}</span>
-                              </div>
-                              {item.alternatives && item.alternatives.length > 0 && (
-                                <div className="mt-1 flex gap-1">
-                                  <span className="text-xs text-zinc-600">Alt:</span>
-                                  {item.alternatives.map((alt, j) => (
-                                    <span key={j} className="text-xs text-zinc-500">{alt}{j < item.alternatives!.length - 1 ? ',' : ''}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        {projectData.mvp_specification?.architecture && (
-                          <div className="mt-4 pt-4 border-t border-zinc-700">
-                            <div className="text-sm">
-                              <span className="text-zinc-400">{t.trendDetail.project.architecture}:</span>
-                              <span className="text-white ml-2">{projectData.mvp_specification.architecture}</span>
-                            </div>
-                            {projectData.mvp_specification.estimated_complexity && (
-                              <div className="text-sm mt-1">
-                                <span className="text-zinc-400">{t.trendDetail.project.complexity}:</span>
-                                <span className={`ml-2 ${
-                                  projectData.mvp_specification.estimated_complexity === 'high' ? 'text-red-400' :
-                                  projectData.mvp_specification.estimated_complexity === 'medium' ? 'text-amber-400' :
-                                  'text-emerald-400'
-                                }`}>{projectData.mvp_specification.estimated_complexity}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Enhancement Recommendations */}
-                  {displayEnhancements.length > 0 && (
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <span>💡</span> Enhancement Recommendations
-                      </h3>
-                      <div className="space-y-3">
-                        {displayEnhancements.map((rec, i) => (
-                          <div key={i} className="p-4 bg-zinc-800/50 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium text-white">{rec.area}</span>
-                              <span className={`text-xs px-2 py-1 rounded ${
-                                rec.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                                rec.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                'bg-zinc-700 text-zinc-400'
-                              }`}>{rec.priority}</span>
-                            </div>
-                            <p className="text-sm text-zinc-400">{rec.current_state}</p>
-                            <p className="text-sm text-emerald-400 mt-1">→ {rec.recommended_improvement}</p>
-                            <p className="text-xs text-zinc-500 mt-1">Impact: {rec.expected_impact}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* README Preview - скрытый, можно раскрыть */}
-                  {projectData.readme_content && (
-                    <details className="bg-zinc-900/50 border border-zinc-800 rounded-xl">
-                      <summary className="p-6 cursor-pointer hover:bg-zinc-800/50 transition-colors rounded-xl">
-                        <span className="text-lg font-semibold text-white inline-flex items-center gap-2">
-                          <span>📝</span> README.md
-                          <span className="text-xs text-zinc-500 font-normal ml-2">{language === 'ru' ? '(нажмите чтобы раскрыть)' : '(click to expand)'}</span>
-                        </span>
-                      </summary>
-                      <div className="px-6 pb-6">
-                        <div className="flex justify-end mb-2">
-                          <button
-                            onClick={() => navigator.clipboard.writeText(projectData.readme_content)}
-                            className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded text-sm transition-colors"
-                          >
-                            Copy
-                          </button>
-                        </div>
-                        <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto max-h-80 whitespace-pre-wrap">
-                          {projectData.readme_content}
-                        </pre>
-                      </div>
-                    </details>
-                  )}
-
                   {/* Action Buttons */}
                   <div className="flex gap-4 justify-center">
                     <button
@@ -4850,11 +4474,61 @@ ${Object.entries(generatedTheme.cssVariables).map(([key, value]) => `  ${key}: $
                       {language === 'ru' ? 'Открыть в проектах' : 'Open in Projects'}
                     </button>
                   </div>
+
+                  {/* === MARKETING PLAN SECTION === */}
+                  {!marketingPlan && !loadingMarketingPlan && (
+                    <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-8 text-center">
+                      <div className="flex items-center justify-center gap-3 mb-4">
+                        <span className="text-3xl">📋</span>
+                        <h3 className="text-2xl font-bold text-white">
+                          {language === 'ru' ? 'Маркетинговый план' : 'Marketing Plan'}
+                        </h3>
+                      </div>
+                      <p className="text-zinc-400 mb-6 max-w-lg mx-auto">
+                        {language === 'ru'
+                          ? 'AI создаст план продвижения на основе собранных данных: целевая аудитория, каналы, готовые рекламные тексты и чеклист запуска'
+                          : 'AI will create a promotion plan based on collected data: target audience, channels, ready ad copies and launch checklist'}
+                      </p>
+                      {marketingPlanError && (
+                        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                          {marketingPlanError}
+                        </div>
+                      )}
+                      <button
+                        onClick={fetchMarketingPlan}
+                        className="px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-500/25"
+                      >
+                        <span>📢</span>
+                        {language === 'ru' ? 'Создать маркетинговый план' : 'Generate Marketing Plan'}
+                      </button>
+                    </div>
+                  )}
+
+                  {loadingMarketingPlan && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8">
+                      <div className="flex items-center justify-center gap-3 mb-4">
+                        <div className="animate-spin w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full" />
+                        <h3 className="text-xl font-semibold text-white">
+                          {language === 'ru' ? 'Создаём маркетинговый план...' : 'Generating marketing plan...'}
+                        </h3>
+                      </div>
+                      <p className="text-zinc-400 text-center text-sm">
+                        {language === 'ru'
+                          ? 'AI анализирует данные из всех предыдущих этапов и создаёт конкретный план действий'
+                          : 'AI is analyzing data from all previous stages to create a concrete action plan'}
+                      </p>
+                    </div>
+                  )}
+
+                  {marketingPlan && (
+                    <MarketingPlan plan={marketingPlan} language={language} />
+                  )}
                 </>
               )}
             </div>
           )}
         </div>
+        </div>{/* End Dashboard: Sidebar + Content */}
 
       {/* Chat with context */}
       <TrendChat

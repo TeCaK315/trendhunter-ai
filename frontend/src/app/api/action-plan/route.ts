@@ -430,6 +430,82 @@ ${dataSnapshot}
       assessment = 'pivot';
     }
 
+    // === 9. SMOKE TEST DESIGN (deterministic) ===
+    const smokeTest = {
+      duration: '48 часов',
+      steps: [
+        {
+          step: 1,
+          action: 'Создать лендинг',
+          description: `Одностраничный сайт для "${query}" с формой waitlist и УТП`,
+          tools: 'Carrd / Tilda / TrendHunter генератор',
+          cost: '$0-20',
+        },
+        {
+          step: 2,
+          action: 'Написать опрос',
+          description: '5-7 вопросов для валидации боли и готовности платить',
+          tools: 'Google Forms / Typeform',
+          cost: '$0',
+        },
+        {
+          step: 3,
+          action: 'Запустить рекламу',
+          description: `Тестовая кампания: ${unitEconomics?.estimated_cac ? `бюджет ~$${Math.round(unitEconomics.estimated_cac * 5)}` : 'бюджет $50-100'} на 48ч`,
+          tools: 'Google Ads / Facebook Ads / Reddit Ads',
+          cost: unitEconomics?.estimated_cac ? `~$${Math.round(unitEconomics.estimated_cac * 5)}` : '$50-100',
+        },
+        {
+          step: 4,
+          action: 'Оценить результаты',
+          description: 'CR лендинга > 3%? Есть подписчики? Фидбек позитивный?',
+          tools: 'Google Analytics / Hotjar',
+          cost: '$0',
+        },
+      ],
+      success_criteria: [
+        { metric: 'CR лендинга', threshold: '> 3%', description: 'Конверсия посетителей в подписчики' },
+        { metric: 'Подписчики waitlist', threshold: '> 20', description: 'За 48 часов минимум 20 подписок' },
+        { metric: 'Ответы на опрос', threshold: '> 10', description: 'Минимум 10 заполненных анкет' },
+        { metric: 'CPC рекламы', threshold: unitEconomics?.estimated_cac ? `< $${Math.round(unitEconomics.estimated_cac * 0.3)}` : '< $2', description: 'Стоимость клика ниже порога' },
+      ],
+    };
+
+    // === 10. KILL-SWITCH METRICS ===
+    const churnThreshold = unitEconomics?.business_model === 'subscription' ? 8 : 15;
+    const cacThreshold = unitEconomics?.estimated_cac ? Math.round(unitEconomics.estimated_cac * 2) : 200;
+    const ltvCacThreshold = 1.5;
+
+    const killSwitch = {
+      description: 'Чёткие метрики для закрытия проекта — если любая из них нарушена 2 месяца подряд',
+      metrics: [
+        {
+          metric: 'Monthly Churn Rate',
+          threshold: `> ${churnThreshold}%`,
+          current_estimate: unitEconomics?.business_model === 'subscription' ? '~5% (SaaS норма)' : 'N/A',
+          action: 'Закрыть или пивотить продукт',
+        },
+        {
+          metric: 'CAC (Customer Acquisition Cost)',
+          threshold: `> $${cacThreshold}`,
+          current_estimate: unitEconomics?.estimated_cac ? `~$${unitEconomics.estimated_cac}` : 'Нет данных',
+          action: 'Остановить рекламу, пересмотреть каналы',
+        },
+        {
+          metric: 'LTV/CAC Ratio',
+          threshold: `< ${ltvCacThreshold}`,
+          current_estimate: unitEconomics?.ltv_cac_score ? `${unitEconomics.ltv_cac_score.toFixed(1)}` : 'Нет данных',
+          action: 'Повысить цену или снизить CAC',
+        },
+        {
+          metric: 'MRR Growth',
+          threshold: '< 0% (3 мес подряд)',
+          current_estimate: 'Пока нет данных',
+          action: 'Полный пивот или закрытие',
+        },
+      ],
+    };
+
     const result = {
       query,
       overall_readiness: {
@@ -448,6 +524,8 @@ ${dataSnapshot}
       target_customer: targetCustomer,
       competitive_landscape: competitiveLandscape,
       next_steps: nextSteps,
+      smoke_test: smokeTest,
+      kill_switch: killSwitch,
       generated_at: new Date().toISOString(),
     };
 

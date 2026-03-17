@@ -43,6 +43,22 @@ interface MarketOccupationData {
       confidence: number;
     };
   };
+  feature_gap_matrix?: {
+    features: Array<{ feature: string; competitors: Record<string, boolean> }>;
+    competitors: string[];
+  } | null;
+  pricing_benchmark?: {
+    entries: Array<{ competitor: string; plan: string; price: string; trial: boolean }>;
+  } | null;
+  traffic_sources?: {
+    entries: Array<{ competitor: string; seo: number; ads: number; social: number; direct: number }>;
+  } | null;
+  competitor_complaints?: {
+    entries: Array<{
+      competitor: string;
+      categories: Array<{ category: string; count: number; examples: string[] }>;
+    }>;
+  } | null;
   verdict: {
     value: number;
     formula?: string;
@@ -253,6 +269,168 @@ export default function MarketOccupationBlock({ data, loading, error }: Props) {
           </div>
         )}
       </div>
+
+      {/* Section: Feature Gap Matrix */}
+      {data.feature_gap_matrix && data.feature_gap_matrix.features.length > 0 && (
+        <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button onClick={() => toggle('feature_gap')} className="w-full flex items-center justify-between p-3 text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">Feature Gap Analysis</span>
+              <EvidenceBadge type="ai_synthesis" />
+            </div>
+            <span className="text-zinc-500">{expandedSection === 'feature_gap' ? '\u2212' : '+'}</span>
+          </button>
+          {expandedSection === 'feature_gap' && (
+            <div className="px-3 pb-3 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-700">
+                    <th className="text-left py-2 pr-3 text-zinc-400 font-medium">Feature</th>
+                    {data.feature_gap_matrix.competitors.map(c => (
+                      <th key={c} className="text-center py-2 px-2 text-zinc-400 font-medium whitespace-nowrap">{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.feature_gap_matrix.features.map((f, i) => {
+                    const allHave = data.feature_gap_matrix!.competitors.every(c => f.competitors[c]);
+                    const noneHave = data.feature_gap_matrix!.competitors.every(c => !f.competitors[c]);
+                    return (
+                      <tr key={i} className={`border-b border-zinc-800 ${noneHave ? 'bg-green-500/5' : ''}`}>
+                        <td className={`py-2 pr-3 ${noneHave ? 'text-green-300 font-medium' : 'text-zinc-300'}`}>
+                          {f.feature}
+                          {noneHave && <span className="ml-1 text-green-400 text-[10px]">GAP</span>}
+                        </td>
+                        {data.feature_gap_matrix!.competitors.map(c => (
+                          <td key={c} className="text-center py-2 px-2">
+                            {f.competitors[c]
+                              ? <span className="text-green-400">{'\u2713'}</span>
+                              : <span className="text-red-400">{'\u2717'}</span>
+                            }
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="text-[10px] text-zinc-500 mt-2">GAP = ни один конкурент не закрывает — возможность для вас</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section: Pricing Benchmark */}
+      {data.pricing_benchmark && data.pricing_benchmark.entries.length > 0 && (
+        <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button onClick={() => toggle('pricing')} className="w-full flex items-center justify-between p-3 text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">Ценообразование конкурентов</span>
+              <EvidenceBadge type="ai_synthesis" />
+            </div>
+            <span className="text-zinc-500">{expandedSection === 'pricing' ? '\u2212' : '+'}</span>
+          </button>
+          {expandedSection === 'pricing' && (
+            <div className="px-3 pb-3 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-700">
+                    <th className="text-left py-2 pr-3 text-zinc-400 font-medium">Конкурент</th>
+                    <th className="text-left py-2 px-2 text-zinc-400 font-medium">План</th>
+                    <th className="text-left py-2 px-2 text-zinc-400 font-medium">Цена</th>
+                    <th className="text-center py-2 px-2 text-zinc-400 font-medium">Триал</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.pricing_benchmark.entries.map((p, i) => (
+                    <tr key={i} className="border-b border-zinc-800">
+                      <td className="py-2 pr-3 text-zinc-300 font-medium">{p.competitor}</td>
+                      <td className="py-2 px-2 text-zinc-400">{p.plan}</td>
+                      <td className="py-2 px-2 text-green-300 font-medium">{p.price}</td>
+                      <td className="py-2 px-2 text-center">
+                        {p.trial ? <span className="text-green-400">{'\u2713'}</span> : <span className="text-zinc-600">{'\u2014'}</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section: Traffic Sources */}
+      {data.traffic_sources && data.traffic_sources.entries.length > 0 && (
+        <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button onClick={() => toggle('traffic')} className="w-full flex items-center justify-between p-3 text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">Источники трафика</span>
+              <EvidenceBadge type="ai_synthesis" />
+            </div>
+            <span className="text-zinc-500">{expandedSection === 'traffic' ? '\u2212' : '+'}</span>
+          </button>
+          {expandedSection === 'traffic' && (
+            <div className="px-3 pb-3 space-y-3">
+              {data.traffic_sources.entries.map((t, i) => (
+                <div key={i}>
+                  <div className="text-xs font-medium text-zinc-300 mb-1">{t.competitor}</div>
+                  <div className="h-4 flex rounded overflow-hidden">
+                    {t.seo > 0 && <div className="bg-blue-500" style={{ width: `${t.seo}%` }} title={`SEO: ${t.seo}%`} />}
+                    {t.ads > 0 && <div className="bg-orange-500" style={{ width: `${t.ads}%` }} title={`Ads: ${t.ads}%`} />}
+                    {t.social > 0 && <div className="bg-purple-500" style={{ width: `${t.social}%` }} title={`Social: ${t.social}%`} />}
+                    {t.direct > 0 && <div className="bg-green-500" style={{ width: `${t.direct}%` }} title={`Direct: ${t.direct}%`} />}
+                  </div>
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-3 text-[10px] text-zinc-400">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> SEO</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500 inline-block" /> Ads</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Social</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Direct</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section: Competitor Complaints */}
+      {data.competitor_complaints && data.competitor_complaints.entries.length > 0 && (
+        <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button onClick={() => toggle('complaints')} className="w-full flex items-center justify-between p-3 text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">Жалобы на конкурентов</span>
+              <EvidenceBadge type="real_data" />
+            </div>
+            <span className="text-zinc-500">{expandedSection === 'complaints' ? '\u2212' : '+'}</span>
+          </button>
+          {expandedSection === 'complaints' && (
+            <div className="px-3 pb-3 space-y-3">
+              {data.competitor_complaints.entries.map((cc, i) => (
+                <div key={i} className="bg-zinc-800/30 rounded-lg p-3">
+                  <div className="text-sm font-medium text-zinc-200 mb-2">{cc.competitor}</div>
+                  <div className="space-y-1.5">
+                    {cc.categories.filter(cat => cat.count > 0).map((cat, j) => (
+                      <div key={j}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-red-300 font-medium">{cat.category}</span>
+                          <span className="text-[10px] text-zinc-500">({cat.count})</span>
+                        </div>
+                        {cat.examples.length > 0 && (
+                          <div className="ml-3 mt-0.5">
+                            {cat.examples.map((ex, k) => (
+                              <p key={k} className="text-[11px] text-zinc-400 italic">&ldquo;{ex}&rdquo;</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Section: Differentiation */}
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">

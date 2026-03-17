@@ -56,6 +56,19 @@ interface DemandGrowthData {
     }>;
     new_entrants_count: number;
   };
+  search_intent?: {
+    commercial_percent: number;
+    informational_percent: number;
+    commercial_signals: number;
+    informational_signals: number;
+    total_signals: number;
+    intent_type: 'commercial' | 'mixed' | 'informational';
+  };
+  geo_breakdown?: Array<{
+    region: string;
+    label: string;
+    growth_rate: number;
+  }>;
   verdict: {
     value: number;
     formula?: string;
@@ -220,7 +233,112 @@ export default function DemandGrowthBlock({ data, loading, error }: Props) {
         )}
       </div>
 
-      {/* Section 3: New players */}
+      {/* Section 3: Search Intent */}
+      {data.search_intent && (
+        <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button
+            onClick={() => toggle('intent')}
+            className="w-full flex items-center justify-between p-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">Интент покупки</span>
+              <EvidenceBadge type="calculated" />
+              <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                data.search_intent.intent_type === 'commercial'
+                  ? 'bg-green-500/20 text-green-300'
+                  : data.search_intent.intent_type === 'mixed'
+                  ? 'bg-yellow-500/20 text-yellow-300'
+                  : 'bg-blue-500/20 text-blue-300'
+              }`}>
+                {data.search_intent.commercial_percent}% коммерческий
+              </span>
+            </div>
+            <span className="text-zinc-500">{expandedSection === 'intent' ? '\u2212' : '+'}</span>
+          </button>
+          {expandedSection === 'intent' && (
+            <div className="px-3 pb-3 space-y-3">
+              <div className="h-4 bg-zinc-700 rounded-full overflow-hidden flex">
+                <div
+                  className="bg-green-500 h-full transition-all"
+                  style={{ width: `${data.search_intent.commercial_percent}%` }}
+                  title={`Коммерческий: ${data.search_intent.commercial_percent}%`}
+                />
+                <div
+                  className="bg-blue-500 h-full transition-all"
+                  style={{ width: `${data.search_intent.informational_percent}%` }}
+                  title={`Информационный: ${data.search_intent.informational_percent}%`}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-zinc-400">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                  Коммерческий ({data.search_intent.commercial_signals})
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  Информационный ({data.search_intent.informational_signals})
+                </span>
+              </div>
+              <div className="text-sm text-zinc-300">
+                {data.search_intent.intent_type === 'commercial'
+                  ? 'Люди активно ищут решения для покупки — высокий потенциал монетизации'
+                  : data.search_intent.intent_type === 'mixed'
+                  ? 'Смешанный интент — есть и покупатели, и исследователи'
+                  : 'Преимущественно информационные запросы — потребуется работа над конверсией'}
+              </div>
+              <div className="text-xs text-zinc-500">
+                На основе {data.search_intent.total_signals} подсказок Google Autocomplete
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section 4: Geographic breakdown */}
+      {data.geo_breakdown && data.geo_breakdown.length > 0 && (
+        <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <button
+            onClick={() => toggle('geo')}
+            className="w-full flex items-center justify-between p-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">География спроса</span>
+              <EvidenceBadge type="real_data" />
+            </div>
+            <span className="text-zinc-500">{expandedSection === 'geo' ? '\u2212' : '+'}</span>
+          </button>
+          {expandedSection === 'geo' && (
+            <div className="px-3 pb-3 space-y-2">
+              {(() => {
+                const maxGrowth = Math.max(...data.geo_breakdown!.map(g => Math.abs(g.growth_rate)), 1);
+                return data.geo_breakdown!.map((geo, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-400 w-28 shrink-0">{geo.label}</span>
+                    <div className="flex-1 h-5 bg-zinc-700/50 rounded overflow-hidden relative">
+                      <div
+                        className={`h-full rounded transition-all ${
+                          geo.growth_rate >= 0 ? 'bg-green-500/70' : 'bg-red-500/70'
+                        }`}
+                        style={{ width: `${Math.min(100, (Math.abs(geo.growth_rate) / maxGrowth) * 100)}%` }}
+                      />
+                    </div>
+                    <span className={`text-sm font-medium w-16 text-right ${
+                      geo.growth_rate >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {geo.growth_rate >= 0 ? '+' : ''}{geo.growth_rate}%
+                    </span>
+                  </div>
+                ));
+              })()}
+              <div className="text-xs text-zinc-500 mt-1">
+                Рост запросов за 3 месяца по регионам (Google Trends)
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section 5: New players */}
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
         <button
           onClick={() => toggle('new_players')}

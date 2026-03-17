@@ -62,6 +62,30 @@ interface ActionPlanData {
     category: 'research' | 'build' | 'validate' | 'grow';
     done: boolean;
   }>;
+  smoke_test?: {
+    duration: string;
+    steps: Array<{
+      step: number;
+      action: string;
+      description: string;
+      tools: string;
+      cost: string;
+    }>;
+    success_criteria: Array<{
+      metric: string;
+      threshold: string;
+      description: string;
+    }>;
+  };
+  kill_switch?: {
+    description: string;
+    metrics: Array<{
+      metric: string;
+      threshold: string;
+      current_estimate: string;
+      action: string;
+    }>;
+  };
   insufficient_data?: boolean;
   message?: string;
   blocks_completed?: number;
@@ -453,6 +477,73 @@ export default function ActionPlanBlock({ data, loading, error }: Props) {
           })}
         </div>
       </Section>
+
+      {/* Smoke Test */}
+      {data.smoke_test && (
+        <Section
+          title="Smoke Test — проверка за 48ч"
+          icon="🔥"
+          expanded={expandedSection === 'smoke'}
+          onToggle={() => toggle('smoke')}
+        >
+          <div className="space-y-3">
+            {data.smoke_test.steps.map((s) => (
+              <div key={s.step} className="flex items-start gap-3 bg-zinc-800/30 rounded-lg p-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
+                  {s.step}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white">{s.action}</div>
+                  <div className="text-xs text-zinc-400 mt-0.5">{s.description}</div>
+                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-zinc-500">
+                    <span>Инструменты: {s.tools}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-300">{s.cost}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="mt-3 bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-3">
+              <div className="text-xs font-medium text-emerald-400 mb-2">Критерии успеха:</div>
+              <div className="grid grid-cols-2 gap-2">
+                {data.smoke_test.success_criteria.map((c, i) => (
+                  <div key={i} className="bg-zinc-800/40 rounded p-2">
+                    <div className="text-xs font-medium text-white">{c.metric}</div>
+                    <div className="text-sm font-bold text-emerald-300">{c.threshold}</div>
+                    <div className="text-[10px] text-zinc-500">{c.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* Kill-Switch Metrics */}
+      {data.kill_switch && (
+        <Section
+          title="Kill-Switch метрики"
+          icon="🛑"
+          expanded={expandedSection === 'killswitch'}
+          onToggle={() => toggle('killswitch')}
+        >
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-400 mb-3">{data.kill_switch.description}</p>
+            {data.kill_switch.metrics.map((m, i) => (
+              <div key={i} className="bg-zinc-800/30 rounded-lg p-3 border-l-2 border-red-500/40">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-white">{m.metric}</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-300 font-mono">{m.threshold}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500">Текущая оценка: <span className="text-zinc-300">{m.current_estimate}</span></span>
+                </div>
+                <div className="text-[10px] text-red-400/80 mt-1">{m.action}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* Metadata */}
       <div className="flex items-center justify-between text-xs text-zinc-600 pt-2">

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateCodeWithClaude, ProjectSpec } from '@/lib/code-generator';
+import { assembleProject } from '@/lib/blocks/block-assembler';
+import { sanitizeImports } from '@/lib/blocks/custom/gap-filler';
+import type { ProductSpecification } from '@/lib/mvp-templates/types';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -191,113 +194,122 @@ async function generateProjectSpecification(context: FullAnalysisContext): Promi
   }
 
   try {
-    // Формируем полный контекст от всех экспертов
+    // Build full context from all experts
     const fullContextPrompt = `
-# ПОЛНЫЙ КОНТЕКСТ АНАЛИЗА РЫНКА
+# FULL MARKET ANALYSIS CONTEXT
 
-## 1. ТРЕНД
-- Название: ${context.trend.title}
-- Категория: ${context.trend.category || 'Technology'}
-- Почему трендит: ${context.trend.why_trending || 'Растущий спрос'}
+## 1. TREND
+- Title: ${context.trend.title}
+- Category: ${context.trend.category || 'Technology'}
+- Why trending: ${context.trend.why_trending || 'Growing demand'}
 
-## 2. АНАЛИЗ БОЛЕЙ (от Pain Point Expert)
+## 2. PAIN ANALYSIS (from Pain Point Expert)
 ${context.analysis ? `
-- Главная боль: ${context.analysis.main_pain}
-- Уверенность: ${context.analysis.confidence || 'не оценена'}%
-- Ключевые боли: ${context.analysis.key_pain_points?.join(', ') || 'не определены'}
-- Целевая аудитория: ${context.analysis.target_audience?.primary || 'не определена'}
-- Сегменты: ${context.analysis.target_audience?.segments?.map(s => `${s.name} (${s.size}, готовность платить: ${s.willingness_to_pay || 'не оценена'})`).join('; ') || 'не определены'}
-- Возможности: ${context.analysis.opportunities?.join(', ') || 'не определены'}
-- Риски: ${context.analysis.risks?.join(', ') || 'не определены'}
-- Готовность рынка: ${context.analysis.market_readiness || 'не оценена'}/10
-` : 'Данные анализа отсутствуют'}
+- Main pain: ${context.analysis.main_pain}
+- Confidence: ${context.analysis.confidence || 'N/A'}%
+- Key pain points: ${context.analysis.key_pain_points?.join(', ') || 'N/A'}
+- Target audience: ${context.analysis.target_audience?.primary || 'N/A'}
+- Segments: ${context.analysis.target_audience?.segments?.map(s => `${s.name} (${s.size}, willingness to pay: ${s.willingness_to_pay || 'N/A'})`).join('; ') || 'N/A'}
+- Opportunities: ${context.analysis.opportunities?.join(', ') || 'N/A'}
+- Risks: ${context.analysis.risks?.join(', ') || 'N/A'}
+- Market readiness: ${context.analysis.market_readiness || 'N/A'}/10
+` : 'No analysis data available'}
 
-## 3. ИСТОЧНИКИ ДАННЫХ (от Sources Expert)
+## 3. DATA SOURCES (from Sources Expert)
 ${context.sources ? `
 - Reddit engagement: ${context.sources.reddit?.engagement || 0}
-- Активные сообщества: ${context.sources.reddit?.communities?.join(', ') || 'нет данных'}
-- Google Trends рост: ${context.sources.google_trends?.growth_rate || 0}%
-- Связанные запросы: ${context.sources.google_trends?.related_queries?.map(q => q.query).join(', ') || 'нет'}
-- YouTube контент: ${context.sources.youtube?.videos?.length || 0} видео
-- Ключевые инсайты: ${context.sources.synthesis?.key_insights?.join('; ') || 'нет'}
-- Пробелы в контенте: ${context.sources.synthesis?.content_gaps?.join('; ') || 'нет'}
-- Рекомендуемые углы: ${context.sources.synthesis?.recommended_angles?.join('; ') || 'нет'}
-` : 'Данные источников отсутствуют'}
+- Active communities: ${context.sources.reddit?.communities?.join(', ') || 'N/A'}
+- Google Trends growth: ${context.sources.google_trends?.growth_rate || 0}%
+- Related queries: ${context.sources.google_trends?.related_queries?.map(q => q.query).join(', ') || 'N/A'}
+- YouTube content: ${context.sources.youtube?.videos?.length || 0} videos
+- Key insights: ${context.sources.synthesis?.key_insights?.join('; ') || 'N/A'}
+- Content gaps: ${context.sources.synthesis?.content_gaps?.join('; ') || 'N/A'}
+- Recommended angles: ${context.sources.synthesis?.recommended_angles?.join('; ') || 'N/A'}
+` : 'No source data available'}
 
-## 4. КОНКУРЕНТЫ (от Competition Expert)
+## 4. COMPETITORS (from Competition Expert)
 ${context.competition ? `
-- Насыщенность рынка: ${context.competition.market_saturation}
+- Market saturation: ${context.competition.market_saturation}
 - Blue Ocean Score: ${context.competition.blue_ocean_score}/10
-- Конкуренты: ${context.competition.competitors?.map(c => `${c.name}${c.funding ? ` (${c.funding})` : ''}`).join(', ') || 'нет данных'}
-- Рыночные ниши: ${context.competition.opportunity_areas?.join(', ') || 'не определены'}
-- Позиционирование: ${context.competition.strategic_positioning || 'не определено'}
-- Дифференциация: ${context.competition.differentiation_opportunities?.join('; ') || 'не определена'}
-` : 'Конкурентный анализ отсутствует'}
+- Competitors: ${context.competition.competitors?.map(c => `${c.name}${c.funding ? ` (${c.funding})` : ''}`).join(', ') || 'N/A'}
+- Opportunity areas: ${context.competition.opportunity_areas?.join(', ') || 'N/A'}
+- Strategic positioning: ${context.competition.strategic_positioning || 'N/A'}
+- Differentiation: ${context.competition.differentiation_opportunities?.join('; ') || 'N/A'}
+` : 'No competitive analysis available'}
 
-## 5. ИНВЕСТИЦИИ (от Venture Expert)
+## 5. INVESTMENTS (from Venture Expert)
 ${context.venture ? `
-- Объём инвестиций в нише: ${context.venture.total_funding_last_year}
-- Средний раунд: ${context.venture.average_round_size || 'не определён'}
-- Тренд финансирования: ${context.venture.funding_trend || 'не определён'}
-- Горячесть рынка: ${context.venture.investment_hotness}/10
-- Инвестиционный тезис: ${context.venture.investment_thesis || 'нет'}
-- Рекомендуемый раунд: ${context.venture.recommended_round || 'не определён'}
-- Целевые инвесторы: ${context.venture.key_investors_to_target?.join(', ') || 'не определены'}
-- Рыночные сигналы: ${context.venture.market_signals?.join('; ') || 'нет'}
-` : 'Инвестиционный анализ отсутствует'}
+- Total funding in niche: ${context.venture.total_funding_last_year}
+- Average round: ${context.venture.average_round_size || 'N/A'}
+- Funding trend: ${context.venture.funding_trend || 'N/A'}
+- Investment hotness: ${context.venture.investment_hotness}/10
+- Investment thesis: ${context.venture.investment_thesis || 'N/A'}
+- Recommended round: ${context.venture.recommended_round || 'N/A'}
+- Target investors: ${context.venture.key_investors_to_target?.join(', ') || 'N/A'}
+- Market signals: ${context.venture.market_signals?.join('; ') || 'N/A'}
+` : 'No investment analysis available'}
 
-## 6. ПОТЕНЦИАЛЬНЫЕ КЛИЕНТЫ (от Leads Expert)
+## 6. POTENTIAL CLIENTS (from Leads Expert)
 ${context.leads ? `
-- Найдено компаний: ${context.leads.companies?.length || 0}
-- Топ клиенты: ${context.leads.companies?.slice(0, 5).map(c => `${c.name} (${c.industry}, relevance: ${c.relevance_score}/10)`).join('; ') || 'нет'}
-- LinkedIn запросы: ${context.leads.linkedin_queries?.join('; ') || 'нет'}
-- Каталоги: ${context.leads.directories?.map(d => d.name).join(', ') || 'нет'}
-- Рекомендуемая последовательность outreach: ${context.leads.outreach_sequence?.join(' → ') || 'нет'}
-` : 'Данные о лидах отсутствуют'}
+- Companies found: ${context.leads.companies?.length || 0}
+- Top clients: ${context.leads.companies?.slice(0, 5).map(c => `${c.name} (${c.industry}, relevance: ${c.relevance_score}/10)`).join('; ') || 'N/A'}
+- LinkedIn queries: ${context.leads.linkedin_queries?.join('; ') || 'N/A'}
+- Directories: ${context.leads.directories?.map(d => d.name).join(', ') || 'N/A'}
+- Outreach sequence: ${context.leads.outreach_sequence?.join(' → ') || 'N/A'}
+` : 'No leads data available'}
 
-## 7. PITCH DECK (от Presentation Expert)
+## 7. PITCH DECK (from Presentation Expert)
 ${context.pitch ? `
-- Название компании: ${context.pitch.company_name}
+- Company name: ${context.pitch.company_name}
 - Tagline: ${context.pitch.tagline}
-- Слайдов: ${context.pitch.slides?.length || 0}
-` : 'Pitch deck не создан'}
+- Slides: ${context.pitch.slides?.length || 0}
+` : 'No pitch deck created'}
 `;
 
-    const prompt = `Ты META-АГЕНТ - финальный эксперт в цепочке анализа. Твоя задача - скомпилировать ВСЕ данные от предыдущих 7 экспертов в полноценное техническое задание для создания MVP.
+    const prompt = `You are the META-AGENT — the final expert in the analysis chain. Your task is to compile ALL data from the previous 7 experts into a complete technical specification for building an MVP.
+
+ABSOLUTE RULE: ALL output text MUST be in ENGLISH. No Russian, no exceptions. Every single string value in the JSON must be in English.
 
 ${fullContextPrompt}
 
-На основе ВСЕХ данных выше, создай ПОЛНУЮ спецификацию проекта.
+Based on ALL the data above, create a COMPLETE project specification.
 
-ВАЖНО:
-1. Используй РЕАЛЬНЫЕ данные от экспертов, не выдумывай
-2. MVP должен решать ГЛАВНУЮ БОЛЬ из анализа
-3. Tech stack должен быть бюджетным ($0-100/мес)
-4. Roadmap должен быть КОНКРЕТНЫМ и привязанным к данным анализа:
-   - MVP: фокус на решении главной боли "${context.analysis?.main_pain || 'не определена'}"
-   - Alpha: улучшения на основе фидбека от "${context.analysis?.target_audience?.primary || 'целевой аудитории'}"
-   - Beta: дифференциация от конкурентов (${context.competition?.competitors?.slice(0, 2).map(c => c.name).join(', ') || 'основных игроков'})
-   - Production: выход на рынок с учётом инвестиционной привлекательности (hotness: ${context.venture?.investment_hotness || 'N/A'}/10)
-5. Рекомендации должны учитывать конкурентов и рынок
-6. Success metrics должны быть измеримыми и привязанными к целевой аудитории
+IMPORTANT:
+1. Use REAL data from the experts — do not invent facts
+2. MVP must solve the MAIN PAIN from the analysis
+3. Tech stack must be budget-friendly ($0-100/month)
+4. Roadmap must be SPECIFIC and tied to the analysis data:
+   - MVP: solve the main pain "${context.analysis?.main_pain || 'not defined'}"
+   - Alpha: iterate based on feedback from "${context.analysis?.target_audience?.primary || 'target audience'}"
+   - Beta: differentiate from competitors (${context.competition?.competitors?.slice(0, 2).map(c => c.name).join(', ') || 'main players'})
+   - Production: market launch (investment hotness: ${context.venture?.investment_hotness || 'N/A'}/10)
+5. Recommendations must account for competitors and market
+6. Success metrics must be measurable and tied to target audience
 
-Верни JSON:
+CRITICAL: ALL text values in the JSON MUST be in ENGLISH. The project will be deployed as a public English-language website.
+- project_name MUST be a short, catchy English brand name (e.g. "InvoiceFlow", "CodeLens", "QuizMaster"), NOT a translated Russian phrase
+- one_liner, problem_statement, solution_overview — all in English
+- ALL feature names, descriptions, user stories — in English
+
+CRITICAL REMINDER: Every single string value in the JSON below MUST be in English. No Russian text anywhere.
+
+Return JSON only:
 {
-  "project_name": "Название проекта",
-  "one_liner": "Одно предложение описание",
-  "problem_statement": "Детальное описание проблемы на основе анализа болей",
-  "solution_overview": "Описание решения с учётом позиционирования",
+  "project_name": "Short catchy English brand name (e.g. InvoiceFlow, CodeLens, QuizMaster)",
+  "one_liner": "Short English tagline, max 10 words (e.g. 'Generate professional invoices in seconds')",
+  "problem_statement": "Detailed problem description based on pain analysis — in English",
+  "solution_overview": "Solution description with positioning — in English",
 
-  "readme_content": "Полный README.md для GitHub (markdown)",
+  "readme_content": "Full README.md for GitHub in English (markdown)",
 
   "mvp_specification": {
     "core_features": [
       {
-        "name": "Feature 1",
-        "description": "Описание",
+        "name": "Feature name in English",
+        "description": "What it does — in English",
         "priority": "must-have",
         "user_story": "As a [user], I want [feature] so that [benefit]",
-        "acceptance_criteria": ["Критерий 1", "Критерий 2"]
+        "acceptance_criteria": ["Criterion 1 in English", "Criterion 2 in English"]
       }
     ],
     "tech_stack": [
@@ -305,45 +317,45 @@ ${fullContextPrompt}
         "category": "Frontend",
         "recommendation": "Next.js",
         "alternatives": ["React", "Vue"],
-        "reasoning": "Почему"
+        "reasoning": "Why this choice — in English"
       }
     ],
-    "architecture": "Описание архитектуры",
+    "architecture": "Architecture description in English",
     "estimated_complexity": "medium"
   },
 
   "roadmap": {
     "mvp": {
       "duration": "4-6 weeks",
-      "goals": ["Конкретная цель на основе ГЛАВНОЙ БОЛИ из анализа"],
-      "deliverables": ["Конкретный функционал решающий боль ${context.analysis?.main_pain || 'основную проблему'}"],
-      "success_metrics": ["Метрика валидации - например: ${context.analysis?.target_audience?.segments?.[0]?.name || 'целевых пользователей'} протестировали продукт"]
+      "goals": ["Specific goal addressing the main pain point — English"],
+      "deliverables": ["Concrete feature solving: ${context.analysis?.main_pain || 'core problem'} — English"],
+      "success_metrics": ["Validation metric: e.g. 100 ${context.analysis?.target_audience?.segments?.[0]?.name || 'target users'} tested the product"]
     },
     "alpha": {
       "duration": "2-4 weeks",
-      "goals": ["Цель на основе обратной связи от ${context.analysis?.target_audience?.primary || 'целевой аудитории'}"],
-      "deliverables": ["Улучшения основанные на фидбеке первых пользователей"],
-      "success_metrics": ["Метрика на основе болей: ${context.analysis?.key_pain_points?.[0] || 'уменьшение главной боли'}"]
+      "goals": ["Goal based on feedback from ${context.analysis?.target_audience?.primary || 'target audience'} — English"],
+      "deliverables": ["Improvements based on early user feedback — English"],
+      "success_metrics": ["Pain reduction metric: ${context.analysis?.key_pain_points?.[0] || 'reduce main pain point'} — English"]
     },
     "beta": {
       "duration": "4-8 weeks",
-      "goals": ["Масштабирование и ${context.competition?.differentiation_opportunities?.[0] || 'дифференциация от конкурентов'}"],
-      "deliverables": ["Функции для опережения конкурентов: ${context.competition?.competitors?.[0]?.name || 'основного конкурента'}"],
-      "success_metrics": ["Blue Ocean метрика: ${context.competition?.blue_ocean_score ? 'улучшить blue ocean score' : 'занять свободную нишу'}"]
+      "goals": ["Scale and differentiate from ${context.competition?.competitors?.[0]?.name || 'main competitor'} — English"],
+      "deliverables": ["Features to outperform competitors — English"],
+      "success_metrics": ["Growth metric — English"]
     },
     "production": {
-      "goals": ["Публичный запуск с фокусом на ${context.venture?.investment_thesis || 'growth'}"],
-      "deliverables": ["Полный продукт готовый для ${context.venture?.recommended_round || 'привлечения инвестиций'}"],
-      "success_metrics": ["${context.venture?.investment_hotness && context.venture.investment_hotness > 7 ? 'Подготовка к раунду инвестиций' : 'Organic growth метрики'}"]
+      "goals": ["Public launch focused on ${context.venture?.investment_thesis || 'growth'} — English"],
+      "deliverables": ["Full product ready for ${context.venture?.recommended_round || 'market entry'} — English"],
+      "success_metrics": ["Revenue or adoption target — English"]
     }
   },
 
   "enhancement_recommendations": [
     {
-      "area": "Область улучшения",
-      "current_state": "Текущее состояние в MVP",
-      "recommended_improvement": "Рекомендуемое улучшение",
-      "expected_impact": "Ожидаемый эффект",
+      "area": "Area of improvement — English",
+      "current_state": "Current MVP state — English",
+      "recommended_improvement": "Recommended improvement — English",
+      "expected_impact": "Expected impact — English",
       "priority": "high"
     }
   ],
@@ -353,7 +365,7 @@ ${fullContextPrompt}
     "target_revenue_mvp": "$0 (validation)",
     "target_users_production": "10,000 users",
     "target_revenue_production": "$50K MRR",
-    "key_kpis": ["KPI 1", "KPI 2"]
+    "key_kpis": ["KPI 1 — English", "KPI 2 — English"]
   }
 }`;
 
@@ -391,13 +403,16 @@ ${fullContextPrompt}
 }
 
 function getDefaultProjectOutput(context: FullAnalysisContext): ProjectOutput {
-  const projectName = context.pitch?.company_name || `${context.trend.title} MVP`;
+  // Generate English project name — strip all non-ASCII (removes Russian characters)
+  const trendTitle = context.trend.title || 'MyProject';
+  const englishOnly = trendTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+  const projectName = context.pitch?.company_name || (englishOnly.length > 2 ? englishOnly : 'SmartTool MVP');
 
   return {
     project_name: projectName,
-    one_liner: `Solving ${context.analysis?.main_pain || context.trend.title} for ${context.analysis?.target_audience?.primary || 'modern businesses'}`,
-    problem_statement: context.analysis?.main_pain || 'Problem not analyzed',
-    solution_overview: context.competition?.strategic_positioning || 'Solution not defined',
+    one_liner: `Smart automation tool for ${context.analysis?.target_audience?.primary || 'modern businesses'}`,
+    problem_statement: 'Manual processes are slow, error-prone, and expensive',
+    solution_overview: 'AI-powered automation that saves time and reduces errors',
 
     readme_content: `# ${projectName}
 
@@ -1430,6 +1445,19 @@ export async function POST(request: NextRequest) {
       projectOutput.project_name = project_name;
     }
 
+    // Sanitize project_name: must be short English brand name, not a Russian description
+    const pn = projectOutput.project_name || '';
+    const asciiOnly = pn.replace(/[^a-zA-Z0-9\s\-]/g, '').trim();
+    if (asciiOnly.length < 3 || pn.split(/\s+/).length > 5) {
+      // Name is non-ASCII or too long — generate a fallback
+      const trendWords = (context.trend.title || '').replace(/[^a-zA-Z0-9\s]/g, '').trim().split(/\s+/).filter(Boolean);
+      projectOutput.project_name = trendWords.length >= 2
+        ? trendWords.slice(0, 2).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')
+        : 'SmartTool MVP';
+    } else if (asciiOnly !== pn) {
+      projectOutput.project_name = asciiOnly;
+    }
+
     let github_url: string | undefined;
     let github_created = false;
     let vercel_url: string | undefined;
@@ -1513,38 +1541,118 @@ export async function POST(request: NextRequest) {
             derived_features: derivedFeatures,
           };
 
-          console.log(`[create-project] ALWAYS using Claude API with ${derivedFeatures.length} derived_features`);
+          console.log(`[create-project] Features: ${derivedFeatures.length} derived_features`);
           derivedFeatures.forEach((f: { feature_name: string; priority: string; pain_quote: string; solution: string }, i: number) => {
             console.log(`  ${i + 1}. ${f.feature_name} [${f.priority}]: "${f.pain_quote}" → ${f.solution}`);
           });
 
-          // Вызываем Claude API для генерации кода
-          console.log('[create-project] Calling generateCodeWithClaude directly...');
+          // Используем блочный ассемблер (быстро, дёшево) если есть productSpec
+          // Fallback на Claude pipeline если нет
           let codeGenError: string | null = null;
-          try {
-            const generatedFiles = await generateCodeWithClaude(claudeSpec as ProjectSpec);
-            projectFiles = generatedFiles;
-            // Всегда перезаписываем README из спецификации (placeholder из validator слишком минимальный)
-            if (projectOutput.readme_content) {
-              projectFiles['README.md'] = projectOutput.readme_content;
+          const fullProductSpec = context.productSpec as ProductSpecification | undefined;
+
+          if (fullProductSpec) {
+            // Block Assembler: ~30 сек, 0-1 Claude call
+            console.log('[create-project] Using Block Assembler (fast mode)...');
+            try {
+              const assemblyResult = await assembleProject({
+                product_spec: fullProductSpec,
+                project_name: projectOutput.project_name,
+              });
+              projectFiles = assemblyResult.files;
+              // Block assembler generates comprehensive README — don't overwrite with GPT stub
+              console.log(`[create-project] Block Assembler: ${assemblyResult.total_files} files in ${assemblyResult.assembly_time_ms}ms (${assemblyResult.claude_calls} Claude calls, blocks: ${assemblyResult.blocks_used.length})`);
+            } catch (blockErr) {
+              const errMsg = blockErr instanceof Error ? blockErr.message : String(blockErr);
+              console.error(`[create-project] Block Assembler FAILED: ${errMsg}, falling back to Claude...`);
+              // Fallback на Claude pipeline
+              try {
+                const generatedFiles = await generateCodeWithClaude(claudeSpec as ProjectSpec);
+                projectFiles = generatedFiles;
+                console.log(`[create-project] Claude fallback generated ${Object.keys(projectFiles).length} files`);
+              } catch (claudeErr) {
+                codeGenError = claudeErr instanceof Error ? claudeErr.message : String(claudeErr);
+                console.error(`[create-project] Claude fallback also FAILED: ${codeGenError}`);
+                projectFiles = {
+                  'README.md': `# ${projectOutput.project_name}\n\n${projectOutput.one_liner}\n\n## Problem\n${projectOutput.problem_statement}\n\n## Solution\n${projectOutput.solution_overview}\n\n---\n*Code generation failed: ${codeGenError}*\n*Re-run project creation to generate full code.*`,
+                  'package.json': JSON.stringify({
+                    name: generateRepoName(projectOutput.project_name),
+                    version: '0.1.0',
+                    private: true,
+                    scripts: { dev: 'next dev', build: 'next build', start: 'next start' },
+                    dependencies: { next: '^14.0.0', react: '^18.2.0', 'react-dom': '^18.2.0' },
+                    devDependencies: { typescript: '^5.0.0', '@types/react': '^18.2.0', '@types/node': '^20.0.0', tailwindcss: '^3.3.0' },
+                  }, null, 2),
+                };
+              }
             }
-            console.log(`[create-project] Claude generated ${Object.keys(projectFiles).length} files with REAL integrations`);
-          } catch (codeErr) {
-            const errMsg = codeErr instanceof Error ? codeErr.message : String(codeErr);
-            console.error(`[create-project] Code generation FAILED: ${errMsg}`);
-            codeGenError = errMsg;
-            // Fallback: минимальный набор файлов чтобы репо не было пустым
-            projectFiles = {
-              'README.md': `# ${projectOutput.project_name}\n\n${projectOutput.one_liner}\n\n## Problem\n${projectOutput.problem_statement}\n\n## Solution\n${projectOutput.solution_overview}\n\n---\n*Code generation failed: ${errMsg}*\n*Re-run project creation to generate full code.*`,
-              'package.json': JSON.stringify({
-                name: generateRepoName(projectOutput.project_name),
-                version: '0.1.0',
-                private: true,
-                scripts: { dev: 'next dev', build: 'next build', start: 'next start' },
-                dependencies: { next: '^14.0.0', react: '^18.2.0', 'react-dom': '^18.2.0' },
-                devDependencies: { typescript: '^5.0.0', '@types/react': '^18.2.0', '@types/node': '^20.0.0', tailwindcss: '^3.3.0' },
-              }, null, 2),
-            };
+          } else {
+            // Legacy: Claude pipeline (~50 min) — только если нет productSpec
+            console.log('[create-project] No productSpec, using Claude pipeline (legacy)...');
+            try {
+              const generatedFiles = await generateCodeWithClaude(claudeSpec as ProjectSpec);
+              projectFiles = generatedFiles;
+              if (projectOutput.readme_content) {
+                projectFiles['README.md'] = projectOutput.readme_content;
+              }
+              console.log(`[create-project] Claude generated ${Object.keys(projectFiles).length} files`);
+            } catch (codeErr) {
+              const errMsg = codeErr instanceof Error ? codeErr.message : String(codeErr);
+              console.error(`[create-project] Code generation FAILED: ${errMsg}`);
+              codeGenError = errMsg;
+              projectFiles = {
+                'README.md': `# ${projectOutput.project_name}\n\n${projectOutput.one_liner}\n\n## Problem\n${projectOutput.problem_statement}\n\n## Solution\n${projectOutput.solution_overview}\n\n---\n*Code generation failed: ${errMsg}*\n*Re-run project creation to generate full code.*`,
+                'package.json': JSON.stringify({
+                  name: generateRepoName(projectOutput.project_name),
+                  version: '0.1.0',
+                  private: true,
+                  scripts: { dev: 'next dev', build: 'next build', start: 'next start' },
+                  dependencies: { next: '^14.0.0', react: '^18.2.0', 'react-dom': '^18.2.0' },
+                  devDependencies: { typescript: '^5.0.0', '@types/react': '^18.2.0', '@types/node': '^20.0.0', tailwindcss: '^3.3.0' },
+                }, null, 2),
+              };
+            }
+          }
+
+          // Sanitize all generated files (fix translated keywords, wrong imports)
+          projectFiles = sanitizeImports(projectFiles);
+
+          // ─── FINAL SAFETY: remove ALL Cyrillic from code files (not UI strings) ───
+          // This is the last line of defense: scan every .ts/.tsx/.js/.jsx file
+          // and replace Cyrillic words that appear as code keywords (at statement positions)
+          for (const [filePath, content] of Object.entries(projectFiles)) {
+            if (!/\.(ts|tsx|js|jsx)$/.test(filePath)) continue;
+
+            // Check if any Cyrillic word appears at a statement position (start of line)
+            const cyrillicKeywordPattern = /^(\s*)(возврат|функция|конст|пусть|импорт|экспорт|ожидать|класс|бросить|попытка|поймать|наконец)(\s|\(|;)/gm;
+            if (cyrillicKeywordPattern.test(content)) {
+              let fixed = content;
+              fixed = fixed.replace(/^(\s*)возврат(\s*\()/gm, '$1return$2');
+              fixed = fixed.replace(/^(\s*)возврат(\s)/gm, '$1return$2');
+              fixed = fixed.replace(/^(\s*)возврат;/gm, '$1return;');
+              fixed = fixed.replace(/^(\s*)функция\s/gm, '$1function ');
+              fixed = fixed.replace(/^(\s*)конст\s/gm, '$1const ');
+              fixed = fixed.replace(/^(\s*)пусть\s/gm, '$1let ');
+              fixed = fixed.replace(/^(\s*)импорт\s/gm, '$1import ');
+              fixed = fixed.replace(/^(\s*)экспорт\s/gm, '$1export ');
+              fixed = fixed.replace(/^(\s*)ожидать\s/gm, '$1await ');
+              fixed = fixed.replace(/^(\s*)класс\s/gm, '$1class ');
+              fixed = fixed.replace(/^(\s*)бросить\s/gm, '$1throw ');
+              fixed = fixed.replace(/^(\s*)попытка\s*\{/gm, '$1try {');
+              fixed = fixed.replace(/^(\s*)\}\s*поймать\s*\(/gm, '$1} catch (');
+              fixed = fixed.replace(/^(\s*)наконец\s*\{/gm, '$1finally {');
+              console.log(`[create-project] ⚠️ FIXED Cyrillic keywords in ${filePath}`);
+              projectFiles[filePath] = fixed;
+            }
+          }
+
+          // Debug: log first 300 chars of page.tsx to verify it's correct
+          if (projectFiles['src/app/page.tsx']) {
+            const pagePreview = projectFiles['src/app/page.tsx'].substring(0, 300);
+            console.log(`[create-project] page.tsx preview:\n${pagePreview}`);
+            if (pagePreview.includes('возврат')) {
+              console.error('[create-project] ❌ CRITICAL: page.tsx still contains возврат after all sanitization!');
+            }
           }
 
           // Проверяем что Claude создал критические файлы

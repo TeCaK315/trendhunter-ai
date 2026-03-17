@@ -147,8 +147,11 @@ export function calculate(inputs: Inputs): Calculations {
   };
 }
 
+type CalcTab = 'unit-economics' | 'burn-rate';
+
 export default function FinancialCalculator({ trendId, defaults }: FinancialCalculatorProps) {
   const storageKey = trendId ? `th_calc_${trendId}` : null;
+  const [activeTab, setActiveTab] = useState<CalcTab>('unit-economics');
 
   const [inputs, setInputs] = useState<Inputs>(() => {
     // Restore from localStorage if available
@@ -171,6 +174,54 @@ export default function FinancialCalculator({ trendId, defaults }: FinancialCalc
   });
 
   const results = useMemo(() => calculate(inputs), [inputs]);
+
+  // Burn Rate specific inputs
+  const [burnInputs, setBurnInputs] = useState({
+    salaries: 0,
+    servers: 100,
+    apis: 50,
+    marketing: 500,
+    tools: 100,
+    other: 200,
+    savings: inputs.initialInvestment,
+    expectedRevenueMonth: 6, // month when revenue starts
+  });
+
+  const updateBurn = (field: string, value: number) => {
+    setBurnInputs(prev => ({ ...prev, [field]: value }));
+  };
+
+  const burnRate = useMemo(() => {
+    const monthly = burnInputs.salaries + burnInputs.servers + burnInputs.apis +
+      burnInputs.marketing + burnInputs.tools + burnInputs.other;
+    const runway = monthly > 0 ? Math.floor(burnInputs.savings / monthly) : 999;
+    const revenueStartMonth = burnInputs.expectedRevenueMonth;
+
+    // Monthly burn projection (12 months)
+    const burnProjection = Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1;
+      const monthlyRevenue = month >= revenueStartMonth
+        ? results.projections[Math.min(month - 1, results.projections.length - 1)]?.mrr || 0
+        : 0;
+      const netBurn = monthly - monthlyRevenue;
+      const cashLeft = burnInputs.savings - (monthly * month) + (
+        month >= revenueStartMonth
+          ? results.projections.slice(revenueStartMonth - 1, month).reduce((sum, p) => sum + (p?.mrr || 0), 0)
+          : 0
+      );
+      return { month, burn: monthly, revenue: monthlyRevenue, netBurn, cashLeft };
+    });
+
+    const deathMonth = burnProjection.findIndex(p => p.cashLeft < 0);
+
+    return {
+      monthlyBurn: monthly,
+      runway,
+      burnProjection,
+      deathMonth: deathMonth >= 0 ? deathMonth + 1 : null,
+      savingsEnoughUntilRevenue: runway >= revenueStartMonth,
+    };
+  }, [burnInputs, results.projections]);
 
   const update = (field: keyof Inputs, value: number) => {
     setInputs(prev => {
@@ -197,13 +248,170 @@ export default function FinancialCalculator({ trendId, defaults }: FinancialCalc
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <EvidenceBadge type="calculated" label="100% клиентские расчёты" />
-        {defaults?.monthlyPrice && (
-          <EvidenceBadge type="real_data" label="Defaults из Evidence" />
-        )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <EvidenceBadge type="calculated" label="100% клиентские расчёты" />
+          {defaults?.monthlyPrice && (
+            <EvidenceBadge type="real_data" label="Defaults из Evidence" />
+          )}
+        </div>
+        <div className="flex items-center gap-1 bg-zinc-800/50 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('unit-economics')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              activeTab === 'unit-economics'
+                ? 'bg-indigo-500/20 text-indigo-300'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            Unit Economics
+          </button>
+          <button
+            onClick={() => setActiveTab('burn-rate')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              activeTab === 'burn-rate'
+                ? 'bg-orange-500/20 text-orange-300'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            Burn Rate
+          </button>
+        </div>
       </div>
 
+      {activeTab === 'burn-rate' && (
+        <div className="space-y-4">
+          {/* Burn Rate Inputs */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 space-y-4">
+              <h3 className="text-sm font-semibold text-white">Ежемесячные расходы</h3>
+              <InputField label="Зарплаты ($)" value={burnInputs.salaries} onChange={v => updateBurn('salaries', v)} min={0} max={100000} step={500} />
+              <InputField label="Серверы ($)" value={burnInputs.servers} onChange={v => updateBurn('servers', v)} min={0} max={10000} step={50} />
+              <InputField label="API / сервисы ($)" value={burnInputs.apis} onChange={v => updateBurn('apis', v)} min={0} max={5000} step={25} />
+              <InputField label="Маркетинг ($)" value={burnInputs.marketing} onChange={v => updateBurn('marketing', v)} min={0} max={50000} step={100} />
+              <InputField label="Инструменты ($)" value={burnInputs.tools} onChange={v => updateBurn('tools', v)} min={0} max={5000} step={25} />
+              <InputField label="Прочее ($)" value={burnInputs.other} onChange={v => updateBurn('other', v)} min={0} max={10000} step={50} />
+              <div className="border-t border-zinc-700 pt-3">
+                <InputField label="Ваш бюджет ($)" value={burnInputs.savings} onChange={v => updateBurn('savings', v)} min={0} max={1000000} step={1000} />
+                <InputField label="Старт дохода (месяц)" value={burnInputs.expectedRevenueMonth} onChange={v => updateBurn('expectedRevenueMonth', v)} min={1} max={24} step={1} />
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 space-y-4">
+              {/* Key metrics */}
+              <div className="grid grid-cols-3 gap-3">
+                <KPICard
+                  label="Burn Rate/мес"
+                  value={`$${burnRate.monthlyBurn.toLocaleString()}`}
+                  health={burnRate.monthlyBurn < 3000 ? 'good' : burnRate.monthlyBurn < 8000 ? 'ok' : 'bad'}
+                  hint="Ежемесячные расходы"
+                />
+                <KPICard
+                  label="Runway"
+                  value={burnRate.runway > 24 ? '24+ мес' : `${burnRate.runway} мес`}
+                  health={burnRate.runway >= 12 ? 'good' : burnRate.runway >= 6 ? 'ok' : 'bad'}
+                  hint="До конца денег"
+                />
+                <KPICard
+                  label="Хватит до дохода?"
+                  value={burnRate.savingsEnoughUntilRevenue ? 'Да' : 'Нет'}
+                  health={burnRate.savingsEnoughUntilRevenue ? 'good' : 'bad'}
+                  hint={`Доход с ${burnInputs.expectedRevenueMonth} мес`}
+                />
+              </div>
+
+              {/* Cash remaining chart */}
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                <h4 className="text-sm font-medium text-white mb-3">Остаток средств (12 мес)</h4>
+                <div className="flex items-end gap-1 h-32">
+                  {burnRate.burnProjection.map((p) => {
+                    const maxVal = Math.max(...burnRate.burnProjection.map(x => Math.abs(x.cashLeft)), 1);
+                    const height = Math.abs(p.cashLeft) / maxVal * 100;
+                    const isNegative = p.cashLeft < 0;
+                    return (
+                      <div key={p.month} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="w-full relative" style={{ height: '100px' }}>
+                          <div
+                            className={`absolute bottom-0 w-full rounded-t transition-all ${
+                              isNegative ? 'bg-red-500/60' : 'bg-emerald-500/40'
+                            }`}
+                            style={{ height: `${Math.min(height, 100)}%` }}
+                            title={`Мес ${p.month}: $${p.cashLeft.toLocaleString()}`}
+                          />
+                        </div>
+                        <span className="text-[9px] text-zinc-500">{p.month}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-4 mt-2 text-[10px] text-zinc-500">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-500/40" /> Положительный</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-red-500/60" /> Отрицательный</span>
+                </div>
+              </div>
+
+              {/* Death month warning */}
+              {burnRate.deathMonth && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-start gap-2">
+                  <span className="text-lg">💀</span>
+                  <div>
+                    <p className="text-sm font-medium text-red-300">
+                      Деньги закончатся на месяце {burnRate.deathMonth}
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      Ваших ${burnInputs.savings.toLocaleString()} хватит на {burnRate.runway} мес при расходах ${burnRate.monthlyBurn.toLocaleString()}/мес
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!burnRate.deathMonth && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-start gap-2">
+                  <span className="text-lg">✅</span>
+                  <div>
+                    <p className="text-sm font-medium text-emerald-300">
+                      Бюджета хватает на 12+ месяцев
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      При текущих расходах ${burnRate.monthlyBurn.toLocaleString()}/мес и бюджете ${burnInputs.savings.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Expense breakdown */}
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                <h4 className="text-sm font-medium text-white mb-3">Структура расходов</h4>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Зарплаты', value: burnInputs.salaries, color: 'bg-blue-400' },
+                    { label: 'Маркетинг', value: burnInputs.marketing, color: 'bg-purple-400' },
+                    { label: 'Серверы', value: burnInputs.servers, color: 'bg-emerald-400' },
+                    { label: 'API', value: burnInputs.apis, color: 'bg-amber-400' },
+                    { label: 'Инструменты', value: burnInputs.tools, color: 'bg-pink-400' },
+                    { label: 'Прочее', value: burnInputs.other, color: 'bg-zinc-400' },
+                  ].filter(item => item.value > 0).map((item) => {
+                    const pct = burnRate.monthlyBurn > 0 ? (item.value / burnRate.monthlyBurn * 100) : 0;
+                    return (
+                      <div key={item.label} className="flex items-center gap-3">
+                        <span className="text-xs text-zinc-400 w-24">{item.label}</span>
+                        <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                          <div className={`h-full ${item.color} rounded-full`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs text-zinc-300 w-16 text-right">${item.value}</span>
+                        <span className="text-[10px] text-zinc-500 w-10 text-right">{Math.round(pct)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unit Economics Tab */}
+      {activeTab === 'unit-economics' && (<div className="space-y-6">
       {/* Input Panel + KPI Cards */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Inputs */}
@@ -349,6 +557,7 @@ export default function FinancialCalculator({ trendId, defaults }: FinancialCalc
 
       {/* Detailed table (collapsible) */}
       <ProjectionTable projections={results.projections} />
+    </div>)}
     </div>
   );
 }

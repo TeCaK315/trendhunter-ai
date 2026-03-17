@@ -598,7 +598,8 @@ function generateQueryVariants(originalQuery: string): string[] {
 
 export async function fetchGoogleTrends(
   query: string,
-  dateRange: string = 'today 12-m'
+  dateRange: string = 'today 12-m',
+  geo?: string
 ): Promise<{ data: GoogleTrendsResult | null; serpapi_calls_used: number; error?: string }> {
   if (!SERPAPI_KEY) {
     return { data: null, serpapi_calls_used: 0, error: 'SERPAPI_KEY not configured' };
@@ -610,12 +611,14 @@ export async function fetchGoogleTrends(
   for (const currentQuery of variants) {
     callsUsed++;
     try {
-      const params = new URLSearchParams({
+      const trendsParams: Record<string, string> = {
         engine: 'google_trends',
         q: currentQuery,
         date: dateRange,
         api_key: SERPAPI_KEY,
-      });
+      };
+      if (geo) trendsParams.geo = geo;
+      const params = new URLSearchParams(trendsParams);
 
       const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
       if (!response.ok) continue;

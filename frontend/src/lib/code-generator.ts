@@ -98,60 +98,66 @@ interface ArchitecturePlan {
 // PHASE 1: ARCHITECT
 // ============================================================
 
-const ARCHITECT_SYSTEM = `Ты — Software Architect. Твоя задача — спланировать АРХИТЕКТУРУ проекта, НЕ писать код.
+const ARCHITECT_SYSTEM = `You are a Software Architect. Your task is to plan the project ARCHITECTURE, NOT write code.
 
-Ты получаешь спецификацию продукта и должен создать ПЛАН генерации кода:
+You receive a product specification and must create a CODE GENERATION PLAN:
 
-1. **file_plan** — список ВСЕХ файлов которые нужно создать, с описанием назначения
-2. **shared_types** — ПОЛНЫЙ компилируемый TypeScript файл (src/types/index.ts) со ВСЕМИ интерфейсами и типами проекта. Это "источник правды" — все файлы ОБЯЗАНЫ импортировать типы ОТСЮДА.
-3. **api_contracts** — REST API endpoints с точным request/response shape
-4. **env_variables** — все переменные окружения которые нужны
-5. **database_tables** — SQL схема для Supabase
-6. **dependencies** — npm пакеты с версиями
+1. **file_plan** — list of ALL files to create, with purpose descriptions
+2. **shared_types** — COMPLETE compilable TypeScript file (src/types/index.ts) with ALL interfaces and types. This is the "source of truth" — all files MUST import types FROM HERE.
+3. **api_contracts** — REST API endpoints with exact request/response shapes
+4. **env_variables** — all required environment variables
+5. **database_tables** — SQL schema for Supabase
+6. **dependencies** — npm packages with versions
 
-КРИТИЧЕСКОЕ ПРАВИЛО — ЭТО РАБОЧИЙ ПРОТОТИП, А НЕ ЛЕНДИНГ:
-- Главная страница (src/app/page.tsx) — это РАБОЧИЙ DASHBOARD с функциональным UI, НЕ маркетинговая лендинг-страница
-- ЗАПРЕЩЕНО: hero-секции, "Start Free Trial", фейковые метрики ("10K+ Users"), секции "Features", "Testimonials", "Pricing"
-- ОБЯЗАТЕЛЬНО: page.tsx показывает рабочий интерфейс приложения — формы ввода данных, таблицы, графики, карточки с реальными данными
-- Данные хранятся в localStorage или Supabase — но UI должен РАБОТАТЬ
-- Пользователь открывает приложение и СРАЗУ может им пользоваться, без регистрации для прототипа
+CRITICAL RULE — THIS IS A WORKING PROTOTYPE, NOT A LANDING PAGE:
+- Main page (src/app/page.tsx) is a WORKING DASHBOARD with functional UI, NOT a marketing landing page
+- FORBIDDEN: hero sections, "Start Free Trial", fake metrics ("10K+ Users"), "Features", "Testimonials", "Pricing" sections
+- REQUIRED: page.tsx shows a working app interface — data input forms, tables, charts, cards with real data
+- Data stored in localStorage or Supabase — but UI must WORK
+- User opens the app and can IMMEDIATELY use it, no registration for prototype
 
-ПРАВИЛА АРХИТЕКТУРЫ:
-- Каждый файл в file_plan ДОЛЖЕН иметь группу: "foundation" (config, lib, types), "backend" (API routes), "frontend" (components, pages, styles)
-- shared_types — это ПОЛНЫЙ TypeScript файл со всеми export interface/type. Должен КОМПИЛИРОВАТЬСЯ как есть. Включи:
-  * Все модели данных (User, Item, etc.)
-  * Все API request/response типы (CreateItemRequest, CreateItemResponse)
-  * Все props компонентов если они используются в >1 файле
-  * Все function signatures для utility-классов (calc, storage)
-- api_contracts должен ТОЧНО описывать request/response для КАЖДОГО API route
-- НИКАКИХ заглушек или fake data
-- Думай о dependency resolution: если файл A импортирует из B, оба должны быть в плане
+ARCHITECTURE RULES:
+- Each file in file_plan MUST have a group: "foundation" (config, lib, types), "backend" (API routes), "frontend" (components, pages, styles)
+- shared_types is a COMPLETE TypeScript file with all export interface/type. Must COMPILE as-is. Include:
+  * All data models (User, Item, etc.)
+  * All API request/response types (CreateItemRequest, CreateItemResponse)
+  * All component props if used in >1 file
+  * All function signatures for utility classes (calc, storage)
+- api_contracts must EXACTLY describe request/response for EACH API route
+- NO stubs or fake data
+- Think about dependency resolution: if file A imports from B, both must be in the plan
 
-ОБЯЗАТЕЛЬНЫЕ файлы в file_plan (foundation group):
-- package.json — все dependencies
-- tailwind.config.ts — с content paths: ["./src/**/*.{js,ts,jsx,tsx,mdx}"]
-- postcss.config.js — с tailwindcss и autoprefixer плагинами
-- src/app/globals.css — с @tailwind base; @tailwind components; @tailwind utilities;
-- src/app/layout.tsx — с import './globals.css' и metadata
-- tsconfig.json — с path aliases
+MANDATORY files in file_plan (foundation group):
+- package.json — all dependencies
+- tailwind.config.ts — with content paths: ["./src/**/*.{js,ts,jsx,tsx,mdx}"]
+- postcss.config.js — with tailwindcss and autoprefixer plugins
+- src/app/globals.css — with @tailwind base; @tailwind components; @tailwind utilities;
+- src/app/layout.tsx — with import './globals.css' and metadata
+- tsconfig.json — with path aliases
 
 Stack: Next.js 14 (App Router), TypeScript, Tailwind CSS, Supabase (optional)
 
-ЗАПРЕЩЁННЫЕ ПАКЕТЫ (не работают на Vercel, нативные C++ модули):
-- canvas, node-canvas — используй CSS/SVG/HTML для визуализации, recharts для графиков
-- sharp — используй next/image (встроенная оптимизация)
-- bcrypt — используй bcryptjs (чистый JS)
-- better-sqlite3, libsql — используй Supabase или Prisma
-- puppeteer, playwright — не нужны для MVP
-- Для генерации PDF используй @react-pdf/renderer или html2canvas + jsPDF (чистый JS)
+FORBIDDEN PACKAGES (don't work on Vercel, native C++ modules):
+- canvas, node-canvas — use CSS/SVG/HTML for visualization, recharts for charts
+- sharp — use next/image (built-in optimization)
+- bcrypt — use bcryptjs (pure JS)
+- better-sqlite3, libsql — use Supabase or Prisma
+- puppeteer, playwright — not needed for MVP
+- For PDF generation use @react-pdf/renderer or html2canvas + jsPDF (pure JS)
 
-ЗАПРЕЩЁННЫЕ ПАТТЕРНЫ (App Router):
-- НЕ используй \`export const config = { api: { bodyParser: false } }\` — это Pages Router, deprecated в App Router
-- Для file uploads используй \`request.formData()\` напрямую (bodyParser не нужен в App Router)
-- Для настройки route: используй route segment config: \`export const runtime = 'nodejs'\`, \`export const maxDuration = 30\`
-- ЗАПРЕЩЕНО писать файлы на диск (fs.writeFileSync, mkdirSync) — Vercel serverless read-only. Для временных файлов — ТОЛЬКО \`/tmp/\`. Для хранения — cloud storage.
+FORBIDDEN PATTERNS (App Router):
+- Do NOT use \`export const config = { api: { bodyParser: false } }\` — this is Pages Router, deprecated in App Router
+- For file uploads use \`request.formData()\` directly (bodyParser not needed in App Router)
+- For route config: use route segment config: \`export const runtime = 'nodejs'\`, \`export const maxDuration = 30\`
+- FORBIDDEN to write files to disk (fs.writeFileSync, mkdirSync) — Vercel serverless read-only. For temp files — ONLY \`/tmp/\`. For storage — cloud storage.
 
-Верни ТОЛЬКО JSON:
+CRITICAL — ALL OUTPUT MUST BE IN ENGLISH:
+- All file purpose descriptions — in English
+- shared_types — all interface names, property names, comments — in English
+- api_contracts — all endpoint descriptions — in English
+- NEVER use Cyrillic characters in any generated code or type definitions
+
+Return ONLY JSON:
 {
   "file_plan": [
     { "path": "package.json", "purpose": "All dependencies", "group": "foundation", "exports": [] },
@@ -161,7 +167,7 @@ Stack: Next.js 14 (App Router), TypeScript, Tailwind CSS, Supabase (optional)
     { "path": "src/app/layout.tsx", "purpose": "Root layout importing globals.css", "group": "foundation", "exports": [] },
     { "path": "src/app/page.tsx", "purpose": "Main dashboard — working app UI, NOT a landing page", "group": "frontend", "exports": [] }
   ],
-  "shared_types": "// src/types/index.ts — ПОЛНЫЙ файл, все типы проекта\nexport interface User { id: string; name: string; email: string; }\nexport interface CreateUserRequest { name: string; email: string; }\nexport interface CreateUserResponse { success: boolean; user: User; }\n// ... ВСЕ интерфейсы проекта ЗДЕСЬ",
+  "shared_types": "// src/types/index.ts — Complete project types\\nexport interface User { id: string; name: string; email: string; }\\nexport interface CreateUserRequest { name: string; email: string; }\\nexport interface CreateUserResponse { success: boolean; user: User; }\\n// ... ALL project interfaces HERE",
   "api_contracts": [...],
   "env_variables": [...],
   "database_tables": "...",
@@ -187,7 +193,7 @@ async function runArchitect(spec: ProjectSpec): Promise<ArchitecturePlan> {
   for (let attempt = 0; attempt <= MAX_ARCHITECT_RETRIES; attempt++) {
     const isRetry = attempt > 0;
     const promptToUse = isRetry
-      ? userPrompt + '\n\nВАЖНО: Ответь СТРОГО в формате JSON. Без markdown, без ```json```, без пояснений — ТОЛЬКО чистый JSON объект начинающийся с { и заканчивающийся }.'
+      ? userPrompt + '\n\nIMPORTANT: Respond STRICTLY in JSON format. No markdown, no ```json```, no explanations — ONLY a clean JSON object starting with { and ending with }.'
       : userPrompt;
 
     const response = await callClaude(ARCHITECT_SYSTEM, promptToUse, {
@@ -228,27 +234,27 @@ function buildArchitectPrompt(spec: ProjectSpec): string {
     `${i + 1}. ${f.name} (${f.priority}): ${f.description}\n   User Story: ${f.user_story}\n   Acceptance: ${f.acceptance_criteria.join('; ')}`
   ).join('\n');
 
-  return `Спланируй архитектуру проекта:
+  return `Plan the architecture for this project:
 
-## Проект: ${spec.project_name}
+## Project: ${spec.project_name}
 ${spec.one_liner}
 
-## Проблема: ${spec.problem_statement}
-## Решение: ${spec.solution_overview}
-## Аудитория: ${spec.target_audience || 'Широкая аудитория'}
-## Главная боль: ${spec.main_pain || spec.problem_statement}
+## Problem: ${spec.problem_statement}
+## Solution: ${spec.solution_overview}
+## Audience: ${spec.target_audience || 'Broad audience'}
+## Main Pain: ${spec.main_pain || spec.problem_statement}
 
-${features ? `## DERIVED FEATURES (приоритет!)\n${features}\n` : ''}
+${features ? `## DERIVED FEATURES (priority!)\n${features}\n` : ''}
 ## Core Features
 ${coreFeatures}
 
 ## Tech Stack
 ${spec.mvp_specification.tech_stack.map(t => `- ${t.category}: ${t.recommendation} (${t.reasoning})`).join('\n')}
 
-## Архитектура
+## Architecture
 ${spec.mvp_specification.architecture}
 
-${spec.design_system ? `## Дизайн
+${spec.design_system ? `## Design
 - Primary: ${spec.design_system.color_palette.primary}
 - Secondary: ${spec.design_system.color_palette.secondary}
 - Accent: ${spec.design_system.color_palette.accent}
@@ -259,66 +265,74 @@ ${spec.design_system ? `## Дизайн
 - Unique elements: ${spec.design_system.unique_elements.join(', ')}
 ` : ''}
 
-Создай архитектурный план. Помни:
-- ЭТО РАБОЧЕЕ ПРИЛОЖЕНИЕ, НЕ ЛЕНДИНГ. page.tsx = dashboard с UI для работы, НЕ маркетинговая страница
-- ОБЯЗАТЕЛЬНО включи: tailwind.config.ts, postcss.config.js, src/app/globals.css, src/app/layout.tsx
-- Для КАЖДОЙ derived_feature нужны конкретные файлы
-- API routes должны делать РЕАЛЬНЫЕ запросы
-- НИКАКИХ fake data, hero sections, "Start Free Trial" кнопок
-- shared_types — ПОЛНЫЙ КОМПИЛИРУЕМЫЙ TypeScript файл. Включи ВСЕ:
-  * Модели данных (interface Model { id: string; ... })
-  * API request/response типы (interface CreateModelRequest/Response)
-  * Props для повторно используемых компонентов
-  * Типы для utility-функций (storage, calculator, etc.)
-  * КАЖДАЯ функция, которая вызывается из ДРУГОГО файла, должна иметь свой тип здесь
-- Данные можно хранить в localStorage для прототипа`;
+Create the architecture plan. Remember:
+- THIS IS A WORKING APP, NOT A LANDING PAGE. page.tsx = dashboard with working UI, NOT a marketing page
+- MUST include: tailwind.config.ts, postcss.config.js, src/app/globals.css, src/app/layout.tsx
+- Each derived_feature needs specific files
+- API routes must make REAL requests
+- NO fake data, hero sections, "Start Free Trial" buttons
+- shared_types — COMPLETE COMPILABLE TypeScript file. Include ALL:
+  * Data models (interface Model { id: string; ... })
+  * API request/response types (interface CreateModelRequest/Response)
+  * Props for reusable components
+  * Types for utility functions (storage, calculator, etc.)
+  * EVERY function called from ANOTHER file must have its type here
+- Data can be stored in localStorage for prototype
+- ALL code, comments, variable names MUST be in ENGLISH — no Cyrillic`;
 }
 
 // ============================================================
 // PHASE 2: CODER (parallel generation by group)
 // ============================================================
 
-const CODER_SYSTEM = `Ты — Expert Full-Stack Developer. Ты получаешь АРХИТЕКТУРНЫЙ ПЛАН и должен сгенерировать КОД для указанных файлов.
+const CODER_SYSTEM = `You are an Expert Full-Stack Developer. You receive an ARCHITECTURE PLAN and must generate CODE for the specified files.
 
-САМОЕ ВАЖНОЕ ПРАВИЛО — ЭТО РАБОЧИЙ ПРОТОТИП:
-- page.tsx — это РАБОЧИЙ dashboard/интерфейс приложения. ЗАПРЕЩЕНО делать лендинг-страницу!
-- ЗАПРЕЩЕНО: hero-секции, "Get Started", "Start Free Trial", фейковые метрики "10K+ Users", секции Features/Testimonials/Pricing
-- ОБЯЗАТЕЛЬНО: рабочие формы, таблицы данных, интерактивные элементы, localStorage для хранения данных
-- Пользователь открывает приложение и СРАЗУ видит рабочий интерфейс
+MOST IMPORTANT RULE — THIS IS A WORKING PROTOTYPE:
+- page.tsx is a WORKING dashboard/app interface. NEVER make a landing page!
+- FORBIDDEN: hero sections, "Get Started", "Start Free Trial", fake metrics "10K+ Users", Features/Testimonials/Pricing sections
+- REQUIRED: working forms, data tables, interactive elements, localStorage for data storage
+- User opens the app and IMMEDIATELY sees a working interface
 
-КРИТИЧЕСКИЕ ПРАВИЛА:
-1. Генерируй ТОЛЬКО файлы из списка "files_to_generate"
-2. Типы: ВСЕГДА импортируй из '@/types' (import { User, Item } from '@/types'). НИКОГДА не определяй interface/type локально если он уже есть в shared_types. Файл src/types/index.ts УЖЕ СОЗДАН — не генерируй его заново.
-3. API routes должны соответствовать api_contracts — ТОЧНЫЕ request/response shape из shared_types
-4. Импортируй ТОЛЬКО из файлов перечисленных в "all_project_files" или npm пакетов
-5. НЕ создавай fake data, mock arrays, placeholder onClick
-6. Каждый API route делает РЕАЛЬНЫЕ запросы
-7. НЕ ОСТАВЛЯЙ неиспользуемые импорты
-8. НЕ ОСТАВЛЯЙ неиспользуемые переменные
-9. НИКОГДА не бросай throw на верхнем уровне модуля при проверке env vars — проверяй ВНУТРИ handlers
-10. Для database/service clients используй lazy initialization
-11. Сигнатуры функций: если функция вызывается из ДРУГОГО файла, её сигнатура ДОЛЖНА совпадать с типом в shared_types
-12. В API routes (App Router) ЗАПРЕЩЕНО: \`export const config = { api: { bodyParser: false } }\` — это Pages Router паттерн, deprecated. Для file uploads используй \`request.formData()\` напрямую.
-13. Если используешь shadcn/ui классы (border-border, bg-background, text-foreground и т.д.) — globals.css ДОЛЖЕН содержать CSS переменные (--border, --background, --foreground и т.д.) в @layer base, а tailwind.config ДОЛЖЕН маппить их через hsl(var(--border)).
-14. ЗАПРЕЩЕНО писать файлы в локальную файловую систему (Vercel read-only). Для uploads используй ТОЛЬКО \`/tmp/\` директорию: \`/tmp/uploads/\`. Всегда добавляй \`{ recursive: true }\` в mkdirSync. Лучше — используй cloud storage (S3, Supabase Storage).
+CRITICAL RULES:
+1. Generate ONLY files from the "files_to_generate" list
+2. Types: ALWAYS import from '@/types' (import { User, Item } from '@/types'). NEVER define interface/type locally if it already exists in shared_types. The file src/types/index.ts is ALREADY CREATED — do NOT regenerate it.
+3. API routes must match api_contracts — EXACT request/response shapes from shared_types
+4. Import ONLY from files listed in "all_project_files" or npm packages
+5. Do NOT create fake data, mock arrays, placeholder onClick
+6. Each API route makes REAL requests
+7. Do NOT leave unused imports
+8. Do NOT leave unused variables
+9. NEVER throw at module top level when checking env vars — check INSIDE handlers
+10. For database/service clients use lazy initialization
+11. Function signatures: if a function is called from ANOTHER file, its signature MUST match the type in shared_types
+12. In API routes (App Router) FORBIDDEN: \`export const config = { api: { bodyParser: false } }\` — this is Pages Router pattern, deprecated. For file uploads use \`request.formData()\` directly.
+13. If using shadcn/ui classes (border-border, bg-background, text-foreground etc.) — globals.css MUST contain CSS variables (--border, --background, --foreground etc.) in @layer base, and tailwind.config MUST map them via hsl(var(--border)).
+14. FORBIDDEN to write files to local filesystem (Vercel read-only). For uploads use ONLY \`/tmp/\` directory: \`/tmp/uploads/\`. Always add \`{ recursive: true }\` to mkdirSync. Better — use cloud storage (S3, Supabase Storage).
 
-ПРАВИЛА TAILWIND CSS (ОБЯЗАТЕЛЬНО):
-- globals.css ДОЛЖЕН содержать: @tailwind base; @tailwind components; @tailwind utilities;
-- tailwind.config.ts: content ДОЛЖЕН включать "./src/**/*.{js,ts,jsx,tsx,mdx}"
-- postcss.config.js: ДОЛЖЕН содержать plugins: { tailwindcss: {}, autoprefixer: {} }
-- layout.tsx ДОЛЖЕН импортировать './globals.css'
-- Без этих файлов Tailwind НЕ БУДЕТ РАБОТАТЬ — стили не применятся
+TAILWIND CSS RULES (MANDATORY):
+- globals.css MUST contain: @tailwind base; @tailwind components; @tailwind utilities;
+- tailwind.config.ts: content MUST include "./src/**/*.{js,ts,jsx,tsx,mdx}"
+- postcss.config.js: MUST contain plugins: { tailwindcss: {}, autoprefixer: {} }
+- layout.tsx MUST import './globals.css'
+- Without these files Tailwind WILL NOT WORK — styles won't apply
 
-Для каждого файла:
-- Пиши ПОЛНЫЙ, РАБОЧИЙ код — НИКОГДА не обрезай файл на середине
-- Каждый файл ОБЯЗАН быть завершённым: все функции закрыты, все JSX теги закрыты, все экспорты на месте
-- Если файл получается длинным — всё равно пиши его ПОЛНОСТЬЮ, не пропускай код
-- Включай все импорты
-- Используй TypeScript
-- Используй Tailwind CSS для стилей (классы типа bg-gray-900, text-white, flex, p-4, rounded-lg)
-- Используй lucide-react для иконок
+CRITICAL — CODE LANGUAGE:
+- ALL generated code MUST be in ENGLISH
+- ALL variable names, function names, component names, comments — ENGLISH ONLY
+- NEVER translate JavaScript/TypeScript keywords (return, function, const, let, import, export, if, else, class, await, async, new, throw, try, catch, etc.)
+- NEVER use Cyrillic characters anywhere in code — not in comments, not in variable names, not in strings (except user-facing UI text)
+- Code must compile without errors
 
-ФОРМАТ ОТВЕТА — используй разделители ===FILE:, НЕ JSON:
+For each file:
+- Write COMPLETE, WORKING code — NEVER truncate a file mid-way
+- Each file MUST be complete: all functions closed, all JSX tags closed, all exports in place
+- If a file is long — still write it COMPLETELY, do not skip code
+- Include all imports
+- Use TypeScript
+- Use Tailwind CSS for styles (classes like bg-gray-900, text-white, flex, p-4, rounded-lg)
+- Use lucide-react for icons
+
+RESPONSE FORMAT — use ===FILE: delimiters, NOT JSON:
 
 ===FILE: src/lib/supabase.ts===
 import { createClient } from '@supabase/supabase-js';
@@ -329,13 +343,13 @@ import { createClient } from '@supabase/supabase-js';
 import React from 'react';
 // actual code here...
 
-ПРАВИЛА ФОРМАТА:
-- Каждый файл НАЧИНАЕТСЯ строкой ===FILE: path=== (обязательно три знака = в конце)
-- Код файла идёт сразу после маркера, plain text
-- НЕ оборачивай код в \`\`\` markdown блоки
-- НЕ используй JSON формат
-- НЕ добавляй пояснения между файлами
-- Первая строка ответа ДОЛЖНА быть ===FILE: ...===`;
+FORMAT RULES:
+- Each file STARTS with ===FILE: path=== (must have three = signs at the end)
+- File code follows immediately after the marker, plain text
+- Do NOT wrap code in \`\`\` markdown blocks
+- Do NOT use JSON format
+- Do NOT add explanations between files
+- First line of the response MUST be ===FILE: ...===`;
 
 async function runCoder(
   plan: ArchitecturePlan,
@@ -389,7 +403,7 @@ async function runCoderSingle(
   for (let attempt = 0; attempt <= MAX_CODER_RETRIES; attempt++) {
     const isRetry = attempt > 0;
     const userPrompt = buildCoderPrompt(plan, groupFiles, group, spec)
-      + (isRetry ? '\n\nВАЖНО: Используй СТРОГО формат ===FILE: path===. Без JSON, без markdown. Просто код каждого файла после маркера.' : '');
+      + (isRetry ? '\n\nIMPORTANT: Use STRICTLY the ===FILE: path=== format. No JSON, no markdown. Just the code of each file after the marker.' : '');
 
     const maxTokens = group === 'foundation' ? 16000 : 32000;
 
@@ -528,75 +542,75 @@ function buildCoderPrompt(
     ? plan.api_contracts.map(c =>
       `- ${c.method} ${c.endpoint}\n  Request: ${c.request_shape}\n  Response: ${c.response_shape}${c.auth_required ? '\n  Auth: required' : ''}`
     ).join('\n')
-    : 'Нет API контрактов';
+    : 'No API contracts';
 
   let groupSpecificInstructions = '';
   if (group === 'foundation') {
     groupSpecificInstructions = `
-## Специальные инструкции для Foundation:
-- package.json: включи ВСЕ dependencies. ОБЯЗАТЕЛЬНО: tailwindcss, postcss, autoprefixer. Все deps: ${JSON.stringify(plan.dependencies || {})}
-- .env.example: включи ВСЕ переменные: ${plan.env_variables?.join(', ') || 'none'}
-- src/types/index.ts: УЖЕ СОЗДАН автоматически. НЕ генерируй его. Импортируй из '@/types'.
+## Foundation-specific Instructions:
+- package.json: include ALL dependencies. MANDATORY: tailwindcss, postcss, autoprefixer. All deps: ${JSON.stringify(plan.dependencies || {})}
+- .env.example: include ALL variables: ${plan.env_variables?.join(', ') || 'none'}
+- src/types/index.ts: ALREADY CREATED automatically. Do NOT generate it. Import from '@/types'.
 - supabase/schema.sql:
 \`\`\`sql
 ${plan.database_tables || '-- No tables defined'}
 \`\`\`
 
-КРИТИЧЕСКИ ВАЖНЫЕ ФАЙЛЫ для работы Tailwind CSS:
+CRITICAL FILES for Tailwind CSS to work:
 
-- tailwind.config.ts — ТОЧНО такой формат:
+- tailwind.config.ts — EXACTLY this format:
   import type { Config } from 'tailwindcss';
   const config: Config = { content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'], theme: { extend: { ${spec.design_system ? `colors: { primary: '${spec.design_system.color_palette.primary}', secondary: '${spec.design_system.color_palette.secondary}', accent: '${spec.design_system.color_palette.accent}' }` : ''} } }, plugins: [] };
   export default config;
 
-- postcss.config.js — ТОЧНО так:
+- postcss.config.js — EXACTLY like this:
   module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };
 
-- src/app/globals.css — ПЕРВЫЕ 3 строки ОБЯЗАТЕЛЬНО:
+- src/app/globals.css — FIRST 3 lines MANDATORY:
   @tailwind base;
   @tailwind components;
   @tailwind utilities;
-  (можно добавить кастомные стили после)
+  (custom styles can be added after)
 
-- src/app/layout.tsx — ОБЯЗАТЕЛЬНО import './globals.css' в начале файла
-  ${spec.design_system ? `- Используй Google Fonts: ${spec.design_system.typography.headings}, ${spec.design_system.typography.body}` : ''}`;
+- src/app/layout.tsx — MUST import './globals.css' at the top
+  ${spec.design_system ? `- Use Google Fonts: ${spec.design_system.typography.headings}, ${spec.design_system.typography.body}` : ''}`;
   } else if (group === 'backend') {
     groupSpecificInstructions = `
-## Специальные инструкции для Backend:
-- Каждый API route ДОЛЖЕН соответствовать api_contracts
-- Импортируй типы из '@/types' — НЕ определяй interface локально если тип есть в shared_types
-- Сигнатуры функций в lib-файлах ДОЛЖНЫ совпадать с типами в shared_types
-- Используй Supabase клиент из @/lib/supabase
-- OAuth routes: ПОЛНЫЙ flow (authorize → redirect → callback → token → cookie)
-- РЕАЛЬНЫЕ fetch вызовы к внешним API, НЕ заглушки`;
+## Backend-specific Instructions:
+- Each API route MUST match api_contracts
+- Import types from '@/types' — do NOT define interface locally if the type exists in shared_types
+- Function signatures in lib files MUST match types in shared_types
+- Use Supabase client from @/lib/supabase
+- OAuth routes: FULL flow (authorize → redirect → callback → token → cookie)
+- REAL fetch calls to external APIs, NOT stubs`;
   } else if (group === 'frontend') {
     groupSpecificInstructions = `
-## Специальные инструкции для Frontend:
-- ГЛАВНАЯ СТРАНИЦА (page.tsx) = РАБОЧИЙ DASHBOARD, НЕ ЛЕНДИНГ. Пользователь видит рабочий интерфейс сразу
-- ЗАПРЕЩЕНО на page.tsx: hero-секции, "Get Started", "Start Free Trial", фейковые метрики, секции Features/Testimonials
-- Для хранения данных без БД используй localStorage + useState + useEffect для загрузки
-- Компоненты используют 'use client' где нужен интерактив
-- Импортируй типы из '@/types' — НЕ определяй interface локально если тип есть в shared_types
-- fetch к API routes из api_contracts — request/response shape ДОЛЖНЫ совпадать с типами в shared_types
+## Frontend-specific Instructions:
+- MAIN PAGE (page.tsx) = WORKING DASHBOARD, NOT A LANDING PAGE. User sees working interface immediately
+- FORBIDDEN on page.tsx: hero sections, "Get Started", "Start Free Trial", fake metrics, Features/Testimonials sections
+- For data storage without DB use localStorage + useState + useEffect for loading
+- Components use 'use client' where interactivity is needed
+- Import types from '@/types' — do NOT define interface locally if the type exists in shared_types
+- fetch to API routes from api_contracts — request/response shapes MUST match types in shared_types
 - Loading states, error states, empty states
-- lucide-react для иконок
-- Tailwind CSS для стилей (bg-*, text-*, flex, grid, p-*, rounded-*, shadow-*)
-- Каждая кнопка имеет РЕАЛЬНЫЙ onClick с логикой
-- Тёмная тема: bg-gray-950 для body, bg-gray-900 для карточек, text-white/text-gray-300 для текста
-${spec.design_system ? `- Используй кастомные цвета: primary, secondary, accent
-- Уникальные UI элементы: ${spec.design_system.unique_elements.join(', ')}` : ''}`;
+- lucide-react for icons
+- Tailwind CSS for styles (bg-*, text-*, flex, grid, p-*, rounded-*, shadow-*)
+- Each button has a REAL onClick with logic
+- Dark theme: bg-gray-950 for body, bg-gray-900 for cards, text-white/text-gray-300 for text
+${spec.design_system ? `- Use custom colors: primary, secondary, accent
+- Unique UI elements: ${spec.design_system.unique_elements.join(', ')}` : ''}`;
   }
 
-  return `## Архитектурный план проекта: ${spec.project_name}
+  return `## Architecture Plan for: ${spec.project_name}
 
-### Все файлы проекта (для проверки импортов):
+### All project files (for import validation):
 ${allFilePaths}
 
-### Shared Types (КАНОНИЧЕСКИЙ файл src/types/index.ts — УЖЕ создан, НЕ генерируй заново):
+### Shared Types (CANONICAL file src/types/index.ts — ALREADY created, do NOT regenerate):
 \`\`\`typescript
 ${plan.shared_types || '// No shared types'}
 \`\`\`
-⚠️ ВСЕ типы выше доступны через import { ... } from '@/types'. НЕ создавай локальные дубликаты.
+⚠️ ALL types above are available via import { ... } from '@/types'. Do NOT create local duplicates.
 
 ### API Contracts:
 ${apiContracts}
@@ -606,19 +620,20 @@ ${groupSpecificInstructions}
 
 ---
 
-## ТВОЯ ЗАДАЧА: Сгенерируй КОД для этих файлов (группа: ${group}):
+## YOUR TASK: Generate CODE for these files (group: ${group}):
 ${filesToGenerate}
 
-Помни:
-- Каждый import ДОЛЖЕН ссылаться на файл из "all_project_files" или npm пакет
-- ТИПЫ: import { ... } from '@/types' — НЕ создавай локальные interface если тип есть в shared_types
-- src/types/index.ts УЖЕ СОЗДАН — НЕ включай его в ответ
-- API routes соответствуют api_contracts — request/response совпадают с shared_types
-- Функции в lib-файлах: сигнатуры ДОЛЖНЫ совпадать с тем что ожидают вызывающие файлы
-- НЕТ fake data, НЕТ заглушек, НЕТ TODO комментариев
-- Код компилируется — все файлы ПОЛНЫЕ, без обрезки
+Remember:
+- Each import MUST reference a file from "all_project_files" or an npm package
+- TYPES: import { ... } from '@/types' — do NOT create local interfaces if the type exists in shared_types
+- src/types/index.ts ALREADY EXISTS — do NOT include it in your response
+- API routes match api_contracts — request/response match shared_types
+- Functions in lib files: signatures MUST match what calling files expect
+- NO fake data, NO stubs, NO TODO comments
+- Code compiles — all files COMPLETE, no truncation
+- ALL code, variable names, function names, comments MUST be in ENGLISH — no Cyrillic characters
 
-ФОРМАТ: Используй СТРОГО формат ===FILE: path=== для КАЖДОГО файла. Без JSON, без markdown code blocks.`;
+FORMAT: Use STRICTLY the ===FILE: path=== format for EACH file. No JSON, no markdown code blocks.`;
 }
 
 // ============================================================
@@ -626,24 +641,24 @@ ${filesToGenerate}
 // ============================================================
 
 // Phase 3a: Find issues only (small JSON, always parseable)
-const REVIEWER_FIND_SYSTEM = `Ты — Senior Code Reviewer. Твоя задача — найти ВСЕ ошибки в сгенерированных файлах.
+const REVIEWER_FIND_SYSTEM = `You are a Senior Code Reviewer. Your task is to find ALL errors in the generated files.
 
-Ты получаешь:
-1. Архитектурный план (file_plan, shared_types, api_contracts)
-2. ВСЕ сгенерированные файлы
+You receive:
+1. Architecture plan (file_plan, shared_types, api_contracts)
+2. ALL generated files
 
-ПРОВЕРЬ:
-1. **Import Resolution** — каждый import '@/lib/X' или '@/components/X' → файл СУЩЕСТВУЕТ и ЭКСПОРТИРУЕТ нужное
-2. **Type Compatibility** — props компонентов совпадают с интерфейсами, API request/response совпадают с контрактами
-3. **API Contract Compliance** — frontend fetch() вызовы точно соответствуют backend API routes (method, endpoint, body shape, response shape)
-4. **Function Signatures** — вызовы функций совпадают с их определениями (количество и типы аргументов)
-5. **package.json** — ВСЕ npm пакеты перечислены (включая @types/*)
-6. **No Dead Code** — нет неиспользуемых импортов или переменных
-7. **'use client'** — указан в файлах с useState/useEffect/onClick/event handlers
+CHECK:
+1. **Import Resolution** — each import '@/lib/X' or '@/components/X' → file EXISTS and EXPORTS what's needed
+2. **Type Compatibility** — component props match interfaces, API request/response match contracts
+3. **API Contract Compliance** — frontend fetch() calls exactly match backend API routes (method, endpoint, body shape, response shape)
+4. **Function Signatures** — function calls match their definitions (number and types of arguments)
+5. **package.json** — ALL npm packages listed (including @types/*)
+6. **No Dead Code** — no unused imports or variables
+7. **'use client'** — present in files with useState/useEffect/onClick/event handlers
 
-НЕ ВКЛЮЧАЙ исправленный код — только ОПИСАНИЕ ошибок.
+Do NOT include fixed code — only DESCRIPTIONS of errors.
 
-Верни JSON:
+Return JSON:
 {
   "issues": [
     {
@@ -655,22 +670,24 @@ const REVIEWER_FIND_SYSTEM = `Ты — Senior Code Reviewer. Твоя задач
   ]
 }
 
-ВАЖНО:
-- Описывай ошибки КОНКРЕТНО: какая функция, какой импорт, какая строка
-- fix_hint — короткое описание как исправить (1 предложение)
-- Если ошибок нет — верни {"issues": []}`;
+IMPORTANT:
+- Describe errors SPECIFICALLY: which function, which import, which line
+- fix_hint — short description of how to fix (1 sentence)
+- If no errors — return {"issues": []}`;
 
 // Phase 3b: Fix specific files
-const REVIEWER_FIX_SYSTEM = `Ты — Senior Code Fixer. Тебе даны файлы с ошибками и описания ошибок.
-Твоя задача — ИСПРАВИТЬ каждый файл.
+const REVIEWER_FIX_SYSTEM = `You are a Senior Code Fixer. You are given files with errors and error descriptions.
+Your task is to FIX each file.
 
-ПРАВИЛА:
-- Выводи ТОЛЬКО исправленные файлы
-- Каждый файл ПОЛНОСТЬЮ (не фрагменты)
-- Используй формат: ===FILE: path/to/file.ts=== перед каждым файлом
-- НЕ добавляй пояснений, только код
-- Если файл отсутствует но импортируется — создай его
-- 'use client' — в компонентах с useState/useEffect/onClick`;
+RULES:
+- ALL code MUST be in ENGLISH. NEVER translate JS/TS keywords (return, function, const, import, export, etc.). Comments also in English.
+- NEVER use Cyrillic characters anywhere in code
+- Output ONLY fixed files
+- Each file COMPLETELY (not fragments)
+- Use format: ===FILE: path/to/file.ts=== before each file
+- Do NOT add explanations, only code
+- If a file is missing but imported — create it
+- 'use client' — in components with useState/useEffect/onClick`;
 
 interface ReviewResult {
   issues: Array<{
@@ -779,7 +796,7 @@ async function runReviewer(
 
     let relatedContext = '';
     if (relatedFiles.length > 0) {
-      relatedContext = '\n\n## Связанные файлы (для контекста импортов):\n\n' +
+      relatedContext = '\n\n## Related files (for import context):\n\n' +
         relatedFiles.slice(0, 5).map(path => {
           const content = allFiles[path];
           const truncated = content.length > 2000
@@ -789,7 +806,7 @@ async function runReviewer(
         }).join('\n\n');
     }
 
-    const fixPrompt = `## Ошибки для исправления:
+    const fixPrompt = `## Errors to fix:
 ${issuesList}
 
 ## Shared Types:
@@ -799,13 +816,14 @@ ${typesFile}
 
 ${apiContracts ? `## API Contracts:\n${apiContracts}\n` : ''}
 
-## Файлы с ошибками:
+## Files with errors:
 
 ${affectedFilesContent}
 ${relatedContext}
 
-Исправь ВСЕ файлы с ошибками. Каждый файл — ПОЛНОСТЬЮ, не фрагментами.
-Формат: ===FILE: path/to/file.ts=== перед каждым файлом.`;
+Fix ALL files with errors. Each file — COMPLETELY, not fragments.
+Format: ===FILE: path/to/file.ts=== before each file.
+ALL code must be in ENGLISH — no Cyrillic characters.`;
 
     try {
       const fixResponse = await callClaude(REVIEWER_FIX_SYSTEM, fixPrompt, {
@@ -842,7 +860,7 @@ function buildReviewerPrompt(plan: ArchitecturePlan, allFiles: GeneratedFiles): 
     ).join('\n')
     : 'none';
 
-  return `## Архитектурный план
+  return `## Architecture Plan
 
 ### Shared Types:
 \`\`\`typescript
@@ -858,22 +876,22 @@ ${apiContracts}
 
 ---
 
-## ВСЕ СГЕНЕРИРОВАННЫЕ ФАЙЛЫ (${Object.keys(allFiles).length} шт.):
+## ALL GENERATED FILES (${Object.keys(allFiles).length} files):
 
 ${fileEntries}
 
 ---
 
-## ПРОВЕРЬ:
-1. Каждый import → файл существует И экспортирует нужное
-2. Типы props компонентов совместимы
-3. Frontend fetch() → соответствует backend API routes
-4. package.json содержит ВСЕ используемые пакеты
-5. .env.example содержит ВСЕ переменные
-6. 'use client' указан где нужен интерактив
-7. Нет fake data или заглушек
+## CHECK:
+1. Each import → file exists AND exports what's needed
+2. Component props types are compatible
+3. Frontend fetch() → matches backend API routes
+4. package.json contains ALL used packages
+5. .env.example contains ALL variables
+6. 'use client' present where interactivity is needed
+7. No fake data or stubs
 
-Верни JSON с issues и fixed_files.`;
+Return JSON with issues and fixed_files.`;
 }
 
 // ============================================================

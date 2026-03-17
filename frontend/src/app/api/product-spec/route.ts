@@ -105,6 +105,84 @@ interface ProductSpecRequest {
       consensus?: string;
       key_insights?: string[];
     };
+    // Block 2: Demand Growth
+    demand_growth?: {
+      growth_rate_12m?: number;
+      growth_rate_3m?: number;
+      stability_score?: number;
+      search_intent?: {
+        commercial_percent: number;
+        informational_percent: number;
+        intent_type: string;
+      };
+      new_players_count?: number;
+      geo_top_regions?: Array<{ region: string; growth_rate: number | null }>;
+    };
+    // Block 3: Market Sellability
+    sellability?: {
+      market_segment?: string; // B2B, B2C, SMB, Enterprise, Mixed
+      segment_confidence?: number;
+      median_price?: number | null;
+      competitor_prices?: Array<{
+        competitor: string;
+        price: string;
+        plan_type: string;
+      }>;
+      sales_cycle?: string; // simple, moderate, complex
+    };
+    // Block 5: Unit Economics
+    economics?: {
+      estimated_cac?: number;
+      ltv_cac_ratio?: number;
+      business_model?: string; // subscription, one-time, freemium, marketplace
+      market_size_revenue?: number | null;
+      scalability_score?: number;
+    };
+    // Block 6: Tech Feasibility
+    tech_feasibility?: {
+      complexity_level?: string; // low, medium, high
+      complexity_score?: number;
+      stack_recommendations?: {
+        frontend: string;
+        backend: string;
+        database: string;
+        hosting: string;
+      };
+      regulatory_blockers?: boolean;
+      regulatory_checks?: Array<{
+        regulation: string;
+        applies: boolean;
+        severity: string;
+      }>;
+      mvp_weeks?: number;
+    };
+  };
+  // Differentiation strategy (USP, Blue Ocean, positioning vectors)
+  differentiation?: {
+    usp?: {
+      for_whom: string;
+      what_does: string;
+      how_different: string;
+      full_usp: string;
+    };
+    blue_ocean_strategy?: {
+      eliminate: string[];
+      reduce: string[];
+      raise: string[];
+      create: string[];
+    };
+    positioning_vectors?: Array<{
+      vector: string;
+      description: string;
+      target_audience: string;
+      effort: string;
+    }>;
+    competitor_weaknesses?: Array<{
+      competitor: string;
+      weakness: string;
+      opportunity: string;
+    }>;
+    blue_ocean_score?: number;
   };
 }
 
@@ -230,65 +308,91 @@ export interface ProductSpecification {
 }
 
 // System prompt для генерации Product Specification
-const PRODUCT_SPEC_PROMPT = `Ты Senior Product Manager с 15+ лет опыта в стартапах. Твоя задача - создать ПОЛНУЮ СПЕЦИФИКАЦИЮ ПРОДУКТА на основе РЕАЛЬНЫХ ДАННЫХ анализа.
+const PRODUCT_SPEC_PROMPT = `You are a Senior Product Manager with 15+ years of startup experience. Your task is to create a FULL PRODUCT SPECIFICATION based on REAL market analysis data.
 
-## КРИТИЧЕСКИ ВАЖНО: FEATURE EXTRACTION
-Ты получаешь РЕАЛЬНЫЕ данные из анализа рынка:
-- **complaints** - реальные жалобы пользователей с Reddit/Quora/HackerNews
-- **negative_reviews** - негативные отзывы о конкурентах
-- **unmet_needs** - неудовлетворённые потребности рынка
-- **pricing_data** - цены конкурентов
+ABSOLUTE RULE: ALL output text MUST be in ENGLISH. No Russian, no other languages. Every string value in the JSON must be English.
 
-ТВОЯ ГЛАВНАЯ ЗАДАЧА: Извлечь из этих данных КОНКРЕТНЫЕ ФИЧИ для MVP!
+## CRITICAL: FEATURE EXTRACTION
+You receive REAL market analysis data:
+- **complaints** — real user complaints from Reddit/Quora/HackerNews
+- **negative_reviews** — negative reviews of competitors
+- **unmet_needs** — unmet market needs
+- **pricing_data** — competitor pricing
+- **demand_growth** — demand growth/decline, commercial vs informational interest, new players
+- **sellability** — market segment (B2B/B2C/SMB), median price, sales cycle
+- **economics** — CAC, LTV/CAC ratio, business model, scalability
+- **tech_feasibility** — technical complexity, recommended stack, regulatory requirements
 
-Пример логики:
-- Жалоба: "SonarQube слишком сложный для малых команд" → Фича: "Simple Mode - 3 клика до первого сканирования"
-- Негативный отзыв: "CodeClimate не поддерживает Python 3.12" → Фича: "Поддержка Python 3.12 из коробки"
-- Unmet need: "Хочу интеграцию с GitLab" → Фича: "Нативная интеграция GitLab + GitHub"
-- Pricing: "Конкуренты берут $30/user" → Pricing: "$5/user или freemium"
+YOUR MAIN TASK: Extract SPECIFIC FEATURES for the MVP from this data!
 
-ПРАВИЛА:
-1. user_output - ЧТО КОНКРЕТНО получает пользователь? Не абстрактно "решение", а конкретный артефакт
-2. user_input - ЧТО КОНКРЕТНО вводит пользователь? Какие поля, какой формат?
-3. user_flow - ПОШАГОВО что видит пользователь от открытия до получения ценности
-4. magic_location - ГДЕ происходит магия? AI анализ? Формула? Агрегация данных?
-5. technical_requirements - Какие API нужны? Нужна ли БД? Нужна ли авторизация?
-6. monetization - Freemium или платно? СМОТРИ НА ЦЕНЫ КОНКУРЕНТОВ и выбирай конкурентную стратегию
-7. current_user_solution - Как люди решают эту проблему СЕЙЧАС? Используй complaints!
-8. derived_features - НОВОЕ ПОЛЕ: список фич, выведенных из конкретных болей
+Example logic:
+- Complaint: "SonarQube is too complex for small teams" → Feature: "Simple Mode — 3 clicks to first scan"
+- Negative review: "CodeClimate doesn't support Python 3.12" → Feature: "Python 3.12 support out of the box"
+- Unmet need: "I want GitLab integration" → Feature: "Native GitLab + GitHub integration"
+- Pricing: "Competitors charge $30/user" → Pricing: "$5/user or freemium"
 
-КРИТИЧЕСКИЕ ПРАВИЛА АНТИГАЛЛЮЦИНАЦИИ:
-- Каждая фича в derived_features ОБЯЗАНА ссылаться на конкретную жалобу/отзыв/потребность из предоставленных данных.
-- pain_quote ДОЛЖЕН быть РЕАЛЬНОЙ ЦИТАТОЙ из данных, а не выдуманной фразой.
-- Если Evidence данных (complaints, negative_reviews, unmet_needs) НЕТ — derived_features должен быть ПУСТЫМ массивом [].
-- НЕ ПРИДУМЫВАЙ размеры рынка, доходы, стоимость разработки или статистику.
-- pricing_tiers: если нет pricing_data конкурентов — пиши "Требует исследования" вместо выдуманных цен.
-- Поле size в target_audience = "Требует валидации" если нет реальных данных.
+RULES:
+1. user_output — WHAT EXACTLY does the user receive? Not abstract "solution", but a concrete artifact (e.g. "professional PDF invoice with line items and totals")
+2. user_input — WHAT EXACTLY does the user enter? What fields, what format?
+3. user_flow — STEP BY STEP what the user sees from opening to getting value
+4. magic_location — WHERE does the magic happen? AI analysis? Formula? Data aggregation?
+5. technical_requirements — What APIs are needed? Database? Auth? If tech_feasibility exists — use recommended stack!
+6. monetization — Use sellability (median price, segment) and economics (CAC, business model) for realistic pricing!
+7. current_user_solution — How do people solve this problem NOW? Use complaints!
+8. derived_features — features extracted from specific pains. If regulatory blockers exist — add compliance features!
+9. confidence_score — factor in demand_growth: if growth > 30% and commercial_intent > 50% → higher confidence
+10. mvp_complexity — factor in tech_feasibility.complexity_level if available
 
-ВАЖНО:
-- Каждая фича должна РЕШАТЬ конкретную боль из данных
-- Будь КОНКРЕТЕН. "Отчёт на 3 страницы с графиками" вместо "результат анализа"
-- Думай о МИНИМАЛЬНОМ MVP - что можно сделать за 1-2 недели?
-- Учитывай бюджет $0-100/мес на инфраструктуру
-- generation_approach должен точно соответствовать типу продукта
+CRITICAL RULES:
+- Each feature in derived_features MUST reference a specific complaint/review/need from the provided data.
+- pain_quote MUST be a REAL QUOTE from the data, not an invented phrase.
+- If no Evidence data (complaints, negative_reviews, unmet_needs) exists — still generate at least 3 derived_features based on logical user pains for this niche.
+- DO NOT invent market sizes, revenues, or statistics.
+- pricing_tiers: if no competitor pricing_data — use reasonable estimates based on the niche.
 
-Верни ТОЛЬКО JSON без markdown:
+MINIMUM FEATURE REQUIREMENTS:
+- derived_features MUST contain AT LEAST 4 features (ideally 5-6)
+- At least 2 must be "must_have" priority
+- If Evidence data has fewer than 4 pain points, INFER additional features from:
+  1. Common pain points in this niche (usability, speed, cost, integration)
+  2. Competitive gaps mentioned in negative_reviews
+  3. Industry-standard expectations for this product type
+- Each inferred feature should still have a realistic pain_quote (mark pain_source as "synthesis")
+
+IMPORTANT:
+- Each feature must SOLVE a specific pain from the data
+- Be SPECIFIC. "3-page report with charts" instead of "analysis result"
+- Think MINIMUM MVP — what can be built in 1-2 weeks?
+- Budget: $0-100/month for infrastructure
+- generation_approach must match the product type accurately
+- value_proposition must be a SHORT, punchy English tagline (max 6-8 words). It is used as the HERO HEADLINE on the landing page. Examples: "Professional Invoices in Seconds", "AI-Powered Code Reviews", "Smart Meal Planning Made Easy". NEVER a full sentence or long description!
+- primary_output must be 1-3 WORDS ONLY — it's used as a button label (e.g. "New Invoice", "New Report"). Examples: "Invoice", "Report", "Analysis", "Business Plan", "Quiz". NEVER a full sentence or description!
+
+CRITICAL LANGUAGE RULE — EVERY SINGLE VALUE IN THE JSON MUST BE IN ENGLISH:
+- ALL string values (primary_output, value_proposition, example, steps, feature names, descriptions, pain_quotes, solutions, aha_moment, etc.) MUST be written in English
+- Even if the input trend name or evidence data is in Russian/Chinese/any other language — TRANSLATE everything to English
+- This is critical because the generated website will be deployed publicly and must be in English
+- If you write ANY non-English characters (Cyrillic, Chinese, Arabic, etc.) in ANY field, the build will FAIL
+- Field labels, button text, form placeholders — everything in the JSON output must be English
+- value_proposition is displayed as a large H1 headline — keep it SHORT (6-8 words max) and in ENGLISH
+
+REMINDER: ALL values must be in ENGLISH ONLY. Any non-ASCII characters will cause build failure. Return JSON only, no markdown:
 {
   "user_output": {
-    "primary_output": "Конкретное описание что получает пользователь",
+    "primary_output": "SHORT 1-3 word noun for what user creates, e.g. Invoice, Report, Analysis, Quiz, Plan — NEVER a full sentence",
     "output_format": "text|report|score|list|visualization|recommendation|action",
-    "example": "Пример конкретного output",
-    "value_proposition": "Почему это ценно для пользователя"
+    "example": "Specific example of the output user receives",
+    "value_proposition": "Short punchy tagline, max 10 words, in English"
   },
   "user_input": {
-    "primary_input": "Описание главного ввода",
+    "primary_input": "Description of the main user input",
     "input_type": "text|url|file|form|selection|voice|image",
     "required_fields": [
       {
         "name": "field_name",
         "type": "string|number|url|email|file",
-        "description": "Для чего это поле",
-        "example": "Пример значения"
+        "description": "What this field is for",
+        "example": "Example value"
       }
     ],
     "optional_fields": []
@@ -297,66 +401,66 @@ const PRODUCT_SPEC_PROMPT = `Ты Senior Product Manager с 15+ лет опыт�
     "steps": [
       {
         "step_number": 1,
-        "action": "Что делает пользователь",
-        "user_sees": "Что видит на экране",
-        "time_to_complete": "~30 сек"
+        "action": "What the user does",
+        "user_sees": "What appears on screen",
+        "time_to_complete": "~30 sec"
       }
     ],
-    "total_time_to_value": "< 2 минут",
-    "aha_moment": "Момент когда пользователь понимает ценность"
+    "total_time_to_value": "< 2 minutes",
+    "aha_moment": "The moment user realizes the value"
   },
   "magic_location": {
     "type": "ai_analysis|ai_generation|formula_calculation|data_aggregation|api_orchestration|pattern_matching",
-    "description": "Где происходит основная ценность",
-    "technical_approach": "Как это реализовать технически",
-    "ai_prompt_hint": "Примерный prompt для AI если используется"
+    "description": "Where the core value is created",
+    "technical_approach": "How to implement this technically",
+    "ai_prompt_hint": "Approximate AI prompt if used"
   },
   "technical_requirements": {
     "apis_needed": [
       {
         "name": "OpenAI API",
-        "purpose": "Для чего",
+        "purpose": "What for",
         "free_tier_available": true,
-        "estimated_cost": "$5-20/мес"
+        "estimated_cost": "$5-20/mo"
       }
     ],
     "database_required": false,
-    "database_reason": "Причина если нужна",
+    "database_reason": "Reason if needed",
     "auth_required": false,
-    "auth_reason": "Причина если нужна",
+    "auth_reason": "Reason if needed",
     "recommended_stack": {
       "frontend": "Next.js + Tailwind",
       "backend": "Next.js API Routes",
-      "database": "PostgreSQL если нужна",
-      "ai_provider": "OpenAI если нужен"
+      "database": "PostgreSQL if needed",
+      "ai_provider": "OpenAI if needed"
     }
   },
   "monetization": {
     "model": "freemium|subscription|pay_per_use|one_time|free_with_ads|enterprise",
-    "free_tier_limits": "5 запросов/день",
+    "free_tier_limits": "5 requests/day",
     "pricing_tiers": [
       {
         "name": "Pro",
-        "price": "$9.99/мес",
-        "features": ["Безлимитные запросы", "Экспорт"]
+        "price": "$9.99/mo",
+        "features": ["Unlimited requests", "Export"]
       }
     ],
-    "reasoning": "Почему такая модель"
+    "reasoning": "Why this model"
   },
   "current_user_solution": {
-    "how_they_solve_now": "Как решают проблему сейчас",
-    "pain_points_with_current": ["Боль 1", "Боль 2"],
-    "our_advantage": "Наше преимущество",
+    "how_they_solve_now": "How users solve the problem today",
+    "pain_points_with_current": ["Pain point 1", "Pain point 2"],
+    "our_advantage": "Our advantage",
     "switching_cost": "low|medium|high"
   },
   "derived_features": [
     {
-      "feature_name": "Название фичи",
-      "pain_source": "Откуда пришла боль (complaint/review/need)",
-      "pain_quote": "Цитата из данных",
-      "solution": "Как мы решаем",
+      "feature_name": "Feature name in English",
+      "pain_source": "Where the pain came from (complaint/review/need)",
+      "pain_quote": "Quote from the data (translated to English)",
+      "solution": "How we solve it",
       "priority": "must_have|should_have|nice_to_have",
-      "implementation_hint": "Как реализовать технически"
+      "implementation_hint": "How to implement technically"
     }
   ],
   "confidence_score": 8.5,
@@ -468,6 +572,57 @@ ${body.evidence?.ai_synthesis?.consensus ? `## AI СИНТЕЗ (консенсу
 **Консенсус:** ${body.evidence.ai_synthesis.consensus}
 ${body.evidence.ai_synthesis.key_insights?.length ? `**Ключевые инсайты:**\n${body.evidence.ai_synthesis.key_insights.map(i => `- ${i}`).join('\n')}` : ''}
 ` : ''}
+${body.evidence?.demand_growth ? `## РЫНОЧНЫЙ СПРОС (Evidence: Demand Growth)
+- **Рост за 12 мес:** ${body.evidence.demand_growth.growth_rate_12m != null ? `${body.evidence.demand_growth.growth_rate_12m}%` : 'нет данных'}
+- **Рост за 3 мес:** ${body.evidence.demand_growth.growth_rate_3m != null ? `${body.evidence.demand_growth.growth_rate_3m}%` : 'нет данных'}
+- **Стабильность интереса:** ${body.evidence.demand_growth.stability_score != null ? `${body.evidence.demand_growth.stability_score}/10` : 'нет данных'}
+${body.evidence.demand_growth.search_intent ? `- **Тип интереса:** ${body.evidence.demand_growth.search_intent.intent_type} (коммерческий: ${body.evidence.demand_growth.search_intent.commercial_percent}%, информационный: ${body.evidence.demand_growth.search_intent.informational_percent}%)` : ''}
+- **Новые игроки на рынке:** ${body.evidence.demand_growth.new_players_count ?? 'нет данных'}
+${body.evidence.demand_growth.geo_top_regions?.length ? `- **Топ регионы:** ${body.evidence.demand_growth.geo_top_regions.slice(0, 5).map(r => `${r.region}${r.growth_rate != null ? ` (${r.growth_rate}%)` : ''}`).join(', ')}` : ''}
+
+ВАЖНО: Используй данные о спросе для оценки mvp_complexity и confidence_score!
+Если commercial_percent > 60% — рынок готов платить, pricing может быть агрессивнее.
+Если рост отрицательный — учти это в рисках и выбери conservative pricing.
+` : ''}
+${body.evidence?.sellability ? `## ПРОДАВАЕМОСТЬ (Evidence: Market Sellability)
+- **Сегмент рынка:** ${body.evidence.sellability.market_segment || 'не определён'}${body.evidence.sellability.segment_confidence ? ` (уверенность: ${Math.round(body.evidence.sellability.segment_confidence * 100)}%)` : ''}
+- **Медианная цена конкурентов:** ${body.evidence.sellability.median_price != null ? `$${body.evidence.sellability.median_price}/мес` : 'нет данных'}
+- **Цикл продаж:** ${body.evidence.sellability.sales_cycle || 'не определён'}
+${body.evidence.sellability.competitor_prices?.length ? `- **Цены конкурентов:**\n${body.evidence.sellability.competitor_prices.slice(0, 6).map(p =>
+  `  - ${p.competitor}: ${p.price} (${p.plan_type})`
+).join('\n')}` : ''}
+
+КРИТИЧЕСКИ ВАЖНО для pricing_tiers:
+- Если сегмент B2B/Enterprise — цены выше, но нужен sales cycle support
+- Если B2C — нужен freemium/low price entry point
+- Медианная цена конкурентов = ориентир для нашего pricing (чуть ниже для входа на рынок)
+` : ''}
+${body.evidence?.economics ? `## ЭКОНОМИКА ПРОДУКТА (Evidence: Unit Economics)
+- **Ориентировочный CAC:** ${body.evidence.economics.estimated_cac != null ? `$${body.evidence.economics.estimated_cac}` : 'нет данных'}
+- **LTV/CAC ratio:** ${body.evidence.economics.ltv_cac_ratio != null ? body.evidence.economics.ltv_cac_ratio : 'нет данных'}
+- **Бизнес-модель рынка:** ${body.evidence.economics.business_model || 'не определена'}
+- **Масштабируемость:** ${body.evidence.economics.scalability_score != null ? `${body.evidence.economics.scalability_score}/10` : 'нет данных'}
+${body.evidence.economics.market_size_revenue != null ? `- **Общий revenue рынка:** ~$${(body.evidence.economics.market_size_revenue / 1000000).toFixed(1)}M` : ''}
+
+ВАЖНО для monetization:
+- business_model рынка ДОЛЖЕН влиять на выбор модели монетизации
+- Если CAC высокий — нужна high-value подписка, не freemium
+- Если LTV/CAC < 3 — модель нежизнеспособна, предложи альтернативу
+` : ''}
+${body.evidence?.tech_feasibility ? `## ТЕХНИЧЕСКАЯ ОСУЩЕСТВИМОСТЬ (Evidence: Tech Feasibility)
+- **Сложность:** ${body.evidence.tech_feasibility.complexity_level || 'не оценена'}${body.evidence.tech_feasibility.complexity_score != null ? ` (${body.evidence.tech_feasibility.complexity_score}/10)` : ''}
+${body.evidence.tech_feasibility.stack_recommendations ? `- **Рекомендуемый стек:** ${body.evidence.tech_feasibility.stack_recommendations.frontend} + ${body.evidence.tech_feasibility.stack_recommendations.backend} + ${body.evidence.tech_feasibility.stack_recommendations.database}` : ''}
+${body.evidence.tech_feasibility.mvp_weeks != null ? `- **Время на MVP:** ~${body.evidence.tech_feasibility.mvp_weeks} недель` : ''}
+${body.evidence.tech_feasibility.regulatory_blockers ? `- **⚠️ РЕГУЛЯТОРНЫЕ БЛОКЕРЫ:** Есть критические требования!` : ''}
+${body.evidence.tech_feasibility.regulatory_checks?.filter(r => r.applies).length ? `- **Регуляторные требования:**\n${body.evidence.tech_feasibility.regulatory_checks.filter(r => r.applies).map(r =>
+  `  - [${r.severity}] ${r.regulation}: ${(r as any).description || ''}`
+).join('\n')}` : ''}
+
+ВАЖНО для technical_requirements:
+- Используй рекомендуемый стек если он предоставлен
+- Если есть регуляторные блокеры — ОБЯЗАТЕЛЬНО включи compliance фичи в derived_features
+- complexity_level влияет на mvp_complexity в ответе
+` : ''}
 ${body.design_analysis?.generated_design ? `## ДИЗАЙН СИСТЕМА (УЖЕ ПРОАНАЛИЗИРОВАНА)
 **Цветовая палитра:**
 - Primary: ${body.design_analysis.generated_design.color_palette.primary}
@@ -485,6 +640,39 @@ ${body.design_analysis.generated_design.typography.mono ? `- Mono: ${body.design
 
 **Обоснование:** ${body.design_analysis.generated_design.design_rationale}
 ` : ''}
+${body.differentiation?.usp ? `## СТРАТЕГИЯ ДИФФЕРЕНЦИАЦИИ
+
+### USP (Уникальное Торговое Предложение)
+- **Для кого:** ${body.differentiation.usp.for_whom}
+- **Что делает:** ${body.differentiation.usp.what_does}
+- **Чем отличается:** ${body.differentiation.usp.how_different}
+- **Полный USP:** ${body.differentiation.usp.full_usp}
+` : ''}
+${body.differentiation?.blue_ocean_strategy ? `### Blue Ocean Strategy (ERRC)
+**УБРАТЬ** (то, что конкуренты делают зря):
+${body.differentiation.blue_ocean_strategy.eliminate.map(e => `- ${e}`).join('\n')}
+
+**СНИЗИТЬ** (то, на чём конкуренты перестарались):
+${body.differentiation.blue_ocean_strategy.reduce.map(r => `- ${r}`).join('\n')}
+
+**УСИЛИТЬ** (то, что конкуренты делают слабо):
+${body.differentiation.blue_ocean_strategy.raise.map(r => `- ${r}`).join('\n')}
+
+**СОЗДАТЬ** (то, чего нет ни у кого):
+${body.differentiation.blue_ocean_strategy.create.map(c => `- ${c}`).join('\n')}
+
+КРИТИЧЕСКИ ВАЖНО: Пункты из СОЗДАТЬ — это must-have фичи! Пункты из УБРАТЬ — НЕ включай в MVP!
+` : ''}
+${body.differentiation?.positioning_vectors?.length ? `### Векторы позиционирования
+${body.differentiation.positioning_vectors.map((v, i) =>
+  `${i + 1}. **${v.vector}** — ${v.description} (аудитория: ${v.target_audience}, усилие: ${v.effort})`
+).join('\n')}
+` : ''}
+${body.differentiation?.competitor_weaknesses?.length ? `### Слабости конкурентов → Наши возможности
+${body.differentiation.competitor_weaknesses.map((w, i) =>
+  `${i + 1}. ${w.competitor}: "${w.weakness}" → **${w.opportunity}**`
+).join('\n')}
+` : ''}
 ---
 
 ## ТВОЯ ЗАДАЧА
@@ -494,11 +682,16 @@ ${body.design_analysis.generated_design.typography.mono ? `- Mono: ${body.design
 3. Заполни derived_features массив с указанием источника боли
 4. Используй цены конкурентов для конкурентного pricing
 5. Создай MVP который РЕШАЕТ выявленные боли, а не generic шаблон
+${body.differentiation?.blue_ocean_strategy ? `6. Blue Ocean СОЗДАТЬ → это must-have фичи для derived_features (priority: must_have)
+7. Blue Ocean УБРАТЬ → НЕ включай эти фичи в MVP (экономия ресурсов)
+8. Blue Ocean УСИЛИТЬ → это should-have фичи (приоритет выше конкурентов)
+9. USP должно отражаться в value_proposition и позиционировании` : ''}
 
 ${body.evidence?.complaints?.length || body.evidence?.negative_reviews?.length ?
   'У тебя есть РЕАЛЬНЫЕ данные - используй их для создания УНИКАЛЬНОГО продукта!' :
   'Данные Evidence не переданы - создай спецификацию на основе анализа.'}
 ${body.design_analysis?.generated_design ? 'ВАЖНО: Используй УКАЗАННУЮ выше дизайн-систему в своей спецификации.' : ''}
+${body.differentiation?.usp ? 'ВАЖНО: USP уже определён — value_proposition продукта ДОЛЖЕН отражать его!' : ''}
 Помни: это должен быть РАБОЧИЙ MVP, который можно сделать за 1-2 недели с бюджетом $0-100/мес.`;
 
     // Запускаем AI агента

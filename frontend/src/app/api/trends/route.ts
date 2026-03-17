@@ -286,13 +286,17 @@ export async function POST(request: NextRequest) {
       category: normalizeCategory(trend.category),
     }));
 
-    const uniqueNewTrends = trendsWithIds.filter(newTrend => {
-      const isDup = existingData.trends.some(existing => isDuplicate(newTrend, existing));
-      if (isDup) {
+    // Deduplicate against existing trends AND within the new batch itself
+    const uniqueNewTrends: typeof trendsWithIds = [];
+    for (const newTrend of trendsWithIds) {
+      const dupWithExisting = existingData.trends.some(existing => isDuplicate(newTrend, existing));
+      const dupWithinBatch = uniqueNewTrends.some(accepted => isDuplicate(newTrend, accepted));
+      if (dupWithExisting || dupWithinBatch) {
         console.log(`Skipping duplicate: "${newTrend.title}"`);
+      } else {
+        uniqueNewTrends.push(newTrend);
       }
-      return !isDup;
-    });
+    }
 
     const mergedTrends = [...existingData.trends, ...uniqueNewTrends];
 

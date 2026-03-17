@@ -95,26 +95,46 @@ export async function createVercelProject(
       const errorCode = error.error?.code;
       const cleanName = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
-      // Проект уже существует — получаем его ID и переиспользуем
+      // Проект уже существует — УДАЛЯЕМ и создаём заново (иначе Vercel кэширует старый билд)
       if (errorCode === 'conflict') {
-        console.log(`[vercel] Project "${cleanName}" already exists, fetching existing...`);
+        console.log(`[vercel] Project "${cleanName}" already exists, DELETING to avoid stale cache...`);
         try {
-          const getResponse = await fetch(`${VERCEL_API_URL}/v9/projects/${cleanName}`, {
+          const deleteResponse = await fetch(`${VERCEL_API_URL}/v9/projects/${cleanName}`, {
+            method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
           });
-          if (getResponse.ok) {
-            const existingProject = await getResponse.json();
+          console.log(`[vercel] Delete response: ${deleteResponse.status}`);
+
+          // Ждём чтобы Vercel обработал удаление
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Создаём проект заново
+          const retryResponse = await fetch(`${VERCEL_API_URL}/v10/projects`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (retryResponse.ok) {
+            const newProject: VercelProject = await retryResponse.json();
+            console.log(`[vercel] Recreated project "${cleanName}" with ID ${newProject.id}`);
             return {
               success: true,
-              projectId: existingProject.id,
-              projectName: existingProject.name,
+              projectId: newProject.id,
+              projectName: newProject.name,
             };
           }
-        } catch {
-          // Fallback to error
+
+          const retryError = await retryResponse.json();
+          console.error('[vercel] Recreate failed:', retryError);
+        } catch (e) {
+          console.error('[vercel] Delete+recreate error:', e);
         }
       }
 
@@ -158,34 +178,10 @@ export async function deployFromGitHub(
     // Шаг 2: Даём Vercel время на настройку Git-интеграции
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Шаг 3: Проверяем, запустился ли автоматический деплой
-    const deploymentsResponse = await fetch(
-      `${VERCEL_API_URL}/v6/deployments?projectId=${projectResult.projectId}&limit=1`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (deploymentsResponse.ok) {
-      const deploymentsData = await deploymentsResponse.json();
-      const existingDeployment = deploymentsData.deployments?.[0];
-
-      if (existingDeployment) {
-        console.log(`[vercel] Auto-deployment detected: ${existingDeployment.uid}`);
-        return {
-          success: true,
-          deploymentId: existingDeployment.uid,
-          deploymentUrl: `https://${existingDeployment.url}`,
-          projectUrl: `https://${cleanProjectName}.vercel.app`,
-        };
-      }
-    }
-
-    // Шаг 4: Автоматический деплой не запустился — тригерим явно через API
-    console.log(`[vercel] No auto-deployment detected, triggering explicit deploy for ${owner}/${repo}`);
+    // Шаг 3: ВСЕГДА тригерим новый деплой (не используем старый!)
+    // Предыдущая логика находила OLD deployment и возвращала его,
+    // что означало что пользователь видел ошибки от предыдущего билда.
+    console.log(`[vercel] Triggering fresh deploy for ${owner}/${repo} (branch: ${branch})`);
 
     const deployResponse = await fetch(`${VERCEL_API_URL}/v13/deployments`, {
       method: 'POST',

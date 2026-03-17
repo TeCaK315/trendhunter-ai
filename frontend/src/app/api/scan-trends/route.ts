@@ -752,12 +752,17 @@ export async function POST(request: NextRequest) {
         // Enrich in parallel batches of 3
         for (let i = 0; i < unenriched.length; i += 3) {
           const batch = unenriched.slice(i, i + 3);
-          const enrichPromises = batch.map(async (trend: { id: string; title: string; category: string }) => {
+          const enrichPromises = batch.map(async (trend: { id: string; title: string; category: string; growth_rate?: number; source_query?: string }) => {
             try {
               const enrichRes = await fetch(`${baseUrl}/api/enrich-trend`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: trend.title, category: trend.category }),
+                body: JSON.stringify({
+                  title: trend.title,
+                  category: trend.category,
+                  growth_rate: trend.growth_rate,
+                  source_query: trend.source_query,
+                }),
               });
               if (enrichRes.ok) {
                 const enrichData = await enrichRes.json();
@@ -785,6 +790,13 @@ export async function POST(request: NextRequest) {
                   top_players_count: enrichment.top_players_count,
                   monthly_searches: enrichment.monthly_searches,
                   enriched_at: enrichment.enriched_at,
+                  data_confidence: enrichment.data_confidence,
+                  growth_rate_source: enrichment.growth_rate_source,
+                  growth_rate_verified: enrichment.growth_rate_verified,
+                  sentiment: enrichment.sentiment,
+                  difficulty_score: enrichment.difficulty_score,
+                  difficulty_reasoning: enrichment.difficulty_reasoning,
+                  quick_verdict: enrichment.quick_verdict,
                 };
               }
               return t;

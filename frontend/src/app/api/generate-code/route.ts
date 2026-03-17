@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateCodeWithClaude, type ProjectSpec } from '@/lib/code-generator';
+import { assembleProject } from '@/lib/blocks/block-assembler';
+import { sanitizeImports } from '@/lib/blocks/custom/gap-filler';
+import type { ProductSpecification } from '@/lib/mvp-templates/types';
 
 /**
  * /api/generate-code
  *
  * HTTP endpoint for code generation.
- * Uses the hybrid Architect → Coder → Reviewer pipeline from code-generator.ts
+ *
+ * Two modes:
+ * 1. "blocks" (default) — Assembles project from pre-built blocks (fast, cheap, ~30 sec)
+ * 2. "claude" — Full Architect → Coder → Reviewer pipeline (slow, expensive, ~50 min)
  *
  * Also handles pushing generated files to GitHub and optional Vercel deploy.
  */
@@ -183,14 +189,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[generate-code] Starting for: ${spec.project_name}`);
+    const generationMode = body.mode || 'blocks'; // 'blocks' (fast) or 'claude' (full pipeline)
+
+    console.log(`[generate-code] Starting for: ${spec.project_name} (mode: ${generationMode})`);
     console.log(`[generate-code] Features: ${spec.mvp_specification?.core_features?.length || 0} core, ${spec.derived_features?.length || 0} derived`);
 
-    // Generate code using hybrid pipeline
-    const generatedFiles = await generateCodeWithClaude(spec as ProjectSpec);
-    const fileCount = Object.keys(generatedFiles).length;
+    let generatedFiles: Record<string, string>;
+    let assemblyMeta: { blocks_used?: string[]; custom_files?: string[]; claude_calls?: number } = {};
 
-    console.log(`[generate-code] Pipeline produced ${fileCount} files`);
+    if (generationMode === 'blocks' && body.product_spec) {
+      // Block-based assembly (fast, cheap)
+      console.log('[generate-code] Using block assembler...');
+      const result = await assembleProject({
+        product_spec: body.product_spec as ProductSpecification,
+        project_name: spec.project_name,
+        project_type: body.project_type,
+      });
+      generatedFiles = result.files;
+      assemblyMeta = {
+        blocks_used: result.blocks_used,
+        custom_files: result.custom_files,
+        claude_calls: result.claude_calls,
+      };
+      console.log(`[generate-code] Block assembly: ${result.total_files} files in ${result.assembly_time_ms}ms (${result.claude_calls} Claude calls)`);
+    } else {
+      // Legacy: Full Claude pipeline (slow, expensive)
+      console.log('[generate-code] Using Claude pipeline...');
+      generatedFiles = await generateCodeWithClaude(spec as ProjectSpec);
+    }
+
+    // Sanitize ALL generated files (fix translated keywords, wrong imports, etc.)
+    generatedFiles = sanitizeImports(generatedFiles);
+
+    const fileCount = Object.keys(generatedFiles).length;
+    console.log(`[generate-code] Produced ${fileCount} files`);
 
     let github_url: string | undefined;
     let files_pushed = 0;
@@ -233,12 +265,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      mode: generationMode,
       files_generated: fileCount,
       files_list: Object.keys(generatedFiles),
       files_pushed,
       github_url,
       vercel_url,
       files: !github_repo ? generatedFiles : undefined,
+      ...assemblyMeta,
       generated_at: new Date().toISOString(),
     });
 

@@ -162,6 +162,12 @@ export default function NicheResearchPage() {
       growth_rate: sources?.google_trends?.growth_rate || 0,
       why_trending: description,
       status: 'deep_analyzed',
+      first_detected_at: new Date().toISOString(),
+      source: 'custom_niche_research',
+      source_query: niche,
+      data_confidence: 'ai_generated' as 'ai_generated',
+      growth_rate_source: (sources?.google_trends?.growth_rate ? 'google_trends' : 'ai_estimated') as 'google_trends' | 'ai_estimated',
+      // Extended fields (not in Trend type but stored for deep analysis)
       key_pain_points: deepAnalysis.key_pain_points.map(p => p.pain),
       target_audience: deepAnalysis.target_audience,
       main_pain: deepAnalysis.main_pain,
@@ -406,6 +412,33 @@ export default function NicheResearchPage() {
               <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-sm">🔍</span>
               {t.nicheResearch.describeNiche}
             </h2>
+
+            {/* Niche templates - quick start */}
+            {!niche && (
+              <div className="mb-5">
+                <p className="text-xs text-[var(--text-muted)] mb-2">Быстрый старт — выберите шаблон:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { n: 'AI Customer Support', d: 'AI-powered chatbot for automated customer service', icon: '🤖' },
+                    { n: 'Fitness Tracking App', d: 'Mobile app for tracking workouts and nutrition', icon: '💪' },
+                    { n: 'E-commerce Analytics', d: 'Analytics dashboard for online stores', icon: '📊' },
+                    { n: 'EdTech for Kids', d: 'Interactive learning platform for children', icon: '🎓' },
+                    { n: 'FinTech Budget App', d: 'Personal finance and budgeting tool', icon: '💰' },
+                    { n: 'HR Automation', d: 'Automated hiring and employee management', icon: '👥' },
+                  ].map(tmpl => (
+                    <button
+                      key={tmpl.n}
+                      type="button"
+                      onClick={() => { setNiche(tmpl.n); setDescription(tmpl.d); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800/40 border border-zinc-700/30 text-zinc-400 hover:text-white hover:bg-zinc-800/70 hover:border-indigo-500/30 transition-all"
+                    >
+                      <span>{tmpl.icon}</span>
+                      <span>{tmpl.n}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

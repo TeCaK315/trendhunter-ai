@@ -190,23 +190,25 @@ async function generateUniqueDesign(
 ): Promise<GeneratedDesign> {
   const defaultDesign: GeneratedDesign = {
     color_palette: {
-      primary: '#6366f1',
-      secondary: '#8b5cf6',
-      accent: '#22d3ee',
-      background: '#0f172a',
-      text: '#f8fafc',
+      primary: '#6d5cff',
+      secondary: '#a78bfa',
+      accent: '#34d399',
+      background: '#09090b',
+      text: '#fafafa',
     },
     typography: {
-      headings: 'Inter',
+      headings: 'Satoshi',
       body: 'Inter',
       mono: 'JetBrains Mono',
     },
     unique_elements: [
-      'Gradient accents',
-      'Glassmorphism cards',
-      'Subtle animations',
+      'Subtle noise/grain texture overlay',
+      'Layered soft shadows instead of borders',
+      'Micro-interaction hover states with spring easing',
+      'Bento-style card grid layout',
+      'Muted gradients with blur glow effects',
     ],
-    design_rationale: 'Modern dark theme with vibrant accents for SaaS applications',
+    design_rationale: 'Clean dark theme with muted tones and one vibrant accent — follows 2026 SaaS design language: minimal borders, generous spacing, layered depth via shadows',
   };
 
   if (!OPENAI_API_KEY || competitors.length === 0) {
@@ -217,36 +219,50 @@ async function generateUniqueDesign(
     const competitorColors = competitors.flatMap(c => c.colors).slice(0, 30);
     const competitorFonts = competitors.flatMap(c => c.fonts).slice(0, 15);
 
-    const prompt = `Ты — дизайнер, создающий уникальный визуальный стиль для нового SaaS-продукта в нише "${query}".
+    const prompt = `You are a world-class product designer creating a visual identity for a new SaaS product in the "${query}" niche. The year is 2026.
 
-КОНКУРЕНТЫ ИСПОЛЬЗУЮТ:
-Цвета: ${competitorColors.join(', ') || 'нет данных'}
-Шрифты: ${competitorFonts.join(', ') || 'нет данных'}
-Стили: ${competitors.map(c => c.layout_style).join(', ')}
+COMPETITORS USE:
+Colors: ${competitorColors.join(', ') || 'unknown'}
+Fonts: ${competitorFonts.join(', ') || 'unknown'}
+Styles: ${competitors.map(c => c.layout_style).join(', ')}
 
-ТВОЯ ЗАДАЧА:
-Создай УНИКАЛЬНУЮ цветовую палитру и типографику, которая:
-1. ОТЛИЧАЕТСЯ от конкурентов (избегай их основных цветов)
-2. Подходит для ${query}
-3. Современная и профессиональная
-4. Работает в тёмной теме (dark mode first)
+2026 DESIGN LANGUAGE (follow these trends):
+- Dark mode first with rich, deep backgrounds (not flat #000 — use subtle blue/purple undertones like #09090b, #0c0a1d)
+- Muted, desaturated primary colors — NOT oversaturated neon. Think refined: slate blues, muted violets, sage greens, warm ambers
+- One vibrant accent color for CTAs and key actions — this is the only "loud" color
+- Layered depth via soft box-shadows instead of hard borders
+- Subtle noise/grain texture overlays for organic feel
+- Generous whitespace and larger type scales
+- Modern variable fonts from Google Fonts: Satoshi, General Sans, Cabinet Grotesk, Plus Jakarta Sans, Geist, Outfit, Sora
+- Body font: Inter, DM Sans, or Geist for readability
+- Mono: JetBrains Mono, Geist Mono, or Fira Code
+- Micro-interactions with spring/ease-out timing
+- Bento-style card grids
+- Gradient glow effects (not gradient backgrounds — subtle glow behind elements)
 
-Верни JSON:
+YOUR TASK:
+Create a UNIQUE color palette and typography that:
+1. Visually DIFFERS from competitors (avoid their primary colors)
+2. Follows 2026 design trends above
+3. Feels premium, trustworthy, modern
+4. Works in dark mode with proper contrast ratios (text on background must be WCAG AA)
+
+Return JSON only:
 {
   "color_palette": {
-    "primary": "#hex — основной цвет бренда",
-    "secondary": "#hex — вторичный цвет",
-    "accent": "#hex — акцентный цвет для CTA",
-    "background": "#hex — тёмный фон",
-    "text": "#hex — цвет текста"
+    "primary": "#hex — muted brand color (not oversaturated)",
+    "secondary": "#hex — complementary muted tone",
+    "accent": "#hex — one vibrant color for CTAs",
+    "background": "#hex — deep dark background with subtle undertone",
+    "text": "#hex — high-contrast text color"
   },
   "typography": {
-    "headings": "Название шрифта для заголовков (Google Fonts)",
-    "body": "Название шрифта для текста",
-    "mono": "Моноширинный шрифт для кода (опционально)"
+    "headings": "Modern Google Font name for headings",
+    "body": "Clean readable Google Font for body",
+    "mono": "Monospace font"
   },
-  "unique_elements": ["3-5 уникальных UI элементов для дифференциации"],
-  "design_rationale": "Краткое объяснение выбора (1-2 предложения)"
+  "unique_elements": ["4-5 specific UI elements using 2026 design language"],
+  "design_rationale": "1-2 sentences explaining the design direction"
 }`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

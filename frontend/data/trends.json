@@ -1,6 +1,207 @@
 {
   "trends": [
     {
+      "id": "trend-1773605118407-1",
+      "title": "Приложение для бюджетирования с долларами",
+      "category": "FinTech",
+      "popularity_score": 100,
+      "growth_rate": 17,
+      "why_trending": "рост интереса на 17% за неделю. Приложение помогает пользователям эффективно управлять своими финансами и планировать бюджет, что особенно актуально в условиях экономической нестабильности.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-15T20:05:18.407Z",
+      "source_query": "dollarwise budgeting app",
+      "competition_level": "low",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 5,
+      "monthly_searches": 5,
+      "enriched_at": "2026-03-15T20:05:29.802Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 17,
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a budgeting app requires integration with financial APIs and user data management, which adds moderate complexity.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Ниша имеет низкую конкуренцию и хороший потенциал роста."
+      }
+    },
+    {
+      "id": "trend-1773605118407-3",
+      "title": "Сервисы AI чат-ботов",
+      "category": "AI & ML",
+      "popularity_score": 83,
+      "growth_rate": 9,
+      "why_trending": "рост интереса на 9% за неделю. Чат-боты становятся все более популярными для автоматизации общения с клиентами, что позволяет улучшить обслуживание и сократить затраты.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-15T20:05:18.407Z",
+      "source_query": "ai chatbot services",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 1,
+      "enriched_at": "2026-03-15T20:05:27.418Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 9,
+      "sentiment": {
+        "positive": 1,
+        "negative": 2,
+        "neutral": 1,
+        "sample_quotes": [
+          "интересно найти сервис AI чат-ботов",
+          "меньше 5% моих пользователей"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP for AI chatbots involves integrating NLP models and APIs, which requires moderate technical expertise.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Это хорошая возможность для входа в рынок."
+      }
+    },
+    {
+      "id": "trend-1773522959662-1",
+      "title": "Сравнение цен на CRM-системы",
+      "category": "SaaS",
+      "popularity_score": 85,
+      "growth_rate": 31,
+      "why_trending": "Рост интереса на 31% за неделю. Пользователи ищут оптимальные решения для управления клиентами и хотят понять, какие CRM-системы предлагают лучшее соотношение цены и качества.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-14T21:15:59.662Z",
+      "source_query": "crm software price",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 7,
+      "monthly_searches": 0,
+      "enriched_at": "2026-03-14T21:16:20.549Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 31,
+      "sentiment": {
+        "positive": 5,
+        "negative": 2,
+        "neutral": 1,
+        "sample_quotes": [
+          "HubSpot отлично подходит для стартапов благодаря своему бесплатному тарифу ...",
+          "Я думаю, у них лучшее соотношение цена/функциональность среди всех в сфере CRM."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a comparison platform requires integrating with multiple CRM APIs and managing data effectively, which adds moderate complexity.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хорошая, но требуется дифференциация от конкурентов."
+      }
+    },
+    {
+      "id": "trend-1773522882385-0",
+      "title": "Интерактивный AI чат-бот",
+      "category": "AI & ML",
+      "popularity_score": 100,
+      "growth_rate": 8,
+      "why_trending": "рост интереса на 8% за неделю. Чат-боты становятся все более популярными для автоматизации взаимодействия с клиентами и улучшения пользовательского опыта.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-14T21:14:42.385Z",
+      "source_query": "darlink ai",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 1,
+      "enriched_at": "2026-03-14T21:14:53.546Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 8,
+      "sentiment": {
+        "positive": 5,
+        "negative": 0,
+        "neutral": 3,
+        "sample_quotes": [
+          "AI-чат-бот может отвечать на частые вопросы",
+          "Loomhealth.ai позволяет создать своего собственного чат-бота"
+        ]
+      },
+      "difficulty_score": 7,
+      "difficulty_reasoning": "Building an interactive AI chatbot involves complex natural language processing and potentially real-time user interactions, which require significant technical expertise.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но требует дифференциации от конкурентов."
+      }
+    },
+    {
+      "id": "trend-1773522882385-1",
+      "title": "Платформа для вовлечения пациентов",
+      "category": "HealthTech",
+      "popularity_score": 100,
+      "growth_rate": 56,
+      "why_trending": "рост интереса на 56% за неделю. Увеличение внимания к вовлечению пациентов помогает улучшить качество медицинских услуг и повысить удовлетворенность клиентов.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-14T21:14:42.385Z",
+      "source_query": "best patient engagement platform",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 2,
+      "enriched_at": "2026-03-14T21:14:55.345Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 56,
+      "sentiment": {
+        "positive": 2,
+        "negative": 0,
+        "neutral": 6,
+        "sample_quotes": [
+          "Vital Talk проводит классные бесплатные вебинары и курсы.",
+          "Blink Health, стартап, который помогает пациентам покупать недорогие лекарства."
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building a patient engagement platform involves integrating various APIs and ensuring compliance with health regulations, which adds complexity.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хорошая, но требуется дифференциация для успешного выхода на рынок."
+      }
+    },
+    {
+      "id": "trend-1773522882385-2",
+      "title": "AI инструменты для управления проектами",
+      "category": "SaaS",
+      "popularity_score": 85,
+      "growth_rate": 3,
+      "why_trending": "рост интереса на 3% за неделю. Использование AI в управлении проектами позволяет оптимизировать процессы и повысить эффективность команд.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-14T21:14:42.385Z",
+      "source_query": "ai tools for project management",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 60,
+      "enriched_at": "2026-03-14T21:14:51.437Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 3,
+      "sentiment": {
+        "positive": 2,
+        "negative": 1,
+        "neutral": 5,
+        "sample_quotes": [
+          "инструменты ИИ, которые вам кажутся полезными",
+          "инструментов у них, ну, не очень"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building a SaaS platform with AI features requires integration with various APIs and data management, which adds complexity but is manageable with a skilled team.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хорошая, но требуется дифференциация для успешного выхода на рынок."
+      }
+    },
+    {
       "id": "trend-1773423281054-0",
       "title": "AI чат-бот для бизнеса",
       "category": "AI & ML",
@@ -103,5 +304,5 @@
       "enriched_at": "2026-03-13T17:34:53.864Z"
     }
   ],
-  "lastUpdated": "2026-03-13T22:12:45.734Z"
+  "lastUpdated": "2026-03-17T01:04:58.618Z"
 }

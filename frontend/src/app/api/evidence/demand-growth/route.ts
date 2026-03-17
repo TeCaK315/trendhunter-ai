@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     let totalSerpApiCalls = 0;
 
-    // Fetch all data in parallel (including YouTube, GitHub, Indie Hackers, Autocomplete)
+    // Fetch all data in parallel (including YouTube, GitHub, Indie Hackers, Autocomplete, Intent, Geo)
     const [
       trends12mResult,
       trends3mResult,
@@ -52,6 +52,15 @@ export async function POST(request: NextRequest) {
       githubResult,
       indieHackersResult,
       autocompleteResult,
+      // Search Intent — commercial autocomplete queries
+      intentBuyResult,
+      intentPricingResult,
+      intentReviewResult,
+      // Geographic breakdown — Google Trends by region
+      geoUSResult,
+      geoGBResult,
+      geoDEResult,
+      geoRUResult,
     ] = await Promise.all([
       fetchGoogleTrends(searchQuery, 'today 12-m'),
       fetchGoogleTrends(searchQuery, 'today 3-m'),
@@ -62,6 +71,15 @@ export async function POST(request: NextRequest) {
       fetchGitHub(searchQuery),
       fetchIndieHackers(searchQuery),
       fetchGoogleAutocomplete(searchQuery),
+      // Intent queries
+      fetchGoogleAutocomplete(`${searchQuery} buy`),
+      fetchGoogleAutocomplete(`${searchQuery} pricing`),
+      fetchGoogleAutocomplete(`${searchQuery} review`),
+      // Geo queries (3-month for recent data)
+      fetchGoogleTrends(searchQuery, 'today 3-m', 'US'),
+      fetchGoogleTrends(searchQuery, 'today 3-m', 'GB'),
+      fetchGoogleTrends(searchQuery, 'today 3-m', 'DE'),
+      fetchGoogleTrends(searchQuery, 'today 3-m', 'RU'),
     ]);
 
     totalSerpApiCalls += trends12mResult.serpapi_calls_used;
@@ -73,6 +91,13 @@ export async function POST(request: NextRequest) {
     totalSerpApiCalls += githubResult.serpapi_calls_used;
     totalSerpApiCalls += indieHackersResult.serpapi_calls_used;
     totalSerpApiCalls += autocompleteResult.serpapi_calls_used;
+    totalSerpApiCalls += intentBuyResult.serpapi_calls_used;
+    totalSerpApiCalls += intentPricingResult.serpapi_calls_used;
+    totalSerpApiCalls += intentReviewResult.serpapi_calls_used;
+    totalSerpApiCalls += geoUSResult.serpapi_calls_used;
+    totalSerpApiCalls += geoGBResult.serpapi_calls_used;
+    totalSerpApiCalls += geoDEResult.serpapi_calls_used;
+    totalSerpApiCalls += geoRUResult.serpapi_calls_used;
 
     // === CALCULATIONS (NO GPT) ===
 
@@ -107,6 +132,38 @@ export async function POST(request: NextRequest) {
     const youtubeVideos = youtubeResult.data;
     const autocompleteSuggestions = autocompleteResult.suggestions;
     const newEntrantsCount = phLaunches.length + showHNPosts.length + githubRepos.length + indieHackersPosts.length;
+
+    // 4. Search Intent — commercial vs informational
+    const commercialKeywords = ['buy', 'pricing', 'price', 'cost', 'plan', 'subscribe', 'trial', 'demo', 'purchase', 'deal', 'discount', 'coupon', 'free trial', 'alternative'];
+    const informationalKeywords = ['what is', 'how to', 'tutorial', 'guide', 'learn', 'example', 'definition', 'meaning', 'vs', 'comparison', 'best', 'top'];
+
+    const allIntentSuggestions = [
+      ...intentBuyResult.suggestions.map(s => s.suggestion),
+      ...intentPricingResult.suggestions.map(s => s.suggestion),
+      ...intentReviewResult.suggestions.map(s => s.suggestion),
+      ...autocompleteResult.suggestions.map(s => s.suggestion),
+    ];
+
+    let commercialCount = 0;
+    let informationalCount = 0;
+    for (const suggestion of allIntentSuggestions) {
+      const lower = suggestion.toLowerCase();
+      if (commercialKeywords.some(kw => lower.includes(kw))) commercialCount++;
+      if (informationalKeywords.some(kw => lower.includes(kw))) informationalCount++;
+    }
+    const totalIntentSignals = commercialCount + informationalCount || 1;
+    const commercialPercent = Math.round((commercialCount / totalIntentSignals) * 100);
+    const informationalPercent = 100 - commercialPercent;
+
+    // 5. Geographic breakdown
+    const geoResults: Array<{ region: string; label: string; growth_rate: number | null }> = [
+      { region: 'US', label: 'США', growth_rate: geoUSResult.data?.growth_rate ?? null },
+      { region: 'GB', label: 'Великобритания', growth_rate: geoGBResult.data?.growth_rate ?? null },
+      { region: 'DE', label: 'Германия', growth_rate: geoDEResult.data?.growth_rate ?? null },
+      { region: 'RU', label: 'Россия', growth_rate: geoRUResult.data?.growth_rate ?? null },
+    ];
+    // Only include regions with data
+    const geoBreakdown = geoResults.filter(g => g.growth_rate !== null);
 
     // === VERDICT (calculated) ===
     const demandVerdict = calcDemandVerdict(
@@ -187,6 +244,17 @@ export async function POST(request: NextRequest) {
         suggestions: autocompleteSuggestions.map(s => s.suggestion),
         total: autocompleteSuggestions.length,
       } : null,
+      search_intent: {
+        commercial_percent: commercialPercent,
+        informational_percent: informationalPercent,
+        commercial_signals: commercialCount,
+        informational_signals: informationalCount,
+        total_signals: allIntentSuggestions.length,
+        intent_type: commercialPercent >= 60 ? 'commercial' as const
+          : commercialPercent >= 40 ? 'mixed' as const
+          : 'informational' as const,
+      },
+      geo_breakdown: geoBreakdown,
       verdict: demandVerdict,
       search_errors: [
         ...(trends12mResult.error ? [`google_trends_12m: ${trends12mResult.error}`] : []),
@@ -203,6 +271,8 @@ export async function POST(request: NextRequest) {
         new_players: { data_type: 'real_data', source: 'Product Hunt + Hacker News + GitHub + Indie Hackers + Google News' },
         youtube: { data_type: 'real_data', source: 'YouTube Data API' },
         google_autocomplete: { data_type: 'real_data', source: 'Google Autocomplete via SerpAPI' },
+        search_intent: { data_type: 'calculated', formula: 'commercial_signals / (commercial + informational)' },
+        geo_breakdown: { data_type: 'real_data', source: 'Google Trends via SerpAPI (geo-filtered)' },
         verdict: { data_type: 'calculated', formula: '(growth*0.5 + stability*0.3 + new_entrants*0.2) * entrants_factor' },
       },
       serpapi_calls_used: totalSerpApiCalls,

@@ -1,15 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import TrendCard from '@/components/TrendCard';
 import UserMenu from '@/components/auth/UserMenu';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import TableView from '@/components/showcase/TableView';
+import BubbleChart from '@/components/showcase/BubbleChart';
+import KanbanView from '@/components/showcase/KanbanView';
+import ComparePanel from '@/components/showcase/ComparePanel';
+import PersonalizationPanel from '@/components/showcase/PersonalizationPanel';
 import { useTranslations } from '@/lib/i18n';
 import { useIdeasLimit } from '@/hooks/useIdeasLimit';
 import { signIn } from 'next-auth/react';
 import type { Trend } from '@/types/trend';
 
+type ViewMode = 'cards' | 'table' | 'bubble' | 'kanban';
 type SortField = 'growth_rate' | 'first_detected_at';
 type SortDirection = 'asc' | 'desc';
 
@@ -54,7 +61,16 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateCategory, setGenerateCategory] = useState<string>('random');
   const [generateDropdownOpen, setGenerateDropdownOpen] = useState(false);
+  // Region filter
+  const [selectedRegion, setSelectedRegion] = useState('all');
+  // New UX features
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [compareList, setCompareList] = useState<string[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
+  const [showPersonalization, setShowPersonalization] = useState(false);
+  const [personalizedTrends, setPersonalizedTrends] = useState<Trend[] | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const t = useTranslations();
   const { isAuthenticated, canGenerate, recordGeneration, isAdmin, mounted: limitMounted } = useIdeasLimit();
 
@@ -214,11 +230,27 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
     setSortDropdownOpen(false);
   };
 
-  const filteredTrends = trends
-    .filter(t => selectedCategory === 'all' || t.category === selectedCategory || (t.category === 'AI & ML' && selectedCategory === 'AI/ML'))
-    .filter(t => searchQuery === '' || t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.why_trending.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Compare toggle
+  const toggleCompare = (trend: Trend) => {
+    setCompareList(prev =>
+      prev.includes(trend.id)
+        ? prev.filter(id => id !== trend.id)
+        : prev.length < 4 ? [...prev, trend.id] : prev
+    );
+  };
 
-  const sortedTrends = [...filteredTrends].sort((a, b) => {
+  // Navigate to trend analysis
+  const handleAnalyze = (trend: Trend) => {
+    router.push(`/trends/${trend.id}`);
+  };
+
+  const filteredTrends = useMemo(() => trends
+    .filter(t => selectedCategory === 'all' || t.category === selectedCategory || (t.category === 'AI & ML' && selectedCategory === 'AI/ML'))
+    .filter(t => selectedRegion === 'all' || !t.region || t.region === selectedRegion)
+    .filter(t => searchQuery === '' || t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.why_trending.toLowerCase().includes(searchQuery.toLowerCase())),
+  [trends, selectedCategory, selectedRegion, searchQuery]);
+
+  const sortedTrends = useMemo(() => [...filteredTrends].sort((a, b) => {
     let aValue: number;
     let bValue: number;
 
@@ -234,7 +266,7 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
       return bValue - aValue;
     }
     return aValue - bValue;
-  });
+  }), [filteredTrends, sortField, sortDirection]);
 
   const displayedTrends = sortedTrends.slice(0, visibleCount);
   const hasMore = visibleCount < sortedTrends.length;
@@ -511,51 +543,112 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
         {/* Trending Section + Filters */}
         <div id="trends-feed" className="sticky top-0 lg:top-[73px] z-20 glass border-b border-zinc-800/50">
           <div className="px-4 sm:px-6 py-4 sm:py-5">
-            {/* Title row with sort */}
+            {/* Title row with view modes + sort */}
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-white leading-tight">{t.home.trendingSectionTitle}</h2>
                 <p className="text-xs text-zinc-500 mt-0.5 hidden sm:block">{t.home.trendingSectionDesc}</p>
               </div>
 
-              {/* Sort control */}
-              <div className="relative sort-dropdown flex-shrink-0">
+              <div className="flex items-center gap-2">
+                {/* Personalization toggle */}
                 <button
-                  onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-2 bg-zinc-800/60 hover:bg-zinc-800 rounded-lg text-xs sm:text-sm text-zinc-300 hover:text-white transition-all border border-zinc-700/50"
+                  onClick={() => setShowPersonalization(!showPersonalization)}
+                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs transition-all border ${
+                    showPersonalization
+                      ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                      : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                  }`}
+                  title="Персонализация"
                 >
-                  <span className="text-xs">{currentSortOption?.icon}</span>
-                  <span className="hidden sm:inline whitespace-nowrap">{currentSortOption ? t.sort[currentSortOption.labelKey] : ''}</span>
-                  <svg className={`w-3.5 h-3.5 transition-transform ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <span className="text-sm">🎯</span>
+                  <span className="hidden lg:inline">Для меня</span>
                 </button>
 
-                {sortDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
-                    <div className="p-1.5">
-                      {sortOptionsConfig.map((option) => (
-                        <button
-                          key={option.id}
-                          onClick={() => handleSortChange(option.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-lg transition-colors ${
-                            sortField === option.id
-                              ? 'bg-indigo-500/15 text-indigo-400'
-                              : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                          }`}
-                        >
-                          <span className="w-5 text-center text-xs">{option.icon}</span>
-                          <span className="flex-1">{t.sort[option.labelKey]}</span>
-                          {sortField === option.id && (
-                            <span className="text-[10px] opacity-60">
-                              {sortDirection === 'desc' ? '↓ убыв.' : '↑ возр.'}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                {/* Compare button */}
+                {compareList.length > 0 && (
+                  <button
+                    onClick={() => setShowCompare(!showCompare)}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs transition-all border ${
+                      showCompare
+                        ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                        : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    }`}
+                  >
+                    <span className="text-sm">⚖️</span>
+                    <span className="hidden sm:inline">Сравнить</span>
+                    <span className="w-4 h-4 rounded-full bg-indigo-500 text-white text-[10px] flex items-center justify-center">
+                      {compareList.length}
+                    </span>
+                  </button>
                 )}
+
+                {/* Sort control */}
+                <div className="relative sort-dropdown flex-shrink-0">
+                  <button
+                    onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                    className="flex items-center gap-2 px-3 py-2 bg-zinc-800/60 hover:bg-zinc-800 rounded-lg text-xs sm:text-sm text-zinc-300 hover:text-white transition-all border border-zinc-700/50"
+                  >
+                    <span className="text-xs">{currentSortOption?.icon}</span>
+                    <span className="hidden sm:inline whitespace-nowrap">{currentSortOption ? t.sort[currentSortOption.labelKey] : ''}</span>
+                    <svg className={`w-3.5 h-3.5 transition-transform ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {sortDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
+                      <div className="p-1.5">
+                        {sortOptionsConfig.map((option) => (
+                          <button
+                            key={option.id}
+                            onClick={() => handleSortChange(option.id)}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left rounded-lg transition-colors ${
+                              sortField === option.id
+                                ? 'bg-indigo-500/15 text-indigo-400'
+                                : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                            }`}
+                          >
+                            <span className="w-5 text-center text-xs">{option.icon}</span>
+                            <span className="flex-1">{t.sort[option.labelKey]}</span>
+                            {sortField === option.id && (
+                              <span className="text-[10px] opacity-60">
+                                {sortDirection === 'desc' ? '↓ убыв.' : '↑ возр.'}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* View mode tabs + Category filters */}
+            <div className="flex items-center gap-3 mb-3">
+              {/* View mode switcher */}
+              <div className="flex bg-zinc-800/40 rounded-lg p-0.5 border border-zinc-700/30">
+                {([
+                  { id: 'cards' as ViewMode, icon: '▦', label: 'Карточки' },
+                  { id: 'table' as ViewMode, icon: '☰', label: 'Таблица' },
+                  { id: 'bubble' as ViewMode, icon: '◉', label: 'Карта' },
+                  { id: 'kanban' as ViewMode, icon: '▥', label: 'Канбан' },
+                ]).map(mode => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setViewMode(mode.id)}
+                    title={mode.label}
+                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      viewMode === mode.id
+                        ? 'bg-indigo-500/20 text-indigo-300 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <span className="sm:hidden">{mode.icon}</span>
+                    <span className="hidden sm:inline">{mode.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -579,12 +672,54 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
                   </button>
                 );
               })}
+              {/* Region filter */}
+              <div className="w-px h-6 bg-zinc-700/50 mx-1 self-center flex-shrink-0" />
+              {[
+                { id: 'all', label: 'Все', icon: '🌍' },
+                { id: 'us', label: 'US', icon: '🇺🇸' },
+                { id: 'eu', label: 'EU', icon: '🇪🇺' },
+                { id: 'asia', label: 'Asia', icon: '🌏' },
+                { id: 'ru', label: 'RU', icon: '🇷🇺' },
+              ].map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => setSelectedRegion(r.id)}
+                  className={`whitespace-nowrap flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                    selectedRegion === r.id
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                      : 'bg-zinc-800/40 border-zinc-700/30 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/70'
+                  }`}
+                >
+                  <span className="text-sm">{r.icon}</span>
+                  <span className="hidden sm:inline">{r.label}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Main content */}
         <main className="px-4 sm:px-6 py-6 sm:py-8">
+          {/* Personalization panel */}
+          <PersonalizationPanel
+            trends={sortedTrends}
+            onFilteredTrends={setPersonalizedTrends}
+            isOpen={showPersonalization}
+            onToggle={() => setShowPersonalization(false)}
+          />
+
+          {/* Compare panel */}
+          {showCompare && (
+            <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 animate-fadeIn">
+              <ComparePanel
+                trends={trends}
+                compareIds={compareList}
+                onRemove={(id) => setCompareList(prev => prev.filter(i => i !== id))}
+                onClear={() => { setCompareList([]); setShowCompare(false); }}
+              />
+            </div>
+          )}
+
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {[...Array(6)].map((_, i) => (
@@ -634,32 +769,69 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
                   {selectedCategory !== 'all' && (
                     <span> {t.home.ideasIn} <span className="text-indigo-400">{t.categories[categoriesConfig.find(c => c.id === selectedCategory)?.labelKey || 'all']}</span></span>
                   )}
+                  {personalizedTrends && (
+                    <span className="ml-2 text-indigo-400 text-xs">🎯 Персонализировано</span>
+                  )}
                 </p>
               </div>
 
-              {/* Trends Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 stagger-children">
-                {displayedTrends.map((trend, index) => (
-                  <TrendCard
-                    key={trend.id}
-                    trend={trend}
-                    dataTour={index === 0 ? 'trend-card' : undefined}
-                  />
-                ))}
-              </div>
-
-              {/* Infinite scroll sentinel — always in DOM so observer can track it */}
-              <div ref={sentinelRef} className={hasMore ? 'flex justify-center py-8' : 'h-1'}>
-                {hasMore && (
-                  <div className="flex items-center gap-2 text-zinc-500 text-sm">
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>{t.home.showMore}...</span>
+              {/* View: Cards (default) */}
+              {viewMode === 'cards' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 stagger-children">
+                    {displayedTrends.map((trend, index) => (
+                      <TrendCard
+                        key={trend.id}
+                        trend={trend}
+                        dataTour={index === 0 ? 'trend-card' : undefined}
+                      />
+                    ))}
                   </div>
-                )}
-              </div>
+
+                  {/* Infinite scroll sentinel */}
+                  <div ref={sentinelRef} className={hasMore ? 'flex justify-center py-8' : 'h-1'}>
+                    {hasMore && (
+                      <div className="flex items-center gap-2 text-zinc-500 text-sm">
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>{t.home.showMore}...</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* View: Table */}
+              {viewMode === 'table' && (
+                <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/30 overflow-hidden">
+                  <TableView
+                    trends={sortedTrends}
+                    onAnalyze={handleAnalyze}
+                    onCompare={toggleCompare}
+                    compareList={compareList}
+                  />
+                </div>
+              )}
+
+              {/* View: Bubble Chart */}
+              {viewMode === 'bubble' && (
+                <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/30 p-4">
+                  <BubbleChart
+                    trends={sortedTrends}
+                    onSelect={handleAnalyze}
+                  />
+                </div>
+              )}
+
+              {/* View: Kanban */}
+              {viewMode === 'kanban' && (
+                <KanbanView
+                  trends={sortedTrends}
+                  onAnalyze={handleAnalyze}
+                />
+              )}
             </>
           )}
 

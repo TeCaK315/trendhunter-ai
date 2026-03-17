@@ -72,6 +72,51 @@ interface Props {
   error?: string;
 }
 
+// Frustration thermometer component
+function FrustrationThermometer({ value }: { value: number }) {
+  const clampedValue = Math.max(0, Math.min(10, value));
+  const percentage = clampedValue * 10;
+
+  const getColor = () => {
+    if (clampedValue <= 3) return 'from-green-500 to-green-400';
+    if (clampedValue <= 5) return 'from-yellow-500 to-yellow-400';
+    if (clampedValue <= 7) return 'from-orange-500 to-orange-400';
+    return 'from-red-600 to-red-400';
+  };
+
+  const getLabel = () => {
+    if (clampedValue <= 3) return 'Низкая фрустрация';
+    if (clampedValue <= 5) return 'Умеренная фрустрация';
+    if (clampedValue <= 7) return 'Высокая фрустрация';
+    return 'Критическая фрустрация';
+  };
+
+  const getEmoji = () => {
+    if (clampedValue <= 3) return '\u{1F60C}';
+    if (clampedValue <= 5) return '\u{1F610}';
+    if (clampedValue <= 7) return '\u{1F620}';
+    return '\u{1F525}';
+  };
+
+  return (
+    <div className="bg-zinc-800/50 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-zinc-400">Уровень фрустрации</span>
+        <span className="text-sm font-bold">
+          {getEmoji()} {clampedValue.toFixed(1)}/10
+        </span>
+      </div>
+      <div className="h-3 bg-zinc-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full bg-gradient-to-r ${getColor()} rounded-full transition-all duration-500`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <div className="text-xs text-zinc-400 mt-1">{getLabel()}</div>
+    </div>
+  );
+}
+
 export default function RealProblemBlock({ data, loading, error }: Props) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [showAllComplaints, setShowAllComplaints] = useState(false);
@@ -139,7 +184,7 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-white">У кого болит</span>
             <EvidenceBadge type={data.who_hurts.total_complaints > 0 ? 'real_data' : 'no_data'} />
-            <span className="text-xs text-zinc-400">{data.who_hurts.total_complaints > 0 ? `${data.who_hurts.total_complaints} жалоб из ${data.who_hurts.sources_count} источников` : 'Нет данных'}</span>
+            <span className="text-xs text-zinc-400">{data.who_hurts.total_complaints > 0 ? `${data.who_hurts.total_complaints} жалоб за 30 дней из ${data.who_hurts.sources_count} источников` : 'Нет данных'}</span>
           </div>
           <span className="text-zinc-500">{expandedSection === 'who_hurts' ? '−' : '+'}</span>
         </button>
@@ -151,16 +196,19 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
               formula={data.who_hurts.severity_score.formula}
               confidence={data.who_hurts.severity_score.confidence}
             />
+            {/* Frustration Thermometer */}
+            <FrustrationThermometer value={data.who_hurts.severity_score.value} />
             <div className="mt-3 space-y-2">
               {visibleComplaints.map((c, i) => (
-                <SourceCard
-                  key={i}
-                  title={c.text}
-                  url={c.source_url}
-                  source={c.source}
-                  engagement={c.engagement}
-                  dataType="real_data"
-                />
+                <div key={i} className="border-l-2 border-red-500/40 pl-3">
+                  <SourceCard
+                    title={c.text}
+                    url={c.source_url}
+                    source={c.source}
+                    engagement={c.engagement}
+                    dataType="real_data"
+                  />
+                </div>
               ))}
               {data.who_hurts.complaints.length > 5 && (
                 <button

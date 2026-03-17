@@ -96,6 +96,141 @@ export async function POST(request: NextRequest) {
     const saturation = calcMarketSaturation(competitorsCount);
     const blueOcean = calcBlueOceanScore(competitorsCount);
 
+    // === FEATURE GAP + PRICING + TRAFFIC + COMPLAINTS (Phase 3.3) ===
+    let featureGapMatrix: Array<{ feature: string; competitors: Record<string, boolean> }> = [];
+    let pricingBenchmark: Array<{ competitor: string; plan: string; price: string; trial: boolean }> = [];
+    let trafficSources: Array<{ competitor: string; seo: number; ads: number; social: number; direct: number }> = [];
+    let competitorComplaints: Array<{ competitor: string; categories: Array<{ category: string; count: number; examples: string[] }> }> = [];
+
+    const top3Competitors = competitors.slice(0, 3);
+
+    // Complaint mining: SerpAPI Reddit search for top-3 competitors
+    if (top3Competitors.length > 0) {
+      const complaintSearches = await Promise.all(
+        top3Competitors.map(c =>
+          fetchReddit(`"${c.name}" complaint OR problem OR issue OR bug OR terrible`)
+        )
+      );
+      for (const cs of complaintSearches) {
+        totalSerpApiCalls += cs.serpapi_calls_used;
+      }
+
+      // GPT: Feature Gap + Pricing + Traffic + Complaint categorization in ONE call
+      if (OPENAI_API_KEY) {
+        try {
+          const complaintsContext = top3Competitors.map((c, idx) => {
+            const posts = complaintSearches[idx]?.data || [];
+            return `${c.name}: ${posts.slice(0, 5).map(p => `"${p.title}"`).join(', ') || 'нет жалоб'}`;
+          }).join('\n');
+
+          const competitorsList = top3Competitors.map(c =>
+            `${c.name}${c.website ? ` (${c.website})` : ''}`
+          ).join(', ');
+
+          const gapPrompt = `Analyze the niche "${searchQuery}" with these top competitors: ${competitorsList}
+
+Negative reviews found:
+${negativeReviews.slice(0, 8).map(r => `- [${r.source}] ${r.title}`).join('\n')}
+
+Competitor complaints from Reddit:
+${complaintsContext}
+
+Return JSON with exactly this structure:
+{
+  "feature_gap": [
+    {"feature": "Feature Name", ${top3Competitors.map(c => `"${c.name}": true`).join(', ')}}
+  ],
+  "pricing": [
+    {"competitor": "Name", "plan": "Basic/Pro/Enterprise", "price": "$X/mo", "trial": true}
+  ],
+  "traffic": [
+    {"competitor": "Name", "seo": 40, "ads": 20, "social": 25, "direct": 15}
+  ],
+  "complaints": [
+    {"competitor": "Name", "categories": [{"category": "UX", "count": 3, "examples": ["quote1"]}]}
+  ]
+}
+
+Rules:
+- feature_gap: 5-8 key features for this niche, boolean per competitor (true=has, false=missing)
+- pricing: estimate pricing tiers based on typical SaaS pricing in this niche
+- traffic: estimate % split of traffic sources (must sum to 100)
+- complaints: categorize Reddit complaints into: UX, Pricing, Support, Bugs, Performance, Features
+- Keep examples short (<60 chars), max 2 per category
+- Be realistic, base on actual data above`;
+
+          const gapRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content: gapPrompt }],
+              temperature: 0.3,
+              max_tokens: 1500,
+            }),
+          });
+
+          if (gapRes.ok) {
+            const gapData = await gapRes.json();
+            const gapContent = gapData.choices?.[0]?.message?.content || '';
+            const gapJson = gapContent.match(/\{[\s\S]*\}/);
+            if (gapJson) {
+              const parsed = JSON.parse(gapJson[0]);
+
+              // Feature Gap Matrix
+              if (parsed.feature_gap && Array.isArray(parsed.feature_gap)) {
+                featureGapMatrix = parsed.feature_gap.map((f: Record<string, unknown>) => {
+                  const competitorFlags: Record<string, boolean> = {};
+                  for (const c of top3Competitors) {
+                    competitorFlags[c.name] = !!f[c.name];
+                  }
+                  return { feature: f.feature as string, competitors: competitorFlags };
+                });
+              }
+
+              // Pricing Benchmark
+              if (parsed.pricing && Array.isArray(parsed.pricing)) {
+                pricingBenchmark = parsed.pricing.map((p: { competitor: string; plan: string; price: string; trial: boolean }) => ({
+                  competitor: p.competitor,
+                  plan: p.plan || 'N/A',
+                  price: p.price || 'N/A',
+                  trial: !!p.trial,
+                }));
+              }
+
+              // Traffic Sources
+              if (parsed.traffic && Array.isArray(parsed.traffic)) {
+                trafficSources = parsed.traffic.map((t: { competitor: string; seo: number; ads: number; social: number; direct: number }) => ({
+                  competitor: t.competitor,
+                  seo: t.seo || 0,
+                  ads: t.ads || 0,
+                  social: t.social || 0,
+                  direct: t.direct || 0,
+                }));
+              }
+
+              // Complaints
+              if (parsed.complaints && Array.isArray(parsed.complaints)) {
+                competitorComplaints = parsed.complaints.map((cc: { competitor: string; categories: Array<{ category: string; count: number; examples: string[] }> }) => ({
+                  competitor: cc.competitor,
+                  categories: (cc.categories || []).map(cat => ({
+                    category: cat.category,
+                    count: cat.count || 0,
+                    examples: (cat.examples || []).slice(0, 2),
+                  })),
+                }));
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Feature gap analysis error:', e);
+        }
+      }
+    }
+
     // === AI ANALYSIS for differentiation (optional) ===
     let differentiationOpportunities: string[] = [];
     if (OPENAI_API_KEY && (negativeReviews.length > 0 || featureGapPosts.length > 0)) {
@@ -233,6 +368,25 @@ ${dataSection}
         red_ocean: { data_type: 'calculated', formula: 'max(1, 10 - competitors * 1.2)' },
         design_analysis: { data_type: designAnalysisResult ? 'ai_synthesis' : 'not_available' },
       },
+      // Phase 3.3: Competitor Anatomy
+      feature_gap_matrix: featureGapMatrix.length > 0 ? {
+        features: featureGapMatrix,
+        competitors: top3Competitors.map(c => c.name),
+        data_type: 'ai_synthesis' as const,
+      } : null,
+      pricing_benchmark: pricingBenchmark.length > 0 ? {
+        entries: pricingBenchmark,
+        data_type: 'ai_synthesis' as const,
+      } : null,
+      traffic_sources: trafficSources.length > 0 ? {
+        entries: trafficSources,
+        data_type: 'ai_synthesis' as const,
+      } : null,
+      competitor_complaints: competitorComplaints.length > 0 ? {
+        entries: competitorComplaints,
+        data_type: 'real_data' as const,
+        source: 'Reddit via SerpAPI + GPT categorization',
+      } : null,
       // Design analysis runs in background - used by META agent for MVP generation
       design_analysis: designAnalysisResult,
       serpapi_calls_used: totalSerpApiCalls,

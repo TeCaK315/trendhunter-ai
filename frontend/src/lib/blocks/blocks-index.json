@@ -1,0 +1,660 @@
+{
+  "_meta": {
+    "description": "Block index for META agent — read this ONE file to know all available blocks",
+    "version": "2.0",
+    "total_blocks": 85,
+    "last_updated": "2026-03-15"
+  },
+
+  "categories": {
+    "foundation": "Always included — core project config files",
+    "auth": "Authentication & authorization (Supabase)",
+    "database": "Database types, migrations, CRUD helpers",
+    "ui": "UI components (header, footer, dashboard layout, loading, toast)",
+    "feature": "Optional features — selected by triggers/keywords",
+    "page": "Full page templates (landing, dashboard, analysis, settings, admin)",
+    "api": "API route templates",
+    "project-type": "Project-type-specific blocks (SaaS, Marketplace)"
+  },
+
+  "blocks": [
+    {
+      "id": "foundation/package-json",
+      "name": "Package Configuration",
+      "triggers": [],
+      "files": ["package.json"]
+    },
+    {
+      "id": "foundation/tsconfig",
+      "name": "TypeScript Config",
+      "triggers": [],
+      "files": ["tsconfig.json"]
+    },
+    {
+      "id": "foundation/tailwind-config",
+      "name": "Tailwind Configuration",
+      "triggers": [],
+      "files": ["tailwind.config.ts"]
+    },
+    {
+      "id": "foundation/postcss-config",
+      "name": "PostCSS Config",
+      "triggers": [],
+      "files": ["postcss.config.js"]
+    },
+    {
+      "id": "foundation/next-config",
+      "name": "Next.js Config",
+      "triggers": [],
+      "files": ["next.config.js"]
+    },
+    {
+      "id": "foundation/globals-css",
+      "name": "Global Styles",
+      "triggers": [],
+      "files": ["src/app/globals.css"]
+    },
+    {
+      "id": "foundation/root-layout",
+      "name": "Root Layout",
+      "triggers": [],
+      "files": ["src/app/layout.tsx"]
+    },
+    {
+      "id": "foundation/env-example",
+      "name": "Environment Example",
+      "triggers": [],
+      "files": [".env.example", ".gitignore"]
+    },
+    {
+      "id": "auth/supabase-client",
+      "name": "Supabase Client",
+      "triggers": ["auth_required", "database_required"],
+      "files": ["src/lib/supabase/client.ts", "src/lib/supabase/server.ts"]
+    },
+    {
+      "id": "auth/middleware",
+      "name": "Auth Middleware",
+      "triggers": ["auth_required"],
+      "files": ["src/lib/supabase/middleware.ts", "src/middleware.ts"]
+    },
+    {
+      "id": "auth/login-page",
+      "name": "Login Page",
+      "triggers": ["auth_required"],
+      "files": ["src/app/login/page.tsx"]
+    },
+    {
+      "id": "auth/signup-page",
+      "name": "Signup Page",
+      "triggers": ["auth_required"],
+      "files": ["src/app/signup/page.tsx"]
+    },
+    {
+      "id": "auth/callback",
+      "name": "Auth Callback",
+      "triggers": ["auth_required"],
+      "files": ["src/app/api/auth/callback/route.ts"]
+    },
+    {
+      "id": "auth/user-hook",
+      "name": "User Hook",
+      "triggers": ["auth_required"],
+      "files": ["src/hooks/useUser.ts"]
+    },
+    {
+      "id": "database/types",
+      "name": "Database Types",
+      "triggers": ["database_required"],
+      "files": ["src/lib/database.types.ts"]
+    },
+    {
+      "id": "database/migrations",
+      "name": "Database Migrations",
+      "triggers": ["database_required"],
+      "files": ["supabase/migrations/001_initial.sql"]
+    },
+    {
+      "id": "database/crud-helpers",
+      "name": "CRUD Helpers",
+      "triggers": ["database_required"],
+      "files": ["src/lib/crud.ts"]
+    },
+    {
+      "id": "ui/header",
+      "name": "Header",
+      "triggers": [],
+      "files": ["src/components/Header.tsx"]
+    },
+    {
+      "id": "ui/footer",
+      "name": "Footer",
+      "triggers": [],
+      "files": ["src/components/Footer.tsx"]
+    },
+    {
+      "id": "ui/dashboard-nav",
+      "name": "Dashboard Navigation",
+      "triggers": [],
+      "files": ["src/components/DashboardNav.tsx"]
+    },
+    {
+      "id": "ui/dashboard-layout",
+      "name": "Dashboard Layout",
+      "triggers": [],
+      "files": ["src/app/dashboard/layout.tsx"]
+    },
+    {
+      "id": "ui/loading-states",
+      "name": "Loading States",
+      "triggers": [],
+      "files": ["src/components/LoadingStates.tsx"]
+    },
+    {
+      "id": "ui/toast",
+      "name": "Toast Notifications",
+      "triggers": [],
+      "files": ["src/components/Toast.tsx"]
+    },
+    {
+      "id": "feature/stripe-setup",
+      "name": "Stripe Setup",
+      "triggers": ["payment", "subscription", "billing", "monetization", "stripe", "pricing"],
+      "files": ["src/lib/stripe.ts", "src/lib/stripe-client.ts"],
+      "npm": ["@stripe/stripe-js", "stripe"]
+    },
+    {
+      "id": "feature/stripe-checkout",
+      "name": "Stripe Checkout",
+      "triggers": ["payment", "subscription", "checkout"],
+      "files": ["src/app/api/stripe/checkout/route.ts"]
+    },
+    {
+      "id": "feature/stripe-webhook",
+      "name": "Stripe Webhook",
+      "triggers": ["payment", "subscription", "webhook"],
+      "files": ["src/app/api/stripe/webhook/route.ts"]
+    },
+    {
+      "id": "feature/stripe-billing-page",
+      "name": "Billing Page",
+      "triggers": ["billing", "subscription", "pricing"],
+      "files": ["src/app/dashboard/billing/page.tsx", "src/components/PricingCard.tsx"]
+    },
+    {
+      "id": "feature/usage-tracking",
+      "name": "Usage Tracking",
+      "triggers": ["usage", "limit", "rate", "quota"],
+      "files": ["src/lib/usage.ts", "src/app/api/usage/route.ts", "src/components/UsageCard.tsx"]
+    },
+    {
+      "id": "feature/file-upload",
+      "name": "File Upload",
+      "triggers": ["upload", "file", "image", "document", "attachment"],
+      "files": ["src/components/FileUpload.tsx", "src/app/api/upload/route.ts"]
+    },
+    {
+      "id": "feature/search",
+      "name": "Search",
+      "triggers": ["search", "filter", "find", "query"],
+      "files": ["src/components/SearchBar.tsx"]
+    },
+    {
+      "id": "feature/email-resend",
+      "name": "Email via Resend",
+      "triggers": ["email", "notification", "newsletter", "mail"],
+      "files": ["src/lib/email.ts", "src/app/api/send-email/route.ts"],
+      "npm": ["resend"]
+    },
+    {
+      "id": "feature/pdf-export",
+      "name": "PDF Export",
+      "triggers": ["pdf", "export", "download", "document", "report", "invoice", "plan"],
+      "files": ["src/lib/pdf-generator.ts", "src/components/ExportButtons.tsx"],
+      "npm": ["jspdf"]
+    },
+    {
+      "id": "feature/interactive-wizard",
+      "name": "Interactive Wizard",
+      "triggers": ["quiz", "questionnaire", "wizard", "survey", "step-by-step", "assessment", "test", "onboarding"],
+      "files": ["src/components/InteractiveWizard.tsx", "src/app/dashboard/wizard/page.tsx"]
+    },
+    {
+      "id": "feature/data-charts",
+      "name": "Data Charts & Analytics",
+      "triggers": ["chart", "graph", "analytics", "dashboard", "monitoring", "tracking", "visualization", "statistics"],
+      "files": ["src/components/ChartComponents.tsx", "src/app/dashboard/analytics/page.tsx"]
+    },
+    {
+      "id": "feature/csv-processor",
+      "name": "CSV Batch Processor",
+      "triggers": ["csv", "batch", "bulk", "import", "spreadsheet", "excel", "mass"],
+      "files": ["src/components/CsvUploader.tsx", "src/app/api/batch-analyze/route.ts", "src/app/dashboard/batch/page.tsx"]
+    },
+    {
+      "id": "feature/ai-chatbot",
+      "name": "AI Chatbot",
+      "triggers": ["chat", "chatbot", "assistant", "knowledge", "faq", "support", "help"],
+      "files": ["src/components/AiChatWidget.tsx", "src/app/api/chat/route.ts", "src/app/dashboard/chat/page.tsx"]
+    },
+    {
+      "id": "feature/notification-system",
+      "name": "Notification System",
+      "triggers": ["notification", "alert", "bell"],
+      "files": ["src/components/NotificationCenter.tsx"]
+    },
+    {
+      "id": "feature/comparison-table",
+      "name": "Comparison Table",
+      "triggers": ["comparison", "compare", "versus", "vs", "side-by-side"],
+      "files": ["src/components/ComparisonTable.tsx"]
+    },
+    {
+      "id": "feature/activity-timeline",
+      "name": "Activity Timeline",
+      "triggers": ["timeline", "activity", "history", "log", "audit"],
+      "files": ["src/components/ActivityTimeline.tsx"]
+    },
+    {
+      "id": "feature/social-sharing",
+      "name": "Social Sharing",
+      "triggers": ["share", "social", "twitter", "facebook", "linkedin"],
+      "files": ["src/components/SocialShare.tsx"]
+    },
+    {
+      "id": "feature/dark-mode-toggle",
+      "name": "Dark Mode Toggle",
+      "triggers": ["dark mode", "theme", "light mode"],
+      "files": ["src/components/ThemeToggle.tsx"]
+    },
+    {
+      "id": "feature/calendar-scheduler",
+      "name": "Calendar & Scheduler",
+      "triggers": ["calendar", "schedule", "booking", "appointment", "event"],
+      "files": ["src/components/CalendarScheduler.tsx"]
+    },
+    {
+      "id": "feature/kanban-board",
+      "name": "Kanban Board",
+      "triggers": ["kanban", "board", "task", "project", "trello"],
+      "files": ["src/components/KanbanBoard.tsx"]
+    },
+    {
+      "id": "feature/rich-text-editor",
+      "name": "Rich Text Editor",
+      "triggers": ["editor", "wysiwyg", "rich text", "cms"],
+      "files": ["src/components/RichTextEditor.tsx"]
+    },
+    {
+      "id": "feature/voice-input",
+      "name": "Voice Input",
+      "triggers": ["voice", "speech", "microphone", "dictation"],
+      "files": ["src/components/VoiceInput.tsx"]
+    },
+    {
+      "id": "feature/qr-code-generator",
+      "name": "QR Code Generator",
+      "triggers": ["qr", "qr code", "barcode"],
+      "files": ["src/components/QrCodeGenerator.tsx"]
+    },
+    {
+      "id": "feature/referral-system",
+      "name": "Referral System",
+      "triggers": ["referral", "invite", "affiliate"],
+      "files": ["src/components/ReferralWidget.tsx", "src/app/api/referral/route.ts"]
+    },
+    {
+      "id": "feature/api-key-management",
+      "name": "API Key Management",
+      "triggers": ["api key", "developer", "sdk", "integration"],
+      "files": ["src/app/dashboard/api-keys/page.tsx"]
+    },
+    {
+      "id": "feature/webhook-receiver",
+      "name": "Webhook Receiver",
+      "triggers": ["webhook", "incoming", "hook"],
+      "files": ["src/app/api/webhooks/incoming/route.ts", "src/lib/webhook-handler.ts"]
+    },
+    {
+      "id": "feature/cron-scheduler",
+      "name": "Cron Scheduler",
+      "triggers": ["cron", "scheduled", "background", "periodic"],
+      "files": ["src/app/api/cron/route.ts"]
+    },
+    {
+      "id": "feature/feedback-collector",
+      "name": "Feedback Collector",
+      "triggers": ["feedback", "review", "rating", "nps"],
+      "files": ["src/components/FeedbackWidget.tsx"]
+    },
+    {
+      "id": "feature/waitlist-prelaunch",
+      "name": "Waitlist / Pre-launch",
+      "triggers": ["waitlist", "coming soon", "prelaunch", "early access"],
+      "files": ["src/app/waitlist/page.tsx", "src/app/api/waitlist/route.ts"]
+    },
+    {
+      "id": "feature/pricing-page",
+      "name": "Pricing Page",
+      "triggers": ["pricing", "plans"],
+      "files": ["src/app/pricing/page.tsx"]
+    },
+    {
+      "id": "feature/blog-cms",
+      "name": "Blog / CMS",
+      "triggers": ["blog", "article", "post"],
+      "files": ["src/app/blog/page.tsx", "src/app/blog/[slug]/page.tsx"]
+    },
+    {
+      "id": "feature/comments-discussion",
+      "name": "Comments / Discussion",
+      "triggers": ["comment", "discussion", "reply"],
+      "files": ["src/components/CommentSection.tsx"]
+    },
+    {
+      "id": "feature/multi-workspace",
+      "name": "Multi-Workspace",
+      "triggers": ["workspace", "organization", "team", "tenant"],
+      "files": ["src/app/dashboard/workspace/page.tsx"]
+    },
+    {
+      "id": "feature/multi-language",
+      "name": "Multi-Language (i18n)",
+      "triggers": ["i18n", "language", "translation", "multilingual"],
+      "files": ["src/lib/i18n.ts", "src/components/LanguageSwitcher.tsx"]
+    },
+    {
+      "id": "feature/image-ai-generator",
+      "name": "AI Image Generator",
+      "triggers": ["image generation", "dall-e", "ai image"],
+      "files": ["src/components/ImageGenerator.tsx", "src/app/api/generate-image/route.ts"]
+    },
+    {
+      "id": "feature/data-export-multi",
+      "name": "Multi-Format Export",
+      "triggers": ["export", "download data", "json export", "csv export"],
+      "files": ["src/components/DataExportButtons.tsx"]
+    },
+    {
+      "id": "feature/seo-toolkit",
+      "name": "SEO Toolkit",
+      "triggers": ["seo", "sitemap", "meta", "opengraph", "robots"],
+      "files": ["src/app/sitemap.ts", "src/app/robots.ts", "src/lib/seo.ts"]
+    },
+    {
+      "id": "feature/onboarding-tour",
+      "name": "Onboarding Tour",
+      "triggers": ["onboarding", "tour", "guide", "walkthrough", "tutorial"],
+      "files": ["src/components/OnboardingTour.tsx"]
+    },
+    {
+      "id": "feature/health-disclaimer",
+      "name": "Health Disclaimer",
+      "triggers": ["health", "medical", "disclaimer", "hipaa"],
+      "files": ["src/components/HealthDisclaimer.tsx"]
+    },
+    {
+      "id": "feature/health-tracker",
+      "name": "Health Tracker",
+      "triggers": ["tracker", "health", "fitness", "weight", "pressure"],
+      "files": ["src/components/HealthTracker.tsx"]
+    },
+    {
+      "id": "feature/financial-calculator",
+      "name": "Financial Calculator",
+      "triggers": ["calculator", "loan", "roi", "margin", "finance"],
+      "files": ["src/components/FinancialCalculator.tsx"]
+    },
+    {
+      "id": "feature/invoice-generator",
+      "name": "Invoice Generator",
+      "triggers": ["invoice", "bill", "receipt"],
+      "files": ["src/components/InvoiceGenerator.tsx"]
+    },
+    {
+      "id": "feature/learning-progress",
+      "name": "Learning Progress",
+      "triggers": ["learning", "course", "progress", "lesson", "module"],
+      "files": ["src/components/LearningProgress.tsx"]
+    },
+    {
+      "id": "feature/certificate-generator",
+      "name": "Certificate Generator",
+      "triggers": ["certificate", "diploma"],
+      "files": ["src/components/CertificateGenerator.tsx"]
+    },
+    {
+      "id": "feature/product-catalog",
+      "name": "Product Catalog",
+      "triggers": ["catalog", "products", "shop", "store"],
+      "files": ["src/components/ProductCatalog.tsx"]
+    },
+    {
+      "id": "feature/shopping-cart",
+      "name": "Shopping Cart",
+      "triggers": ["cart", "shopping", "checkout"],
+      "files": ["src/components/ShoppingCart.tsx"]
+    },
+    {
+      "id": "feature/wishlist",
+      "name": "Wishlist",
+      "triggers": ["wishlist", "favorites", "saved"],
+      "files": ["src/components/Wishlist.tsx"]
+    },
+    {
+      "id": "feature/booking-system",
+      "name": "Booking System",
+      "triggers": ["booking", "appointment", "reservation"],
+      "files": ["src/components/BookingSystem.tsx"]
+    },
+    {
+      "id": "feature/image-gallery",
+      "name": "Image Gallery",
+      "triggers": ["gallery", "photos", "portfolio"],
+      "files": ["src/components/ImageGallery.tsx"]
+    },
+    {
+      "id": "feature/video-player",
+      "name": "Video Player",
+      "triggers": ["video", "player", "youtube", "vimeo"],
+      "files": ["src/components/VideoPlayer.tsx"]
+    },
+    {
+      "id": "feature/faq-accordion",
+      "name": "FAQ Accordion",
+      "triggers": ["faq", "questions", "accordion"],
+      "files": ["src/components/FaqAccordion.tsx"]
+    },
+    {
+      "id": "feature/testimonials",
+      "name": "Testimonials",
+      "triggers": ["testimonial", "review"],
+      "files": ["src/components/Testimonials.tsx"]
+    },
+    {
+      "id": "feature/changelog",
+      "name": "Changelog",
+      "triggers": ["changelog", "release", "version", "updates"],
+      "files": ["src/components/Changelog.tsx"]
+    },
+    {
+      "id": "feature/file-manager",
+      "name": "File Manager",
+      "triggers": ["file manager", "files", "documents", "storage"],
+      "files": ["src/components/FileManager.tsx"]
+    },
+    {
+      "id": "feature/email-templates",
+      "name": "Email Templates",
+      "triggers": ["email template", "welcome email"],
+      "files": ["src/lib/email-templates.ts"]
+    },
+    {
+      "id": "feature/contact-form",
+      "name": "Contact Form",
+      "triggers": ["contact", "form"],
+      "files": ["src/components/ContactForm.tsx", "src/app/api/contact/route.ts"]
+    },
+    {
+      "id": "feature/in-app-messaging",
+      "name": "In-App Messaging",
+      "triggers": ["messaging", "inbox", "direct message"],
+      "files": ["src/components/InAppMessaging.tsx"]
+    },
+    {
+      "id": "feature/announcement-banner",
+      "name": "Announcement Banner",
+      "triggers": ["announcement", "banner", "notice"],
+      "files": ["src/components/AnnouncementBanner.tsx"]
+    },
+    {
+      "id": "feature/map-location",
+      "name": "Map & Location",
+      "triggers": ["map", "location", "geo", "markers"],
+      "files": ["src/components/MapLocation.tsx"]
+    },
+    {
+      "id": "feature/data-table-advanced",
+      "name": "Advanced Data Table",
+      "triggers": ["table", "data table", "grid", "spreadsheet"],
+      "files": ["src/components/DataTableAdvanced.tsx"]
+    },
+    {
+      "id": "feature/tree-view",
+      "name": "Tree View",
+      "triggers": ["tree", "hierarchy", "nested", "categories"],
+      "files": ["src/components/TreeView.tsx"]
+    },
+    {
+      "id": "feature/stats-dashboard",
+      "name": "Stats Dashboard",
+      "triggers": ["stats", "kpi", "metrics", "dashboard stats"],
+      "files": ["src/components/StatsDashboard.tsx"]
+    },
+    {
+      "id": "feature/ai-text-to-speech",
+      "name": "AI Text-to-Speech",
+      "triggers": ["tts", "text to speech", "voice", "audio"],
+      "files": ["src/components/TextToSpeech.tsx", "src/app/api/text-to-speech/route.ts"]
+    },
+    {
+      "id": "feature/ai-summarizer",
+      "name": "AI Summarizer",
+      "triggers": ["summarize", "summary", "tldr"],
+      "files": ["src/components/AiSummarizer.tsx", "src/app/api/summarize/route.ts"]
+    },
+    {
+      "id": "feature/ai-translator",
+      "name": "AI Translator",
+      "triggers": ["translate", "translation", "language"],
+      "files": ["src/components/AiTranslator.tsx", "src/app/api/translate/route.ts"]
+    },
+    {
+      "id": "feature/ai-content-writer",
+      "name": "AI Content Writer",
+      "triggers": ["content writer", "copywriting", "generate text"],
+      "files": ["src/components/AiContentWriter.tsx", "src/app/api/generate-content/route.ts"]
+    },
+    {
+      "id": "feature/onboarding-checklist",
+      "name": "Onboarding Checklist",
+      "triggers": ["checklist", "getting started", "first steps"],
+      "files": ["src/components/OnboardingChecklist.tsx"]
+    },
+    {
+      "id": "feature/gamification",
+      "name": "Gamification",
+      "triggers": ["gamification", "badges", "xp", "leaderboard", "achievement"],
+      "files": ["src/components/Gamification.tsx"]
+    },
+    {
+      "id": "feature/user-profile-page",
+      "name": "User Profile",
+      "triggers": ["profile", "user page", "avatar"],
+      "files": ["src/components/UserProfile.tsx"]
+    },
+    {
+      "id": "feature/cookie-consent",
+      "name": "Cookie Consent",
+      "triggers": ["cookie", "gdpr", "privacy", "consent"],
+      "files": ["src/components/CookieConsent.tsx"]
+    },
+    {
+      "id": "page/landing",
+      "name": "Landing Page",
+      "triggers": [],
+      "files": ["src/app/page.tsx"]
+    },
+    {
+      "id": "page/dashboard",
+      "name": "Dashboard Page",
+      "triggers": [],
+      "files": ["src/app/dashboard/page.tsx"]
+    },
+    {
+      "id": "page/analysis",
+      "name": "Analysis Results Page",
+      "triggers": [],
+      "files": ["src/app/dashboard/analysis/page.tsx"]
+    },
+    {
+      "id": "page/settings",
+      "name": "Settings Page",
+      "triggers": [],
+      "files": ["src/app/dashboard/settings/page.tsx"]
+    },
+    {
+      "id": "page/admin",
+      "name": "Admin Page",
+      "triggers": ["admin", "management", "moderation"],
+      "files": ["src/app/admin/page.tsx"]
+    },
+    {
+      "id": "api/analyze",
+      "name": "AI Analysis Route",
+      "triggers": ["analysis", "ai", "generate", "process"],
+      "files": ["src/app/api/analyze/route.ts"],
+      "npm": ["openai"]
+    },
+    {
+      "id": "api/crud-routes",
+      "name": "CRUD API Routes",
+      "triggers": ["database_required"],
+      "files": ["src/app/api/items/route.ts"]
+    },
+    {
+      "id": "api/error-handler",
+      "name": "Error Handler",
+      "triggers": [],
+      "files": ["src/lib/api-error.ts"]
+    },
+    {
+      "id": "project-type/saas-subscription",
+      "name": "Subscription Management",
+      "triggers": ["subscription", "plan", "tier"],
+      "files": ["src/lib/subscription.ts"],
+      "project_type": "saas"
+    },
+    {
+      "id": "project-type/saas-team",
+      "name": "Team Management",
+      "triggers": ["team", "organization", "invite", "collaborate"],
+      "files": ["src/app/dashboard/team/page.tsx", "src/app/api/team/route.ts"],
+      "project_type": "saas"
+    },
+    {
+      "id": "project-type/marketplace-listings",
+      "name": "Marketplace Listings",
+      "triggers": ["listing", "product", "catalog", "marketplace", "item"],
+      "files": ["src/app/listings/page.tsx", "src/app/listings/[id]/page.tsx", "src/app/listings/new/page.tsx", "src/app/api/listings/route.ts", "src/components/ListingCard.tsx"],
+      "project_type": "marketplace"
+    },
+    {
+      "id": "project-type/marketplace-reviews",
+      "name": "Review System",
+      "triggers": ["review", "rating", "feedback", "star"],
+      "files": [],
+      "project_type": "marketplace"
+    }
+  ]
+}

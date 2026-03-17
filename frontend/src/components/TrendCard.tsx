@@ -17,6 +17,28 @@ interface TrendCardProps {
   dataTour?: string;
 }
 
+function SentimentBar({ sentiment }: { sentiment: NonNullable<Trend['sentiment']> }) {
+  const total = sentiment.positive + sentiment.negative + sentiment.neutral;
+  if (total === 0) return null;
+  const posPercent = Math.round((sentiment.positive / total) * 100);
+  const negPercent = Math.round((sentiment.negative / total) * 100);
+  return (
+    <div
+      className="flex-1 cursor-help"
+      title={`Настроения: ${posPercent}% позитив, ${negPercent}% негатив${sentiment.sample_quotes?.length ? '\n' + sentiment.sample_quotes.join('\n') : ''}`}
+    >
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="text-[10px] text-zinc-500">Настроение</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden flex">
+        <div className="bg-green-500 transition-all" style={{ width: `${posPercent}%` }} />
+        <div className="bg-zinc-600 transition-all" style={{ width: `${100 - posPercent - negPercent}%` }} />
+        <div className="bg-red-500 transition-all" style={{ width: `${negPercent}%` }} />
+      </div>
+    </div>
+  );
+}
+
 const categoryConfig: Record<string, { icon: string; color: string }> = {
   'SaaS': { icon: '💻', color: 'from-blue-500/20 to-cyan-500/20' },
   'E-commerce': { icon: '🛒', color: 'from-emerald-500/20 to-green-500/20' },
@@ -136,10 +158,31 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
                 <span className="hidden xs:inline">{trend.category}</span>
               </div>
               {trend.growth_rate !== undefined && trend.growth_rate !== 0 && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  trend.growth_rate > 0 ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
-                }`}>
+                <span
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                    trend.growth_rate > 0 ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+                  }`}
+                  title={
+                    trend.data_confidence === 'verified'
+                      ? 'Данные подтверждены Google Trends'
+                      : trend.data_confidence === 'estimated'
+                        ? 'Данные приблизительные (расхождение с Google Trends)'
+                        : trend.data_confidence === 'ai_generated'
+                          ? 'Данные сгенерированы ИИ, не подтверждены'
+                          : undefined
+                  }
+                >
                   {trend.growth_rate > 0 ? '+' : ''}{trend.growth_rate}% {t.trendCard.growth.toLowerCase()}
+                  {trend.data_confidence && (
+                    <span className={`text-[9px] ${
+                      trend.data_confidence === 'verified' ? 'text-green-500' :
+                      trend.data_confidence === 'estimated' ? 'text-yellow-500' :
+                      'text-zinc-500'
+                    }`}>
+                      {trend.data_confidence === 'verified' ? '✓' :
+                       trend.data_confidence === 'estimated' ? '~' : '?'}
+                    </span>
+                  )}
                 </span>
               )}
             </div>
@@ -154,10 +197,27 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
             </div>
           </div>
 
-          {/* Title */}
-          <h3 className="text-lg font-semibold text-white mb-2 leading-tight group-hover:text-indigo-100 transition-colors">
-            {displayTitle}
-          </h3>
+          {/* Title + Verdict Badge */}
+          <div className="flex items-start gap-2 mb-2">
+            <h3 className="text-lg font-semibold text-white leading-tight group-hover:text-indigo-100 transition-colors flex-1">
+              {displayTitle}
+            </h3>
+            {trend.quick_verdict && (
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-1 ${
+                  trend.quick_verdict.decision === 'go' ? 'bg-green-500/15 text-green-400 border border-green-500/30' :
+                  trend.quick_verdict.decision === 'no_go' ? 'bg-red-500/15 text-red-400 border border-red-500/30' :
+                  trend.quick_verdict.decision === 'pivot' ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30' :
+                  'bg-zinc-500/15 text-zinc-400 border border-zinc-500/30'
+                }`}
+                title={trend.quick_verdict.summary}
+              >
+                {trend.quick_verdict.decision === 'go' ? 'GO' :
+                 trend.quick_verdict.decision === 'no_go' ? 'NO-GO' :
+                 trend.quick_verdict.decision === 'pivot' ? 'PIVOT' : '?'}
+              </span>
+            )}
+          </div>
 
           {/* Description */}
           <p className="text-sm text-zinc-400 line-clamp-3 group-hover:text-zinc-300 transition-colors flex-1">
@@ -167,6 +227,7 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
           {/* Metrics + CTA pinned to bottom */}
           <div className="mt-auto pt-4">
           {trend.enriched_at ? (
+            <>
             <div className="flex items-center gap-2 mb-4 p-2.5 bg-zinc-900/50 rounded-xl border border-zinc-800/30">
               {/* Competition Level */}
               <div
@@ -213,6 +274,34 @@ export default function TrendCard({ trend, dataTour }: TrendCardProps) {
                 <span className="text-[11px] text-zinc-300 font-medium truncate">{trend.entry_cost_estimate || '—'}</span>
               </div>
             </div>
+
+            {/* Sentiment bar + Difficulty indicator */}
+            {(trend.sentiment || trend.difficulty_score) && (
+              <div className="flex items-center gap-3 mb-3 px-1">
+                {/* Sentiment bar */}
+                {trend.sentiment && (trend.sentiment.positive + trend.sentiment.negative + trend.sentiment.neutral) > 0 && (
+                  <SentimentBar sentiment={trend.sentiment} />
+                )}
+
+                {/* Difficulty score */}
+                {trend.difficulty_score && (
+                  <div
+                    className="flex items-center gap-1.5 cursor-help flex-shrink-0"
+                    title={`Сложность MVP: ${trend.difficulty_score}/10${trend.difficulty_reasoning ? '. ' + trend.difficulty_reasoning : ''}`}
+                  >
+                    <span className="text-[10px] text-zinc-500">Сложность</span>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${
+                      trend.difficulty_score <= 3 ? 'bg-green-500/15 text-green-400' :
+                      trend.difficulty_score <= 6 ? 'bg-yellow-500/15 text-yellow-400' :
+                      'bg-red-500/15 text-red-400'
+                    }`}>
+                      {trend.difficulty_score}/10
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            </>
           ) : (
             <div className="flex items-center gap-2 mb-4 p-2.5 bg-zinc-900/30 rounded-xl border border-zinc-800/20">
               <div className="flex-1 flex items-center justify-center gap-2">
