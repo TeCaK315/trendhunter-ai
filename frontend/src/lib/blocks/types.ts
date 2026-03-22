@@ -30,6 +30,35 @@ export interface DesignSystem {
 
 export type ProjectType = 'saas' | 'marketplace' | 'pwa';
 
+// ─── Content Profile ───
+
+export interface ContentProfile {
+  /** What the product creates/manages: "Invoice", "Quiz", "Report" */
+  entityName: string;
+  /** Plural form: "Invoices", "Quizzes", "Reports" */
+  entityNamePlural: string;
+  /** Short prefix for numbering: "INV", "QZ", "RPT" */
+  entityPrefix: string;
+
+  // What the dashboard tracks
+  tracksMoney: boolean;
+  tracksStatus: boolean;
+  tracksScore: boolean;
+  tracksCount: boolean;
+
+  // Status lifecycle
+  statuses: Array<{ value: string; labelKey: string; color: string }>;
+
+  // Form archetype
+  formType: 'sender-recipient' | 'single-input' | 'data-entry';
+  hasLineItems: boolean;
+  hasCurrency: boolean;
+  hasPaymentTerms: boolean;
+
+  // Settings tabs
+  settingsTabs: Array<'business' | 'defaults' | 'payment'>;
+}
+
 // ─── Block Context ───
 
 export interface BlockContext {
@@ -81,7 +110,14 @@ export interface BlockContext {
     magicDescription: string;
     magicType: string;
     outputFormat: string;
+    // Content profile — determines how content blocks adapt to the niche
+    contentProfile: ContentProfile;
   };
+
+  // ─── Content Profile ───
+
+  /** Computed once in assembler, read by all content blocks (dashboard, create, settings, i18n) */
+  contentProfile: ContentProfile;
 
   // Accumulators (blocks register their needs, aggregator blocks read them)
   env_vars: Map<string, { example: string; description: string }>;

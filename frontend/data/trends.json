@@ -1,6 +1,522 @@
 {
   "trends": [
     {
+      "id": "trend-1774046198692-1",
+      "title": "Мониторинг здоровья бренда",
+      "category": "HealthTech",
+      "popularity_score": 85,
+      "growth_rate": 0,
+      "why_trending": "рост интереса на 0% за неделю. Продукт помогает компаниям отслеживать репутацию и восприятие бренда на рынке, что критично для успешного ведения бизнеса.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-20T22:36:38.692Z",
+      "source_query": "brand health monitoring",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 0,
+      "enriched_at": "2026-03-20T22:36:50.726Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 0,
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP requires integrating various data sources and APIs for effective brand health monitoring, which adds complexity.",
+      "quick_verdict": {
+        "decision": "no_go",
+        "summary": "Рынок перенасыщен и не показывает роста."
+      }
+    },
+    {
+      "id": "trend-1774046198692-2",
+      "title": "Платформа для создания без кода",
+      "category": "Technology",
+      "popularity_score": 83,
+      "growth_rate": 17,
+      "why_trending": "рост интереса на 17% за неделю. Продукт позволяет пользователям без технических навыков создавать приложения и автоматизировать процессы, что значительно упрощает разработку.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-20T22:36:38.692Z",
+      "source_query": "no code platform",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 8,
+      "monthly_searches": 186,
+      "enriched_at": "2026-03-20T22:36:57.655Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 17,
+      "sentiment": {
+        "positive": 5,
+        "negative": 0,
+        "neutral": 3,
+        "sample_quotes": [
+          "Bubble, наверное, самый известный, потому что он супер гибкий",
+          "Adalo: Эта платформа очень проста для новичков"
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a no-code platform requires integrating various tools and APIs, which adds complexity but is manageable with existing frameworks.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хорошая, но требуется дифференциация для успешного выхода на рынок."
+      }
+    },
+    {
+      "id": "trend-1774046198692-3",
+      "title": "AI для автоматизации продаж",
+      "category": "SaaS",
+      "popularity_score": 82,
+      "growth_rate": -11,
+      "why_trending": "рост интереса на -11% за неделю. Продукт предлагает решения для автоматизации процессов продаж, что позволяет компаниям повысить эффективность и сократить затраты.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-20T22:36:38.692Z",
+      "source_query": "ai for sales automation",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 21,
+      "enriched_at": "2026-03-20T22:36:56.302Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -11,
+      "sentiment": {
+        "positive": 5,
+        "negative": 0,
+        "neutral": 3,
+        "sample_quotes": [
+          "легко делаю свою работу с отличными результатами",
+          "снижает нагрузку на отдел продаж"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP requires integrating various APIs and ensuring a seamless user experience, which adds complexity.",
+      "quick_verdict": {
+        "decision": "no_go",
+        "summary": "Рынок насыщен, и рост отрицательный, что делает эту нишу рискованной."
+      }
+    },
+    {
+      "id": "trend-1774046198692-5",
+      "title": "AI приложение для бюджета",
+      "category": "FinTech",
+      "popularity_score": 82,
+      "growth_rate": 3,
+      "why_trending": "рост интереса на 3% за неделю. Продукт помогает пользователям эффективно управлять своими финансами с помощью искусственного интеллекта, предлагая персонализированные рекомендации.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-20T22:36:38.692Z",
+      "source_query": "ai budgeting app",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 5,
+      "enriched_at": "2026-03-20T22:37:04.699Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 3,
+      "sentiment": {
+        "positive": 6,
+        "negative": 0,
+        "neutral": 2,
+        "sample_quotes": [
+          "умный, современный способ отслеживать ваши расходы",
+          "помогает вам изучать свои расходы через простое общение"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP for an AI budgeting app involves integrating various APIs and ensuring data security, which adds complexity.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но требуется дифференциация от конкурентов."
+      }
+    },
+    {
+      "id": "trend-1774046198692-6",
+      "title": "Анализ причин брошенных корзин",
+      "category": "E-commerce",
+      "popularity_score": 82,
+      "growth_rate": -15,
+      "why_trending": "рост интереса на -15% за неделю. Продукт помогает интернет-магазинам выявлять и анализировать причины, по которым клиенты покидают корзины, что позволяет улучшать конверсию.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-20T22:36:38.692Z",
+      "source_query": "cart abandonment reasons",
+      "competition_level": "low",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 3,
+      "monthly_searches": 2,
+      "enriched_at": "2026-03-20T22:37:05.751Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -15,
+      "sentiment": {
+        "positive": 0,
+        "negative": 5,
+        "neutral": 3,
+        "sample_quotes": [
+          "брошенные корзины, это значит, что у тебя слишком высокая цена",
+          "сайты хреново информируют меня о стоимости доставки"
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building an MVP requires integrating with e-commerce platforms and analyzing user behavior data, which involves moderate technical complexity.",
+      "quick_verdict": {
+        "decision": "no_go",
+        "summary": "Рынок убывает, и конкуренция слишком низка для устойчивого роста."
+      }
+    },
+    {
+      "id": "trend-1773956376727-0",
+      "title": "Инструмент редактирования фото с AI",
+      "category": "AI & ML",
+      "popularity_score": 92,
+      "growth_rate": -3,
+      "why_trending": "рост интереса на -3% за неделю. Несмотря на снижение интереса, автоматизация редактирования фотографий с помощью AI продолжает привлекать пользователей, стремящихся к упрощению и улучшению процесса обработки изображений.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-19T21:39:36.727Z",
+      "source_query": "gemini ai photo editor",
+      "competition_level": "low",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 5,
+      "monthly_searches": 1,
+      "enriched_at": "2026-03-19T21:39:51.148Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -3,
+      "sentiment": {
+        "positive": 4,
+        "negative": 1,
+        "neutral": 3,
+        "sample_quotes": [
+          "Qwen-Image-Edit - лучшая модель для редактирования изображений.",
+          "Чат-режим в Runway - это лучшее для редактирования изображений."
+        ]
+      },
+      "difficulty_score": 7,
+      "difficulty_reasoning": "Building an AI photo editing tool requires complex algorithms and potentially machine learning models for image processing.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но требует дифференциации для успешного выхода на рынок."
+      }
+    },
+    {
+      "id": "trend-1773956376727-1",
+      "title": "Система обработки платежей для бизнеса",
+      "category": "FinTech",
+      "popularity_score": 86,
+      "growth_rate": 9,
+      "why_trending": "рост интереса на 9% за неделю. Увеличение числа онлайн-транзакций и потребность в безопасных и эффективных решениях для обработки платежей способствуют росту интереса к таким системам.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-19T21:39:36.727Z",
+      "source_query": "payment processing systems",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$15K-50K",
+      "top_players_count": 10,
+      "monthly_searches": 20,
+      "enriched_at": "2026-03-19T21:39:48.962Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 9,
+      "sentiment": {
+        "positive": 3,
+        "negative": 4,
+        "neutral": 1,
+        "sample_quotes": [
+          "бесперебойные, безопасные и эффективные возможности",
+          "обходитесь мне слишком дорого"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building a payment processing system involves integrating with various financial institutions and ensuring compliance with regulations, which adds complexity but can be managed with existing APIs.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Это хорошая возможность для входа на рынок."
+      }
+    },
+    {
+      "id": "trend-1773956376727-6",
+      "title": "AI решение для дропшиппинга",
+      "category": "E-commerce",
+      "popularity_score": 81,
+      "growth_rate": 4,
+      "why_trending": "рост интереса на 4% за неделю. Автоматизация процессов дропшиппинга с помощью AI позволяет предпринимателям оптимизировать свои операции и повысить прибыль.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-19T21:39:36.727Z",
+      "source_query": "ai dropshipping",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 0,
+      "enriched_at": "2026-03-19T21:39:50.493Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 4,
+      "sentiment": {
+        "positive": 6,
+        "negative": 0,
+        "neutral": 2,
+        "sample_quotes": [
+          "это реально помогает",
+          "ИИ - это круто для дропшиппинга"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP requires integrating various APIs for e-commerce platforms and AI functionalities, which adds complexity.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хорошая, но требуется дифференциация для успешного выхода на рынок."
+      }
+    },
+    {
+      "id": "trend-1773840327307-0",
+      "title": "Сравнительный анализ HR программ",
+      "category": "SaaS",
+      "popularity_score": 89,
+      "growth_rate": 29,
+      "why_trending": "Рост интереса на 29% за неделю. Пользователи ищут эффективные решения для выбора подходящего HR программного обеспечения, что позволяет оптимизировать процессы управления персоналом.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-18T13:25:27.307Z",
+      "source_query": "hr software comparison",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 15,
+      "enriched_at": "2026-03-18T13:25:38.966Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 29,
+      "sentiment": {
+        "positive": 4,
+        "negative": 0,
+        "neutral": 4,
+        "sample_quotes": [
+          "Keka HR: Бюджетный зверь, пульсы, аналитика и простая настройка",
+          "Я создал новое сообщество по HR-программам, потому что меня достало отсутствие независимых обзоров"
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS product for comparative analysis involves integrating various APIs and managing user data, which adds complexity but is manageable.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хорошая, но требует дифференциации."
+      }
+    },
+    {
+      "id": "trend-1773840327307-1",
+      "title": "Платформа телемедицины для Канады",
+      "category": "HealthTech",
+      "popularity_score": 85,
+      "growth_rate": 14,
+      "why_trending": "Рост интереса на 14% за неделю. Увеличение спроса на телемедицинские услуги связано с необходимостью доступа к медицинской помощи в удаленных районах и во время пандемий.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-18T13:25:27.307Z",
+      "source_query": "telemedicine canada",
+      "competition_level": "low",
+      "entry_cost_estimate": "$15K-50K",
+      "top_players_count": 1,
+      "monthly_searches": 0,
+      "enriched_at": "2026-03-18T13:25:40.390Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 14,
+      "sentiment": {
+        "positive": 0,
+        "negative": 1,
+        "neutral": 7,
+        "sample_quotes": [
+          "нужно было пройти очный осмотр",
+          "какая платформа телемедицины лучше всего?"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building a telemedicine platform requires integration with healthcare systems, compliance with regulations, and user-friendly interfaces, which adds complexity.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Ниша имеет потенциал для роста и низкую конкуренцию."
+      }
+    },
+    {
+      "id": "trend-1773840327307-3",
+      "title": "Программное обеспечение для HR льгот",
+      "category": "SaaS",
+      "popularity_score": 80,
+      "growth_rate": 138,
+      "why_trending": "Рост интереса на 138% за неделю. Увеличение внимания к HR льготам связано с необходимостью повышения привлекательности работодателя и удержания талантов.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-18T13:25:27.307Z",
+      "source_query": "hr benefits software",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 15,
+      "enriched_at": "2026-03-18T13:25:39.543Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 138,
+      "sentiment": {
+        "positive": 3,
+        "negative": 1,
+        "neutral": 4,
+        "sample_quotes": [
+          "BambooHR для HRIS, отслеживания льгот, производительности...",
+          "Bswift очень уважаемая компания в сфере независимого программного обеспечения."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS for HR benefits involves integrations with existing systems and APIs, which adds moderate complexity.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Это хорошая возможность для входа на рынок."
+      }
+    },
+    {
+      "id": "trend-1773840327307-4",
+      "title": "Инструмент оценки уязвимостей",
+      "category": "EdTech",
+      "popularity_score": 80,
+      "growth_rate": 8,
+      "why_trending": "Рост интереса на 8% за неделю. Потребность в оценке уязвимостей возрастает с увеличением киберугроз, что делает обучение в этой области актуальным.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-18T13:25:27.307Z",
+      "source_query": "vulnerability assessment",
+      "competition_level": "low",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 4,
+      "monthly_searches": 4,
+      "enriched_at": "2026-03-18T13:25:51.077Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 8,
+      "sentiment": {
+        "positive": 3,
+        "negative": 1,
+        "neutral": 4,
+        "sample_quotes": [
+          "простой вариант, вот и все",
+          "инструмент оценки уязвимостей, который они используют, хорош"
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building an MVP for a vulnerability assessment tool requires integrating various APIs and possibly some data analysis, but it is manageable with existing frameworks.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Ниша имеет низкую конкуренцию и стабильный рост."
+      }
+    },
+    {
+      "id": "trend-1773772733985-1",
+      "title": "Управление цепочками поставок",
+      "category": "Business",
+      "popularity_score": 84,
+      "growth_rate": 20,
+      "why_trending": "рост интереса на 20% за неделю. Продукт помогает компаниям оптимизировать свои процессы поставок и снизить затраты.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-17T18:38:53.985Z",
+      "source_query": "supply chain management review",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 8,
+      "monthly_searches": 9,
+      "enriched_at": "2026-03-17T18:39:12.293Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 20,
+      "sentiment": {
+        "positive": 5,
+        "negative": 0,
+        "neutral": 3,
+        "sample_quotes": [
+          "Управление цепочками поставок — это всё, что нужно, чтобы доставить нужный продукт.",
+          "Управление цепочками поставок - очень разноплановая карьерная область."
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP for supply chain management involves integrating various APIs and systems, which adds complexity but is manageable with existing tools.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Ниша имеет хороший потенциал для роста и не слишком насыщена."
+      }
+    },
+    {
+      "id": "trend-1773772733985-2",
+      "title": "Платформа онлайн-обучения",
+      "category": "EdTech",
+      "popularity_score": 81,
+      "growth_rate": 20,
+      "why_trending": "рост интереса на 20% за неделю. Этот инструмент предоставляет доступ к качественному образованию и индивидуальному обучению для студентов.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-17T18:38:53.985Z",
+      "source_query": "online tutoring platforms",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 2,
+      "enriched_at": "2026-03-17T18:39:06.661Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 20,
+      "sentiment": {
+        "positive": 2,
+        "negative": 3,
+        "neutral": 3,
+        "sample_quotes": [
+          "Лучшая платформа онлайн-обучения в Китае?",
+          "Россияне остаются без качественного онлайн-образования."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building an MVP for an online learning platform requires integration of various features like user management, course creation, and payment processing, which can be achieved with moderate technical effort.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Это хорошая возможность для входа в растущий рынок."
+      }
+    },
+    {
+      "id": "trend-1773772733985-4",
+      "title": "Компания по кибербезопасности",
+      "category": "Technology",
+      "popularity_score": 81,
+      "growth_rate": 5,
+      "why_trending": "рост интереса на 5% за неделю. Продукт отвечает на растущие угрозы в области безопасности данных и помогает защищать информацию компаний.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-17T18:38:53.985Z",
+      "source_query": "cybersecurity company",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 4,
+      "enriched_at": "2026-03-17T18:39:07.615Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 5,
+      "sentiment": {
+        "positive": 3,
+        "negative": 0,
+        "neutral": 5,
+        "sample_quotes": [
+          "Я пытаюсь пробиться в кибербезопасность, пока учусь на бакалавра.",
+          "Хочу открыть компанию по кибербезопасности с использованием ИИ."
+        ]
+      },
+      "difficulty_score": 7,
+      "difficulty_reasoning": "Building a cybersecurity company involves complex technical requirements, including compliance with regulations and the development of secure systems.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но требует дифференциации для успешного выхода на рынок."
+      }
+    },
+    {
       "id": "trend-1773605118407-1",
       "title": "Приложение для бюджетирования с долларами",
       "category": "FinTech",
@@ -304,5 +820,5 @@
       "enriched_at": "2026-03-13T17:34:53.864Z"
     }
   ],
-  "lastUpdated": "2026-03-17T01:04:58.618Z"
+  "lastUpdated": "2026-03-20T22:36:38.741Z"
 }

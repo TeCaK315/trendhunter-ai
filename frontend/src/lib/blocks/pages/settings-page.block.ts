@@ -3,47 +3,52 @@ import { createDesignTokens } from '../design-injector';
 
 export default function generate(ctx: BlockContext): BlockResult {
   const t = createDesignTokens(ctx.design);
+  const cp = ctx.contentProfile;
   const projectName = ctx.safe.projectName;
 
-  return {
-    'src/app/dashboard/settings/page.tsx': `'use client';
+  // ─── Determine which tabs to show ───
+  const hasPaymentTab = cp.tracksMoney || ctx.stripe.required;
+  const defaultsTabId = cp.tracksMoney ? 'invoice' : 'defaults';
+  const defaultsTabLabel = cp.tracksMoney
+    ? `t('settings.invoiceDefaults')`
+    : `t('settings.defaults')`;
+  const defaultsTabIcon = cp.tracksMoney ? 'Receipt' : 'FileText';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  Settings, Save, Loader2, Check, LogOut, Building2, Receipt,
-  CreditCard, Globe, Hash, Percent, FileText, ImageIcon,
-  AlertCircle, CheckCircle2, ExternalLink, Eye, EyeOff, Trash2,
-} from 'lucide-react';
-import { useT } from '@/lib/i18n';
+  // ─── Tab type union ───
+  const tabType = hasPaymentTab
+    ? `'business' | '${defaultsTabId}' | 'payment'`
+    : `'business' | '${defaultsTabId}'`;
 
-interface StripeConfig {
-  configured: boolean;
-  source?: string;
-  publishable_key_masked?: string;
-  secret_key_masked?: string;
-}
+  // ─── Conditional icon imports ───
+  const receiptImport = cp.tracksMoney ? 'Receipt,' : '';
+  const financialIconImports = cp.tracksMoney
+    ? 'Globe, Hash, Percent,'
+    : '';
 
-interface BusinessSettings {
-  business_name: string;
-  email: string;
-  address: string;
-  phone: string;
-  website: string;
+  // ─── BusinessSettings interface fields ───
+  const financialSettingsFields = cp.tracksMoney ? `
   tax_id: string;
-  logo_url: string;
   default_currency: string;
   default_payment_terms: string;
   default_tax_rate: number;
   tax_label: string;
   invoice_prefix: string;
-  default_notes: string;
-  payment_instructions: string;
-}
+  payment_instructions: string;` : `
+  doc_prefix: string;`;
 
-const PROFILE_KEY = '${projectName.replace(/'/g, '')}_sender_profile';
-const SETTINGS_KEY = '${projectName.replace(/'/g, '')}_settings';
+  // ─── Default values for settings state ───
+  const financialDefaults = cp.tracksMoney ? `
+    tax_id: '',
+    default_currency: 'USD',
+    default_payment_terms: 'net_30',
+    default_tax_rate: 0,
+    tax_label: 'Tax',
+    invoice_prefix: '${cp.entityPrefix}',
+    payment_instructions: '',` : `
+    doc_prefix: '${cp.entityPrefix}',`;
 
+  // ─── CURRENCIES and PAYMENT_TERMS constants ───
+  const currenciesConst = cp.tracksMoney ? `
 const CURRENCIES = [
   { code: 'USD', label: 'USD - US Dollar' },
   { code: 'EUR', label: 'EUR - Euro' },
@@ -63,294 +68,18 @@ const PAYMENT_TERMS = [
   { value: 'net_30', labelKey: 'payment.net30' },
   { value: 'net_60', labelKey: 'payment.net60' },
 ];
+` : '';
 
-export default function SettingsPage() {
-  const router = useRouter();
-  const t = useT();
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'business' | 'invoice' | 'payment'>('business');
-
-  // Stripe config state
-  const [stripeConfig, setStripeConfig] = useState<StripeConfig>({ configured: false });
-  const [stripeLoading, setStripeLoading] = useState(true);
-  const [stripePubKey, setStripePubKey] = useState('');
-  const [stripeSecretKey, setStripeSecretKey] = useState('');
-  const [showSecretKey, setShowSecretKey] = useState(false);
-  const [stripeSaving, setStripeSaving] = useState(false);
-  const [stripeError, setStripeError] = useState('');
-  const [stripeSuccess, setStripeSuccess] = useState('');
-
-  const [settings, setSettings] = useState<BusinessSettings>({
-    business_name: '',
-    email: '',
-    address: '',
-    phone: '',
-    website: '',
-    tax_id: '',
-    logo_url: '',
-    default_currency: 'USD',
-    default_payment_terms: 'net_30',
-    default_tax_rate: 0,
-    tax_label: 'Tax',
-    invoice_prefix: 'INV',
-    default_notes: '',
-    payment_instructions: '',
-  });
-
-  // Load Stripe config
-  useEffect(() => {
-    async function loadStripeConfig() {
-      try {
-        const res = await fetch('/api/admin/stripe');
-        if (res.ok) {
-          const data = await res.json();
-          setStripeConfig(data);
-        }
-      } catch {}
-      setStripeLoading(false);
-    }
-    loadStripeConfig();
-  }, []);
-
-  const handleStripeSave = async () => {
-    setStripeSaving(true);
-    setStripeError('');
-    setStripeSuccess('');
-
-    try {
-      const res = await fetch('/api/admin/stripe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          publishable_key: stripePubKey,
-          secret_key: stripeSecretKey,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setStripeError(data.error || 'Failed to save');
-      } else {
-        setStripeConfig({
-          configured: true,
-          source: 'database',
-          publishable_key_masked: data.publishable_key_masked,
-          secret_key_masked: data.secret_key_masked,
-        });
-        setStripePubKey('');
-        setStripeSecretKey('');
-        setStripeSuccess(t('settings.stripeTestSuccess'));
-        setTimeout(() => setStripeSuccess(''), 5000);
-      }
-    } catch (err: any) {
-      setStripeError(err.message || 'Network error');
-    }
-    setStripeSaving(false);
-  };
-
-  const handleStripeDisconnect = async () => {
-    if (!confirm(t('msg.confirmDelete'))) return;
-    try {
-      await fetch('/api/admin/stripe', { method: 'DELETE' });
-      setStripeConfig({ configured: false });
-    } catch {}
-  };
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(SETTINGS_KEY);
-      if (stored) {
-        setSettings(prev => ({ ...prev, ...JSON.parse(stored) }));
-      } else {
-        // Migrate from old sender profile
-        const profile = localStorage.getItem(PROFILE_KEY);
-        if (profile) {
-          const p = JSON.parse(profile);
-          setSettings(prev => ({
-            ...prev,
-            business_name: p.business_name || '',
-            email: p.email || '',
-            address: p.address || '',
-            phone: p.phone || '',
-          }));
-        }
-      }
-    } catch {}
-  }, []);
-
-  const handleSave = () => {
-    setSaving(true);
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-      // Also update sender profile for backwards compatibility
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({
-        business_name: settings.business_name,
-        email: settings.email,
-        address: settings.address,
-        phone: settings.phone,
-      }));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch {}
-    setSaving(false);
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 500000) {
-      alert('Logo must be under 500KB');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setSettings(prev => ({ ...prev, logo_url: ev.target?.result as string || '' }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSignOut = async () => {
-    try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      await supabase.auth.signOut();
-    } catch {}
-    router.push('/login');
-  };
-
-  const update = (field: keyof BusinessSettings, value: string | number) => {
-    setSettings(prev => ({ ...prev, [field]: value }));
-  };
-
-  const inputClasses = "w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all";
-  const inputStyle = { background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' };
-  const labelClasses = "block text-xs font-medium mb-1.5";
-
-  const tabs = [
-    { id: 'business' as const, label: t('settings.business'), icon: Building2 },
-    { id: 'invoice' as const, label: t('settings.invoiceDefaults'), icon: Receipt },
-    { id: 'payment' as const, label: t('settings.payment'), icon: CreditCard },
-  ];
-
-  return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Settings className="w-6 h-6" style={{ color: '${t.primary}' }} />
-          <h1 className="text-xl font-bold" style={{ fontFamily: "'${t.headingFont}', sans-serif", color: '${t.text}' }}>
-            {t('settings.title')}
-          </h1>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
-          style={{ background: '${t.gradientPrimary}' }}
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          {saving ? t('msg.processing') : saved ? t('msg.saved') : t('action.save')}
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl" style={{ background: '${t.surface1}' }}>
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.id;
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all"
-              style={{
-                background: active ? '${t.primary}' : 'transparent',
-                color: active ? '#fff' : '${t.text50}',
-              }}>
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Business Tab */}
-      {activeTab === 'business' && (
-        <div className="space-y-5">
-          {/* Logo */}
-          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
-            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
-              <ImageIcon className="w-4 h-4" style={{ color: '${t.primary}' }} /> {t('settings.logo')}
-            </h2>
-            <div className="flex items-center gap-4">
-              {settings.logo_url ? (
-                <div className="relative">
-                  <img src={settings.logo_url} alt="Logo" className="w-20 h-20 object-contain rounded-xl border" style={{ borderColor: '${t.primary}10' }} />
-                  <button onClick={() => update('logo_url', '')}
-                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <div className="w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center"
-                  style={{ borderColor: '${t.primary}20' }}>
-                  <ImageIcon className="w-6 h-6" style={{ color: '${t.text40}' }} />
-                </div>
-              )}
-              <div>
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer border hover:bg-white/[0.04]"
-                  style={{ borderColor: '${t.primary}15', color: '${t.text}' }}>
-                  <ImageIcon className="w-4 h-4" /> {t('settings.uploadLogo')}
-                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                </label>
-                <p className="text-[11px] mt-1" style={{ color: '${t.text40}' }}>{t('settings.logoHint')}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Business Details */}
-          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
-            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
-              <Building2 className="w-4 h-4" style={{ color: '${t.primary}' }} /> {t('settings.business')}
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('settings.businessName')}</label>
-                <input type="text" value={settings.business_name} onChange={e => update('business_name', e.target.value)}
-                  placeholder="Your Company LLC" className={inputClasses} style={inputStyle} />
-              </div>
-              <div>
-                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.email')}</label>
-                <input type="email" value={settings.email} onChange={e => update('email', e.target.value)}
-                  placeholder="billing@company.com" className={inputClasses} style={inputStyle} />
-              </div>
-              <div>
-                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.phone')}</label>
-                <input type="tel" value={settings.phone} onChange={e => update('phone', e.target.value)}
-                  placeholder="+1 (555) 123-4567" className={inputClasses} style={inputStyle} />
-              </div>
-              <div>
-                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.website')}</label>
-                <input type="url" value={settings.website} onChange={e => update('website', e.target.value)}
-                  placeholder="https://company.com" className={inputClasses} style={inputStyle} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.address')}</label>
-                <input type="text" value={settings.address} onChange={e => update('address', e.target.value)}
-                  placeholder="123 Main St, City, State, ZIP, Country" className={inputClasses} style={inputStyle} />
-              </div>
+  // ─── Tax ID field in Business tab ───
+  const taxIdField = cp.tracksMoney ? `
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('settings.taxId')}</label>
                 <input type="text" value={settings.tax_id} onChange={e => update('tax_id', e.target.value)}
                   placeholder="US12-3456789" className={inputClasses} style={inputStyle} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              </div>` : '';
 
-      {/* Invoice Defaults Tab */}
-      {activeTab === 'invoice' && (
+  // ─── Defaults Tab Content ───
+  const invoiceDefaultsContent = `
         <div className="space-y-5">
           <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
             <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
@@ -378,8 +107,8 @@ export default function SettingsPage() {
                   <Hash className="w-3 h-3 inline mr-1" /> {t('settings.invoiceNumberPrefix')}
                 </label>
                 <input type="text" value={settings.invoice_prefix} onChange={e => update('invoice_prefix', e.target.value)}
-                  placeholder="INV" className={inputClasses} style={inputStyle} />
-                <p className="text-[11px] mt-1" style={{ color: '${t.text40}' }}>Invoices will be numbered: {settings.invoice_prefix}-0001</p>
+                  placeholder="${cp.entityPrefix}" className={inputClasses} style={inputStyle} />
+                <p className="text-[11px] mt-1" style={{ color: '${t.text40}' }}>${cp.entityNamePlural} will be numbered: {settings.invoice_prefix}-0001</p>
               </div>
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>
@@ -407,9 +136,38 @@ export default function SettingsPage() {
               style={inputStyle} />
             <p className="text-[11px] mt-1" style={{ color: '${t.text40}' }}>{t('settings.defaultNotesHint')}</p>
           </div>
-        </div>
-      )}
+        </div>`;
 
+  const genericDefaultsContent = `
+        <div className="space-y-5">
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
+              <FileText className="w-4 h-4" style={{ color: '${t.primary}' }} /> {t('settings.defaults')}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('settings.docPrefix')}</label>
+                <input type="text" value={settings.doc_prefix} onChange={e => update('doc_prefix', e.target.value)}
+                  placeholder="${cp.entityPrefix}" className={inputClasses} style={inputStyle} />
+                <p className="text-[11px] mt-1" style={{ color: '${t.text40}' }}>${cp.entityNamePlural} will be numbered: {settings.doc_prefix}-0001</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
+              <FileText className="w-4 h-4" style={{ color: '${t.primary}' }} /> {t('settings.defaultNotes')}
+            </h2>
+            <textarea value={settings.default_notes} onChange={e => update('default_notes', e.target.value)}
+              placeholder="Default notes for new ${cp.entityNamePlural.toLowerCase()}..."
+              rows={3} className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 resize-none transition-all"
+              style={inputStyle} />
+            <p className="text-[11px] mt-1" style={{ color: '${t.text40}' }}>{t('settings.defaultNotesHint')}</p>
+          </div>
+        </div>`;
+
+  // ─── Payment Tab Content (Stripe + Instructions) ───
+  const paymentTabContent = hasPaymentTab ? `
       {/* Payment Tab */}
       {activeTab === 'payment' && (
         <div className="space-y-5">
@@ -520,7 +278,7 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
-
+${cp.tracksMoney ? `
           {/* ─── Payment Instructions ─── */}
           <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
             <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
@@ -534,7 +292,7 @@ export default function SettingsPage() {
               {t('settings.paymentInstructionsHint')}
             </p>
           </div>
-
+` : ''}
           {/* ─── Account ─── */}
           <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: '${t.text}' }}>{t('settings.account')}</h2>
@@ -545,7 +303,356 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+      )}` : `
+      {/* ─── Account (no payment tab — put account at bottom) ─── */}
+      {activeTab === '${defaultsTabId}' && (
+        <div className="rounded-2xl p-5 mt-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+          <h2 className="text-sm font-semibold mb-4" style={{ color: '${t.text}' }}>{t('settings.account')}</h2>
+          <button onClick={handleSignOut}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all hover:bg-red-500/10"
+            style={{ borderColor: '#ef444430', color: '#ef4444' }}>
+            <LogOut className="w-4 h-4" /> {t('nav.signOut')}
+          </button>
+        </div>
+      )}`;
+
+  // ─── Stripe state declarations ───
+  const stripeStateDecls = hasPaymentTab ? `
+  // Stripe config state
+  const [stripeConfig, setStripeConfig] = useState<StripeConfig>({ configured: false });
+  const [stripeLoading, setStripeLoading] = useState(true);
+  const [stripePubKey, setStripePubKey] = useState('');
+  const [stripeSecretKey, setStripeSecretKey] = useState('');
+  const [showSecretKey, setShowSecretKey] = useState(false);
+  const [stripeSaving, setStripeSaving] = useState(false);
+  const [stripeError, setStripeError] = useState('');
+  const [stripeSuccess, setStripeSuccess] = useState('');` : '';
+
+  // ─── Stripe interface ───
+  const stripeInterface = hasPaymentTab ? `
+interface StripeConfig {
+  configured: boolean;
+  source?: string;
+  publishable_key_masked?: string;
+  secret_key_masked?: string;
+}
+` : '';
+
+  // ─── Stripe effects and handlers ───
+  const stripeEffectsAndHandlers = hasPaymentTab ? `
+  // Load Stripe config
+  useEffect(() => {
+    async function loadStripeConfig() {
+      try {
+        const res = await fetch('/api/admin/stripe');
+        if (res.ok) {
+          const data = await res.json();
+          setStripeConfig(data);
+        }
+      } catch {}
+      setStripeLoading(false);
+    }
+    loadStripeConfig();
+  }, []);
+
+  const handleStripeSave = async () => {
+    setStripeSaving(true);
+    setStripeError('');
+    setStripeSuccess('');
+
+    try {
+      const res = await fetch('/api/admin/stripe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publishable_key: stripePubKey,
+          secret_key: stripeSecretKey,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setStripeError(data.error || 'Failed to save');
+      } else {
+        setStripeConfig({
+          configured: true,
+          source: 'database',
+          publishable_key_masked: data.publishable_key_masked,
+          secret_key_masked: data.secret_key_masked,
+        });
+        setStripePubKey('');
+        setStripeSecretKey('');
+        setStripeSuccess(t('settings.stripeTestSuccess'));
+        setTimeout(() => setStripeSuccess(''), 5000);
+      }
+    } catch (err: any) {
+      setStripeError(err.message || 'Network error');
+    }
+    setStripeSaving(false);
+  };
+
+  const handleStripeDisconnect = async () => {
+    if (!confirm(t('msg.confirmDelete'))) return;
+    try {
+      await fetch('/api/admin/stripe', { method: 'DELETE' });
+      setStripeConfig({ configured: false });
+    } catch {}
+  };` : '';
+
+  // ─── Stripe icon imports ───
+  const stripeIconImports = hasPaymentTab
+    ? 'ExternalLink, Eye, EyeOff, Trash2,'
+    : '';
+
+  // ─── Tabs array ───
+  const tabsArray = hasPaymentTab
+    ? `[
+    { id: 'business' as const, label: t('settings.business'), icon: Building2 },
+    { id: '${defaultsTabId}' as const, label: ${defaultsTabLabel}, icon: ${defaultsTabIcon} },
+    { id: 'payment' as const, label: t('settings.payment'), icon: CreditCard },
+  ]`
+    : `[
+    { id: 'business' as const, label: t('settings.business'), icon: Building2 },
+    { id: '${defaultsTabId}' as const, label: ${defaultsTabLabel}, icon: ${defaultsTabIcon} },
+  ]`;
+
+  // ─── Sender profile migration (only for sender-recipient form type) ───
+  const profileMigration = cp.formType === 'sender-recipient' ? `
+        // Migrate from old sender profile
+        const profile = localStorage.getItem(PROFILE_KEY);
+        if (profile) {
+          const p = JSON.parse(profile);
+          setSettings(prev => ({
+            ...prev,
+            business_name: p.business_name || '',
+            email: p.email || '',
+            address: p.address || '',
+            phone: p.phone || '',
+          }));
+        }` : '';
+
+  const profileBackwardsCompat = cp.formType === 'sender-recipient' ? `
+      // Also update sender profile for backwards compatibility
+      localStorage.setItem(PROFILE_KEY, JSON.stringify({
+        business_name: settings.business_name,
+        email: settings.email,
+        address: settings.address,
+        phone: settings.phone,
+      }));` : '';
+
+  return {
+    'src/app/dashboard/settings/page.tsx': `'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Settings, Save, Loader2, Check, LogOut, Building2, ${receiptImport}
+  CreditCard, ${financialIconImports} FileText, ImageIcon,
+  AlertCircle, CheckCircle2, ${stripeIconImports}
+} from 'lucide-react';
+import { useT } from '@/lib/i18n';
+${stripeInterface}
+interface BusinessSettings {
+  business_name: string;
+  email: string;
+  address: string;
+  phone: string;
+  website: string;
+  logo_url: string;
+  default_notes: string;${financialSettingsFields}
+}
+
+const PROFILE_KEY = '${projectName.replace(/'/g, '')}_sender_profile';
+const SETTINGS_KEY = '${projectName.replace(/'/g, '')}_settings';
+${currenciesConst}
+export default function SettingsPage() {
+  const router = useRouter();
+  const t = useT();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<${tabType}>('business');
+${stripeStateDecls}
+
+  const [settings, setSettings] = useState<BusinessSettings>({
+    business_name: '',
+    email: '',
+    address: '',
+    phone: '',
+    website: '',
+    logo_url: '',
+    default_notes: '',${financialDefaults}
+  });
+${stripeEffectsAndHandlers}
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SETTINGS_KEY);
+      if (stored) {
+        setSettings(prev => ({ ...prev, ...JSON.parse(stored) }));
+      } else {${profileMigration}
+      }
+    } catch {}
+  }, []);
+
+  const handleSave = () => {
+    setSaving(true);
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));${profileBackwardsCompat}
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {}
+    setSaving(false);
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500000) {
+      alert('Logo must be under 500KB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setSettings(prev => ({ ...prev, logo_url: ev.target?.result as string || '' }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {}
+    router.push('/login');
+  };
+
+  const update = (field: keyof BusinessSettings, value: string | number) => {
+    setSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const inputClasses = "w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all";
+  const inputStyle = { background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' };
+  const labelClasses = "block text-xs font-medium mb-1.5";
+
+  const tabs = ${tabsArray};
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Settings className="w-6 h-6" style={{ color: '${t.primary}' }} />
+          <h1 className="text-xl font-bold" style={{ fontFamily: "'${t.headingFont}', sans-serif", color: '${t.text}' }}>
+            {t('settings.title')}
+          </h1>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+          style={{ background: '${t.gradientPrimary}' }}
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+          {saving ? t('msg.processing') : saved ? t('msg.saved') : t('action.save')}
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: '${t.surface1}' }}>
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all"
+              style={{
+                background: active ? '${t.primary}' : 'transparent',
+                color: active ? '#fff' : '${t.text50}',
+              }}>
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Business Tab */}
+      {activeTab === 'business' && (
+        <div className="space-y-5">
+          {/* Logo */}
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
+              <ImageIcon className="w-4 h-4" style={{ color: '${t.primary}' }} /> {t('settings.logo')}
+            </h2>
+            <div className="flex items-center gap-4">
+              {settings.logo_url ? (
+                <div className="relative">
+                  <img src={settings.logo_url} alt="Logo" className="w-20 h-20 object-contain rounded-xl border" style={{ borderColor: '${t.primary}10' }} />
+                  <button onClick={() => update('logo_url', '')}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <div className="w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center"
+                  style={{ borderColor: '${t.primary}20' }}>
+                  <ImageIcon className="w-6 h-6" style={{ color: '${t.text40}' }} />
+                </div>
+              )}
+              <div>
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer border hover:bg-white/[0.04]"
+                  style={{ borderColor: '${t.primary}15', color: '${t.text}' }}>
+                  <ImageIcon className="w-4 h-4" /> {t('settings.uploadLogo')}
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                </label>
+                <p className="text-[11px] mt-1" style={{ color: '${t.text40}' }}>{t('settings.logoHint')}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Details */}
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '${t.text}' }}>
+              <Building2 className="w-4 h-4" style={{ color: '${t.primary}' }} /> {t('settings.business')}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('settings.businessName')}</label>
+                <input type="text" value={settings.business_name} onChange={e => update('business_name', e.target.value)}
+                  placeholder="Your Company LLC" className={inputClasses} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.email')}</label>
+                <input type="email" value={settings.email} onChange={e => update('email', e.target.value)}
+                  placeholder="billing@company.com" className={inputClasses} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.phone')}</label>
+                <input type="tel" value={settings.phone} onChange={e => update('phone', e.target.value)}
+                  placeholder="+1 (555) 123-4567" className={inputClasses} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.website')}</label>
+                <input type="url" value={settings.website} onChange={e => update('website', e.target.value)}
+                  placeholder="https://company.com" className={inputClasses} style={inputStyle} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.address')}</label>
+                <input type="text" value={settings.address} onChange={e => update('address', e.target.value)}
+                  placeholder="123 Main St, City, State, ZIP, Country" className={inputClasses} style={inputStyle} />
+              </div>${taxIdField}
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Defaults Tab */}
+      {activeTab === '${defaultsTabId}' && (
+${cp.tracksMoney ? invoiceDefaultsContent : genericDefaultsContent}
+      )}
+${paymentTabContent}
     </div>
   );
 }

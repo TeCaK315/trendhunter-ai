@@ -332,7 +332,7 @@ Example logic:
 - Pricing: "Competitors charge $30/user" → Pricing: "$5/user or freemium"
 
 RULES:
-1. user_output — WHAT EXACTLY does the user receive? Not abstract "solution", but a concrete artifact (e.g. "professional PDF invoice with line items and totals")
+1. user_output — WHAT EXACTLY does the user receive? Not abstract "solution", but a concrete artifact SPECIFIC TO THIS NICHE (e.g. for fitness: "personalized 4-week workout plan with progress tracking", for SEO: "detailed site audit report with actionable fixes")
 2. user_input — WHAT EXACTLY does the user enter? What fields, what format?
 3. user_flow — STEP BY STEP what the user sees from opening to getting value
 4. magic_location — WHERE does the magic happen? AI analysis? Formula? Data aggregation?
@@ -365,8 +365,8 @@ IMPORTANT:
 - Think MINIMUM MVP — what can be built in 1-2 weeks?
 - Budget: $0-100/month for infrastructure
 - generation_approach must match the product type accurately
-- value_proposition must be a SHORT, punchy English tagline (max 6-8 words). It is used as the HERO HEADLINE on the landing page. Examples: "Professional Invoices in Seconds", "AI-Powered Code Reviews", "Smart Meal Planning Made Easy". NEVER a full sentence or long description!
-- primary_output must be 1-3 WORDS ONLY — it's used as a button label (e.g. "New Invoice", "New Report"). Examples: "Invoice", "Report", "Analysis", "Business Plan", "Quiz". NEVER a full sentence or description!
+- value_proposition must be a SHORT, punchy English tagline (max 6-8 words). It is used as the HERO HEADLINE on the landing page. Examples: "AI-Powered Code Reviews", "Smart Meal Planning Made Easy", "Your Personal Fitness Coach". NEVER a full sentence or long description! Must be SPECIFIC to the niche — not generic!
+- primary_output must be 1-3 WORDS ONLY — it's used as a button label (e.g. "New Report", "New Analysis"). Examples: "Report", "Analysis", "Business Plan", "Quiz", "Workout Plan". NEVER a full sentence or description!
 
 CRITICAL LANGUAGE RULE — EVERY SINGLE VALUE IN THE JSON MUST BE IN ENGLISH:
 - ALL string values (primary_output, value_proposition, example, steps, feature names, descriptions, pain_quotes, solutions, aha_moment, etc.) MUST be written in English
@@ -379,7 +379,7 @@ CRITICAL LANGUAGE RULE — EVERY SINGLE VALUE IN THE JSON MUST BE IN ENGLISH:
 REMINDER: ALL values must be in ENGLISH ONLY. Any non-ASCII characters will cause build failure. Return JSON only, no markdown:
 {
   "user_output": {
-    "primary_output": "SHORT 1-3 word noun for what user creates, e.g. Invoice, Report, Analysis, Quiz, Plan — NEVER a full sentence",
+    "primary_output": "SHORT 1-3 word noun for what user creates, e.g. Report, Analysis, Quiz, Workout Plan, Audit — NEVER a full sentence",
     "output_format": "text|report|score|list|visualization|recommendation|action",
     "example": "Specific example of the output user receives",
     "value_proposition": "Short punchy tagline, max 10 words, in English"

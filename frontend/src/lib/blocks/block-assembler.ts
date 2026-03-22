@@ -5,7 +5,7 @@
  * Selects blocks, resolves dependencies, executes in order, fills gaps with Claude.
  */
 
-import type { BlockContext, BlockFunction, BlockResult, ProjectType, DesignSystem } from './types';
+import type { BlockContext, BlockFunction, BlockResult, ProjectType, DesignSystem, ContentProfile } from './types';
 import type { ProductSpecification } from '../mvp-templates/types';
 import { BLOCKS_MANIFEST, getBlock } from './blocks-manifest';
 import { DEFAULT_DESIGN, escapeJsx } from './design-injector';
@@ -168,6 +168,116 @@ const BLOCK_LOADERS: Record<string, () => Promise<{ default: BlockFunction }>> =
   'project-type/pwa-offline': () => import('./project-types/pwa/offline-page.block'),
 };
 
+// ─── Content Profile Builder ───
+
+function buildContentProfile(spec: ProductSpecification, primaryOutput: string): ContentProfile {
+  const requiredFields = spec.user_input?.required_fields || [];
+  const fieldNames = requiredFields.map(f => f.name.toLowerCase());
+  const allFieldText = fieldNames.join(' ');
+  const outputLower = primaryOutput.toLowerCase();
+  const inputType = spec.user_input?.input_type || 'text';
+
+  // Money detection
+  const moneyKeywords = ['price', 'amount', 'rate', 'cost', 'total', 'revenue', 'payment', 'tax', 'currency', 'fee', 'billing'];
+  const hasMoneyFields = fieldNames.some(f => moneyKeywords.some(k => f.includes(k)));
+  const isMoneyOutput = ['invoice', 'quote', 'estimate', 'receipt', 'bill', 'payment'].some(k => outputLower.includes(k));
+  const tracksMoney = hasMoneyFields || isMoneyOutput;
+
+  // Recipient detection
+  const recipientKeywords = ['client', 'recipient', 'customer', 'buyer', 'to_name', 'to_email'];
+  const hasRecipientFields = fieldNames.some(f => recipientKeywords.some(k => f.includes(k)));
+
+  // Line items detection
+  const lineItemKeywords = ['item', 'line_item', 'product', 'service', 'description'];
+  const hasLineItemFields = fieldNames.some(f => lineItemKeywords.some(k => f.includes(k)) && allFieldText.includes('quantity'));
+  const hasLineItems = tracksMoney && (hasRecipientFields || hasLineItemFields);
+
+  // Form type
+  let formType: ContentProfile['formType'];
+  if (hasRecipientFields && tracksMoney) {
+    formType = 'sender-recipient';
+  } else if (inputType === 'text' || inputType === 'url') {
+    formType = 'single-input';
+  } else {
+    formType = 'data-entry';
+  }
+
+  // If there are many required fields, prefer data-entry over single-input
+  if (formType === 'single-input' && requiredFields.length > 2) {
+    formType = 'data-entry';
+  }
+
+  // Statuses
+  let statuses: ContentProfile['statuses'];
+  if (tracksMoney) {
+    statuses = [
+      { value: 'draft', labelKey: 'status.draft', color: '#94a3b8' },
+      { value: 'sent', labelKey: 'status.sent', color: '#3b82f6' },
+      { value: 'unpaid', labelKey: 'status.unpaid', color: '#f59e0b' },
+      { value: 'paid', labelKey: 'status.paid', color: '#22c55e' },
+      { value: 'overdue', labelKey: 'status.overdue', color: '#ef4444' },
+      { value: 'cancelled', labelKey: 'status.cancelled', color: '#6b7280' },
+    ];
+  } else {
+    statuses = [
+      { value: 'draft', labelKey: 'status.draft', color: '#94a3b8' },
+      { value: 'active', labelKey: 'status.active', color: '#3b82f6' },
+      { value: 'completed', labelKey: 'status.completed', color: '#22c55e' },
+    ];
+  }
+
+  // Score tracking
+  const outputFormat = spec.user_output?.output_format || 'text';
+  const tracksScore = ['score', 'report'].includes(outputFormat);
+
+  // Entity naming
+  const entityName = primaryOutput || 'Item';
+  // Simple pluralization
+  let entityNamePlural: string;
+  if (entityName.endsWith('ss') || entityName.endsWith('sh') || entityName.endsWith('ch') ||
+      entityName.endsWith('x') || entityName.endsWith('zz')) {
+    entityNamePlural = entityName + 'es';
+  } else if (entityName.endsWith('z')) {
+    entityNamePlural = entityName + 'zes';
+  } else if (entityName.endsWith('y') && !/[aeiou]y$/i.test(entityName)) {
+    entityNamePlural = entityName.slice(0, -1) + 'ies';
+  } else if (entityName.endsWith('s')) {
+    entityNamePlural = entityName + 'es';
+  } else {
+    entityNamePlural = entityName + 's';
+  }
+
+  // Prefix: use uppercase letters if multi-word, otherwise first 3 chars
+  const uppercaseOnly = entityName.replace(/[^A-Z]/g, '');
+  const entityPrefix = uppercaseOnly.length >= 2
+    ? uppercaseOnly.slice(0, 3)
+    : entityName.slice(0, 3).toUpperCase();
+
+  // Settings tabs
+  const settingsTabs: ContentProfile['settingsTabs'] = ['business'];
+  settingsTabs.push('defaults');
+  // Payment tab for all monetizable projects (everything except free_with_ads)
+  if (spec.monetization?.model !== 'free_with_ads') {
+    settingsTabs.push('payment');
+  }
+
+  return {
+    entityName,
+    entityNamePlural,
+    entityPrefix,
+    tracksMoney,
+    tracksStatus: tracksMoney || outputFormat === 'action',
+    tracksScore,
+    tracksCount: true,
+    statuses,
+    formType,
+    hasLineItems,
+    hasCurrency: tracksMoney,
+    hasPaymentTerms: tracksMoney && hasRecipientFields,
+    settingsTabs,
+  };
+}
+
 // ─── Main Assembly Function ───
 
 export async function assembleProject(input: AssemblyInput): Promise<AssemblyOutput> {
@@ -213,6 +323,9 @@ export async function assembleProject(input: AssemblyInput): Promise<AssemblyOut
     product_spec.magic_location?.description?.split('.')[0] || '', ''
   );
 
+  // Build content profile (determines how content blocks adapt)
+  const contentProfile = buildContentProfile(product_spec, cappedPrimaryOutput);
+
   const ctx: BlockContext = {
     project_name,
     project_slug: project_name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'),
@@ -226,8 +339,7 @@ export async function assembleProject(input: AssemblyInput): Promise<AssemblyOut
       tables: [],
     },
     stripe: {
-      required: product_spec.monetization.model === 'subscription' ||
-                product_spec.monetization.model === 'freemium',
+      required: product_spec.monetization.model !== 'free_with_ads',
       plans: (product_spec.monetization.pricing_tiers || []).map(t => ({
         name: t.name,
         price: parseFloat(t.price.replace(/[^0-9.]/g, '')) || 0,
@@ -241,6 +353,7 @@ export async function assembleProject(input: AssemblyInput): Promise<AssemblyOut
       protected_routes: ['/dashboard/settings', '/dashboard/billing'],
     },
     product_spec,
+    contentProfile,
     safe: {
       projectName: escapeJsx(cappedProjectName),
       projectDescription: escapeJsx(cappedValueProp),
@@ -252,6 +365,7 @@ export async function assembleProject(input: AssemblyInput): Promise<AssemblyOut
       magicDescription: escapeJsx(cleanMagicDesc),
       magicType: product_spec.magic_location?.type || 'ai_analysis',
       outputFormat: product_spec.user_output?.output_format || 'text',
+      contentProfile,
     },
     env_vars: new Map(),
     dependencies: new Map(),
@@ -436,8 +550,12 @@ function selectBlocks(ctx: BlockContext): string[] {
     if (coreUI.includes(block.id)) shouldInclude = true;
 
     // Core pages always
-    const corePages = ['page/landing', 'page/dashboard', 'page/create', 'page/analysis', 'page/settings', 'page/history', 'page/clients', 'page/reports', 'page/legal'];
+    const corePages = ['page/landing', 'page/dashboard', 'page/create', 'page/analysis', 'page/settings', 'page/history', 'page/legal'];
     if (corePages.includes(block.id)) shouldInclude = true;
+
+    // Financial pages — only when project tracks money (invoice, billing, etc.)
+    const financialPages = ['page/clients', 'page/reports'];
+    if (financialPages.includes(block.id) && ctx.contentProfile.tracksMoney) shouldInclude = true;
 
     // Core API always
     const coreAPIs = ['api/error-handler', 'api/analyze', 'api/send-email'];

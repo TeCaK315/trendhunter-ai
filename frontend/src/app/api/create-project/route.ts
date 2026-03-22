@@ -287,16 +287,17 @@ IMPORTANT:
 6. Success metrics must be measurable and tied to target audience
 
 CRITICAL: ALL text values in the JSON MUST be in ENGLISH. The project will be deployed as a public English-language website.
-- project_name MUST be a short, catchy English brand name (e.g. "InvoiceFlow", "CodeLens", "QuizMaster"), NOT a translated Russian phrase
+- project_name MUST be a short, catchy English brand name UNIQUE to this specific niche (e.g. "CodeLens" for dev tools, "MealPlan" for food, "FitTrack" for fitness), NOT a translated Russian phrase
 - one_liner, problem_statement, solution_overview — all in English
 - ALL feature names, descriptions, user stories — in English
+- The project MUST reflect the SPECIFIC niche, pain points, and target audience from the analysis data — NOT a generic tool
 
 CRITICAL REMINDER: Every single string value in the JSON below MUST be in English. No Russian text anywhere.
 
 Return JSON only:
 {
-  "project_name": "Short catchy English brand name (e.g. InvoiceFlow, CodeLens, QuizMaster)",
-  "one_liner": "Short English tagline, max 10 words (e.g. 'Generate professional invoices in seconds')",
+  "project_name": "Short catchy English brand name SPECIFIC to this niche and problem",
+  "one_liner": "Short English tagline, max 10 words, describing THIS specific product's value",
   "problem_statement": "Detailed problem description based on pain analysis — in English",
   "solution_overview": "Solution description with positioning — in English",
 
@@ -410,9 +411,9 @@ function getDefaultProjectOutput(context: FullAnalysisContext): ProjectOutput {
 
   return {
     project_name: projectName,
-    one_liner: `Smart automation tool for ${context.analysis?.target_audience?.primary || 'modern businesses'}`,
-    problem_statement: 'Manual processes are slow, error-prone, and expensive',
-    solution_overview: 'AI-powered automation that saves time and reduces errors',
+    one_liner: `Smart ${context.trend?.category || 'productivity'} tool for ${context.analysis?.target_audience?.primary || 'modern businesses'}`,
+    problem_statement: context.analysis?.main_pain || 'Current solutions are too complex and expensive for the target audience',
+    solution_overview: context.competition?.strategic_positioning || 'A streamlined solution that addresses the core pain points with modern technology',
 
     readme_content: `# ${projectName}
 

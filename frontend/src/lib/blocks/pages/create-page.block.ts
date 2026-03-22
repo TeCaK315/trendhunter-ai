@@ -2,35 +2,133 @@ import type { BlockContext, BlockResult } from '../types';
 import { createDesignTokens, escapeJsx } from '../design-injector';
 
 /**
- * Universal "Create" page — generates a dynamic form with:
- * - From/To business details (sender profile saved to localStorage)
- * - Auto-incrementing document number (INV-001, etc.)
- * - Line items (add/remove rows) with auto-calculations
- * - Due date + payment terms
- * - Live summary panel
- * - Submit → generates PDF directly (no AI needed) OR calls API
- * - Redirect to /dashboard/analysis with data
+ * Universal "Create" page — generates form based on contentProfile.formType:
  *
- * Adapts to ANY niche via ProductSpec fields.
+ * 1. sender-recipient: From/To + Line Items + Payment Terms (Invoice, Quote)
+ * 2. data-entry: Dynamic fields from ProductSpec (Quiz Builder, Health Form)
+ * 3. single-input: One big input field (SEO Auditor, URL Checker)
  */
 export default function generate(ctx: BlockContext): BlockResult {
   const t = createDesignTokens(ctx.design);
   const spec = ctx.product_spec;
+  const cp = ctx.contentProfile;
 
   const primaryOutput = ctx.safe.primaryOutput || 'result';
   const primaryOutputCap = primaryOutput.charAt(0).toUpperCase() + primaryOutput.slice(1);
   const projectName = ctx.safe.projectName;
 
-  // Get required fields — these become the "header" fields of the form
   const requiredFields = spec?.user_input?.required_fields || [];
 
-  // Separate header fields (metadata) from potential line-item fields
+  const inputClasses = "w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all";
+
+  // ─── Status entries from contentProfile ───
+  const statusEntries = cp.statuses
+    .map(s => `  { value: '${s.value}', labelKey: '${s.labelKey}', color: '${s.color}' }`)
+    .join(',\n');
+
+  // ─── Common localStorage keys ───
+  const storageKeys = `
+const HISTORY_KEY = '${projectName.replace(/'/g, '')}_history';
+const COUNTER_KEY = '${projectName.replace(/'/g, '')}_doc_counter';
+const SETTINGS_KEY = '${projectName.replace(/'/g, '')}_settings';`;
+
+  // ─── Common doc number generator ───
+  const docNumberFn = `
+function getNextDocNumber(): string {
+  try {
+    const counter = parseInt(localStorage.getItem(COUNTER_KEY) || '0') + 1;
+    localStorage.setItem(COUNTER_KEY, String(counter));
+    return '${cp.entityPrefix}-' + String(counter).padStart(4, '0');
+  } catch { return '${cp.entityPrefix}-0001'; }
+}`;
+
+  // ─── Common header JSX ───
+  const headerJsx = `
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard" className="p-2 rounded-xl transition-all hover:bg-white/[0.06]">
+          <ArrowLeft className="w-5 h-5" style={{ color: '${t.text50}' }} />
+        </Link>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold" style={{ fontFamily: "'${t.headingFont}', sans-serif", color: '${t.text}' }}>
+            {editMode ? <><Edit3 className="w-4 h-4 inline mr-2" />{t('create.editTitle')}</> : t('create.title')}
+          </h1>
+          <p className="text-xs mt-0.5" style={{ color: '${t.text40}' }}>
+            {docNumber && <span className="font-mono">{docNumber}</span>}
+          </p>
+        </div>
+      </div>`;
+
+  // ─── Common submit button + cancel ───
+  const submitActions = `
+            {/* Actions */}
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full py-3.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:opacity-90 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+              style={{ background: '${t.gradientPrimary}', boxShadow: '0 0 24px ${t.primary}20' }}
+            >
+              {submitting ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> {t('msg.processing')}</>
+              ) : (
+                <><FileText className="w-4 h-4" /> {editMode ? t('create.update') : t('create.submit')}</>
+              )}
+            </button>
+
+            <Link
+              href="/dashboard"
+              className="block w-full py-2.5 rounded-xl text-sm font-medium text-center border transition-all duration-200 hover:bg-white/[0.04]"
+              style={{ borderColor: '${t.primary}15', color: '${t.text50}' }}
+            >
+              {t('action.cancel')}
+            </Link>`;
+
+  // ─── Common notes section ───
+  const notesSection = `
+          {/* ─── Notes ─── */}
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <h2 className="text-sm font-semibold mb-3" style={{ color: '${t.text}' }}>{t('label.notes')}</h2>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t('create.notesPlaceholder')}
+              rows={3}
+              className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 resize-none transition-all"
+              style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }}
+            />
+          </div>`;
+
+  // ─── Build page based on form archetype ───
+  let pageContent: string;
+
+  if (cp.formType === 'sender-recipient') {
+    pageContent = buildSenderRecipientPage(ctx, t, cp, spec, projectName, requiredFields, statusEntries, storageKeys, docNumberFn, headerJsx, submitActions, notesSection, inputClasses);
+  } else if (cp.formType === 'single-input') {
+    pageContent = buildSingleInputPage(ctx, t, cp, spec, projectName, statusEntries, storageKeys, docNumberFn, headerJsx, submitActions, notesSection, inputClasses);
+  } else {
+    pageContent = buildDataEntryPage(ctx, t, cp, spec, projectName, requiredFields, statusEntries, storageKeys, docNumberFn, headerJsx, submitActions, notesSection, inputClasses);
+  }
+
+  return {
+    'src/app/dashboard/create/page.tsx': pageContent,
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// ARCHETYPE 1: sender-recipient (Invoice, Quote, Estimate)
+// ═══════════════════════════════════════════════════════════════
+function buildSenderRecipientPage(
+  ctx: BlockContext, t: any, cp: any, spec: any, projectName: string,
+  requiredFields: any[], statusEntries: string, storageKeys: string,
+  docNumberFn: string, headerJsx: string, submitActions: string,
+  notesSection: string, inputClasses: string
+): string {
+  // Extra fields from ProductSpec (not covered by From/To/LineItems)
   const lineItemKeywords = ['amount', 'price', 'quantity', 'item', 'description', 'rate', 'cost', 'total', 'name', 'product', 'service'];
   const headerFields = requiredFields.filter(f =>
     !lineItemKeywords.some(k => f.name.toLowerCase().includes(k))
   );
-
-  // Build header fields JSX (only non-invoice fields — invoice has its own From/To)
   const extraFieldsJsx = headerFields
     .filter(f => !['client', 'date', 'due', 'invoice', 'from', 'to', 'email', 'address', 'company', 'business', 'sender', 'recipient'].some(k => f.name.toLowerCase().includes(k)))
     .map(f => {
@@ -42,7 +140,6 @@ export default function generate(ctx: BlockContext): BlockResult {
         : f.type?.toLowerCase() === 'email' ? 'email'
         : f.type?.toLowerCase() === 'number' ? 'number'
         : 'text';
-
       return `
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: '${t.text50}' }}>${labelCap}</label>
@@ -51,14 +148,13 @@ export default function generate(ctx: BlockContext): BlockResult {
                   value={formData['${name}'] || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, '${name}': e.target.value }))}
                   placeholder="${placeholder}"
-                  className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all"
+                  className="${inputClasses}"
                   style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}', focusRingColor: '${t.primary}' }}
                 />
               </div>`;
     }).join('');
 
-  return {
-    'src/app/dashboard/create/page.tsx': `'use client';
+  return `'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -82,12 +178,7 @@ const CURRENCIES = [
 ];
 
 const PAYMENT_STATUSES = [
-  { value: 'draft', labelKey: 'status.draft', color: '#94a3b8' },
-  { value: 'sent', labelKey: 'status.sent', color: '#3b82f6' },
-  { value: 'unpaid', labelKey: 'status.overdue', color: '#f59e0b' },
-  { value: 'paid', labelKey: 'status.paid', color: '#22c55e' },
-  { value: 'overdue', labelKey: 'status.overdue', color: '#ef4444' },
-  { value: 'cancelled', labelKey: 'status.cancelled', color: '#6b7280' },
+${statusEntries},
 ];
 
 interface LineItem {
@@ -112,18 +203,9 @@ const PAYMENT_TERMS = [
 ];
 
 const PROFILE_KEY = '${projectName.replace(/'/g, '')}_sender_profile';
-const HISTORY_KEY = '${projectName.replace(/'/g, '')}_history';
-const COUNTER_KEY = '${projectName.replace(/'/g, '')}_doc_counter';
+${storageKeys}
 const CLIENTS_KEY = '${projectName.replace(/'/g, '')}_clients';
-const SETTINGS_KEY = '${projectName.replace(/'/g, '')}_settings';
-
-function getNextDocNumber(): string {
-  try {
-    const counter = parseInt(localStorage.getItem(COUNTER_KEY) || '0') + 1;
-    localStorage.setItem(COUNTER_KEY, String(counter));
-    return 'INV-' + String(counter).padStart(4, '0');
-  } catch { return 'INV-0001'; }
-}
+${docNumberFn}
 
 export default function CreatePage() {
   const router = useRouter();
@@ -155,7 +237,7 @@ export default function CreatePage() {
   const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState('');
   const [currency, setCurrency] = useState('USD');
-  const [paymentStatus, setPaymentStatus] = useState('draft');
+  const [paymentStatus, setPaymentStatus] = useState('${cp.statuses[0]?.value || 'draft'}');
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -201,7 +283,7 @@ export default function CreatePage() {
       });
     }
 
-    // Check if editing an existing invoice
+    // Check if editing an existing item
     const editParam = params.get('edit');
     if (editParam) {
       try {
@@ -216,7 +298,7 @@ export default function CreatePage() {
           setDueDate(d.due_date || '');
           setPaymentTerms(d.payment_terms || 'net_30');
           setCurrency(d.currency || 'USD');
-          setPaymentStatus(d.payment_status || 'draft');
+          setPaymentStatus(d.payment_status || '${cp.statuses[0]?.value || 'draft'}');
           setNotes(d.notes || '');
           setTaxRate(d.tax_rate || 0);
           if (d.sender) setSender(d.sender);
@@ -301,13 +383,11 @@ export default function CreatePage() {
       const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 
       if (editMode && editId) {
-        // Update existing entry
         const updated = existing.map((h: any) =>
           h.id === editId ? { ...h, data: payload, result: payload, input: recipient.name || 'Unnamed', payment_status: paymentStatus } : h
         );
         localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
       } else {
-        // Create new entry
         const historyItem = {
           id: crypto.randomUUID(),
           doc_number: docNumber,
@@ -354,26 +434,13 @@ export default function CreatePage() {
     }
   };
 
-  const inputClasses = "w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all";
+  const inputClasses = "${inputClasses}";
   const inputStyle = { background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' };
   const labelClasses = "block text-xs font-medium mb-1.5";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard" className="p-2 rounded-xl transition-all hover:bg-white/[0.06]">
-          <ArrowLeft className="w-5 h-5" style={{ color: '${t.text50}' }} />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold" style={{ fontFamily: "'${t.headingFont}', sans-serif", color: '${t.text}' }}>
-            {editMode ? <><Edit3 className="w-4 h-4 inline mr-2" />{t('create.editTitle')}</> : t('create.title')}
-          </h1>
-          <p className="text-xs mt-0.5" style={{ color: '${t.text40}' }}>
-            {docNumber && <span className="font-mono">{docNumber}</span>}
-          </p>
-        </div>
-      </div>
+${headerJsx}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* ─── Form (left 3 cols) ─── */}
@@ -401,36 +468,21 @@ export default function CreatePage() {
               <div className="space-y-3">
                 <div>
                   <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('create.businessName')}</label>
-                  <input
-                    type="text"
-                    value={sender.business_name}
+                  <input type="text" value={sender.business_name}
                     onChange={(e) => setSender(prev => ({ ...prev, business_name: e.target.value }))}
-                    placeholder="Your Company LLC"
-                    className={inputClasses}
-                    style={inputStyle}
-                  />
+                    placeholder="Your Company LLC" className={inputClasses} style={inputStyle} />
                 </div>
                 <div>
                   <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.email')}</label>
-                  <input
-                    type="email"
-                    value={sender.email}
+                  <input type="email" value={sender.email}
                     onChange={(e) => setSender(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="billing@company.com"
-                    className={inputClasses}
-                    style={inputStyle}
-                  />
+                    placeholder="billing@company.com" className={inputClasses} style={inputStyle} />
                 </div>
                 <div>
                   <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.address')}</label>
-                  <input
-                    type="text"
-                    value={sender.address}
+                  <input type="text" value={sender.address}
                     onChange={(e) => setSender(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="123 Main St, City, State"
-                    className={inputClasses}
-                    style={inputStyle}
-                  />
+                    placeholder="123 Main St, City, State" className={inputClasses} style={inputStyle} />
                 </div>
               </div>
             </div>
@@ -444,24 +496,16 @@ export default function CreatePage() {
               <div className="space-y-3">
                 <div className="relative">
                   <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('create.clientName')}</label>
-                  <input
-                    type="text"
-                    value={recipient.name}
+                  <input type="text" value={recipient.name}
                     onChange={(e) => {
                       const val = e.target.value;
                       setRecipient(prev => ({ ...prev, name: val }));
                       setClientSearch(val);
                       setShowClientDropdown(val.length > 0 && savedClients.some(c => c.name.toLowerCase().includes(val.toLowerCase())));
                     }}
-                    onFocus={() => {
-                      if (savedClients.length > 0) setShowClientDropdown(true);
-                    }}
+                    onFocus={() => { if (savedClients.length > 0) setShowClientDropdown(true); }}
                     onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                    placeholder="Acme Corp"
-                    className={inputClasses}
-                    style={inputStyle}
-                    autoComplete="off"
-                  />
+                    placeholder="Acme Corp" className={inputClasses} style={inputStyle} autoComplete="off" />
                   {showClientDropdown && (
                     <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border shadow-lg max-h-48 overflow-y-auto"
                       style={{ background: '${t.surface2}', borderColor: '${t.primary}15' }}>
@@ -491,25 +535,15 @@ export default function CreatePage() {
                 </div>
                 <div>
                   <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('create.clientEmail')}</label>
-                  <input
-                    type="email"
-                    value={recipient.email}
+                  <input type="email" value={recipient.email}
                     onChange={(e) => setRecipient(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="client@acme.com"
-                    className={inputClasses}
-                    style={inputStyle}
-                  />
+                    placeholder="client@acme.com" className={inputClasses} style={inputStyle} />
                 </div>
                 <div>
                   <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('create.clientAddress')}</label>
-                  <input
-                    type="text"
-                    value={recipient.address}
+                  <input type="text" value={recipient.address}
                     onChange={(e) => setRecipient(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="456 Oak Ave, City, State"
-                    className={inputClasses}
-                    style={inputStyle}
-                  />
+                    placeholder="456 Oak Ave, City, State" className={inputClasses} style={inputStyle} />
                 </div>
               </div>
             </div>
@@ -521,32 +555,18 @@ export default function CreatePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.number')}</label>
-                <input
-                  type="text"
-                  value={docNumber}
-                  onChange={(e) => setDocNumber(e.target.value)}
-                  className={inputClasses + ' font-mono'}
-                  style={inputStyle}
-                />
+                <input type="text" value={docNumber} onChange={(e) => setDocNumber(e.target.value)}
+                  className={inputClasses + ' font-mono'} style={inputStyle} />
               </div>
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.date')}</label>
-                <input
-                  type="date"
-                  value={docDate}
-                  onChange={(e) => setDocDate(e.target.value)}
-                  className={inputClasses}
-                  style={inputStyle}
-                />
+                <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
+                  className={inputClasses} style={inputStyle} />
               </div>
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('create.paymentTerms')}</label>
-                <select
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value)}
-                  className={inputClasses}
-                  style={inputStyle}
-                >
+                <select value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)}
+                  className={inputClasses} style={inputStyle}>
                   {PAYMENT_TERMS.map(term => (
                     <option key={term.value} value={term.value}>{t(term.labelKey)}</option>
                   ))}
@@ -554,24 +574,15 @@ export default function CreatePage() {
               </div>
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.dueDate')}</label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className={inputClasses}
-                  style={inputStyle}
-                />
+                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                  className={inputClasses} style={inputStyle} />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.currency')}</label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className={inputClasses}
-                  style={inputStyle}
-                >
+                <select value={currency} onChange={(e) => setCurrency(e.target.value)}
+                  className={inputClasses} style={inputStyle}>
                   {CURRENCIES.map(c => (
                     <option key={c.code} value={c.code}>{c.label}</option>
                   ))}
@@ -579,12 +590,8 @@ export default function CreatePage() {
               </div>
               <div>
                 <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.status')}</label>
-                <select
-                  value={paymentStatus}
-                  onChange={(e) => setPaymentStatus(e.target.value)}
-                  className={inputClasses}
-                  style={inputStyle}
-                >
+                <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}
+                  className={inputClasses} style={inputStyle}>
                   {PAYMENT_STATUSES.map(s => (
                     <option key={s.value} value={s.value}>{t(s.labelKey)}</option>
                   ))}
@@ -601,11 +608,9 @@ ${extraFieldsJsx ? `
           <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold" style={{ color: '${t.text}' }}>{t('create.lineItems')}</h2>
-              <button
-                onClick={addItem}
+              <button onClick={addItem}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl transition-all hover:scale-[1.03]"
-                style={{ color: '${t.primary}', background: '${t.primary}10' }}
-              >
+                style={{ color: '${t.primary}', background: '${t.primary}10' }}>
                 <Plus className="w-3.5 h-3.5" /> {t('create.addItem')}
               </button>
             </div>
@@ -624,36 +629,19 @@ ${extraFieldsJsx ? `
               {items.map((item) => (
                 <div key={item.id} className="grid grid-cols-12 gap-3 items-center group">
                   <div className="col-span-12 sm:col-span-5">
-                    <input
-                      type="text"
-                      value={item.description}
+                    <input type="text" value={item.description}
                       onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                      placeholder="Item description"
-                      className={inputClasses}
-                      style={inputStyle}
-                    />
+                      placeholder="Item description" className={inputClasses} style={inputStyle} />
                   </div>
                   <div className="col-span-4 sm:col-span-2">
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
+                    <input type="number" min="1" value={item.quantity}
                       onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                      className={inputClasses}
-                      style={inputStyle}
-                    />
+                      className={inputClasses} style={inputStyle} />
                   </div>
                   <div className="col-span-4 sm:col-span-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.rate || ''}
+                    <input type="number" min="0" step="0.01" value={item.rate || ''}
                       onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                      placeholder="0.00"
-                      className={inputClasses}
-                      style={inputStyle}
-                    />
+                      placeholder="0.00" className={inputClasses} style={inputStyle} />
                   </div>
                   <div className="col-span-3 sm:col-span-2 text-right">
                     <span className="text-sm font-semibold" style={{ color: '${t.text}' }}>
@@ -661,12 +649,10 @@ ${extraFieldsJsx ? `
                     </span>
                   </div>
                   <div className="col-span-1 flex justify-end">
-                    <button
-                      onClick={() => removeItem(item.id)}
+                    <button onClick={() => removeItem(item.id)}
                       className="p-1.5 rounded-lg transition-all opacity-40 group-hover:opacity-100 hover:bg-red-500/10"
                       style={{ color: items.length > 1 ? '#ef4444' : '${t.text50}' }}
-                      disabled={items.length <= 1}
-                    >
+                      disabled={items.length <= 1}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -674,19 +660,7 @@ ${extraFieldsJsx ? `
               ))}
             </div>
           </div>
-
-          {/* ─── Notes ─── */}
-          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
-            <h2 className="text-sm font-semibold mb-3" style={{ color: '${t.text}' }}>{t('label.notes')}</h2>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder={t('create.notesPlaceholder')}
-              rows={3}
-              className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 resize-none transition-all"
-              style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }}
-            />
-          </div>
+${notesSection}
         </div>
 
         {/* ─── Summary (right 2 cols) ─── */}
@@ -723,17 +697,11 @@ ${extraFieldsJsx ? `
                 <div className="flex justify-between items-center text-sm">
                   <span style={{ color: '${t.text50}' }}>{t('label.tax')}</span>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.5"
-                      value={taxRate || ''}
-                      onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                    <input type="number" min="0" max="100" step="0.5"
+                      value={taxRate || ''} onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
                       placeholder="0"
                       className="w-16 px-2 py-1 rounded-lg border text-xs text-right focus:outline-none transition-all"
-                      style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }}
-                    />
+                      style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }} />
                     <span className="text-xs" style={{ color: '${t.text50}' }}>%</span>
                   </div>
                 </div>
@@ -750,33 +718,531 @@ ${extraFieldsJsx ? `
               </div>
             </div>
 
-            {/* Actions */}
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || items.every(i => !i.description)}
-              className="w-full py-3.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:opacity-90 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
-              style={{ background: '${t.gradientPrimary}', boxShadow: '0 0 24px ${t.primary}20' }}
-            >
-              {submitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> {t('msg.processing')}</>
-              ) : (
-                <><FileText className="w-4 h-4" /> {editMode ? t('create.update') : t('create.submit')}</>
-              )}
-            </button>
-
-            <Link
-              href="/dashboard"
-              className="block w-full py-2.5 rounded-xl text-sm font-medium text-center border transition-all duration-200 hover:bg-white/[0.04]"
-              style={{ borderColor: '${t.primary}15', color: '${t.text50}' }}
-            >
-              {t('action.cancel')}
-            </Link>
+${submitActions}
           </div>
         </div>
       </div>
     </div>
   );
 }
-`,
+`;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// ARCHETYPE 2: data-entry (Quiz Builder, Health Form, Business Plan)
+// ═══════════════════════════════════════════════════════════════
+function buildDataEntryPage(
+  ctx: BlockContext, t: any, cp: any, spec: any, projectName: string,
+  requiredFields: any[], statusEntries: string, storageKeys: string,
+  docNumberFn: string, headerJsx: string, submitActions: string,
+  notesSection: string, inputClasses: string
+): string {
+
+  // Build form fields from required_fields
+  const formFieldsJsx = requiredFields.map(f => {
+    const name = escapeJsx(f.name);
+    const label = escapeJsx(f.description || f.name).replace(/_/g, ' ');
+    const labelCap = label.charAt(0).toUpperCase() + label.slice(1);
+    const placeholder = escapeJsx(f.example || '');
+    const fieldType = f.type?.toLowerCase() || 'text';
+
+    if (fieldType === 'textarea' || fieldType === 'long_text') {
+      return `
+              <div className="sm:col-span-2">
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>${labelCap}</label>
+                <textarea
+                  value={formData['${name}'] || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, '${name}': e.target.value }))}
+                  placeholder="${placeholder}"
+                  rows={4}
+                  className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 resize-none transition-all"
+                  style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }}
+                />
+              </div>`;
+    }
+
+    if (fieldType === 'select' && f.options) {
+      const options = (Array.isArray(f.options) ? f.options : [])
+        .map((o: string) => `<option value="${escapeJsx(o)}">${escapeJsx(o)}</option>`)
+        .join('\n                    ');
+      return `
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>${labelCap}</label>
+                <select
+                  value={formData['${name}'] || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, '${name}': e.target.value }))}
+                  className="${inputClasses}"
+                  style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }}
+                >
+                  <option value="">Select...</option>
+                  ${options}
+                </select>
+              </div>`;
+    }
+
+    const type = fieldType === 'date' ? 'date'
+      : fieldType === 'email' ? 'email'
+      : fieldType === 'number' || fieldType === 'integer' ? 'number'
+      : fieldType === 'url' ? 'url'
+      : 'text';
+
+    return `
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>${labelCap}</label>
+                <input
+                  type="${type}"
+                  value={formData['${name}'] || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, '${name}': e.target.value }))}
+                  placeholder="${placeholder}"
+                  className="${inputClasses}"
+                  style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }}
+                />
+              </div>`;
+  }).join('');
+
+  // Count of required fields for summary
+  const fieldNames = requiredFields.map(f => `'${escapeJsx(f.name)}'`).join(', ');
+
+  return `'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Loader2, FileText, Edit3 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
+
+const STATUSES = [
+${statusEntries},
+];
+${storageKeys}
+${docNumberFn}
+
+export default function CreatePage() {
+  const router = useRouter();
+  const t = useT();
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [docNumber, setDocNumber] = useState('');
+  const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState('${cp.statuses[0]?.value || 'pending'}');
+  const [editMode, setEditMode] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load default settings
+    try {
+      const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+      if (settings.default_notes) setNotes(settings.default_notes);
+    } catch {}
+
+    // Check if editing an existing item
+    const params = new URLSearchParams(window.location.search);
+    const editParam = params.get('edit');
+    if (editParam) {
+      try {
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        const found = history.find((h: any) => h.id === editParam);
+        if (found && found.data) {
+          setEditMode(true);
+          setEditId(editParam);
+          setDocNumber(found.data.doc_number || '');
+          setDocDate(found.data.date || new Date().toISOString().split('T')[0]);
+          setStatus(found.data.status || '${cp.statuses[0]?.value || 'pending'}');
+          setNotes(found.data.notes || '');
+          // Restore form fields
+          const { doc_number, date, status: s, notes: n, ...fields } = found.data;
+          setFormData(fields);
+          return;
+        }
+      } catch {}
+    }
+
+    setDocNumber(getNextDocNumber());
+  }, []);
+
+  const FIELD_NAMES = [${fieldNames}];
+  const filledCount = FIELD_NAMES.filter(k => formData[k]?.trim()).length;
+  const totalFields = FIELD_NAMES.length;
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+
+    const payload = {
+      ...formData,
+      doc_number: docNumber,
+      date: docDate,
+      status,
+      notes,
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+
+      if (editMode && editId) {
+        const updated = existing.map((h: any) =>
+          h.id === editId ? { ...h, data: payload, result: payload, input: formData[FIELD_NAMES[0]] || 'Untitled', status } : h
+        );
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      } else {
+        const historyItem = {
+          id: crypto.randomUUID(),
+          doc_number: docNumber,
+          input: formData[FIELD_NAMES[0]] || 'Untitled',
+          created_at: new Date().toISOString(),
+          status,
+          data: payload,
+          result: payload,
+        };
+        localStorage.setItem(HISTORY_KEY, JSON.stringify([historyItem, ...existing].slice(0, 50)));
+      }
+
+      const params = new URLSearchParams();
+      params.set('_result', JSON.stringify(payload));
+      params.set('doc_number', docNumber);
+      router.push(\`/dashboard/analysis?\${params.toString()}\`);
+    } catch (err) {
+      console.error('Submit error:', err);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const inputClasses = "${inputClasses}";
+  const inputStyle = { background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' };
+  const labelClasses = "block text-xs font-medium mb-1.5";
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+${headerJsx}
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* ─── Form (left 3 cols) ─── */}
+        <div className="lg:col-span-3 space-y-5">
+
+          {/* ─── Document Meta ─── */}
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <h2 className="text-sm font-semibold mb-4" style={{ color: '${t.text}' }}>{t('create.details')}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.number')}</label>
+                <input type="text" value={docNumber} onChange={(e) => setDocNumber(e.target.value)}
+                  className={inputClasses + ' font-mono'} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.date')}</label>
+                <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
+                  className={inputClasses} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.status')}</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)}
+                  className={inputClasses} style={inputStyle}>
+                  {STATUSES.map(s => (
+                    <option key={s.value} value={s.value}>{t(s.labelKey)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* ─── Form Fields ─── */}
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <h2 className="text-sm font-semibold mb-4" style={{ color: '${t.text}' }}>{t('create.title')}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+${formFieldsJsx}
+            </div>
+          </div>
+${notesSection}
+        </div>
+
+        {/* ─── Summary (right 2 cols) ─── */}
+        <div className="lg:col-span-2">
+          <div className="sticky top-20 space-y-5">
+            <div className="rounded-2xl p-5" style={{ background: '${t.surface2}', boxShadow: '${t.shadowMd}', border: '1px solid ${t.primary}10' }}>
+              <h2 className="text-sm font-semibold mb-4" style={{ color: '${t.text}' }}>{t('label.total')}</h2>
+
+              {docNumber && (
+                <div className="mb-4 pb-4" style={{ borderBottom: '1px solid ${t.primary}10' }}>
+                  <p className="text-[11px] font-mono" style={{ color: '${t.text40}' }}>{docNumber}</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '${t.text50}' }}>{t('dashboard.totalItems')}</span>
+                  <span className="font-mono text-xs" style={{ color: '${t.text50}' }}>{filledCount} / {totalFields}</span>
+                </div>
+                {/* Progress bar */}
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: '${t.primary}15' }}>
+                  <div className="h-full rounded-full transition-all duration-300"
+                    style={{ width: totalFields > 0 ? (filledCount / totalFields * 100) + '%' : '0%', background: '${t.primary}' }} />
+                </div>
+                <p className="text-[11px]" style={{ color: '${t.text40}' }}>
+                  {filledCount === totalFields ? t('msg.saved') : \`\${totalFields - filledCount} fields remaining\`}
+                </p>
+              </div>
+            </div>
+
+${submitActions}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+`;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// ARCHETYPE 3: single-input (SEO Auditor, Text Analyzer, URL Checker)
+// ═══════════════════════════════════════════════════════════════
+function buildSingleInputPage(
+  ctx: BlockContext, t: any, cp: any, spec: any, projectName: string,
+  statusEntries: string, storageKeys: string,
+  docNumberFn: string, headerJsx: string, submitActions: string,
+  notesSection: string, inputClasses: string
+): string {
+
+  const inputType = spec?.user_input?.input_type || 'text';
+  const isUrl = inputType === 'url';
+  const inputPlaceholder = isUrl
+    ? 'https://example.com'
+    : escapeJsx(spec?.user_input?.example || `Enter your ${cp.entityName.toLowerCase()} content here...`);
+
+  return `'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Loader2, FileText, Edit3${isUrl ? ', LinkIcon' : ', Type'} } from 'lucide-react';
+import { useT } from '@/lib/i18n';
+
+const STATUSES = [
+${statusEntries},
+];
+${storageKeys}
+${docNumberFn}
+
+export default function CreatePage() {
+  const router = useRouter();
+  const t = useT();
+  const [submitting, setSubmitting] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [title, setTitle] = useState('');
+  const [docNumber, setDocNumber] = useState('');
+  const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState('${cp.statuses[0]?.value || 'pending'}');
+  const [editMode, setEditMode] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+      if (settings.default_notes) setNotes(settings.default_notes);
+    } catch {}
+
+    const params = new URLSearchParams(window.location.search);
+    const editParam = params.get('edit');
+    if (editParam) {
+      try {
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        const found = history.find((h: any) => h.id === editParam);
+        if (found && found.data) {
+          setEditMode(true);
+          setEditId(editParam);
+          setDocNumber(found.data.doc_number || '');
+          setDocDate(found.data.date || new Date().toISOString().split('T')[0]);
+          setStatus(found.data.status || '${cp.statuses[0]?.value || 'pending'}');
+          setInputValue(found.data.input_value || '');
+          setTitle(found.data.title || '');
+          setNotes(found.data.notes || '');
+          return;
+        }
+      } catch {}
+    }
+
+    setDocNumber(getNextDocNumber());
+  }, []);
+${isUrl ? `
+  const isValidUrl = (str: string) => {
+    try { new URL(str); return true; } catch { return false; }
+  };
+` : ''}
+  const handleSubmit = async () => {
+    setSubmitting(true);
+
+    const payload = {
+      doc_number: docNumber,
+      date: docDate,
+      status,
+      title: title || inputValue.substring(0, 60),
+      input_value: inputValue,
+      notes,
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+
+      if (editMode && editId) {
+        const updated = existing.map((h: any) =>
+          h.id === editId ? { ...h, data: payload, result: payload, input: payload.title, status } : h
+        );
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      } else {
+        const historyItem = {
+          id: crypto.randomUUID(),
+          doc_number: docNumber,
+          input: payload.title,
+          created_at: new Date().toISOString(),
+          status,
+          data: payload,
+          result: payload,
+        };
+        localStorage.setItem(HISTORY_KEY, JSON.stringify([historyItem, ...existing].slice(0, 50)));
+      }
+
+      const params = new URLSearchParams();
+      params.set('_result', JSON.stringify(payload));
+      params.set('doc_number', docNumber);
+      router.push(\`/dashboard/analysis?\${params.toString()}\`);
+    } catch (err) {
+      console.error('Submit error:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const inputClasses = "${inputClasses}";
+  const inputStyle = { background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' };
+  const labelClasses = "block text-xs font-medium mb-1.5";
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+${headerJsx}
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* ─── Form (left 3 cols) ─── */}
+        <div className="lg:col-span-3 space-y-5">
+
+          {/* ─── Meta ─── */}
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.number')}</label>
+                <input type="text" value={docNumber} onChange={(e) => setDocNumber(e.target.value)}
+                  className={inputClasses + ' font-mono'} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.date')}</label>
+                <input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)}
+                  className={inputClasses} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.status')}</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)}
+                  className={inputClasses} style={inputStyle}>
+                  {STATUSES.map(s => (
+                    <option key={s.value} value={s.value}>{t(s.labelKey)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* ─── Main Input ─── */}
+          <div className="rounded-2xl p-5" style={{ background: '${t.surface1}', boxShadow: '${t.shadowSm}', border: '1px solid ${t.primary}08' }}>
+            <div className="flex items-center gap-2 mb-4">
+              <${isUrl ? 'LinkIcon' : 'Type'} className="w-4 h-4" style={{ color: '${t.primary}' }} />
+              <h2 className="text-sm font-semibold" style={{ color: '${t.text}' }}>{t('create.title')}</h2>
+            </div>
+
+            {/* Title */}
+            <div className="mb-4">
+              <label className={labelClasses} style={{ color: '${t.text50}' }}>{t('label.name')}</label>
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                placeholder="Give this ${cp.entityName.toLowerCase()} a name..."
+                className={inputClasses} style={inputStyle} />
+            </div>
+
+            {/* Main input */}
+            <div>
+              <label className={labelClasses} style={{ color: '${t.text50}' }}>
+                ${isUrl ? 'URL' : 'Content'}
+              </label>
+${isUrl ? `
+              <input type="url" value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="${inputPlaceholder}"
+                className={inputClasses + ' font-mono'}
+                style={inputStyle} />
+              {inputValue && !isValidUrl(inputValue) && (
+                <p className="text-[11px] mt-1" style={{ color: '#ef4444' }}>Please enter a valid URL</p>
+              )}
+` : `
+              <textarea value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="${inputPlaceholder}"
+                rows={10}
+                className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 resize-none transition-all"
+                style={{ background: '${t.bg}', borderColor: '${t.primary}15', color: '${t.text}' }} />
+              <p className="text-[11px] mt-1 text-right" style={{ color: '${t.text40}' }}>
+                {inputValue.length} characters
+              </p>
+`}
+            </div>
+          </div>
+${notesSection}
+        </div>
+
+        {/* ─── Summary (right 2 cols) ─── */}
+        <div className="lg:col-span-2">
+          <div className="sticky top-20 space-y-5">
+            <div className="rounded-2xl p-5" style={{ background: '${t.surface2}', boxShadow: '${t.shadowMd}', border: '1px solid ${t.primary}10' }}>
+              <h2 className="text-sm font-semibold mb-4" style={{ color: '${t.text}' }}>{t('label.total')}</h2>
+
+              {docNumber && (
+                <div className="mb-4 pb-4" style={{ borderBottom: '1px solid ${t.primary}10' }}>
+                  <p className="text-[11px] font-mono" style={{ color: '${t.text40}' }}>{docNumber}</p>
+                  {title && <p className="text-xs font-medium mt-1" style={{ color: '${t.text70}' }}>{title}</p>}
+                </div>
+              )}
+
+              <div className="space-y-3">
+${isUrl ? `
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '${t.text50}' }}>URL</span>
+                  <span className="font-mono text-xs truncate max-w-[120px]" style={{ color: inputValue && isValidUrl(inputValue) ? '#22c55e' : '${t.text40}' }}>
+                    {inputValue ? (isValidUrl(inputValue) ? 'Valid' : 'Invalid') : 'Not set'}
+                  </span>
+                </div>` : `
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '${t.text50}' }}>Characters</span>
+                  <span className="font-mono text-xs" style={{ color: '${t.text50}' }}>{inputValue.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '${t.text50}' }}>Words</span>
+                  <span className="font-mono text-xs" style={{ color: '${t.text50}' }}>{inputValue.trim() ? inputValue.trim().split(/\\s+/).length : 0}</span>
+                </div>`}
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: '${t.text50}' }}>{t('label.status')}</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                    style={{ background: STATUSES.find(s => s.value === status)?.color + '18', color: STATUSES.find(s => s.value === status)?.color }}>
+                    {t(STATUSES.find(s => s.value === status)?.labelKey || '')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+${submitActions}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+`;
 }

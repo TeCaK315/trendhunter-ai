@@ -42,9 +42,9 @@ export default function generate(ctx: BlockContext): BlockResult {
   // Use "report" format which is flexible enough for any product output
   systemPromptParts.push(`OUTPUT INSTRUCTIONS:
 You must PRODUCE the actual product output — not analyze or describe it.
-For example: if you are an invoice generator, GENERATE the actual invoice.
-If you are a quiz maker, CREATE actual quiz questions.
+For example: if you are a quiz maker, CREATE actual quiz questions.
 If you are a business plan generator, WRITE the actual business plan.
+If you are a fitness coach app, GENERATE the actual workout plan.
 
 ALWAYS respond in English.
 
