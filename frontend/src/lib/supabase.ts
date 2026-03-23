@@ -1,10 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Lazy initialization — не создаём клиент на уровне модуля
+// чтобы билд на Vercel не падал при отсутствии env vars
+let _supabase: ReturnType<typeof createClient> | null = null;
 
-// Client for browser usage
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+function getSupabaseUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+}
+function getSupabaseAnonKey() {
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+}
+
+// Client for browser usage (lazy)
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get(_target, prop) {
+    if (!_supabase) {
+      _supabase = createClient(getSupabaseUrl(), getSupabaseAnonKey());
+    }
+    return (_supabase as any)[prop];
+  },
+});
 
 // Server client with service role (for admin operations)
 export function getServerSupabase() {
@@ -13,12 +28,12 @@ export function getServerSupabase() {
     console.warn('SUPABASE_SERVICE_ROLE_KEY not set, using anon key');
     return supabase;
   }
-  return createClient(supabaseUrl, serviceRoleKey);
+  return createClient(getSupabaseUrl(), serviceRoleKey);
 }
 
 // Check if Supabase is configured
 export function isSupabaseConfigured(): boolean {
-  return !!(supabaseUrl && supabaseAnonKey);
+  return !!(getSupabaseUrl() && getSupabaseAnonKey());
 }
 
 // Types for database tables
