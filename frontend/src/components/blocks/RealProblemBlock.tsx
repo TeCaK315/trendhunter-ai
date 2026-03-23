@@ -28,6 +28,7 @@ interface RealProblemData {
       original_query?: string;
       google_trends_url: string;
     } | null;
+    all_sources?: Array<{ name: string; count: number }>;
     reddit_post_count: number;
     so_question_count: number;
     frequency_score: {
@@ -35,6 +36,7 @@ interface RealProblemData {
       formula?: string;
       confidence: number;
     };
+    dynamics?: string;
   };
   current_solutions: {
     reviews: Array<{
@@ -54,6 +56,9 @@ interface RealProblemData {
       prices_found: Array<{ amount: string; plan: string; period?: string }>;
     }>;
     paid_solution_count: number;
+    paying_score?: number;
+    paying_ratio?: number;
+    context?: string;
   };
   verdict: {
     value: number;
@@ -243,22 +248,47 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
               formula={data.how_often.frequency_score.formula}
               confidence={data.how_often.frequency_score.confidence}
             />
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-zinc-800/50 rounded p-2">
-                <div className="text-lg font-bold">{data.how_often.reddit_post_count}</div>
-                <div className="text-xs text-zinc-400">Reddit</div>
+            {/* Динамика */}
+            {data.how_often.dynamics && (
+              <div className={`text-xs font-medium px-2 py-1 rounded inline-block ${
+                data.how_often.dynamics === 'growing' ? 'bg-green-500/20 text-green-300' :
+                data.how_often.dynamics === 'declining' ? 'bg-red-500/20 text-red-300' :
+                'bg-zinc-500/20 text-zinc-300'
+              }`}>
+                {data.how_often.dynamics === 'growing' ? 'Растёт' :
+                 data.how_often.dynamics === 'declining' ? 'Падает' : 'Стабильно'}
               </div>
-              <div className="bg-zinc-800/50 rounded p-2">
-                <div className="text-lg font-bold">{data.how_often.so_question_count}</div>
-                <div className="text-xs text-zinc-400">Stack Overflow</div>
+            )}
+            {/* Все источники динамически */}
+            {data.how_often.all_sources && data.how_often.all_sources.length > 0 ? (
+              <div className={`grid gap-2 text-center`} style={{
+                gridTemplateColumns: `repeat(${Math.min(data.how_often.all_sources.length, 4)}, 1fr)`
+              }}>
+                {data.how_often.all_sources.map((src, i) => (
+                  <div key={i} className="bg-zinc-800/50 rounded p-2">
+                    <div className="text-lg font-bold">{src.count}</div>
+                    <div className="text-xs text-zinc-400 capitalize">{src.name}</div>
+                  </div>
+                ))}
               </div>
-              <div className="bg-zinc-800/50 rounded p-2">
-                <div className="text-lg font-bold">
-                  {data.how_often.google_trends ? `${data.how_often.google_trends.growth_rate}%` : '—'}
+            ) : (
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-zinc-800/50 rounded p-2">
+                  <div className="text-lg font-bold">{data.how_often.reddit_post_count}</div>
+                  <div className="text-xs text-zinc-400">Reddit</div>
                 </div>
-                <div className="text-xs text-zinc-400">Trends рост</div>
+                <div className="bg-zinc-800/50 rounded p-2">
+                  <div className="text-lg font-bold">{data.how_often.so_question_count}</div>
+                  <div className="text-xs text-zinc-400">Stack Overflow</div>
+                </div>
+                <div className="bg-zinc-800/50 rounded p-2">
+                  <div className="text-lg font-bold">
+                    {data.how_often.google_trends ? `${data.how_often.google_trends.growth_rate}%` : '—'}
+                  </div>
+                  <div className="text-xs text-zinc-400">Trends рост</div>
+                </div>
               </div>
-            </div>
+            )}
             {data.how_often.google_trends && (
               <a
                 href={data.how_often.google_trends.google_trends_url}
@@ -329,7 +359,48 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
         </button>
         {expandedSection === 'willingness' && (
           <div className="px-3 pb-3 space-y-3">
-            {data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found.length > 0).map((pd, i) => (
+            {/* Paying stats из анализа жалоб */}
+            {(data.willingness_to_pay.paying_ratio !== undefined && data.willingness_to_pay.paying_ratio > 0) && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-zinc-800/50 rounded p-2">
+                    <div className="text-lg font-bold text-green-400">{data.willingness_to_pay.paying_ratio}%</div>
+                    <div className="text-xs text-zinc-400">Платящие юзеры</div>
+                  </div>
+                  <div className="bg-zinc-800/50 rounded p-2">
+                    <div className="text-lg font-bold">{data.willingness_to_pay.paid_solution_count}</div>
+                    <div className="text-xs text-zinc-400">Платят сейчас</div>
+                  </div>
+                  <div className="bg-zinc-800/50 rounded p-2">
+                    <div className="text-lg font-bold uppercase">{data.willingness_to_pay.context || '—'}</div>
+                    <div className="text-xs text-zinc-400">Контекст</div>
+                  </div>
+                </div>
+                {/* Paying score bar */}
+                <div className="bg-zinc-800/50 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-zinc-400">Уверенность в готовности платить</span>
+                    <span className="text-sm font-bold">{data.willingness_to_pay.paying_score || 0}</span>
+                  </div>
+                  <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        (data.willingness_to_pay.paying_score || 0) >= 40 ? 'bg-green-500' :
+                        (data.willingness_to_pay.paying_score || 0) >= 20 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(100, ((data.willingness_to_pay.paying_score || 0) / 100) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-1">
+                    {(data.willingness_to_pay.paying_score || 0) >= 40 ? 'Высокая готовность — люди уже платят за решения' :
+                     (data.willingness_to_pay.paying_score || 0) >= 20 ? 'Средняя — часть пользователей платит' :
+                     'Низкая — мало сигналов об оплате'}
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Pricing cards если есть */}
+            {data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found?.length > 0).map((pd, i) => (
               <div key={i} className="bg-zinc-800/50 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">{pd.competitor}</span>
@@ -344,7 +415,7 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
                     </a>
                   )}
                 </div>
-                {pd.prices_found.length > 0 ? (
+                {pd.prices_found?.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {pd.prices_found.map((p, j) => (
                       <span key={j} className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-300 rounded text-xs">
@@ -361,8 +432,9 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
                 ) : null}
               </div>
             ))}
-            {data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found.length > 0).length === 0 && (
-              <p className="text-sm text-zinc-400">Данные о ценах не найдены</p>
+            {(!data.willingness_to_pay.paying_ratio || data.willingness_to_pay.paying_ratio === 0) &&
+             data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found?.length > 0).length === 0 && (
+              <p className="text-sm text-zinc-400">Данные о ценах не найдены. Детальные цены конкурентов — в блоке Продаваемость.</p>
             )}
           </div>
         )}

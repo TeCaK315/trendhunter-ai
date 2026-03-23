@@ -55,6 +55,11 @@ interface DemandGrowthData {
       date?: string;
     }>;
     new_entrants_count: number;
+    competitors_found?: Array<{
+      name: string;
+      domain: string;
+      source: string;
+    }>;
   };
   search_intent?: {
     commercial_percent: number;
@@ -399,6 +404,35 @@ export default function DemandGrowthBlock({ data, loading, error }: Props) {
                     {showAllNews ? 'Свернуть' : `+ ещё ${data.new_players.funding_news.length - 3}`}
                   </button>
                 )}
+              </div>
+            )}
+            {/* Конкуренты из SERP если нет PH/HN данных */}
+            {data.new_players.competitors_found && data.new_players.competitors_found.length > 0 &&
+             data.new_players.producthunt_launches.length === 0 &&
+             data.new_players.show_hn_posts.length === 0 &&
+             data.new_players.funding_news.length === 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-zinc-400 mb-2">Конкуренты в SERP</h4>
+                <div className="space-y-1">
+                  {data.new_players.competitors_found.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1">
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        c.source === 'paid' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-blue-500/20 text-blue-300'
+                      }`}>
+                        {c.source === 'paid' ? 'ADS' : 'SEO'}
+                      </span>
+                      <a
+                        href={`https://${c.domain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-indigo-400 hover:text-indigo-300"
+                      >
+                        {c.name}
+                      </a>
+                      <span className="text-xs text-zinc-500">{c.domain}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {data.new_players.new_entrants_count === 0 && (

@@ -1,6 +1,251 @@
 {
   "trends": [
     {
+      "id": "trend-1774271899559-4",
+      "title": "Программное обеспечение для управления запасами",
+      "category": "E-commerce",
+      "popularity_score": 85,
+      "growth_rate": -5,
+      "why_trending": "рост интереса на -5% за неделю. Этот инструмент помогает бизнесам эффективно управлять запасами и минимизировать потери.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-23T13:18:19.559Z",
+      "source_query": "inventory management software features",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 0,
+      "enriched_at": "2026-03-23T13:18:28.529Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -5,
+      "sentiment": {
+        "positive": 0,
+        "negative": 0,
+        "neutral": 8,
+        "sample_quotes": [
+          "Ищем новое программное обеспечение для управления запасами.",
+          "Я координатор операций на устричной ферме, и мы ищем новое ПО."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building an MVP requires integrating various APIs for inventory management and e-commerce platforms, which adds complexity but is manageable.",
+      "quick_verdict": {
+        "decision": "no_go",
+        "summary": "Нишу слишком рискованно преследовать из-за снижения роста и конкуренции."
+      }
+    },
+    {
+      "id": "trend-1774271899559-7",
+      "title": "Лучшие решения для телемедицины",
+      "category": "HealthTech",
+      "popularity_score": 83,
+      "growth_rate": -1,
+      "why_trending": "рост интереса на -1% за неделю. Продукт предоставляет пользователям доступ к качественным медицинским услугам дистанционно.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-23T13:18:19.559Z",
+      "source_query": "best telemedicine",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 8,
+      "monthly_searches": 1,
+      "enriched_at": "2026-03-23T13:18:43.649Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -1,
+      "sentiment": {
+        "positive": 3,
+        "negative": 1,
+        "neutral": 4,
+        "sample_quotes": [
+          "Мне нравится простота использования телемедицины.",
+          "Я тут рекламу Blueberry Pediatrics вижу - это телемедицинский сервис."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a telemedicine platform requires integration with healthcare systems and compliance with regulations, but can be managed with existing tools.",
+      "quick_verdict": {
+        "decision": "no_go",
+        "summary": "Рынок телемедицины перенасыщен и имеет отрицательный рост."
+      }
+    },
+    {
+      "id": "trend-1774211861443-3",
+      "title": "Платформа без кода для разработки",
+      "category": "Technology",
+      "popularity_score": 83,
+      "growth_rate": 7,
+      "why_trending": "Рост интереса на 7% за неделю. Упрощение процесса разработки приложений без необходимости программирования открывает новые возможности для бизнеса.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-22T20:37:41.443Z",
+      "source_query": "no code platform",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$15K-50K",
+      "top_players_count": 9,
+      "monthly_searches": 6,
+      "enriched_at": "2026-03-22T20:37:56.621Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 7,
+      "sentiment": {
+        "positive": 2,
+        "negative": 0,
+        "neutral": 6,
+        "sample_quotes": [
+          "Лучшая платформа без кода для разработки простых игр?",
+          "Если умеешь пользоваться Google Sheets, то сможешь сделать приложение."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a no-code platform involves integrating various tools and APIs, which adds moderate technical complexity.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но требует дифференциации от конкурентов."
+      }
+    },
+    {
+      "id": "trend-1774211861443-4",
+      "title": "Приложение для финансового планирования",
+      "category": "FinTech",
+      "popularity_score": 82,
+      "growth_rate": 6,
+      "why_trending": "Рост интереса на 6% за неделю. С увеличением финансовой грамотности пользователей растет потребность в инструментах для управления личными финансами.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-22T20:37:41.443Z",
+      "source_query": "financial planning app",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 7,
+      "monthly_searches": 64,
+      "enriched_at": "2026-03-22T20:37:52.794Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 6,
+      "sentiment": {
+        "positive": 5,
+        "negative": 1,
+        "neutral": 2,
+        "sample_quotes": [
+          "Я создал приложение для финансового планирования",
+          "Я добавляю новые фичи в своё приложение"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building a financial planning app requires integration with various APIs for banking and financial data, along with user-friendly interfaces and security measures.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но необходимо найти уникальное предложение для дифференциации."
+      }
+    },
+    {
+      "id": "trend-1774211861443-5",
+      "title": "Программное обеспечение для медицинского расписания",
+      "category": "HealthTech",
+      "popularity_score": 81,
+      "growth_rate": 2,
+      "why_trending": "Рост интереса на 2% за неделю. С увеличением числа пациентов и необходимости в эффективном управлении расписанием, такие решения становятся востребованными.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-22T20:37:41.443Z",
+      "source_query": "online medical scheduling software",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 7,
+      "monthly_searches": 2,
+      "enriched_at": "2026-03-22T20:37:54.143Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 2,
+      "sentiment": {
+        "positive": 2,
+        "negative": 2,
+        "neutral": 4,
+        "sample_quotes": [
+          "Мы ищем программу для управления расписанием для клиник врачей...",
+          "Я работаю в небольшой группе анестезиологов, которая ищет систему ИИ..."
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP requires integration with existing healthcare systems and compliance with regulations, which adds complexity.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но требует дифференциации для успешного выхода на рынок."
+      }
+    },
+    {
+      "id": "trend-1774211861443-6",
+      "title": "Инструменты аналитики для электронной коммерции",
+      "category": "E-commerce",
+      "popularity_score": 79,
+      "growth_rate": 9,
+      "why_trending": "Рост интереса на 9% за неделю. Владельцы интернет-магазинов стремятся оптимизировать свои продажи и улучшить пользовательский опыт с помощью аналитики.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-22T20:37:41.443Z",
+      "source_query": "ecommerce analytics tools",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 175,
+      "enriched_at": "2026-03-22T20:38:03.378Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 9,
+      "sentiment": {
+        "positive": 0,
+        "negative": 0,
+        "neutral": 8,
+        "sample_quotes": [
+          "Инструменты аналитики для электронной коммерции?",
+          "Стоит ли их использовать и какие вы рекомендуете?"
+        ]
+      },
+      "difficulty_score": 6,
+      "difficulty_reasoning": "Building an MVP requires integrating various data sources and APIs to provide meaningful analytics, which adds complexity.",
+      "quick_verdict": {
+        "decision": "pivot",
+        "summary": "Основная идея хороша, но требует дифференциации от конкурентов."
+      }
+    },
+    {
+      "id": "trend-1774211861442-0",
+      "title": "Программное обеспечение для бухгалтерии",
+      "category": "Business",
+      "popularity_score": 100,
+      "growth_rate": 20,
+      "why_trending": "Рост интереса на 20% за неделю. Бухгалтерские решения становятся все более важными для франчайзинговых компаний, которые нуждаются в эффективных инструментах для управления финансами.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-22T20:37:41.442Z",
+      "source_query": "accounting software solutions",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 177,
+      "enriched_at": "2026-03-22T20:38:11.165Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 20,
+      "sentiment": {
+        "positive": 3,
+        "negative": 0,
+        "neutral": 5,
+        "sample_quotes": [
+          "Лучшее программное обеспечение для бухгалтерии",
+          "Мне кажется, что более специализированное ПО упростило бы учет"
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building an MVP for accounting software requires integration with financial data and compliance with regulations, which adds moderate complexity.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Рынок бухгалтерского программного обеспечения растет, и есть место для новых игроков."
+      }
+    },
+    {
       "id": "trend-1774046198692-1",
       "title": "Мониторинг здоровья бренда",
       "category": "HealthTech",
@@ -820,5 +1065,5 @@
       "enriched_at": "2026-03-13T17:34:53.864Z"
     }
   ],
-  "lastUpdated": "2026-03-20T22:36:38.741Z"
+  "lastUpdated": "2026-03-23T13:31:02.750Z"
 }

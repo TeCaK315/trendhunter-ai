@@ -69,7 +69,7 @@ export default function DashboardSidebar({
         { id: 'sellability', label: language === 'ru' ? 'Продаваемость' : 'Sellability', icon: '💳', statusKey: 'sellability' },
         { id: 'occupation', label: language === 'ru' ? 'Конкуренция' : 'Competition', icon: '🏟️', statusKey: 'occupation' },
         { id: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊', statusKey: 'economics' },
-        { id: 'tech', label: language === 'ru' ? 'Тех. стек' : 'Tech', icon: '⚙️', statusKey: 'tech' },
+        { id: 'tech', label: language === 'ru' ? 'Слепые пятна' : 'Blind Spots', icon: '🔍', statusKey: 'tech' },
         { id: 'analysis', label: language === 'ru' ? 'AI Синтез' : 'AI Synthesis', icon: '🧠' },
       ],
     },

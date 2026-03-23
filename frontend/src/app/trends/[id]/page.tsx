@@ -18,6 +18,10 @@ import MarketSellabilityBlock from '@/components/blocks/MarketSellabilityBlock';
 import MarketOccupationBlock from '@/components/blocks/MarketOccupationBlock';
 import UnitEconomicsBlock from '@/components/blocks/UnitEconomicsBlock';
 import TechFeasibilityBlock from '@/components/blocks/TechFeasibilityBlock';
+import BlindSpotsBlock from '@/components/blocks/BlindSpotsBlock';
+import SynthesisPanel from '@/components/blocks/SynthesisPanel';
+import { adaptBlockData } from '@/lib/evidence-adapters';
+import PremiumOverlay from '@/components/PremiumOverlay';
 import EvidenceBadge from '@/components/EvidenceBadge';
 import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
 import FinancialCalculator from '@/components/blocks/FinancialCalculator';
@@ -277,12 +281,15 @@ export default function TrendPage() {
   const [evidenceSubTab, setEvidenceSubTab] = useState<EvidenceSubTab>('problem'); // Default to first Evidence tab
   const [isFavorite, setIsFavorite] = useState(false);
   const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
+  const [coinBalance, setCoinBalance] = useState<number | null>(null);
 
   // Evidence block data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [evidenceData, setEvidenceData] = useState<Record<string, any>>({});
   const [evidenceLoading, setEvidenceLoading] = useState<Record<string, boolean>>({});
   const [evidenceErrors, setEvidenceErrors] = useState<Record<string, string>>({});
+  // Which blocks have premium unlocked (premium data fetched from server after payment)
+  const [unlockedBlocks, setUnlockedBlocks] = useState<Record<string, boolean>>({});
 
   // Action Plan data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -914,6 +921,14 @@ export default function TrendPage() {
     }
   }, [productRecommendation, hasAutoSelectedType, currentStep]);
 
+  // === Загрузка баланса монет ===
+  useEffect(() => {
+    fetch('/api/credits/balance')
+      .then(r => r.json())
+      .then(d => setCoinBalance(d.balance ?? 0))
+      .catch(() => setCoinBalance(0));
+  }, []);
+
   // === Сохранение данных в localStorage при изменении ===
   useEffect(() => { if (analysis) saveToCache('analysis', analysis); }, [analysis, saveToCache]);
   useEffect(() => { if (Object.keys(evidenceData).length > 0) saveToCache('evidenceData', evidenceData); }, [evidenceData, saveToCache]);
@@ -1386,11 +1401,22 @@ export default function TrendPage() {
     }
   };
 
-  // Запуск всех 5 Evidence блоков параллельно
+  // Запуск всех 6 Evidence блоков параллельно (новая архитектура: 6 блоков + слепые пятна)
   const runAllEvidenceBlocks = async () => {
     if (!trend) return;
 
-    const blockEndpoints: Record<string, string> = {
+    // Новые роуты (Блоки 1-6)
+    const newBlockEndpoints: Record<string, string> = {
+      problem: '/api/evidence/problem',
+      demand: '/api/evidence/demand',
+      sellability: '/api/evidence/sellability',
+      occupation: '/api/evidence/competition',
+      economics: '/api/evidence/revenue-sizing',
+      tech: '/api/evidence/blind-spots',
+    };
+
+    // Старые роуты (fallback — пока новые UI компоненты не готовы)
+    const oldBlockEndpoints: Record<string, string> = {
       problem: '/api/evidence/real-problem',
       demand: '/api/evidence/demand-growth',
       sellability: '/api/evidence/market-sellability',
@@ -1398,6 +1424,9 @@ export default function TrendPage() {
       economics: '/api/evidence/unit-economics',
       tech: '/api/evidence/tech-feasibility',
     };
+
+    // Используем новые роуты — данные сохраняются в Supabase для синтеза
+    const blockEndpoints = newBlockEndpoints;
 
     const blocks = Object.keys(blockEndpoints) as EvidenceSubTab[];
 
@@ -1411,34 +1440,102 @@ export default function TrendPage() {
     setEvidenceLoading(prev => ({ ...prev, ...loadingState }));
     setEvidenceErrors(prev => ({ ...prev, ...errorState }));
 
-    const context = buildAnalysisContext();
+    // Извлекаем niche и keywords для новых роутов
+    const niche = trend.category || trend.title;
+    const keywords = analysis?.key_pain_points?.slice(0, 5) || [trend.source_query || trend.title];
+    const trendId = trend.id || `trend-${Date.now()}`;
 
-    // Запустить все параллельно
-    await Promise.allSettled(
-      blocks.map(async (block) => {
-        try {
-          const res = await fetch(blockEndpoints[block], {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query: trend.source_query || trend.title,
-              context,
-            }),
-          });
+    // Хелпер для запуска одного блока
+    const runBlock = async (block: EvidenceSubTab) => {
+      try {
+        const res = await fetch(blockEndpoints[block], {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trend_id: trendId, niche, keywords }),
+        });
 
-          const data = await res.json();
-          if (data.success) {
-            setEvidenceData(prev => ({ ...prev, [block]: data.data }));
-          } else {
-            setEvidenceErrors(prev => ({ ...prev, [block]: data.error || 'Error' }));
-          }
-        } catch (e) {
-          setEvidenceErrors(prev => ({ ...prev, [block]: (e as Error).message }));
-        } finally {
-          setEvidenceLoading(prev => ({ ...prev, [block]: false }));
+        const data = await res.json();
+        if (data.success) {
+          // Адаптируем только public данные — premium НИКОГДА не приходит с сервера
+          // Premium данные получаются через /api/evidence/unlock после оплаты
+          const adapted = adaptBlockData(block, data.public);
+          adapted._has_premium = !!data.has_premium;
+          adapted._is_unlocked = !!unlockedBlocks[block];
+          adapted._raw_public = data.public; // сохраняем для мержа при unlock
+          setEvidenceData(prev => ({ ...prev, [block]: adapted }));
+        } else {
+          setEvidenceErrors(prev => ({ ...prev, [block]: data.error || 'Error' }));
         }
-      })
-    );
+      } catch (e) {
+        setEvidenceErrors(prev => ({ ...prev, [block]: (e as Error).message }));
+      } finally {
+        setEvidenceLoading(prev => ({ ...prev, [block]: false }));
+      }
+    };
+
+    // Функция разблокировки premium данных блока
+    // (вызывается из UI при клике на "Разблокировать")
+
+    // Волновое выполнение — блоки зависят друг от друга:
+    // Wave 1: problem (блок 1) + demand (блок 2) — без зависимостей
+    // Wave 2: sellability (блок 3) + occupation (блок 4) — зависят от 1+2
+    // Wave 3: economics (блок 5) — зависит от 2,3,4
+    // Wave 4: tech/blind-spots (блок 6) — зависит от 1-5
+    await Promise.allSettled([runBlock('problem'), runBlock('demand')]);
+    await Promise.allSettled([runBlock('sellability'), runBlock('occupation')]);
+    await runBlock('economics');
+    await runBlock('tech');
+  };
+
+  // Стоимость разблокировки premium данных по блокам
+  const BLOCK_COSTS: Record<string, number> = {
+    problem: 5,
+    demand: 5,
+    sellability: 5,
+    occupation: 8,
+    economics: 8,
+    tech: 5,
+  };
+
+  // Разблокировать premium данные блока за монеты
+  // Premium данные получаются с сервера (из Supabase) — НИКОГДА не хранятся на клиенте до оплаты
+  const unlockBlock = async (block: string) => {
+    const cost = BLOCK_COSTS[block] || 5;
+    if ((coinBalance ?? 0) < cost) return;
+
+    try {
+      // Единый эндпоинт: списывает монеты + возвращает premium из Supabase
+      const res = await fetch('/api/evidence/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trend_id: trend?.id,
+          block,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error('Unlock failed:', data.error);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.new_balance !== null) {
+        setCoinBalance(data.new_balance);
+      }
+
+      // Мержим текущие public данные + полученные premium и переадаптируем
+      setUnlockedBlocks(prev => ({ ...prev, [block]: true }));
+      const currentPublic = evidenceData[block]?._raw_public || {};
+      const combined = { ...currentPublic, ...data.premium };
+      const adapted = adaptBlockData(block as any, combined);
+      adapted._has_premium = true;
+      adapted._is_unlocked = true;
+      setEvidenceData(prev => ({ ...prev, [block]: adapted }));
+    } catch (e) {
+      console.error('Unlock error:', e);
+    }
   };
 
   // Generate Action Plan from collected Evidence data
@@ -2369,7 +2466,7 @@ export default function TrendPage() {
                 { id: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
                 { id: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
                 { id: 'economics', label: language === 'ru' ? 'Эконом.' : 'Econ.', icon: '📊' },
-                { id: 'tech', label: language === 'ru' ? 'Тех.' : 'Tech', icon: '⚙️' },
+                { id: 'tech', label: language === 'ru' ? 'Слепые пятна' : 'Blind Spots', icon: '🔍' },
                 { id: 'analysis', label: 'AI', icon: '🧠' },
               ].map((tab) => (
                 <button
@@ -2487,6 +2584,13 @@ export default function TrendPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Баланс монет */}
+              {coinBalance !== null && (
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                  <span className="text-amber-400 text-lg font-bold">{coinBalance}</span>
+                  <span className="text-amber-400/60 text-xs">{language === 'ru' ? 'монет' : 'coins'}</span>
+                </div>
+              )}
               <button
                 onClick={handleFavorite}
                 className={`p-3 rounded-xl transition-all ${
@@ -2534,42 +2638,82 @@ export default function TrendPage() {
 
               {/* Evidence block content */}
               {evidenceSubTab === 'problem' && (
-                <RealProblemBlock
-                  data={evidenceData.problem}
-                  loading={evidenceLoading.problem}
-                  error={evidenceErrors.problem}
-                />
+                <PremiumOverlay
+                  isLocked={!!(evidenceData.problem?._has_premium && !evidenceData.problem?._is_unlocked)}
+                  cost={BLOCK_COSTS.problem}
+                  coinBalance={coinBalance}
+                  onUnlock={() => unlockBlock('problem')}
+                  label="Цитаты + контекст платящих"
+                >
+                  <RealProblemBlock
+                    data={evidenceData.problem}
+                    loading={evidenceLoading.problem}
+                    error={evidenceErrors.problem}
+                  />
+                </PremiumOverlay>
               )}
               {evidenceSubTab === 'demand' && (
-                <DemandGrowthBlock
-                  data={evidenceData.demand}
-                  loading={evidenceLoading.demand}
-                  error={evidenceErrors.demand}
-                />
+                <PremiumOverlay
+                  isLocked={!!(evidenceData.demand?._has_premium && !evidenceData.demand?._is_unlocked)}
+                  cost={BLOCK_COSTS.demand}
+                  coinBalance={coinBalance}
+                  onUnlock={() => unlockBlock('demand')}
+                  label="Детали интента + ключевые слова"
+                >
+                  <DemandGrowthBlock
+                    data={evidenceData.demand}
+                    loading={evidenceLoading.demand}
+                    error={evidenceErrors.demand}
+                  />
+                </PremiumOverlay>
               )}
               {evidenceSubTab === 'sellability' && (
-                <MarketSellabilityBlock
-                  data={evidenceData.sellability}
-                  loading={evidenceLoading.sellability}
-                  error={evidenceErrors.sellability}
-                />
+                <PremiumOverlay
+                  isLocked={!!(evidenceData.sellability?._has_premium && !evidenceData.sellability?._is_unlocked)}
+                  cost={BLOCK_COSTS.sellability}
+                  coinBalance={coinBalance}
+                  onUnlock={() => unlockBlock('sellability')}
+                  label="Барьеры + каналы продаж"
+                >
+                  <MarketSellabilityBlock
+                    data={evidenceData.sellability}
+                    loading={evidenceLoading.sellability}
+                    error={evidenceErrors.sellability}
+                  />
+                </PremiumOverlay>
               )}
               {evidenceSubTab === 'occupation' && (
-                <MarketOccupationBlock
-                  data={evidenceData.occupation}
-                  loading={evidenceLoading.occupation}
-                  error={evidenceErrors.occupation}
-                />
+                <PremiumOverlay
+                  isLocked={!!(evidenceData.occupation?._has_premium && !evidenceData.occupation?._is_unlocked)}
+                  cost={BLOCK_COSTS.occupation}
+                  coinBalance={coinBalance}
+                  onUnlock={() => unlockBlock('occupation')}
+                  label="Gap анализ + точка входа"
+                >
+                  <MarketOccupationBlock
+                    data={evidenceData.occupation}
+                    loading={evidenceLoading.occupation}
+                    error={evidenceErrors.occupation}
+                  />
+                </PremiumOverlay>
               )}
               {evidenceSubTab === 'economics' && (
-                <UnitEconomicsBlock
-                  data={evidenceData.economics}
-                  loading={evidenceLoading.economics}
-                  error={evidenceErrors.economics}
-                />
+                <PremiumOverlay
+                  isLocked={!!(evidenceData.economics?._has_premium && !evidenceData.economics?._is_unlocked)}
+                  cost={BLOCK_COSTS.economics}
+                  coinBalance={coinBalance}
+                  onUnlock={() => unlockBlock('economics')}
+                  label="Unit-экономика + Runway"
+                >
+                  <UnitEconomicsBlock
+                    data={evidenceData.economics}
+                    loading={evidenceLoading.economics}
+                    error={evidenceErrors.economics}
+                  />
+                </PremiumOverlay>
               )}
               {evidenceSubTab === 'tech' && (
-                <TechFeasibilityBlock
+                <BlindSpotsBlock
                   data={evidenceData.tech}
                   loading={evidenceLoading.tech}
                   error={evidenceErrors.tech}
@@ -2885,83 +3029,13 @@ export default function TrendPage() {
 
           {/* Evidence - Analysis subtab: No analysis yet */}
           {currentStep === 'evidence' && evidenceSubTab === 'analysis' && !analysis && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
-                <span className="text-4xl">⚔️</span>
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                {language === 'ru' ? 'Дебаты 3 AI-агентов' : '3 AI Agents Debate'}
-              </h3>
-              <p className="text-zinc-400 text-center max-w-md mb-4">
-                {language === 'ru'
-                  ? 'Оптимист, Скептик и Арбитр проанализируют собранные данные и определят главную боль, целевую аудиторию и ключевые возможности.'
-                  : 'Optimist, Skeptic, and Arbiter will analyze collected data to identify the main pain, target audience, and key opportunities.'}
-              </p>
-
-              {/* Evidence readiness indicator */}
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-6 w-full max-w-md">
-                <p className="text-sm text-zinc-400 mb-3">
-                  {language === 'ru' ? 'Собранные данные:' : 'Collected data:'}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { key: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
-                    { key: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
-                    { key: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
-                    { key: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
-                    { key: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
-                  ].map((block) => (
-                    <div
-                      key={block.key}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                        evidenceData[block.key]
-                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                          : evidenceLoading[block.key]
-                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                          : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
-                      }`}
-                    >
-                      <span>{block.icon}</span>
-                      <span>{block.label}</span>
-                      {evidenceData[block.key] ? (
-                        <span className="ml-auto">✓</span>
-                      ) : evidenceLoading[block.key] ? (
-                        <span className="ml-auto w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                {Object.values(evidenceLoading).some(v => v) && (
-                  <p className="text-xs text-yellow-400/70 mt-3">
-                    {language === 'ru' ? 'Дождитесь завершения сбора данных для лучшего результата' : 'Wait for data collection to complete for best results'}
-                  </p>
-                )}
-              </div>
-
-              <button
-                onClick={runDeepAnalysis}
-                disabled={analyzing || Object.values(evidenceLoading).some(v => v)}
-                className={`px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                  analyzing
-                    ? 'bg-purple-600/50 text-purple-300 cursor-wait'
-                    : Object.values(evidenceLoading).some(v => v)
-                    ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-                    : 'bg-purple-600 hover:bg-purple-500 text-white'
-                }`}
-              >
-                {analyzing ? (
-                  <>
-                    <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                    {language === 'ru' ? 'Агенты анализируют...' : 'Agents analyzing...'}
-                  </>
-                ) : (
-                  <>
-                    <span>⚔️</span>
-                    {language === 'ru' ? 'Запустить 3 AI-агентов' : 'Launch 3 AI Agents'}
-                  </>
-                )}
-              </button>
-            </div>
+            <SynthesisPanel
+              trendId={trend?.id || ''}
+              niche={trend?.category || trend?.title || ''}
+              coinBalance={coinBalance}
+              onBalanceUpdate={(b) => setCoinBalance(b)}
+              language={language}
+            />
           )}
 
           {/* Evidence - Analysis subtab: Has analysis */}
