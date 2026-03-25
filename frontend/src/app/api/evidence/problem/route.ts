@@ -1,7 +1,7 @@
 // src/app/api/evidence/problem/route.ts
-// Блок 1 — Проблема
+// Блок 1 — Проблема (Multi-Pass Validation v2)
+// Pass 1: Найти релевантные источники → Pass 2: Валидация + классификация → Pass 3: Кросс-валидация кластерами
 // Главный вопрос: "Решений нет или решения плохие?"
-// Версия: финальная — все правки + code review исправления
 
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
@@ -19,6 +19,7 @@ type PayingConfidence = 'high' | 'medium' | 'low'
 type Dynamics = 'growing' | 'stable' | 'declining'
 type Diagnosis = 'green' | 'yellow' | 'red'
 type Context = 'b2b' | 'b2c' | 'mixed'
+type DataConfidence = 'high' | 'medium' | 'low'
 
 interface RawPost {
   source: 'reddit' | 'quora' | 'g2' | 'appstore' | 'trustpilot' | 'hackernews' | 'stackoverflow'
@@ -28,24 +29,43 @@ interface RawPost {
   date: string
 }
 
-interface ClassifiedPost extends RawPost {
+/** Post after Pass 2 — validated as relevant + classified */
+interface ValidatedPost extends RawPost {
+  is_relevant: boolean
   category: PainCategory
+  pain_summary: string  // 1-sentence summary of the actual pain
+  mentioned_product: string  // which product/service is mentioned
   is_paying: boolean
   paying_confidence: PayingConfidence
   paying_weight: number
 }
 
+/** Pain cluster from Pass 3 — cross-validated across sources */
+interface PainCluster {
+  id: string
+  pain_summary: string
+  category: PainCategory
+  sources: string[]          // unique source types (reddit, g2, quora, ...)
+  source_count: number       // how many different source TYPES confirmed
+  mention_count: number      // total posts mentioning this pain
+  confidence: DataConfidence // high=3+ sources, medium=2, low=1
+  top_quotes: Quote[]
+  mentioned_products: string[]
+}
+
 interface Layer1Data {
   total_complaints: number
+  validated_complaints: number  // after relevance filtering
   by_source: Record<string, number>
   dynamics: Dynamics
-  has_date_confidence: boolean      // #6: флаг достаточности дат для динамики
-  posts_with_dates_count: number    // #6: сколько постов имели реальные даты
+  has_date_confidence: boolean
+  posts_with_dates_count: number
 }
 
 interface Layer2Data {
-  distribution: Record<PainCategory, number>   // проценты 0-100
+  distribution: Record<PainCategory, number>
   top_quotes: Record<PainCategory, Quote[]>
+  pain_clusters: PainCluster[]  // NEW: cross-validated clusters
 }
 
 interface Layer3Data {
@@ -80,18 +100,25 @@ interface ProblemBlockOutput {
     pain_type: PainCategory
     pain_scale: number
     paying_users_ratio: number
-    classification_confidence: 'high' | 'low'   // #5: флаг качества классификации
+    classification_confidence: DataConfidence
+    data_quality: {
+      total_collected: number
+      validated_relevant: number
+      relevance_rate: number        // % of posts that were actually about the niche
+      cross_validated_clusters: number
+      high_confidence_clusters: number
+    }
   }
   layers: {
     layer1: Layer1Data
     layer2: Layer2Data
     layer3: Layer3Data
   }
-  raw_data: { posts: ClassifiedPost[] }
+  raw_data: { posts: ValidatedPost[] }
 }
 
 // ══════════════════════════════════════════════════════════════
-// СБОР ДАННЫХ
+// SERPAPI FETCH
 // ══════════════════════════════════════════════════════════════
 
 async function fetchFromSource(
@@ -121,11 +148,6 @@ async function fetchFromSource(
 // НАТИВНЫЕ API (бесплатные, без SerpAPI)
 // ══════════════════════════════════════════════════════════════
 
-/**
- * HackerNews Algolia API — бесплатный, без ключей, без лимитов
- * Поиск по stories и comments. Возвращает до 100 результатов за запрос.
- * Документация: https://hn.algolia.com/api
- */
 async function fetchHackerNewsNative(
   queries: string[],
   maxResults: number = 50
@@ -133,7 +155,6 @@ async function fetchHackerNewsNative(
   const posts: RawPost[] = []
   const seen = new Set<string>()
 
-  // Два типа поиска: story (заголовки) и comment (глубокие жалобы в комментах)
   const fetches = queries.flatMap((q) => [
     fetch(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=30`)
       .then((r) => r.json())
@@ -151,9 +172,8 @@ async function fetchHackerNewsNative(
       if (seen.has(url)) continue
       seen.add(url)
 
-      // story: title + optional comment_text. comment: comment_text
       const text = hit.comment_text
-        ? hit.comment_text.replace(/<[^>]*>/g, '').slice(0, 500) // strip HTML tags
+        ? hit.comment_text.replace(/<[^>]*>/g, '').slice(0, 500)
         : hit.title || ''
 
       if (!text || text.length < 15) continue
@@ -171,11 +191,6 @@ async function fetchHackerNewsNative(
   return posts.slice(0, maxResults)
 }
 
-/**
- * StackExchange API — бесплатный без ключа (300 запросов/день), 10k с ключом.
- * Поиск вопросов по тегам и тексту.
- * Фильтр: вопросы с >= 1 ответом (validated pain).
- */
 async function fetchStackExchangeNative(
   queries: string[],
   maxResults: number = 40
@@ -187,14 +202,12 @@ async function fetchStackExchangeNative(
     ? `&key=${process.env.STACKEXCHANGE_KEY}`
     : ''
 
-  // Поиск по каждому запросу
   const fetches = queries.map((q) =>
     fetch(
       `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q=${encodeURIComponent(q)}&answers=1&pagesize=30&site=stackoverflow&filter=withbody${keyParam}`,
       { headers: { 'Accept-Encoding': 'gzip' } }
     )
       .then(async (r) => {
-        // StackExchange возвращает gzip — fetch обрабатывает автоматически
         const data = await r.json()
         return data
       })
@@ -209,7 +222,6 @@ async function fetchStackExchangeNative(
       if (!url || seen.has(url)) continue
       seen.add(url)
 
-      // body содержит HTML — стрипаем теги, берём первые 500 символов
       const bodyText = item.body
         ? item.body.replace(/<[^>]*>/g, '').slice(0, 500)
         : ''
@@ -231,103 +243,281 @@ async function fetchStackExchangeNative(
 }
 
 // ══════════════════════════════════════════════════════════════
-// СБОР ДАННЫХ — КОМБО: нативные API + SerpAPI
+// PASS 1 — ПОИСК РЕЛЕВАНТНЫХ ИСТОЧНИКОВ
+// Сначала находим ГДЕ обсуждают нишу, потом ищем ТАМ
 // ══════════════════════════════════════════════════════════════
 
-async function collectPosts(
+interface DiscoveredSource {
+  type: 'subreddit' | 'forum' | 'review_site'
+  name: string       // e.g. "r/SaaS", "g2.com"
+  relevance: number  // 1-10 from Haiku
+  query: string      // refined search query for this source
+}
+
+/**
+ * Pass 1a: Discover which subreddits/forums discuss this niche
+ * Uses 1 SerpAPI query to find discussion hubs
+ */
+async function discoverSources(
   niche: string,
   keywords: string[],
   serpApiKey: string
-): Promise<RawPost[]> {
-  // Генерируем несколько вариаций поисковых запросов
-  const painKeywords = ['problem', 'issue', 'frustrating', 'broken', 'hate', 'alternative', 'bad experience', 'looking for']
-  const baseQuery = `${niche} ${keywords.slice(0, 2).join(' ')}`
+): Promise<{ sources: DiscoveredSource[]; serpCalls: number }> {
+  const kw = keywords.slice(0, 3).join(' ')
 
-  // SerpAPI запросы — расширенные (3 месяца вместо 1, больше вариаций)
-  const serpQueries = {
-    // Reddit: 2 запроса с разными формулировками, 3 месяца
-    reddit1: `site:reddit.com ${baseQuery} ${painKeywords[0]} OR ${painKeywords[1]} OR ${painKeywords[2]}`,
-    reddit2: `site:reddit.com ${baseQuery} ${painKeywords[5]} OR ${painKeywords[6]} OR ${painKeywords[7]}`,
-    // Quora: 2 запроса
-    quora1: `site:quora.com ${baseQuery} problem OR issue OR frustrated`,
-    quora2: `site:quora.com ${niche} alternative OR better OR replacement`,
-    // G2 + Trustpilot: review sites (без ограничения по времени)
-    g2: `site:g2.com ${niche} reviews "1 star" OR "2 stars" OR "worst"`,
-    trustpilot: `site:trustpilot.com ${niche} review`,
+  // One discovery query to find WHERE people discuss this niche
+  const discoveryResults = await fetchFromSource(
+    `${niche} ${kw} site:reddit.com`,
+    'google',
+    serpApiKey,
+    { num: '30' }
+  )
+
+  // Extract unique subreddits from URLs
+  const subredditCounts = new Map<string, number>()
+  for (const r of discoveryResults) {
+    const url = r.link || ''
+    const match = url.match(/reddit\.com\/r\/([^/]+)/)
+    if (match) {
+      const sub = match[1].toLowerCase()
+      subredditCounts.set(sub, (subredditCounts.get(sub) || 0) + 1)
+    }
   }
 
-  // Нативные API запросы
-  const nativeQueries = {
-    hn: [
-      `${niche} problem`,
-      `${niche} frustrating`,
-      `${niche} alternative`,
-      `${keywords[0] || niche} issue`,
-    ],
-    so: [
-      `${niche} error problem`,
-      `${keywords[0] || niche} issue not working`,
-    ],
+  // Sort by frequency — more mentions = more relevant
+  const subreddits = Array.from(subredditCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+
+  // Validate subreddit relevance with Haiku (1 call)
+  let validatedSources: DiscoveredSource[] = []
+
+  if (subreddits.length > 0) {
+    try {
+      const response = await claude.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        system: 'Respond with valid JSON only, no markdown.',
+        messages: [{
+          role: 'user',
+          content: `Rate relevance of these subreddits for the niche "${niche}" (${kw}).
+
+Subreddits: ${subreddits.map(([s, count]) => `r/${s} (${count} mentions)`).join(', ')}
+
+For each, rate 1-10: is this where users of ${niche} products actually discuss problems?
+Respond as JSON array: [{"name": "r/subreddit", "relevance": 8}, ...]`
+        }],
+      })
+
+      const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '[]'
+      const cleaned = text.replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+
+      if (Array.isArray(parsed)) {
+        validatedSources = parsed
+          .filter((s: any) => s.relevance >= 5)
+          .map((s: any) => ({
+            type: 'subreddit' as const,
+            name: s.name,
+            relevance: s.relevance,
+            query: `site:reddit.com/${s.name} ${niche} problem OR issue OR frustrating OR alternative`,
+          }))
+      }
+    } catch (e) {
+      console.warn('[Block1 Pass1] Haiku source validation failed, using frequency-based fallback')
+    }
   }
 
-  // Параллельный запуск ВСЕХ источников
-  const [
-    reddit1, reddit2,
-    quora1, quora2,
-    g2Results, trustpilotResults,
-    hnPosts, soPosts,
-  ] = await Promise.all([
-    // SerpAPI (6 запросов, расширенное окно 3 месяца)
-    fetchFromSource(serpQueries.reddit1, 'google', serpApiKey, { tbs: 'qdr:3m', num: '20' }),
-    fetchFromSource(serpQueries.reddit2, 'google', serpApiKey, { tbs: 'qdr:3m', num: '20' }),
-    fetchFromSource(serpQueries.quora1, 'google', serpApiKey, { tbs: 'qdr:3m', num: '20' }),
-    fetchFromSource(serpQueries.quora2, 'google', serpApiKey, { tbs: 'qdr:3m', num: '20' }),
-    fetchFromSource(serpQueries.g2, 'google', serpApiKey, { num: '20' }),
-    fetchFromSource(serpQueries.trustpilot, 'google', serpApiKey, { num: '20' }),
-    // Нативные API (0 SerpAPI calls)
-    fetchHackerNewsNative(nativeQueries.hn, 50),
-    fetchStackExchangeNative(nativeQueries.so, 40),
-  ])
+  // Fallback: if Haiku failed or no subreddits, use top by frequency
+  if (validatedSources.length === 0 && subreddits.length > 0) {
+    validatedSources = subreddits.slice(0, 3).map(([sub]) => ({
+      type: 'subreddit' as const,
+      name: `r/${sub}`,
+      relevance: 6,
+      query: `site:reddit.com/r/${sub} ${niche} problem OR issue OR frustrating OR alternative`,
+    }))
+  }
 
+  // Always include review sites — no discovery needed
+  const reviewSources: DiscoveredSource[] = [
+    { type: 'review_site', name: 'g2.com', relevance: 9, query: `site:g2.com ${niche} reviews` },
+    { type: 'review_site', name: 'trustpilot.com', relevance: 7, query: `site:trustpilot.com ${niche} review` },
+  ]
+
+  // Quora — general but filtered in Pass 2
+  const generalSources: DiscoveredSource[] = [
+    { type: 'forum', name: 'quora.com', relevance: 6, query: `site:quora.com ${niche} problem OR alternative OR better` },
+  ]
+
+  return {
+    sources: [...validatedSources, ...reviewSources, ...generalSources],
+    serpCalls: 1, // discovery query
+  }
+}
+
+/**
+ * Pass 1b: Collect posts from validated sources + native APIs
+ */
+async function collectFromSources(
+  sources: DiscoveredSource[],
+  niche: string,
+  keywords: string[],
+  serpApiKey: string
+): Promise<{ posts: RawPost[]; serpCalls: number }> {
   const posts: RawPost[] = []
   const seen = new Set<string>()
 
-  function addPost(result: any, source: RawPost['source']) {
-    const url = result.link || result.url || ''
-    if (!url || seen.has(url)) return
-    seen.add(url)
-    posts.push({
-      source,
-      text: result.snippet || result.description || '',
-      link: url,
-      upvotes: result.upvotes || 0,
-      date: result.date || '',
+  // SerpAPI: search within discovered sources (max 5 queries)
+  const serpQueries = sources.slice(0, 5)
+  const serpResults = await Promise.all(
+    serpQueries.map(s =>
+      fetchFromSource(s.query, 'google', serpApiKey, { tbs: 'qdr:3m', num: '20' })
+    )
+  )
+
+  for (let i = 0; i < serpResults.length; i++) {
+    const source = serpQueries[i]
+    for (const r of serpResults[i]) {
+      const url = r.link || r.url || ''
+      if (!url || seen.has(url)) continue
+      seen.add(url)
+
+      const sourceType = source.name.includes('reddit') ? 'reddit'
+        : source.name.includes('g2') ? 'g2'
+        : source.name.includes('trustpilot') ? 'trustpilot'
+        : source.name.includes('quora') ? 'quora'
+        : 'reddit'
+
+      posts.push({
+        source: sourceType as RawPost['source'],
+        text: r.snippet || r.description || '',
+        link: url,
+        upvotes: r.upvotes || 0,
+        date: r.date || '',
+      })
+    }
+  }
+
+  // Native APIs (0 SerpAPI calls)
+  const kw = keywords.slice(0, 2)
+  const [hnPosts, soPosts] = await Promise.all([
+    fetchHackerNewsNative([
+      `${niche} problem`,
+      `${niche} frustrating`,
+      `${niche} alternative`,
+      `${kw[0] || niche} issue`,
+    ], 50),
+    fetchStackExchangeNative([
+      `${niche} error problem`,
+      `${kw[0] || niche} issue not working`,
+    ], 40),
+  ])
+
+  for (const post of [...hnPosts, ...soPosts]) {
+    if (!seen.has(post.link)) {
+      seen.add(post.link)
+      posts.push(post)
+    }
+  }
+
+  return {
+    posts: posts.slice(0, 200),
+    serpCalls: serpQueries.length,
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PASS 2 — ВАЛИДАЦИЯ РЕЛЕВАНТНОСТИ + КЛАССИФИКАЦИЯ
+// Haiku получает контекст ниши и проверяет каждый пост
+// ══════════════════════════════════════════════════════════════
+
+interface ValidationResult {
+  is_relevant: boolean
+  category: PainCategory
+  pain_summary: string
+  mentioned_product: string
+}
+
+/**
+ * Pass 2: Validate relevance AND classify in one call
+ * Key difference from v1: AI knows the niche, checks relevance BEFORE classifying
+ */
+async function validateAndClassifyBatch(
+  posts: RawPost[],
+  niche: string,
+  competitors: string[]
+): Promise<{ results: ValidationResult[]; failed: boolean }> {
+  const postsText = posts
+    .map((p, i) => `[${i}] [${p.source}] ${p.text.slice(0, 400)}`)
+    .join('\n\n')
+
+  const competitorsStr = competitors.length > 0
+    ? `Known competitors in this niche: ${competitors.join(', ')}.`
+    : ''
+
+  try {
+    const response = await claude.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      system: 'Respond with valid JSON only, no markdown or explanations.',
+      messages: [{
+        role: 'user',
+        content: `You are analyzing user complaints in the niche: "${niche}".
+${competitorsStr}
+
+For each post below, determine:
+1. is_relevant: Is this post ACTUALLY about a problem/complaint in the "${niche}" niche? (true/false)
+   - false if: off-topic, general discussion, positive review, news article, self-promotion
+   - true if: user expressing frustration, asking for alternatives, reporting bugs, complaining about price
+2. category: If relevant, classify the pain type:
+   - "no_solution": user says no solution exists for their need
+   - "bad_solution": solution exists but poorly implemented (bugs, bad UX, slow, unreliable)
+   - "expensive_solution": solution exists but too expensive or inaccessible
+3. pain_summary: One sentence describing the specific pain (empty string if not relevant)
+4. mentioned_product: Name of the product/service mentioned (empty string if none)
+
+Posts:
+${postsText}
+
+Respond as JSON array of ${posts.length} objects:
+[{"is_relevant": true, "category": "bad_solution", "pain_summary": "User frustrated with slow loading times in X", "mentioned_product": "ProductX"}, ...]`
+      }],
     })
-  }
 
-  // SerpAPI результаты
-  reddit1.forEach((r) => addPost(r, 'reddit'))
-  reddit2.forEach((r) => addPost(r, 'reddit'))
-  quora1.forEach((r) => addPost(r, 'quora'))
-  quora2.forEach((r) => addPost(r, 'quora'))
-  g2Results.forEach((r) => addPost(r, 'g2'))
-  trustpilotResults.forEach((r) => addPost(r, 'trustpilot'))
+    const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '[]'
+    const cleaned = text.replace(/```json|```/g, '').trim()
 
-  // Нативные API результаты (уже в формате RawPost, но дедупликация по URL)
-  for (const post of hnPosts) {
-    if (!seen.has(post.link)) {
-      seen.add(post.link)
-      posts.push(post)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(cleaned)
+    } catch {
+      console.error('[Block1 Pass2] JSON parse error', { cleaned: cleaned.slice(0, 200) })
+      return { results: [], failed: true }
     }
-  }
-  for (const post of soPosts) {
-    if (!seen.has(post.link)) {
-      seen.add(post.link)
-      posts.push(post)
-    }
-  }
 
-  return posts.slice(0, 200) // увеличен лимит: было 100
+    if (!Array.isArray(parsed) || parsed.length !== posts.length) {
+      console.warn('[Block1 Pass2] Count mismatch', {
+        expected: posts.length,
+        received: Array.isArray(parsed) ? parsed.length : 'not-array',
+      })
+      return { results: [], failed: true }
+    }
+
+    const validCategories: PainCategory[] = ['no_solution', 'bad_solution', 'expensive_solution']
+
+    return {
+      results: parsed.map((r: any) => ({
+        is_relevant: r.is_relevant === true,
+        category: validCategories.includes(r.category) ? r.category : 'bad_solution',
+        pain_summary: typeof r.pain_summary === 'string' ? r.pain_summary : '',
+        mentioned_product: typeof r.mentioned_product === 'string' ? r.mentioned_product : '',
+      })),
+      failed: false,
+    }
+  } catch (error) {
+    console.error('[Block1 Pass2] Haiku error', error)
+    return { results: [], failed: true }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -338,7 +528,6 @@ function detectPayingUser(
   text: string,
   competitors?: string[]
 ): { is_paying: boolean; confidence: PayingConfidence; weight: number } {
-  // #2: Ограничиваем длину текста для защиты от медленных RegExp на длинных строках
   const SAFE_TEXT = text.slice(0, 1000)
   const lowerText = SAFE_TEXT.toLowerCase()
 
@@ -352,7 +541,6 @@ function detectPayingUser(
     /(my (account|plan|subscription|tier))/i,
   ]
 
-  // #2: Regex паттерны для общих сигналов, indexOf для конкурентов — типобезопасно
   const regexMediumSignals = [
     /(баг|глюк|не работает|сломали|bug|broken|doesn't work)/i,
     /(поддержка|саппорт|support) (не отвечает|игнорирует|useless|awful)/i,
@@ -367,12 +555,9 @@ function detectPayingUser(
   ]
 
   const isHigh = highSignals.some((r) => r.test(SAFE_TEXT))
-
-  // #2: Конкуренты проверяются через includes — без RegExp, типобезопасно
   const isMedium =
     regexMediumSignals.some((r) => r.test(SAFE_TEXT)) ||
     competitorSignals.some((c) => lowerText.includes(c))
-
   const isLow = lowSignals.some((r) => r.test(SAFE_TEXT))
 
   if (isHigh) return { is_paying: true, confidence: 'high', weight: 10 }
@@ -381,87 +566,154 @@ function detectPayingUser(
 }
 
 // ══════════════════════════════════════════════════════════════
-// КЛАССИФИКАЦИЯ БАТЧАМИ (Haiku)
+// PASS 3 — КРОСС-ВАЛИДАЦИЯ: КЛАСТЕРИЗАЦИЯ БОЛЕЙ
+// Одна жалоба = шум. Та же жалоба из 3+ источников = сигнал.
 // ══════════════════════════════════════════════════════════════
 
-async function classifyBatch(posts: RawPost[]): Promise<PainCategory[]> {
-  const postsText = posts
-    .map((p, i) => `[${i}] ${p.text.slice(0, 300)}`)
-    .join('\n\n')
+async function clusterPains(
+  posts: ValidatedPost[],
+  niche: string
+): Promise<PainCluster[]> {
+  // Only cluster relevant posts
+  const relevantPosts = posts.filter(p => p.is_relevant && p.pain_summary)
+
+  if (relevantPosts.length === 0) return []
+  if (relevantPosts.length <= 3) {
+    // Too few posts for meaningful clustering — return each as its own cluster
+    return relevantPosts.map((p, i) => ({
+      id: `cluster-${i}`,
+      pain_summary: p.pain_summary,
+      category: p.category,
+      sources: [p.source],
+      source_count: 1,
+      mention_count: 1,
+      confidence: 'low' as DataConfidence,
+      top_quotes: [{ text: p.text.slice(0, 200), link: p.link, upvotes: p.upvotes, source: p.source }],
+      mentioned_products: p.mentioned_product ? [p.mentioned_product] : [],
+    }))
+  }
+
+  // Send pain summaries to Haiku for clustering
+  const summaries = relevantPosts
+    .map((p, i) => `[${i}] [${p.source}] ${p.pain_summary} (product: ${p.mentioned_product || 'none'})`)
+    .join('\n')
 
   try {
     const response = await claude.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      system: 'Отвечай только валидным JSON без markdown и пояснений.',
-      messages: [
-        {
-          role: 'user',
-          content: `Классифицируй каждый пост по категории боли пользователя.
+      max_tokens: 800,
+      system: 'Respond with valid JSON only, no markdown or explanations.',
+      messages: [{
+        role: 'user',
+        content: `Group these user pain points from the "${niche}" niche into clusters of SAME or VERY SIMILAR complaints.
 
-Категории:
-- no_solution: жалуется что решения не существует вообще
-- bad_solution: решение есть но плохо реализовано (баги, плохой UX, медленно, неудобно)
-- expensive_solution: решение есть но слишком дорогое или недоступное
+Pain points:
+${summaries}
 
-Посты:
-${postsText}
+Rules:
+- Group posts that describe the SAME underlying problem (even if worded differently)
+- Each cluster gets a clear summary of the shared pain
+- Return post indices in each cluster
 
-Ответь JSON массивом из ${posts.length} строк:
-["bad_solution", "no_solution", ...]`,
-        },
-      ],
+Respond as JSON:
+[{"summary": "Slow performance and loading times", "post_indices": [0, 3, 7]}, ...]`
+      }],
     })
 
-    const text =
-      response.content[0].type === 'text' ? response.content[0].text.trim() : '[]'
+    const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '[]'
     const cleaned = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
 
-    // #3: Валидация JSON — отдельный try-catch + проверка длины массива
-    let result: unknown
-    try {
-      result = JSON.parse(cleaned)
-    } catch (parseError) {
-      console.error('[Block1] JSON parse error', { cleaned, error: parseError })
-      return posts.map(() => 'bad_solution' as PainCategory)
-    }
+    if (!Array.isArray(parsed)) return []
 
-    if (!Array.isArray(result) || result.length !== posts.length) {
-      console.warn('[Block1] Classification count mismatch', {
-        expected: posts.length,
-        received: Array.isArray(result) ? result.length : 'not-array',
-      })
-      return posts.map(() => 'bad_solution' as PainCategory)
-    }
+    const clusters: PainCluster[] = parsed.map((cluster: any, idx: number) => {
+      const indices: number[] = Array.isArray(cluster.post_indices) ? cluster.post_indices : []
+      const clusterPosts = indices
+        .filter(i => i >= 0 && i < relevantPosts.length)
+        .map(i => relevantPosts[i])
 
-    return result.map((r: any) =>
-      ['no_solution', 'bad_solution', 'expensive_solution'].includes(r)
-        ? (r as PainCategory)
-        : ('bad_solution' as PainCategory)
-    )
+      if (clusterPosts.length === 0) return null
+
+      // Determine unique sources
+      const uniqueSources = [...new Set(clusterPosts.map(p => p.source))]
+
+      // Determine dominant category
+      const catCounts: Record<string, number> = {}
+      clusterPosts.forEach(p => { catCounts[p.category] = (catCounts[p.category] || 0) + 1 })
+      const dominantCategory = (Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'bad_solution') as PainCategory
+
+      // Confidence based on source diversity
+      const confidence: DataConfidence =
+        uniqueSources.length >= 3 ? 'high' :
+        uniqueSources.length === 2 ? 'medium' : 'low'
+
+      // Top quotes by upvotes
+      const topQuotes = clusterPosts
+        .sort((a, b) => b.upvotes - a.upvotes)
+        .slice(0, 3)
+        .map(p => ({ text: p.text.slice(0, 200), link: p.link, upvotes: p.upvotes, source: p.source }))
+
+      // Mentioned products
+      const products = [...new Set(clusterPosts.map(p => p.mentioned_product).filter(Boolean))]
+
+      return {
+        id: `cluster-${idx}`,
+        pain_summary: cluster.summary || clusterPosts[0].pain_summary,
+        category: dominantCategory,
+        sources: uniqueSources,
+        source_count: uniqueSources.length,
+        mention_count: clusterPosts.length,
+        confidence,
+        top_quotes: topQuotes,
+        mentioned_products: products,
+      }
+    }).filter(Boolean) as PainCluster[]
+
+    // Sort: high confidence first, then by mention count
+    clusters.sort((a, b) => {
+      const confOrder = { high: 3, medium: 2, low: 1 }
+      const confDiff = confOrder[b.confidence] - confOrder[a.confidence]
+      return confDiff !== 0 ? confDiff : b.mention_count - a.mention_count
+    })
+
+    return clusters
   } catch (error) {
-    console.error('[Block1] classifyBatch error', error)
-    return posts.map(() => 'bad_solution' as PainCategory)
+    console.error('[Block1 Pass3] Clustering error', error)
+    // Fallback: no clustering, each post is its own "cluster"
+    return relevantPosts.slice(0, 10).map((p, i) => ({
+      id: `cluster-${i}`,
+      pain_summary: p.pain_summary,
+      category: p.category,
+      sources: [p.source],
+      source_count: 1,
+      mention_count: 1,
+      confidence: 'low' as DataConfidence,
+      top_quotes: [{ text: p.text.slice(0, 200), link: p.link, upvotes: p.upvotes, source: p.source }],
+      mentioned_products: p.mentioned_product ? [p.mentioned_product] : [],
+    }))
   }
 }
 
 // ══════════════════════════════════════════════════════════════
-// АГРЕГАЦИЯ
+// АГРЕГАЦИЯ (обновлённая — учитывает validated posts + clusters)
 // ══════════════════════════════════════════════════════════════
 
 function aggregate(
-  posts: ClassifiedPost[],
-  classificationFailedBatches: number
+  posts: ValidatedPost[],
+  clusters: PainCluster[],
+  failedBatchCount: number,
+  totalBatches: number
 ): {
   layer1: Layer1Data
   layer2: Layer2Data
   layer3: Layer3Data
-  classificationConfidence: 'high' | 'low'
+  classificationConfidence: DataConfidence
 } {
-  const total = posts.length
+  const relevantPosts = posts.filter(p => p.is_relevant)
+  const total = relevantPosts.length
 
   // ── Layer 1: масштаб ──────────────────────────────────────
-  const bySource = posts.reduce(
+  const bySource = relevantPosts.reduce(
     (acc, p) => {
       acc[p.source] = (acc[p.source] || 0) + 1
       return acc
@@ -469,92 +721,107 @@ function aggregate(
     {} as Record<string, number>
   )
 
-  // #6: Флаг достаточности дат для расчёта динамики
-  const postsWithDates = posts.filter((p) => p.date && p.date.trim() !== '')
+  const postsWithDates = relevantPosts.filter((p) => p.date && p.date.trim() !== '')
   const has_date_confidence = postsWithDates.length >= 10
 
   const dynamics: Dynamics = !has_date_confidence
     ? 'stable'
     : (() => {
         const now = Date.now()
-        const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000
+        const fourWeeksAgo = now - 28 * 24 * 60 * 60 * 1000  // 4 weeks instead of 2
         const recent = postsWithDates.filter(
-          (p) => new Date(p.date).getTime() > twoWeeksAgo
+          (p) => new Date(p.date).getTime() > fourWeeksAgo
         ).length
         const older = postsWithDates.length - recent
         return recent > older * 1.3 ? 'growing' : recent < older * 0.7 ? 'declining' : 'stable'
       })()
 
-  // ── Layer 2: природа боли ─────────────────────────────────
+  // ── Layer 2: природа боли (from VALIDATED posts only) ─────
   const counts = { no_solution: 0, bad_solution: 0, expensive_solution: 0 }
-  posts.forEach((p) => counts[p.category]++)
-
-  const distribution: Record<PainCategory, number> = {
-    no_solution: Math.round((counts.no_solution / total) * 100),
-    bad_solution: Math.round((counts.bad_solution / total) * 100),
-    expensive_solution: Math.round((counts.expensive_solution / total) * 100),
+  if (total > 0) {
+    relevantPosts.forEach((p) => counts[p.category]++)
   }
 
+  const distribution: Record<PainCategory, number> = {
+    no_solution: total > 0 ? Math.round((counts.no_solution / total) * 100) : 0,
+    bad_solution: total > 0 ? Math.round((counts.bad_solution / total) * 100) : 0,
+    expensive_solution: total > 0 ? Math.round((counts.expensive_solution / total) * 100) : 0,
+  }
+
+  // Top quotes — prefer from high-confidence clusters
   const categories: PainCategory[] = ['no_solution', 'bad_solution', 'expensive_solution']
   const top_quotes: Record<PainCategory, Quote[]> = {
     no_solution: [],
     bad_solution: [],
     expensive_solution: [],
   }
-  categories.forEach((cat) => {
-    top_quotes[cat] = posts
-      .filter((p) => p.category === cat)
-      .sort((a, b) => b.upvotes - a.upvotes)
-      .slice(0, 3)
-      .map((p) => ({
-        text: p.text.slice(0, 200),
-        link: p.link,
-        upvotes: p.upvotes,
-        source: p.source,
-      }))
-  })
+
+  // First try cluster quotes (cross-validated), then individual posts
+  for (const cat of categories) {
+    const catClusters = clusters.filter(c => c.category === cat)
+    const fromClusters = catClusters.flatMap(c => c.top_quotes)
+
+    if (fromClusters.length >= 3) {
+      top_quotes[cat] = fromClusters.slice(0, 3)
+    } else {
+      // Supplement with individual post quotes
+      const individualQuotes = relevantPosts
+        .filter(p => p.category === cat)
+        .sort((a, b) => b.upvotes - a.upvotes)
+        .slice(0, 3)
+        .map(p => ({ text: p.text.slice(0, 200), link: p.link, upvotes: p.upvotes, source: p.source }))
+      top_quotes[cat] = [...fromClusters, ...individualQuotes].slice(0, 3)
+    }
+  }
 
   // ── Layer 3: контекст ─────────────────────────────────────
-  const payingPosts = posts.filter((p) => p.is_paying)
+  const payingPosts = relevantPosts.filter((p) => p.is_paying)
   const paying_score = payingPosts.reduce((sum, p) => sum + p.paying_weight, 0)
-
-  // #10: Защита от деления на 0
   const paying_ratio = total > 0 ? Math.round((payingPosts.length / total) * 100) : 0
 
-  const b2bCount = posts.filter((p) =>
+  const b2bCount = relevantPosts.filter((p) =>
     /(team|company|enterprise|business|org|organization|employee|staff)/i.test(p.text)
   ).length
   const context: Context =
-    b2bCount / total > 0.6 ? 'b2b' : b2bCount / total < 0.2 ? 'b2c' : 'mixed'
+    total > 0
+      ? b2bCount / total > 0.6 ? 'b2b' : b2bCount / total < 0.2 ? 'b2c' : 'mixed'
+      : 'mixed'
 
-  // #5: Уверенность классификации — низкая если были проваленные батчи
-  const classificationConfidence: 'high' | 'low' =
-    classificationFailedBatches === 0 ? 'high' : 'low'
+  // Classification confidence — 3-level instead of binary
+  let classificationConfidence: DataConfidence
+  if (failedBatchCount === 0) {
+    classificationConfidence = 'high'
+  } else if (failedBatchCount <= totalBatches * 0.3) {
+    classificationConfidence = 'medium'
+  } else {
+    classificationConfidence = 'low'
+  }
 
   return {
     layer1: {
-      total_complaints: total,
+      total_complaints: posts.length,  // all collected
+      validated_complaints: total,      // after relevance filter
       by_source: bySource,
       dynamics,
       has_date_confidence,
       posts_with_dates_count: postsWithDates.length,
     },
-    layer2: { distribution, top_quotes },
+    layer2: { distribution, top_quotes, pain_clusters: clusters },
     layer3: { paying_score, paying_ratio, context },
     classificationConfidence,
   }
 }
 
 // ══════════════════════════════════════════════════════════════
-// ДИАГНОЗ — ПРАВИЛЬНЫЙ ПОРЯДОК ВЕТОК
+// ДИАГНОЗ (обновлённый — учитывает кластеры и confidence)
 // ══════════════════════════════════════════════════════════════
 
-function makeDiagnosis(layers: {
-  layer1: Layer1Data
-  layer2: Layer2Data
-  layer3: Layer3Data
-}): DiagnosisResult {
+function makeDiagnosis(
+  layers: { layer1: Layer1Data; layer2: Layer2Data; layer3: Layer3Data },
+  classificationConfidence: DataConfidence
+): DiagnosisResult {
   const { layer1, layer2, layer3 } = layers
+  const validTotal = layer1.validated_complaints
 
   const painType = (Object.entries(layer2.distribution) as [PainCategory, number][]).sort(
     (a, b) => b[1] - a[1]
@@ -568,26 +835,35 @@ function makeDiagnosis(layers: {
       : 'слишком дорого'
   }`
 
+  // Count high-confidence clusters (cross-validated from 3+ sources)
+  const highConfClusters = layer2.pain_clusters.filter(c => c.confidence === 'high').length
+  const medConfClusters = layer2.pain_clusters.filter(c => c.confidence === 'medium').length
+
   // ── 1. GREEN — stealing the market ───────────────────────
-  // #7: Добавлен total_complaints >= 50 — при малой выборке GREEN недостоверен
+  // Requires: strong bad_solution signal + paying users + sufficient data + cross-validated
   if (
-    layer2.distribution.bad_solution >= 60 &&
+    layer2.distribution.bad_solution >= 55 &&
     layer3.paying_score >= 40 &&
-    layer1.total_complaints >= 50
+    validTotal >= 30 &&
+    (highConfClusters >= 1 || medConfClusters >= 2)
   ) {
+    // Adjust score based on classification confidence
+    const confBonus = classificationConfidence === 'high' ? 0.5 : classificationConfidence === 'medium' ? 0 : -0.5
     return {
       diagnosis: 'green',
-      score: Math.min(
-        10,
-        6 +
-          (layer2.distribution.bad_solution - 60) / 20 +
-          (layer3.paying_score - 40) / 50
+      score: Math.min(10, 6 +
+        (layer2.distribution.bad_solution - 55) / 20 +
+        (layer3.paying_score - 40) / 50 +
+        highConfClusters * 0.3 +
+        confBonus
       ),
       conflict_weight: 1,
       key_factors: [
         `${layer2.distribution.bad_solution}% жалуются на плохую реализацию`,
         `Paying score: ${layer3.paying_score} (${layer3.paying_ratio}% платящие)`,
+        `${highConfClusters} подтверждённых кластеров болей (3+ источника)`,
         `Контекст: ${layer3.context.toUpperCase()}`,
+        `Качество данных: ${classificationConfidence}`,
       ],
       key_metric,
       pain_type: painType,
@@ -595,17 +871,15 @@ function makeDiagnosis(layers: {
   }
 
   // ── 2. RED — рынок угасает ────────────────────────────────
-  // Для RED не требуем >= 50 постов: угасающий рынок с низким paying_score
-  // важно показать даже при малой выборке — это предупреждение.
   if (layer1.dynamics === 'declining' && layer3.paying_score < 15) {
     return {
       diagnosis: 'red',
-      score: Math.max(1, 2 + layer1.total_complaints / 200),
+      score: Math.max(1, 2 + validTotal / 200),
       conflict_weight: 3,
       key_factors: [
         `Динамика падает + paying score ${layer3.paying_score}`,
         'Рынок угасает — боль ситуативная или временная',
-        `${layer1.total_complaints} жалоб но без платящих пользователей`,
+        `${validTotal} валидных жалоб из ${layer1.total_complaints} собранных`,
       ],
       key_metric,
       pain_type: painType,
@@ -613,8 +887,7 @@ function makeDiagnosis(layers: {
   }
 
   // ── 3. YELLOW — educate the market ───────────────────────
-  // Высокий % no_solution = рынок не занят, но это другая стратегия.
-  if (layer2.distribution.no_solution >= 60) {
+  if (layer2.distribution.no_solution >= 55) {
     return {
       diagnosis: 'yellow',
       score: 6,
@@ -622,7 +895,7 @@ function makeDiagnosis(layers: {
       key_factors: [
         `${layer2.distribution.no_solution}% говорят что решений нет`,
         'Рынок не занят — но требует educate the market',
-        `Paying score: ${layer3.paying_score} — люди ещё не платят за решение`,
+        `${highConfClusters + medConfClusters} подтверждённых кластеров`,
       ],
       key_metric,
       pain_type: painType,
@@ -630,15 +903,16 @@ function makeDiagnosis(layers: {
   }
 
   // ── 4. YELLOW — данных мало ───────────────────────────────
-  if (layer1.total_complaints < 50 || layer3.paying_score < 20) {
+  if (validTotal < 20 || layer3.paying_score < 20) {
     return {
       diagnosis: 'yellow',
-      score: Math.min(5, 4 + layer1.total_complaints / 100),
+      score: Math.min(5, 4 + validTotal / 100),
       conflict_weight: 2,
       key_factors: [
-        `Только ${layer1.total_complaints} жалоб за 30 дней`,
+        `Только ${validTotal} валидных жалоб (из ${layer1.total_complaints} собранных)`,
         `Низкий paying score: ${layer3.paying_score}`,
         `Динамика: ${layer1.dynamics}`,
+        `Качество данных: ${classificationConfidence}`,
       ],
       key_metric,
       pain_type: painType,
@@ -651,9 +925,10 @@ function makeDiagnosis(layers: {
     score: 5,
     conflict_weight: 2,
     key_factors: [
-      `${layer1.total_complaints} жалоб, смешанная картина`,
+      `${validTotal} валидных жалоб, смешанная картина`,
       `Paying score: ${layer3.paying_score}`,
       `Преобладает: ${painType}`,
+      `${highConfClusters} кластеров high / ${medConfClusters} medium`,
     ],
     key_metric,
     pain_type: painType,
@@ -666,7 +941,6 @@ function makeDiagnosis(layers: {
 
 export async function POST(req: NextRequest) {
   try {
-    // #9: Проверка SERPAPI_KEY внутри роута — не антипаттерн throw на импорте
     const SERPAPI_KEY = process.env.SERPAPI_KEY
     if (!SERPAPI_KEY) {
       return NextResponse.json(
@@ -695,8 +969,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── 1. СБОР ДАННЫХ ────────────────────────────────────
-    const rawPosts = await collectPosts(niche, keywords, SERPAPI_KEY)
+    const competitorsList = competitors || []
+
+    // ══════════════════════════════════════════════════════════
+    // PASS 1 — НАЙТИ ИСТОЧНИКИ
+    // ══════════════════════════════════════════════════════════
+    console.log(`[Block1 Pass1] Discovering sources for "${niche}"...`)
+    const { sources, serpCalls: discoveryCalls } = await discoverSources(niche, keywords, SERPAPI_KEY)
+    console.log(`[Block1 Pass1] Found ${sources.length} sources (${discoveryCalls} SerpAPI calls)`)
+
+    // Collect posts from validated sources
+    const { posts: rawPosts, serpCalls: collectCalls } = await collectFromSources(sources, niche, keywords, SERPAPI_KEY)
+    console.log(`[Block1 Pass1] Collected ${rawPosts.length} posts (${collectCalls} SerpAPI calls)`)
 
     if (rawPosts.length === 0) {
       return NextResponse.json(
@@ -708,9 +992,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── 2. КЛАССИФИКАЦИЯ БАТЧАМИ С THROTTLING ─────────────
-    // #4: MAX_CONCURRENT = 5 — не более 5 параллельных запросов к Haiku
-    // При 100 постах = 10 батчей → 2 итерации × 5 параллельных
+    // ══════════════════════════════════════════════════════════
+    // PASS 2 — ВАЛИДАЦИЯ РЕЛЕВАНТНОСТИ + КЛАССИФИКАЦИЯ
+    // ══════════════════════════════════════════════════════════
+    console.log(`[Block1 Pass2] Validating relevance of ${rawPosts.length} posts...`)
+
     const BATCH_SIZE = 10
     const MAX_CONCURRENT = 5
 
@@ -719,57 +1005,85 @@ export async function POST(req: NextRequest) {
       batches.push(rawPosts.slice(i, i + BATCH_SIZE))
     }
 
-    const allCategories: PainCategory[] = []
+    const allValidationResults: ValidationResult[] = []
     let failedBatchCount = 0
 
     for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
       const chunk = batches.slice(i, i + MAX_CONCURRENT)
-      const results = await Promise.all(chunk.map((b) => classifyBatch(b)))
+      const results = await Promise.all(
+        chunk.map(b => validateAndClassifyBatch(b, niche, competitorsList))
+      )
 
-      // #5: Считаем проваленные батчи для classification_confidence
-      // Вариант 1: считаем любой батч где 100% fallback — независимо от размера
-      results.forEach((result) => {
-        const allFallback = result.every((r) => r === 'bad_solution')
-        if (allFallback) {
+      for (const { results: batchResults, failed } of results) {
+        if (failed) {
           failedBatchCount++
+          // DON'T silently default to bad_solution — mark as not validated
+          // These posts will be excluded from analysis
+        } else {
+          allValidationResults.push(...batchResults)
         }
-        allCategories.push(...result)
-      })
-    }
-
-    // Логируем проваленные батчи — помогает отследить когда Haiku нестабилен
-    if (failedBatchCount > 0) {
-      console.warn('[Block1] Classification: some batches failed', {
-        totalBatches: batches.length,
-        failedBatches: failedBatchCount,
-        totalPosts: rawPosts.length,
-        confidence: 'low',
-      })
-    }
-
-    // ── 3. ЭВРИСТИКА + СБОРКА CLASSIFIED POSTS ────────────
-    const classifiedPosts: ClassifiedPost[] = rawPosts.map((post, i) => {
-      const { is_paying, confidence, weight } = detectPayingUser(post.text, competitors)
-      return {
-        ...post,
-        category: allCategories[i] || 'bad_solution',
-        is_paying,
-        paying_confidence: confidence,
-        paying_weight: weight,
       }
-    })
+    }
 
-    // ── 4. АГРЕГАЦИЯ ──────────────────────────────────────
+    // Build validated posts (only from successful batches)
+    const validatedPosts: ValidatedPost[] = []
+    let validationIdx = 0
+
+    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      const batch = batches[batchIdx]
+      // Check if this batch was successfully validated
+      // Results are sequential — first successful batch maps to first results
+      for (const post of batch) {
+        if (validationIdx < allValidationResults.length) {
+          const validation = allValidationResults[validationIdx]
+          const { is_paying, confidence, weight } = detectPayingUser(post.text, competitorsList)
+
+          validatedPosts.push({
+            ...post,
+            is_relevant: validation.is_relevant,
+            category: validation.category,
+            pain_summary: validation.pain_summary,
+            mentioned_product: validation.mentioned_product,
+            is_paying: validation.is_relevant ? is_paying : false,
+            paying_confidence: confidence,
+            paying_weight: validation.is_relevant ? weight : 0,
+          })
+          validationIdx++
+        }
+        // Posts from failed batches are simply not included
+      }
+    }
+
+    const relevantCount = validatedPosts.filter(p => p.is_relevant).length
+    const relevanceRate = validatedPosts.length > 0
+      ? Math.round((relevantCount / validatedPosts.length) * 100)
+      : 0
+    console.log(`[Block1 Pass2] ${relevantCount}/${validatedPosts.length} posts relevant (${relevanceRate}%), ${failedBatchCount} batches failed`)
+
+    // ══════════════════════════════════════════════════════════
+    // PASS 3 — КРОСС-ВАЛИДАЦИЯ КЛАСТЕРАМИ
+    // ══════════════════════════════════════════════════════════
+    console.log(`[Block1 Pass3] Clustering ${relevantCount} relevant pains...`)
+    const clusters = await clusterPains(validatedPosts, niche)
+    const highConfClusters = clusters.filter(c => c.confidence === 'high').length
+    const medConfClusters = clusters.filter(c => c.confidence === 'medium').length
+    console.log(`[Block1 Pass3] ${clusters.length} clusters: ${highConfClusters} high, ${medConfClusters} medium confidence`)
+
+    // ══════════════════════════════════════════════════════════
+    // АГРЕГАЦИЯ + ДИАГНОЗ
+    // ══════════════════════════════════════════════════════════
     const { layer1, layer2, layer3, classificationConfidence } = aggregate(
-      classifiedPosts,
-      failedBatchCount
+      validatedPosts,
+      clusters,
+      failedBatchCount,
+      batches.length
     )
     const layers = { layer1, layer2, layer3 }
+    const diagnosisResult = makeDiagnosis(layers, classificationConfidence)
 
-    // ── 5. ДИАГНОЗ ────────────────────────────────────────
-    const diagnosisResult = makeDiagnosis(layers)
-
-    // ── 6. ФИНАЛЬНЫЙ OUTPUT ───────────────────────────────
+    // ══════════════════════════════════════════════════════════
+    // ФИНАЛЬНЫЙ OUTPUT
+    // ══════════════════════════════════════════════════════════
     const output: ProblemBlockOutput = {
       diagnosis: diagnosisResult.diagnosis,
       score: diagnosisResult.score,
@@ -778,16 +1092,24 @@ export async function POST(req: NextRequest) {
       key_metric: diagnosisResult.key_metric,
       block_context: {
         pain_type: diagnosisResult.pain_type,
-        pain_scale: layer1.total_complaints,
+        pain_scale: layer1.validated_complaints,
         paying_users_ratio: layer3.paying_ratio,
-        classification_confidence: classificationConfidence, // #5
+        classification_confidence: classificationConfidence,
+        data_quality: {
+          total_collected: rawPosts.length,
+          validated_relevant: relevantCount,
+          relevance_rate: relevanceRate,
+          cross_validated_clusters: clusters.length,
+          high_confidence_clusters: highConfClusters,
+        },
       },
       layers,
-      raw_data: { posts: classifiedPosts },
+      raw_data: { posts: validatedPosts },
     }
 
-    // ── 7. UPSERT В SUPABASE ──────────────────────────────
-    // unique(trend_id, user_id, block_number) гарантирует upsert без дублей
+    // ══════════════════════════════════════════════════════════
+    // UPSERT В SUPABASE
+    // ══════════════════════════════════════════════════════════
     const { error: dbError } = await supabase.from('block_results').upsert({
       trend_id,
       user_id: user.id,
@@ -803,6 +1125,7 @@ export async function POST(req: NextRequest) {
         ...output.raw_data,
         premium: {
           top_quotes: output.layers.layer2.top_quotes,
+          pain_clusters: output.layers.layer2.pain_clusters,
           layer3: output.layers.layer3,
           key_factors: output.key_factors,
           block_context: output.block_context,
@@ -812,15 +1135,22 @@ export async function POST(req: NextRequest) {
 
     if (dbError) throw new Error(`Supabase error: ${dbError.message}`)
 
-    // ── 8. ОТВЕТ — PUBLIC + PREVIEW ДАННЫЕ ────────────────
-    // Public: достаточно для рендера всех секций (preview)
-    // Premium (через /api/evidence/unlock): полные данные + все цитаты
-
-    // Preview: 1 цитата на категорию (вместо 3) — показать что данные есть
+    // ══════════════════════════════════════════════════════════
+    // ОТВЕТ — PUBLIC + PREVIEW ДАННЫЕ
+    // ══════════════════════════════════════════════════════════
     const previewQuotes: Record<string, Quote[]> = {}
     for (const [cat, quotes] of Object.entries(output.layers.layer2.top_quotes)) {
       previewQuotes[cat] = (quotes as Quote[]).slice(0, 1)
     }
+
+    // Preview clusters — show top 3 with summary only
+    const previewClusters = clusters.slice(0, 3).map(c => ({
+      pain_summary: c.pain_summary,
+      source_count: c.source_count,
+      mention_count: c.mention_count,
+      confidence: c.confidence,
+      category: c.category,
+    }))
 
     return NextResponse.json({
       success: true,
@@ -828,6 +1158,7 @@ export async function POST(req: NextRequest) {
         layer1: output.layers.layer1,
         distribution: output.layers.layer2.distribution,
         top_quotes: previewQuotes,
+        pain_clusters_preview: previewClusters,
         layer3: {
           paying_ratio: output.layers.layer3.paying_ratio,
           context: output.layers.layer3.context,

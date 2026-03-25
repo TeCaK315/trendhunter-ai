@@ -44,6 +44,8 @@ interface BlindSpot {
   teaser: string; // одно предложение без деталей (для locked)
   impact: BlindSpotImpact;
   data_signals: string[]; // какие данные из блоков 1-5 привели к этому
+  confidence: 'high' | 'medium' | 'low'; // Multi-Pass: из upstream data quality
+  depends_on_blocks: number[];             // какие блоки использованы (1-5)
 }
 
 interface BlindSpotsBlockContext {
@@ -54,6 +56,14 @@ interface BlindSpotsBlockContext {
   first_spot_teaser: string;
   has_revenue_multiplier: boolean; // true если пятна меняют revenue estimate
   conflict_weight: 1 | 2 | 3; // #3: для Синтеза Conflict Detection
+  // Multi-Pass: data quality
+  data_quality: {
+    upstream_blocks_available: number;
+    upstream_confidence: Record<number, 'high' | 'medium' | 'low' | 'unknown'>;
+    spots_with_high_confidence: number;
+    spots_with_low_confidence: number;
+    overall_confidence: 'high' | 'medium' | 'low';
+  };
 }
 
 // ——————————————————————————————————————————————————————————
@@ -72,12 +82,14 @@ function detectBlindSpotTypes(
   signals: string[];
   strength: number;
   impact: BlindSpotImpact;
+  depends_on_blocks: number[]; // Multi-Pass: какие блоки использованы
 }[] {
   const candidates: {
     type: BlindSpotType;
     signals: string[];
     strength: number;
     impact: BlindSpotImpact;
+    depends_on_blocks: number[];
   }[] = [];
 
   const payingRatio = b1?.paying_users_ratio || 0;
@@ -104,6 +116,7 @@ function detectBlindSpotTypes(
       ],
       strength: commercialIntent - payingRatio,
       impact: "high",
+      depends_on_blocks: [1, 2], // paying_ratio из Б1, commercial_intent из Б2
     });
   }
 
@@ -124,6 +137,7 @@ function detectBlindSpotTypes(
       ],
       strength: 0.85,
       impact: "high",
+      depends_on_blocks: [3, 4], // цены из Б3, жалобы из Б4
     });
   }
 
@@ -139,6 +153,7 @@ function detectBlindSpotTypes(
       ],
       strength: risingQueriesRatio,
       impact: "high",
+      depends_on_blocks: [2], // rising_queries из Б2
     });
   }
 
@@ -155,6 +170,7 @@ function detectBlindSpotTypes(
       ],
       strength: demandIndex / 100,
       impact: "medium",
+      depends_on_blocks: [2], // demand_index и commercial_intent из Б2
     });
   }
 
@@ -175,6 +191,7 @@ function detectBlindSpotTypes(
       ],
       strength: 0.8,
       impact: "medium",
+      depends_on_blocks: [4], // gap данные из Б4
     });
   }
 
@@ -272,22 +289,35 @@ async function generateBlindSpots(
     signals: string[];
     strength: number;
     impact: BlindSpotImpact;
+    depends_on_blocks: number[];
   }[],
   niche: string,
+  upstreamConfidence: Record<number, 'high' | 'medium' | 'low' | 'unknown'>,
 ): Promise<BlindSpot[]> {
   const formulations = await Promise.all(
     candidates.map((c) => formulateBlindSpot(c.type, c.signals, niche)),
   );
 
-  return candidates.map((c, idx) => ({
-    index: idx,
-    type: c.type,
-    title: formulations[idx].title,
-    insight: formulations[idx].insight,
-    teaser: formulations[idx].teaser,
-    impact: c.impact,
-    data_signals: c.signals,
-  }));
+  return candidates.map((c, idx) => {
+    // Multi-Pass 3: confidence пятна = минимальная confidence из upstream блоков
+    const blockConfidences = c.depends_on_blocks.map(n => upstreamConfidence[n] || 'unknown');
+    const spotConfidence: 'high' | 'medium' | 'low' =
+      blockConfidences.includes('low') || blockConfidences.includes('unknown') ? 'low'
+      : blockConfidences.every(c => c === 'high') ? 'high'
+      : 'medium';
+
+    return {
+      index: idx,
+      type: c.type,
+      title: formulations[idx].title,
+      insight: formulations[idx].insight,
+      teaser: formulations[idx].teaser,
+      impact: c.impact,
+      data_signals: c.signals,
+      confidence: spotConfidence,
+      depends_on_blocks: c.depends_on_blocks,
+    };
+  });
 }
 
 // ——————————————————————————————————————————————————————————
@@ -400,14 +430,33 @@ export async function POST(req: NextRequest) {
     const b4 = b4r.data!.block_context;
     const b5 = b5r.data!.block_context;
 
+    // Multi-Pass 3: извлекаем confidence из upstream блоков
+    const upstreamConfidence: Record<number, 'high' | 'medium' | 'low' | 'unknown'> = {
+      1: b1?.data_quality?.overall_confidence || 'unknown',  // из Block 1 (problem)
+      2: b2?.data_quality?.classification_confidence || 'unknown', // из Block 2 (demand)
+      3: b3?.data_quality?.overall_data_confidence || 'unknown', // из Block 3 (sellability)
+      4: b4?.data_quality?.overall_confidence || 'unknown', // из Block 4 (market occupation)
+      5: b5?.data_quality?.overall_confidence || 'unknown', // из Block 5 (economics)
+    };
+
+    console.log('[Block6] Upstream confidence:', upstreamConfidence);
+
     // —— Этап 1: детерминировано определяем типы ———————
     const candidates = detectBlindSpotTypes(b1, b2, b3, b4, b5);
 
     // —— Этап 2: Sonnet формулирует инсайты ———————————
-    const blindSpots = await generateBlindSpots(candidates, niche);
+    const blindSpots = await generateBlindSpots(candidates, niche, upstreamConfidence);
 
     // —— Диагноз ——————————————————————————————————————
     const diagnosisResult = makeDiagnosis(blindSpots);
+
+    // Multi-Pass: data quality
+    const spotsHighConf = blindSpots.filter(s => s.confidence === 'high').length;
+    const spotsLowConf = blindSpots.filter(s => s.confidence === 'low').length;
+    const overallSpotConfidence: 'high' | 'medium' | 'low' =
+      spotsHighConf > spotsLowConf && spotsHighConf >= 1 ? 'high'
+      : spotsLowConf > blindSpots.length / 2 ? 'low'
+      : 'medium';
 
     // —— block_context для Синтеза —————————————————————
     const block_context: BlindSpotsBlockContext = {
@@ -420,6 +469,13 @@ export async function POST(req: NextRequest) {
           : "Явных слепых пятен не обнаружено.",
       has_revenue_multiplier: diagnosisResult.hasRevenueMultiplier,
       conflict_weight: diagnosisResult.conflict_weight, // #3
+      data_quality: {
+        upstream_blocks_available: Object.values(upstreamConfidence).filter(c => c !== 'unknown').length,
+        upstream_confidence: upstreamConfidence,
+        spots_with_high_confidence: spotsHighConf,
+        spots_with_low_confidence: spotsLowConf,
+        overall_confidence: overallSpotConfidence,
+      },
     };
 
     // —— Upsert в Supabase (#4: добавлены conflict_weight и key_factors) ——

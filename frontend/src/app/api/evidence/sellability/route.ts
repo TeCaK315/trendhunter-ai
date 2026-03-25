@@ -151,6 +151,17 @@ interface Layer3_ChannelsAndTouchpoints {
   secondary_channels: string[];
 }
 
+interface SellabilityDataQuality {
+  competitors_queried: number;
+  pricing_extracted_successfully: number;
+  failed_extractions: number;
+  price_cross_validated: boolean;       // цены подтверждены из 2+ источников
+  pricing_confidence: "high" | "medium" | "low";
+  reddit_budget_mentions_found: number;
+  reddit_extraction_failed: boolean;
+  overall_data_confidence: "high" | "medium" | "low";
+}
+
 interface SellabilityBlockContext {
   // Для Синтеза
   diagnosis: Diagnosis;
@@ -180,6 +191,9 @@ interface SellabilityBlockContext {
   // Для Синтеза
   main_barrier: string;
   market_readiness_score: number; // 1-10
+
+  // Multi-Pass: качество данных для downstream блоков
+  data_quality: SellabilityDataQuality;
 }
 
 interface SellabilityBlockOutput {
@@ -226,11 +240,14 @@ async function fetchSerpAPI(
 // ————————————————————————————————————————————————————————————
 async function fetchCompetitorPricing(
   competitor: CompetitorSignal,
+  niche: string,
   serpApiKey: string,
 ): Promise<{
   prices: number[];
   payment_model: string | null;
   has_trial: boolean | null;
+  source: string;
+  failed: boolean; // Multi-Pass: трекинг ошибок вместо silent skip
 }> {
   const pricingSearch = await fetchSerpAPI(
     "google",
@@ -243,18 +260,23 @@ async function fetchCompetitorPricing(
   );
 
   if (!pricingSearch?.organic_results?.length) {
-    return { prices: [], payment_model: null, has_trial: null };
+    return { prices: [], payment_model: null, has_trial: null, source: competitor.domain, failed: false };
   }
 
   try {
+    // Multi-Pass 2: нишевый контекст в промпте — Haiku проверяет, что цены
+    // относятся именно к продукту в НАШЕЙ нише, а не случайное упоминание
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
+      max_tokens: 400,
       system: "Отвечай только валидным JSON без markdown.",
       messages: [
         {
           role: "user",
-          content: `Из этих SERP результатов извлеки ценовую информацию о продукте: ${JSON.stringify(
+          content: `Ты анализируешь ценообразование в нише: "${niche}".
+Конкурент: ${competitor.domain} (${competitor.name}).
+
+Из этих SERP результатов извлеки ценовую информацию ТОЛЬКО если она относится к продукту ${competitor.domain} в нише "${niche}": ${JSON.stringify(
             pricingSearch.organic_results.slice(0, 3).map((r: any) => ({
               title: r.title,
               snippet: r.snippet,
@@ -263,18 +285,18 @@ async function fetchCompetitorPricing(
 
 Верни JSON:
 {
+  "is_relevant": true/false,
+  "relevance_reason": "почему эта цена относится/не относится к нише",
   "prices": [число, число],
   "payment_model": "subscription"|"onetime"|"freemium"|"mixed"|null,
   "billing": "monthly"|"annual"|"both"|null,
   "has_trial": true|false|null
 }
 
-Правила для has_trial:
-- true: если видишь "free trial", "X-day trial", "try free for X days" (временный доступ)
-- false: если только "free plan", "freemium", "free tier" без временного ограничения
-- null: если нет информации о trial или freemium
-
-Если цены не найти — верни prices: []`,
+Правила:
+- is_relevant: false если цены относятся к другому продукту компании или другой нише
+- has_trial: true если "free trial"/"X-day trial"; false если только "free plan"/"freemium"; null если нет данных
+- Если цены не найти или не относятся к нише — верни is_relevant: false, prices: []`,
         },
       ],
     });
@@ -285,6 +307,13 @@ async function fetchCompetitorPricing(
 
     try {
       const parsed = JSON.parse(cleaned);
+
+      // Multi-Pass 2: отбрасываем нерелевантные цены
+      if (parsed.is_relevant === false) {
+        console.log(`[Block3] Pricing for ${competitor.domain} not relevant to niche "${niche}": ${parsed.relevance_reason}`);
+        return { prices: [], payment_model: null, has_trial: null, source: competitor.domain, failed: false };
+      }
+
       return {
         prices: Array.isArray(parsed.prices)
           ? parsed.prices.filter((p: any) => typeof p === "number")
@@ -292,12 +321,16 @@ async function fetchCompetitorPricing(
         payment_model: parsed.payment_model || null,
         has_trial:
           typeof parsed.has_trial === "boolean" ? parsed.has_trial : null,
+        source: competitor.domain,
+        failed: false,
       };
     } catch {
-      return { prices: [], payment_model: null, has_trial: null };
+      console.warn(`[Block3] JSON parse failed for ${competitor.domain} pricing`);
+      return { prices: [], payment_model: null, has_trial: null, source: competitor.domain, failed: true };
     }
-  } catch {
-    return { prices: [], payment_model: null, has_trial: null };
+  } catch (err) {
+    console.warn(`[Block3] Claude API failed for ${competitor.domain} pricing:`, err);
+    return { prices: [], payment_model: null, has_trial: null, source: competitor.domain, failed: true };
   }
 }
 
@@ -305,20 +338,29 @@ async function collectLayer1(
   competitors: CompetitorSignal[],
   niche: string,
   serpApiKey: string,
-): Promise<Layer1_WillingnessToPay> {
+): Promise<Layer1_WillingnessToPay & { _data_quality: { competitors_queried: number; pricing_extracted_successfully: number; failed_extractions: number; price_cross_validated: boolean; pricing_confidence: "high" | "medium" | "low"; reddit_budget_mentions_found: number; reddit_extraction_failed: boolean } }> {
   // #1 FIX: Promise.all вместо sequential цикла
+  const competitorsToQuery = competitors.slice(0, 5);
   const pricingData = await Promise.all(
-    competitors.slice(0, 5).map((c) => fetchCompetitorPricing(c, serpApiKey)),
+    competitorsToQuery.map((c) => fetchCompetitorPricing(c, niche, serpApiKey)),
   );
 
   const pricingResults: { price: number; source: string }[] = [];
   const paymentModels: Set<string> = new Set();
   const trialSignals: (boolean | null)[] = [];
 
-  pricingData.forEach((data, idx) => {
-    const domain = competitors[idx]?.domain || "unknown";
+  // Multi-Pass: трекинг ошибок
+  let failedExtractions = 0;
+  let successfulExtractions = 0;
+
+  pricingData.forEach((data) => {
+    if (data.failed) {
+      failedExtractions++;
+      return; // не добавляем данные из failed extractions
+    }
+    if (data.prices.length > 0) successfulExtractions++;
     data.prices.forEach((p) =>
-      pricingResults.push({ price: p, source: domain }),
+      pricingResults.push({ price: p, source: data.source }),
     );
     if (data.payment_model) paymentModels.add(data.payment_model);
     trialSignals.push(data.has_trial);
@@ -328,15 +370,48 @@ async function collectLayer1(
   const prices = pricingResults.map((r) => r.price).sort((a, b) => a - b);
   const dataAvailable = prices.length > 0;
 
+  // Multi-Pass 3: кросс-валидация цен между источниками
+  // Группируем цены по источникам, проверяем совпадение диапазонов
+  const uniqueSources = [...new Set(pricingResults.map((r) => r.source))];
+  const pricesBySource = new Map<string, number[]>();
+  pricingResults.forEach((r) => {
+    if (!pricesBySource.has(r.source)) pricesBySource.set(r.source, []);
+    pricesBySource.get(r.source)!.push(r.price);
+  });
+
+  // Цены "подтверждены" если 2+ источника дают пересекающиеся диапазоны
+  let priceCrossValidated = false;
+  if (uniqueSources.length >= 2) {
+    const sourceMedians = uniqueSources.map((src) => {
+      const srcPrices = pricesBySource.get(src)!.sort((a, b) => a - b);
+      return srcPrices[Math.floor(srcPrices.length / 2)];
+    });
+    // Если медианы разных источников в пределах 3x друг от друга — подтверждение
+    const minMedian = Math.min(...sourceMedians);
+    const maxMedian = Math.max(...sourceMedians);
+    if (minMedian > 0 && maxMedian / minMedian <= 3) {
+      priceCrossValidated = true;
+    }
+  }
+
+  // Multi-Pass 3: confidence на основе кросс-валидации
+  // high = 2+ источника с подтверждёнными ценами
+  // medium = 1 источник (concentrated niche — не отбрасываем!)
+  // low = нет данных или все extractions failed
+  const pricingConfidence: "high" | "medium" | "low" =
+    priceCrossValidated ? "high"
+    : uniqueSources.length === 1 ? "medium"  // concentrated niche rule
+    : dataAvailable ? "medium"
+    : "low";
+
   // #5 FIX: явный data_available, null если нет данных
   const priceRange: PriceRange = {
     minimum: dataAvailable ? prices[0] : null,
     median: dataAvailable ? prices[Math.floor(prices.length / 2)] : null,
     premium: dataAvailable ? prices[prices.length - 1] : null,
     currency: "USD",
-    sources: [...new Set(pricingResults.map((r) => r.source))].slice(0, 3),
-    confidence:
-      prices.length >= 3 ? "high" : prices.length > 0 ? "medium" : "low",
+    sources: uniqueSources.slice(0, 3),
+    confidence: pricingConfidence, // Multi-Pass 3: из кросс-валидации
     data_available: dataAvailable,
   };
 
@@ -377,9 +452,11 @@ async function collectLayer1(
   );
 
   const redditMentions: Layer1_WillingnessToPay["reddit_budget_mentions"] = [];
+  let redditExtractionFailed = false;
 
   if (redditSearch?.organic_results?.length) {
     try {
+      // Multi-Pass 2: нишевый контекст для Reddit budget mentions
       const response = await claude.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 400,
@@ -387,16 +464,21 @@ async function collectLayer1(
         messages: [
           {
             role: "user",
-            content: `Проанализируй эти Reddit результаты и найди упоминания бюджетов: ${JSON.stringify(
+            content: `Ты анализируешь обсуждения бюджетов в нише: "${niche}".
+
+Проанализируй эти Reddit результаты и найди упоминания бюджетов ТОЛЬКО если они относятся к нише "${niche}": ${JSON.stringify(
               redditSearch.organic_results
                 .slice(0, 5)
                 .map((r: any) => ({ title: r.title, snippet: r.snippet })),
             )}
 
 Верни JSON array:
-[{subreddit: "r/...", price_mentioned: число или null, sentiment: "complaint"|"neutral"|"satisfaction"}]
+[{"subreddit": "r/...", "is_relevant": true/false, "price_mentioned": число или null, "sentiment": "complaint"|"neutral"|"satisfaction"}]
 
-Sentiment: complaint если люди ругают цену, satisfaction если довольны, neutral если нейтрально.`,
+Правила:
+- is_relevant: false если обсуждение о другой нише/продукте
+- sentiment: complaint если ругают цену, satisfaction если довольны, neutral если нейтрально
+- Верни пустой массив [] если ни один результат не относится к нише`,
           },
         ],
       });
@@ -408,20 +490,25 @@ Sentiment: complaint если люди ругают цену, satisfaction ес�
       try {
         const mentions = JSON.parse(cleaned);
         if (Array.isArray(mentions)) {
-          mentions.forEach((m: any) => {
-            redditMentions.push({
-              subreddit: m.subreddit || "unknown",
-              price_mentioned: m.price_mentioned,
-              sentiment: m.sentiment || "neutral",
-              comment_count: 1,
+          // Multi-Pass 2: фильтруем только релевантные
+          mentions
+            .filter((m: any) => m.is_relevant !== false)
+            .forEach((m: any) => {
+              redditMentions.push({
+                subreddit: m.subreddit || "unknown",
+                price_mentioned: m.price_mentioned,
+                sentiment: m.sentiment || "neutral",
+                comment_count: 1,
+              });
             });
-          });
         }
       } catch {
-        // skip
+        console.warn("[Block3] JSON parse failed for Reddit budget mentions");
+        redditExtractionFailed = true;
       }
-    } catch {
-      // skip
+    } catch (err) {
+      console.warn("[Block3] Claude API failed for Reddit budget mentions:", err);
+      redditExtractionFailed = true;
     }
   }
 
@@ -453,6 +540,16 @@ Sentiment: complaint если люди ругают цену, satisfaction ес�
         : null,
     competitor_pricing_count: prices.length,
     reddit_budget_mentions: redditMentions,
+    // Multi-Pass: data quality для downstream
+    _data_quality: {
+      competitors_queried: competitorsToQuery.length,
+      pricing_extracted_successfully: successfulExtractions,
+      failed_extractions: failedExtractions,
+      price_cross_validated: priceCrossValidated,
+      pricing_confidence: pricingConfidence,
+      reddit_budget_mentions_found: redditMentions.length,
+      reddit_extraction_failed: redditExtractionFailed,
+    },
   };
 }
 
@@ -1036,7 +1133,8 @@ export async function POST(req: NextRequest) {
       block2_context.competitors_found || [];
 
     // —— Слой 1: Willingness to Pay ——————————————————
-    const layer1 = await collectLayer1(competitors, niche, SERPAPI_KEY);
+    const layer1WithQuality = await collectLayer1(competitors, niche, SERPAPI_KEY);
+    const { _data_quality: layer1Quality, ...layer1 } = layer1WithQuality;
 
     // —— Слой 2: Barrier to Purchase —————————————————
     const layer2 = await collectLayer2(block1_context, block2_context, layer1);
@@ -1048,6 +1146,26 @@ export async function POST(req: NextRequest) {
       keywords || [],
       SERPAPI_KEY,
     );
+
+    // —— Multi-Pass 3: overall data confidence ————————
+    // Агрегируем confidence по всем слоям
+    const overallConfidence: "high" | "medium" | "low" =
+      layer1Quality.pricing_confidence === "high" && layer1Quality.failed_extractions === 0
+        ? "high"
+        : layer1Quality.pricing_confidence === "low" || layer1Quality.failed_extractions > layer1Quality.competitors_queried / 2
+          ? "low"
+          : "medium";
+
+    const dataQuality: SellabilityDataQuality = {
+      competitors_queried: layer1Quality.competitors_queried,
+      pricing_extracted_successfully: layer1Quality.pricing_extracted_successfully,
+      failed_extractions: layer1Quality.failed_extractions,
+      price_cross_validated: layer1Quality.price_cross_validated,
+      pricing_confidence: layer1Quality.pricing_confidence,
+      reddit_budget_mentions_found: layer1Quality.reddit_budget_mentions_found,
+      reddit_extraction_failed: layer1Quality.reddit_extraction_failed,
+      overall_data_confidence: overallConfidence,
+    };
 
     // —— Диагноз —————————————————————————————————————
     const diagnosis = makeSellabilityDiagnosis(
@@ -1086,6 +1204,7 @@ export async function POST(req: NextRequest) {
         traffic_interception_points: layer3.traffic_interception_points,
         main_barrier: diagnosis.main_barrier,
         market_readiness_score: diagnosis.market_readiness_score,
+        data_quality: dataQuality, // Multi-Pass: качество данных для downstream
       },
       layers: { layer1, layer2, layer3 },
     };
@@ -1134,6 +1253,8 @@ export async function POST(req: NextRequest) {
       primary_channel: layer3.primary_channel?.channel,
       pricing_data_available: layer1.price_range.data_available,
       competitors_processed: competitors.length,
+      // Multi-Pass: data quality
+      data_quality: dataQuality,
     });
 
     // —— Ответ ——————————————————————————————————————————

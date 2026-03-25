@@ -72,6 +72,16 @@ interface EvidenceOccupationData {
   };
 }
 
+// Multi-Pass: upstream data quality из блоков 1-6
+interface UpstreamDataQuality {
+  block1_confidence?: 'high' | 'medium' | 'low';  // Problem
+  block2_confidence?: 'high' | 'medium' | 'low';  // Demand
+  block3_confidence?: 'high' | 'medium' | 'low';  // Sellability
+  block4_confidence?: 'high' | 'medium' | 'low';  // Market Occupation
+  block5_confidence?: 'high' | 'medium' | 'low';  // Economics
+  block6_confidence?: 'high' | 'medium' | 'low';  // Blind Spots
+}
+
 interface DeepAnalysisRequest {
   trend_title: string;
   trend_category: string;
@@ -86,6 +96,8 @@ interface DeepAnalysisRequest {
     problem?: EvidenceProblemData;
     occupation?: EvidenceOccupationData;
   };
+  // Multi-Pass: upstream data quality
+  upstream_data_quality?: UpstreamDataQuality;
 }
 
 interface AgentResponse {
@@ -463,6 +475,29 @@ ${soData.data.length > 0
   : 'Нет данных'}`;
     }
 
+    // Multi-Pass: формируем секцию о качестве upstream данных
+    let dataQualitySection = '';
+    const udq = body.upstream_data_quality;
+    if (udq) {
+      const qualityEntries = [
+        udq.block1_confidence && `Проблема (Block 1): ${udq.block1_confidence}`,
+        udq.block2_confidence && `Спрос (Block 2): ${udq.block2_confidence}`,
+        udq.block3_confidence && `Продаваемость (Block 3): ${udq.block3_confidence}`,
+        udq.block4_confidence && `Рынок (Block 4): ${udq.block4_confidence}`,
+        udq.block5_confidence && `Экономика (Block 5): ${udq.block5_confidence}`,
+        udq.block6_confidence && `Слепые пятна (Block 6): ${udq.block6_confidence}`,
+      ].filter(Boolean);
+
+      if (qualityEntries.length > 0) {
+        const lowConfBlocks = Object.values(udq).filter(v => v === 'low').length;
+        dataQualitySection = `
+## ⚠️ КАЧЕСТВО ВХОДНЫХ ДАННЫХ (учитывай при оценке confidence):
+${qualityEntries.join('\n')}
+${lowConfBlocks > 0 ? `\nВНИМАНИЕ: ${lowConfBlocks} блок(ов) с LOW confidence — будь осторожнее с выводами на их основе.` : ''}
+`;
+      }
+    }
+
     const userPrompt = `Проанализируй нишу/тренд:
 
 **Название:** ${body.trend_title}
@@ -471,7 +506,7 @@ ${soData.data.length > 0
 
 ${body.existing_analysis?.main_pain ? `**Предварительный анализ боли:** ${body.existing_analysis.main_pain}` : ''}
 ${body.existing_analysis?.key_pain_points?.length ? `**Выявленные боли:** ${body.existing_analysis.key_pain_points.join(', ')}` : ''}
-
+${dataQualitySection}
 ${realDataSection}
 
 Проведи глубокий анализ болей в этой нише, ОПИРАЯСЬ ИСКЛЮЧИТЕЛЬНО на предоставленные данные выше.`;
@@ -570,7 +605,7 @@ ${arbiterDataSummary}
       );
     }
 
-    // === STEP 3: Adjust confidence based on data volume ===
+    // === STEP 3: Multi-Pass 3 — Cross-validate & adjust confidence ===
     let totalDataPoints: number;
     let dataConfidenceFactor: number;
 
@@ -588,10 +623,30 @@ ${arbiterDataSummary}
       dataConfidenceFactor = totalDataPoints >= 20 ? 1.0 : totalDataPoints >= 10 ? 0.8 : totalDataPoints >= 5 ? 0.6 : 0.4;
     }
 
-    // Корректируем confidence на основе реального объёма данных
-    arbitrationResult.confidence = Math.round(arbitrationResult.confidence * dataConfidenceFactor * 10) / 10;
+    // Multi-Pass 3: Кросс-валидация — если upstream data quality низкое,
+    // агент не может выдать высокий confidence
+    let upstreamQualityFactor = 1.0;
+    if (udq) {
+      const confidenceValues = Object.values(udq).filter(Boolean) as string[];
+      const lowCount = confidenceValues.filter(c => c === 'low').length;
+      const highCount = confidenceValues.filter(c => c === 'high').length;
+
+      if (lowCount > confidenceValues.length / 2) {
+        upstreamQualityFactor = 0.6; // больше половины блоков с low confidence
+      } else if (lowCount > 0 && highCount === 0) {
+        upstreamQualityFactor = 0.75; // есть low, нет high
+      } else if (highCount >= confidenceValues.length / 2) {
+        upstreamQualityFactor = 1.0; // больше половины high — доверяем
+      } else {
+        upstreamQualityFactor = 0.85; // смешанное качество
+      }
+    }
+
+    // Корректируем confidence на основе реального объёма данных И upstream quality
+    const combinedFactor = dataConfidenceFactor * upstreamQualityFactor;
+    arbitrationResult.confidence = Math.round(arbitrationResult.confidence * combinedFactor * 10) / 10;
     for (const point of arbitrationResult.key_pain_points) {
-      point.confidence = Math.round(point.confidence * dataConfidenceFactor * 10) / 10;
+      point.confidence = Math.round(point.confidence * combinedFactor * 10) / 10;
     }
 
     arbitrationResult.analysis_metadata = {
@@ -630,6 +685,16 @@ ${arbiterDataSummary}
         total_data_points: totalDataPoints,
         confidence_factor: dataConfidenceFactor,
         serpapi_calls_used: totalSerpApiCalls,
+      },
+      // Multi-Pass: synthesis data quality
+      data_quality: {
+        upstream_data_quality: udq || null,
+        upstream_quality_factor: upstreamQualityFactor,
+        data_confidence_factor: dataConfidenceFactor,
+        combined_factor: combinedFactor,
+        synthesis_confidence: arbitrationResult.confidence >= 7 ? 'high' as const
+          : arbitrationResult.confidence >= 4 ? 'medium' as const
+          : 'low' as const,
       },
       metadata: {
         data_collection_time_ms: dataTime,

@@ -155,6 +155,14 @@ interface DemandBlockOutput {
     volume_confidence: VolumeConfidence; // → Блок 5: снижает confidence Revenue Range
     rising_queries_ratio: number;
     historical_volume_ratio: number; // для оценки зрелости рынка
+    // Data quality — для downstream блоков и UI
+    data_quality: {
+      total_keywords: number;
+      classified_successfully: number;
+      failed_batches: number;
+      classification_confidence: 'high' | 'medium' | 'low';
+      cross_validated_with_serp: boolean;
+    };
   };
   layers: {
     layer1: Layer1Data;
@@ -508,8 +516,9 @@ async function generateFallbackKeywords(
 // ————————————————————————————————————————————————————————————
 async function classifyIntentBatch(
   keywords: SearchKeyword[],
-): Promise<SearchKeyword[]> {
-  if (keywords.length === 0) return [];
+  niche: string,
+): Promise<{ classified: SearchKeyword[]; failed: boolean }> {
+  if (keywords.length === 0) return { classified: [], failed: false };
 
   const queriesText = keywords.map((k, i) => `[${i}] ${k.query}`).join("\n");
 
@@ -517,11 +526,24 @@ async function classifyIntentBatch(
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 600,
-      system: "Отвечай только валидным JSON без markdown и пояснений.",
+      system: "Respond with valid JSON only, no markdown or explanations.",
       messages: [
         {
           role: "user",
-          content: `Classify each search query as commercial or informational. Commercial: user wants to buy, subscribe, hire, compare prices, find a tool, see pricing, read reviews before purchase Informational: user wants to learn, understand, research, get free info, tutorials, definitions Queries: ${queriesText} Return JSON array of objects with ${keywords.length} items: [{"intent": "commercial", "confidence": "high"}, ...] confidence: "high" if clear intent, "medium" if somewhat clear, "low" if ambiguous`,
+          content: `You are analyzing search queries in the niche: "${niche}".
+
+Classify each query's intent:
+- "commercial": user wants to BUY, subscribe, compare pricing, find a tool/service, read reviews before purchase, find alternatives to switch to
+- "informational": user wants to LEARN, understand concepts, find tutorials, get definitions, read news/articles
+
+Context matters: "best ${niche} tools" = commercial (comparing to buy), "what is ${niche}" = informational (learning).
+
+Queries:
+${queriesText}
+
+Return JSON array of ${keywords.length} objects:
+[{"intent": "commercial", "confidence": "high"}, ...]
+confidence: "high" if clearly commercial/informational, "medium" if likely but not certain, "low" if ambiguous`,
         },
       ],
     });
@@ -536,33 +558,36 @@ async function classifyIntentBatch(
     try {
       result = JSON.parse(cleaned);
     } catch (e) {
-      console.error("[Block2] Intent classification JSON parse error", {
+      console.error("[Block2 Pass2] Intent classification JSON parse error", {
         error: e,
       });
-      return keywords;
+      return { classified: keywords, failed: true };
     }
 
     if (!Array.isArray(result) || result.length !== keywords.length) {
-      console.warn("[Block2] Intent classification count mismatch", {
+      console.warn("[Block2 Pass2] Intent classification count mismatch", {
         expected: keywords.length,
         received: Array.isArray(result) ? result.length : "not-array",
       });
-      return keywords;
+      return { classified: keywords, failed: true };
     }
 
-    return keywords.map((k, i) => {
-      const r = result[i] as any;
-      const intent = ["commercial", "informational"].includes(r?.intent)
-        ? (r.intent as IntentType)
-        : ("mixed" as IntentType);
-      const confidence = ["high", "medium", "low"].includes(r?.confidence)
-        ? (r.confidence as IntentConfidence)
-        : ("low" as IntentConfidence);
-      return { ...k, intent, intent_confidence: confidence };
-    });
+    return {
+      classified: keywords.map((k, i) => {
+        const r = result[i] as any;
+        const intent = ["commercial", "informational"].includes(r?.intent)
+          ? (r.intent as IntentType)
+          : ("mixed" as IntentType);
+        const confidence = ["high", "medium", "low"].includes(r?.confidence)
+          ? (r.confidence as IntentConfidence)
+          : ("low" as IntentConfidence);
+        return { ...k, intent, intent_confidence: confidence };
+      }),
+      failed: false,
+    };
   } catch (error) {
-    console.error("[Block2] classifyIntentBatch error", error);
-    return keywords;
+    console.error("[Block2 Pass2] classifyIntentBatch error", error);
+    return { classified: keywords, failed: true };
   }
 }
 
@@ -981,7 +1006,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // —— 2. КЛАССИФИКАЦИЯ ИНТЕНТА БАТЧАМИ ———————————————————
+    // —— 2. КЛАССИФИКАЦИЯ ИНТЕНТА БАТЧАМИ (Pass 2) ——————————
     // MAX_CONCURRENT = 5 — защита от rate limiting Haiku
     const MAX_CONCURRENT = 5;
     const BATCH_SIZE = 15;
@@ -992,13 +1017,19 @@ export async function POST(req: NextRequest) {
     }
 
     const classifiedKeywords: SearchKeyword[] = [];
+    let intentFailedBatches = 0;
     for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
       const chunk = batches.slice(i, i + MAX_CONCURRENT);
       const results = await Promise.all(
-        chunk.map((b) => classifyIntentBatch(b)),
+        chunk.map((b) => classifyIntentBatch(b, niche)),
       );
-      results.forEach((r) => classifiedKeywords.push(...r));
+      results.forEach(({ classified, failed }) => {
+        classifiedKeywords.push(...classified);
+        if (failed) intentFailedBatches++;
+      });
     }
+
+    console.log(`[Block2 Pass2] Classified ${classifiedKeywords.length} keywords, ${intentFailedBatches}/${batches.length} batches failed`);
 
     const classifiedTop = classifiedKeywords.slice(0, topKeywords.length);
     const classifiedRising = classifiedKeywords.slice(topKeywords.length);
@@ -1040,7 +1071,40 @@ export async function POST(req: NextRequest) {
     // —— 6. ДИАГНОЗ ——————————————————————————————————————————
     const diagnosisResult = makeDemandDiagnosis(layers, isHype);
 
-    // —— 7. ФИНАЛЬНЫЙ OUTPUT —————————————————————————————————
+    // —— 7. PASS 3: КРОСС-ВАЛИДАЦИЯ ИНТЕНТА С SERP ——————————
+    // Если classification говорит "commercial" но рекламы нет → понизить confidence
+    // Если реклама есть но classification = "informational" → подозрительно
+    let crossValidatedConfidence = layers.layer2.commercial_intent_confidence;
+    const intentRatio = layers.layer2.commercial_intent_ratio;
+
+    if (intentRatio >= 0.6 && serpAdDensity < 0.05 && competitors.length === 0) {
+      // High commercial intent but NO ads and NO competitors → suspicious
+      console.log('[Block2 Pass3] Cross-validation: high intent but no SERP ads → lowering confidence');
+      crossValidatedConfidence = crossValidatedConfidence === 'high' ? 'medium' : 'low';
+    } else if (intentRatio < 0.4 && serpAdDensity > 0.3) {
+      // Low commercial intent but LOTS of ads → classification may be wrong
+      console.log('[Block2 Pass3] Cross-validation: low intent but high SERP ads → raising to medium');
+      crossValidatedConfidence = 'medium';
+    } else if (intentRatio >= 0.6 && serpAdDensity > 0.2 && competitors.length >= 3) {
+      // High intent confirmed by ads AND competitors → boost confidence
+      crossValidatedConfidence = 'high';
+    }
+
+    // Update layer2 with cross-validated confidence
+    layers.layer2.commercial_intent_confidence = crossValidatedConfidence;
+
+    // Classification confidence based on failed batches + cross-validation
+    type DataConfidence = 'high' | 'medium' | 'low';
+    let classificationConfidence: DataConfidence;
+    if (intentFailedBatches === 0 && crossValidatedConfidence !== 'low') {
+      classificationConfidence = 'high';
+    } else if (intentFailedBatches <= batches.length * 0.3) {
+      classificationConfidence = 'medium';
+    } else {
+      classificationConfidence = 'low';
+    }
+
+    // —— 8. ФИНАЛЬНЫЙ OUTPUT —————————————————————————————————
     // FIX #5: intent_type теперь может быть 'mixed' для серой зоны
     const output: DemandBlockOutput = {
       diagnosis: diagnosisResult.diagnosis,
@@ -1075,11 +1139,18 @@ export async function POST(req: NextRequest) {
         volume_confidence: layers.layer1.volume_confidence, // → Блок 5
         rising_queries_ratio: layers.layer3.rising_queries_ratio,
         historical_volume_ratio: historicalVolumeRatio,
+        data_quality: {
+          total_keywords: allKeywordsToClassify.length,
+          classified_successfully: classifiedKeywords.filter(k => k.intent !== 'mixed').length,
+          failed_batches: intentFailedBatches,
+          classification_confidence: classificationConfidence,
+          cross_validated_with_serp: serpAdDensity > 0 || competitors.length > 0,
+        },
       },
       layers,
     };
 
-    // —— 8. UPSERT В SUPABASE ————————————————————————————————
+    // —— 9. UPSERT В SUPABASE ————————————————————————————————
     const { error: dbError } = await supabase.from("block_results").upsert({
       trend_id,
       user_id: user.id,
@@ -1107,7 +1178,7 @@ export async function POST(req: NextRequest) {
 
     if (dbError) throw new Error(`Supabase error: ${dbError.message}`);
 
-    // —— 9. ПОЛЕЗНЫЙ ЛОГГИНГ ПОСЛЕ ДИАГНОЗА ——————————————————
+    // —— 10. ПОЛЕЗНЫЙ ЛОГГИНГ ПОСЛЕ ДИАГНОЗА —————————————————
     console.log("[Block2] Diagnosis result:", {
       diagnosis: diagnosisResult.diagnosis,
       reason: diagnosisResult.reason,
@@ -1123,7 +1194,7 @@ export async function POST(req: NextRequest) {
       is_hype: isHype,
     });
 
-    // —— 10. ОТВЕТ ———————————————————————————————————————————
+    // —— 11. ОТВЕТ ———————————————————————————————————————————
     return NextResponse.json({
       success: true,
       public: {

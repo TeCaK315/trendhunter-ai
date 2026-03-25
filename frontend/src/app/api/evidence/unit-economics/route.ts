@@ -22,10 +22,84 @@ import {
  * 3. Повторные продажи — Бизнес-модель конкурентов
  * 4. Масштабируемость — Размер рынка из Trends + market signals
  *
+ * Multi-Pass валидация:
+ * Pass 2: Проверяем — реальные ли финансовые данные или оценки?
+ * Pass 3: Кросс-валидация CPC между keywords, pricing между competitors
+ *
  * Вердикт: рассчитанный score
  */
 
 const ROUTE_TIMEOUT_MS = 45_000; // 45 seconds max
+
+// ————————————————————————————————————————————————————————————
+// Multi-Pass 3: Кросс-валидация финансовых данных
+// ————————————————————————————————————————————————————————————
+interface FinancialDataQuality {
+  cpc_data_points: number;
+  cpc_cross_validated: boolean;     // CPC из 2+ keywords в пределах 3x
+  cpc_confidence: 'high' | 'medium' | 'low';
+  pricing_sources: number;          // кол-во конкурентов с ценами
+  pricing_cross_validated: boolean; // цены 2+ конкурентов в пределах 5x
+  pricing_confidence: 'high' | 'medium' | 'low';
+  ltv_cac_calculable: boolean;
+  market_size_available: boolean;
+  overall_confidence: 'high' | 'medium' | 'low';
+}
+
+function crossValidateFinancials(
+  cpcValues: number[],
+  monthlyPrices: number[],
+  hasMarketSize: boolean,
+): FinancialDataQuality {
+  // CPC cross-validation: если 2+ CPC значений в пределах 3x → high
+  let cpcCrossValidated = false;
+  if (cpcValues.length >= 2) {
+    const minCpc = Math.min(...cpcValues);
+    const maxCpc = Math.max(...cpcValues);
+    if (minCpc > 0 && maxCpc / minCpc <= 3) {
+      cpcCrossValidated = true;
+    }
+  }
+  const cpcConfidence: 'high' | 'medium' | 'low' =
+    cpcCrossValidated ? 'high'
+    : cpcValues.length === 1 ? 'medium'  // 1 data point — не отбрасываем
+    : 'low';
+
+  // Pricing cross-validation: если 2+ конкурентов с ценами в пределах 5x → high
+  let pricingCrossValidated = false;
+  const uniquePriceSources = monthlyPrices.length; // simplified — each price from different competitor
+  if (monthlyPrices.length >= 2) {
+    const minPrice = Math.min(...monthlyPrices);
+    const maxPrice = Math.max(...monthlyPrices);
+    if (minPrice > 0 && maxPrice / minPrice <= 5) {
+      pricingCrossValidated = true;
+    }
+  }
+  const pricingConfidence: 'high' | 'medium' | 'low' =
+    pricingCrossValidated ? 'high'
+    : monthlyPrices.length === 1 ? 'medium'  // concentrated niche
+    : 'low';
+
+  const ltvCacCalculable = cpcValues.length > 0 && monthlyPrices.length > 0;
+
+  // Overall: high если и CPC и pricing подтверждены
+  const overall: 'high' | 'medium' | 'low' =
+    cpcConfidence === 'high' && pricingConfidence === 'high' ? 'high'
+    : cpcConfidence === 'low' && pricingConfidence === 'low' ? 'low'
+    : 'medium';
+
+  return {
+    cpc_data_points: cpcValues.length,
+    cpc_cross_validated: cpcCrossValidated,
+    cpc_confidence: cpcConfidence,
+    pricing_sources: uniquePriceSources,
+    pricing_cross_validated: pricingCrossValidated,
+    pricing_confidence: pricingConfidence,
+    ltv_cac_calculable: ltvCacCalculable,
+    market_size_available: hasMarketSize,
+    overall_confidence: overall,
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -223,6 +297,19 @@ export async function POST(request: NextRequest) {
 
     const scalabilityScore = calcScalabilityScore(marketSizeSignals, trendGrowth, isSubscription);
 
+    // ——— Multi-Pass 3: Кросс-валидация финансовых данных ———
+    const financialQuality = crossValidateFinancials(
+      cpcValues,
+      monthlyPrices,
+      !!(marketSizeData && marketSizeData.sources_count > 0),
+    );
+
+    console.log(`[Block5] Financial cross-validation:`, {
+      cpc: `${cpcValues.length} values, cross_validated=${financialQuality.cpc_cross_validated}`,
+      pricing: `${monthlyPrices.length} prices, cross_validated=${financialQuality.pricing_cross_validated}`,
+      overall: financialQuality.overall_confidence,
+    });
+
     // === VERDICT ===
     let verdictValue = 5;
     if (ltvCacRatio.value >= 7) verdictValue += 2;
@@ -301,6 +388,8 @@ export async function POST(request: NextRequest) {
         business_model: { data_type: 'calculated', note: 'Keyword frequency analysis' },
         scalability: { data_type: 'calculated', formula: 'base(5) + trend_bonus + market_signals_bonus + subscription_bonus' },
       },
+      // Multi-Pass: Data quality for downstream blocks
+      data_quality: financialQuality,
       serpapi_calls_used: totalSerpApiCalls,
       analyzed_at: new Date().toISOString(),
     };
