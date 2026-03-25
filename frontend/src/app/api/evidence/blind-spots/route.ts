@@ -485,7 +485,7 @@ export async function POST(req: NextRequest) {
       block_number: 6,
       block_type: "blind_spots",
       diagnosis: diagnosisResult.diagnosis,
-      score: diagnosisResult.score,
+      score: diagnosisResult.score ?? 0,
       conflict_weight: diagnosisResult.conflict_weight, // #3
       key_factors: diagnosisResult.key_factors, // #4
       key_metric: `${blindSpots.length} слепых пятен обнаружено (${blindSpots.filter((s) => s.impact === "high").length} критичных)`,

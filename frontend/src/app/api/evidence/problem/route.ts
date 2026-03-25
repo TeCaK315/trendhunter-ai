@@ -1116,7 +1116,7 @@ export async function POST(req: NextRequest) {
       block_number: 1,
       block_type: 'problem',
       diagnosis: output.diagnosis,
-      score: output.score,
+      score: output.score ?? 0,
       conflict_weight: output.conflict_weight,
       key_factors: output.key_factors,
       key_metric: output.key_metric,
