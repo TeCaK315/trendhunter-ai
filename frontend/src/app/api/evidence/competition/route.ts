@@ -125,6 +125,16 @@ interface Layer3Data {
   positioning_vectors: string[];
 }
 
+// Multi-Pass: data quality
+interface CompetitionDataQuality {
+  total_reviews_collected: number;
+  validated_relevant: number;
+  irrelevant_filtered: number;
+  classification_failed: boolean;
+  cross_validated_complaints: number;   // жалобы подтверждённые у 2+ конкурентов
+  overall_confidence: "high" | "medium" | "low";
+}
+
 // #3: Добавлены поля для Блока 5
 interface CompetitionBlockContext {
   gap_type: GapType;
@@ -135,6 +145,7 @@ interface CompetitionBlockContext {
   top_gap_category: ComplaintCategory | null;
   top_competitor_size: "micro" | "small" | "medium" | "large" | null;
   top_competitor_g2_reviews: number | null;
+  data_quality: CompetitionDataQuality; // Multi-Pass
 }
 
 interface CompetitionBlockOutput {
@@ -385,25 +396,37 @@ async function fetchReviews(
 
 async function classifyComplaints(
   reviews: { text: string; source: string }[],
-  _competitorDomain: string,
-): Promise<{ category: ComplaintCategory; quote: string; source: string }[]> {
-  if (reviews.length === 0) return [];
+  competitorDomain: string,
+  niche: string,
+): Promise<{
+  classified: { category: ComplaintCategory; quote: string; source: string }[];
+  totalCollected: number;
+  relevantCount: number;
+  failed: boolean;
+}> {
+  if (reviews.length === 0) return { classified: [], totalCollected: 0, relevantCount: 0, failed: false };
 
   const reviewsText = reviews
     .map((r, i) => `[${i}] (${r.source}) ${r.text.slice(0, 250)}`)
     .join("\n\n");
 
   try {
+    // Multi-Pass 2: нишевый контекст + is_relevant фильтр
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 600,
+      max_tokens: 800,
       system: "Отвечай только валидным JSON без markdown и пояснений.",
       messages: [
         {
           role: "user",
-          content: `Классифицируй каждый отзыв о продукте по категории жалобы.
+          content: `Ты анализируешь отзывы о конкуренте ${competitorDomain} в нише: "${niche}".
 
-Категории:
+Для КАЖДОГО отзыва определи:
+1. is_relevant: относится ли отзыв к продукту ${competitorDomain} в нише "${niche}"? (false если о другом продукте/нише)
+2. is_complaint: это РЕАЛЬНАЯ жалоба или позитивный/нейтральный отзыв?
+3. category: категория жалобы (только если is_relevant=true и is_complaint=true)
+
+Категории жалоб:
 - pricing_model: жалобы на цену, тарифы, стоимость
 - missing_feature: нет нужной функции или возможности
 - ux_bug: плохой UX, баги, неудобный интерфейс
@@ -414,10 +437,10 @@ async function classifyComplaints(
 Отзывы:
 ${reviewsText}
 
-Верни JSON массив из ${reviews.length} объектов:
-[{"category": "pricing_model", "quote": "краткая цитата 50-100 символов"}, ...]
+Верни JSON массив:
+[{"is_relevant": true/false, "is_complaint": true/false, "category": "pricing_model", "quote": "краткая цитата 50-100 символов"}, ...]
 
-Если отзыв нерелевантен — используй "ux_bug" как дефолт.`,
+ВАЖНО: Если отзыв НЕ относится к нише "${niche}" — ставь is_relevant: false. НЕ маскируй нерелевантные отзывы.`,
         },
       ],
     });
@@ -432,10 +455,11 @@ ${reviewsText}
     try {
       result = JSON.parse(cleaned);
     } catch {
-      return [];
+      console.warn(`[Block4] JSON parse failed for ${competitorDomain} complaints`);
+      return { classified: [], totalCollected: reviews.length, relevantCount: 0, failed: true };
     }
 
-    if (!Array.isArray(result) || result.length !== reviews.length) return [];
+    if (!Array.isArray(result)) return { classified: [], totalCollected: reviews.length, relevantCount: 0, failed: true };
 
     const validCategories = [
       "pricing_model",
@@ -446,15 +470,27 @@ ${reviewsText}
       "integration",
     ];
 
-    return result.map((r: any, i: number) => ({
+    // Multi-Pass 2: фильтруем только релевантные жалобы
+    const relevant = result.filter((r: any) => r?.is_relevant !== false && r?.is_complaint !== false);
+    const classified = relevant.map((r: any, _i: number) => ({
       category: (validCategories.includes(r?.category)
         ? r.category
         : "ux_bug") as ComplaintCategory,
-      quote: r?.quote?.slice(0, 150) || reviews[i].text.slice(0, 100),
-      source: reviews[i].source,
+      quote: r?.quote?.slice(0, 150) || "",
+      source: reviews[result.indexOf(r)]?.source || "unknown",
     }));
-  } catch {
-    return [];
+
+    console.log(`[Block4] ${competitorDomain}: ${reviews.length} reviews → ${relevant.length} relevant complaints (${reviews.length - relevant.length} filtered)`);
+
+    return {
+      classified,
+      totalCollected: reviews.length,
+      relevantCount: relevant.length,
+      failed: false,
+    };
+  } catch (err) {
+    console.warn(`[Block4] Classification failed for ${competitorDomain}:`, err);
+    return { classified: [], totalCollected: reviews.length, relevantCount: 0, failed: true };
   }
 }
 
@@ -543,7 +579,8 @@ async function collectLayer2(
   layer1: Layer1Data,
   serpApiKey: string,
   block3Data: any,
-): Promise<Layer2Data> {
+  niche: string,
+): Promise<Layer2Data & { _quality: { totalCollected: number; totalRelevant: number; anyFailed: boolean; crossValidated: number } }> {
   if (layer1.competitors.length === 0) {
     return {
       strategic_gaps: [],
@@ -555,12 +592,16 @@ async function collectLayer2(
         strategic_count: 0,
         execution_count: 0,
       },
+      _quality: { totalCollected: 0, totalRelevant: 0, anyFailed: false, crossValidated: 0 },
     };
   }
 
   const strategicGaps: GapEvidence[] = [];
   const executionGaps: GapEvidence[] = [];
   let totalReviews = 0;
+  let totalCollected = 0;
+  let totalRelevant = 0;
+  let anyFailed = false;
 
   const reviewsPerCompetitor = await Promise.all(
     layer1.competitors.map((competitor) =>
@@ -568,25 +609,34 @@ async function collectLayer2(
     ),
   );
 
+  // Multi-Pass 2: передаём niche для валидации релевантности
   const classifiedPerCompetitor = await Promise.all(
     layer1.competitors.map((competitor, idx) =>
-      classifyComplaints(reviewsPerCompetitor[idx], competitor.domain),
+      classifyComplaints(reviewsPerCompetitor[idx], competitor.domain, niche),
     ),
   );
 
+  // Multi-Pass 3: собираем категории жалоб по всем конкурентам для кросс-валидации
+  const categoriesPerCompetitor = new Map<string, Set<ComplaintCategory>>();
+
   await Promise.all(
     layer1.competitors.map(async (competitor, idx) => {
-      const classified = classifiedPerCompetitor[idx];
+      const { classified, totalCollected: tc, relevantCount: rc, failed } = classifiedPerCompetitor[idx];
+      totalCollected += tc;
+      totalRelevant += rc;
+      if (failed) anyFailed = true;
       totalReviews += classified.length;
 
       if (classified.length === 0) return;
 
+      const competitorCategories = new Set<ComplaintCategory>();
       const categoryCount = new Map<
         ComplaintCategory,
         { count: number; quotes: string[] }
       >();
 
       classified.forEach(({ category, quote }) => {
+        competitorCategories.add(category);
         const existing = categoryCount.get(category) || {
           count: 0,
           quotes: [],
@@ -595,6 +645,8 @@ async function collectLayer2(
         if (existing.quotes.length < 3) existing.quotes.push(quote);
         categoryCount.set(category, existing);
       });
+
+      categoriesPerCompetitor.set(competitor.domain, competitorCategories);
 
       const topCategories = Array.from(categoryCount.entries())
         .sort((a, b) => b[1].count - a[1].count)
@@ -642,6 +694,15 @@ async function collectLayer2(
     }),
   );
 
+  // Multi-Pass 3: кросс-валидация — жалобы встречающиеся у 2+ конкурентов
+  const allCategories = new Map<ComplaintCategory, number>();
+  for (const cats of categoriesPerCompetitor.values()) {
+    for (const cat of cats) {
+      allCategories.set(cat, (allCategories.get(cat) || 0) + 1);
+    }
+  }
+  const crossValidatedCount = Array.from(allCategories.values()).filter(c => c >= 2).length;
+
   return {
     strategic_gaps: strategicGaps,
     execution_gaps: executionGaps,
@@ -655,6 +716,7 @@ async function collectLayer2(
       strategic_count: strategicGaps.length,
       execution_count: executionGaps.length,
     },
+    _quality: { totalCollected, totalRelevant, anyFailed, crossValidated: crossValidatedCount },
   };
 }
 
@@ -1017,8 +1079,9 @@ export async function POST(req: NextRequest) {
       block3_context?.price_range,
     );
 
-    // —— Слой 2: Gap анализ —————————————————————————
-    const layer2 = await collectLayer2(layer1, SERPAPI_KEY, block3_context);
+    // —— Слой 2: Gap анализ (Multi-Pass: с нишевым контекстом) ——
+    const layer2WithQuality = await collectLayer2(layer1, SERPAPI_KEY, block3_context, niche);
+    const { _quality: layer2Quality, ...layer2 } = layer2WithQuality;
 
     // —— Слой 3: Точка входа ————————————————————————
     const layer3 = await collectLayer3(layer1, layer2, niche);
@@ -1029,6 +1092,23 @@ export async function POST(req: NextRequest) {
     // —— block_context с полями для Блока 5 ————————————
     const topCompetitor = layer1.competitors[0];
 
+    // Multi-Pass: data quality
+    const overallConfidence: "high" | "medium" | "low" =
+      layer2Quality.crossValidated >= 2 && !layer2Quality.anyFailed ? "high"
+      : layer2Quality.totalRelevant >= 5 ? "medium"
+      : "low";
+
+    const dataQuality: CompetitionDataQuality = {
+      total_reviews_collected: layer2Quality.totalCollected,
+      validated_relevant: layer2Quality.totalRelevant,
+      irrelevant_filtered: layer2Quality.totalCollected - layer2Quality.totalRelevant,
+      classification_failed: layer2Quality.anyFailed,
+      cross_validated_complaints: layer2Quality.crossValidated,
+      overall_confidence: overallConfidence,
+    };
+
+    console.log(`[Block4] Data quality: ${layer2Quality.totalCollected} collected → ${layer2Quality.totalRelevant} relevant (${layer2Quality.totalCollected - layer2Quality.totalRelevant} filtered), ${layer2Quality.crossValidated} cross-validated categories`);
+
     const block_context: CompetitionBlockContext = {
       gap_type: diagnosisResult.gap_type,
       entry_point: layer3.entry_point,
@@ -1038,6 +1118,7 @@ export async function POST(req: NextRequest) {
       top_gap_category: layer2.top_gap_category,
       top_competitor_size: topCompetitor?.size.estimate || null,
       top_competitor_g2_reviews: topCompetitor?.size.raw.g2_reviews || null,
+      data_quality: dataQuality, // Multi-Pass
     };
 
     const output: CompetitionBlockOutput = {
