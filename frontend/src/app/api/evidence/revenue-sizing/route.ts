@@ -70,15 +70,6 @@ interface RevenueRangeEstimate {
   data_quality_score: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 }
 
-interface RevenueDataQuality {
-  upstream_block2_confidence: Confidence | "unknown";
-  upstream_block3_confidence: Confidence | "unknown";
-  upstream_block4_confidence: Confidence | "unknown";
-  methods_with_data: number;       // сколько методов имели входные данные
-  revenue_cross_validated: boolean; // method1 + method2 не противоречат
-  overall_confidence: Confidence;
-}
-
 interface RevenueBlockContext {
   revenue_low: number | null;
   revenue_mid: number | null;
@@ -93,7 +84,6 @@ interface RevenueBlockContext {
   gross_margin_assumption: "standard_saas_70pct";
   revenue_viability: "viable" | "marginal" | "not_viable";
   data_quality_score: number;
-  data_quality: RevenueDataQuality; // Multi-Pass
 }
 
 interface RevenueBlockOutput {
@@ -450,33 +440,6 @@ export async function POST(req: NextRequest) {
       b2.has_declining_signal,
     );
 
-    // Multi-Pass 3: upstream data quality
-    const upstreamB2Confidence: Confidence | "unknown" = b2?.data_quality?.classification_confidence || "unknown";
-    const upstreamB3Confidence: Confidence | "unknown" = b3?.data_quality?.overall_data_confidence || "unknown";
-    const upstreamB4Confidence: Confidence | "unknown" = b4?.data_quality?.overall_confidence || "unknown";
-
-    const methodsWithData = [method1, method2, method3].filter(Boolean).length;
-
-    // Кросс-валидация: method1 (competitor revenue) и method2 (demand signal) не противоречат
-    const revenueCrossValidated = !!(
-      method1 && method2 &&
-      !(method1.revenue_estimate > 100000 && method2.confidence_modifier === "reduce") // высокая выручка но падающий спрос = противоречие
-    );
-
-    const revenueOverallConfidence: Confidence =
-      methodsWithData >= 3 && revenueCrossValidated ? "high"
-      : methodsWithData >= 2 ? "medium"
-      : "low";
-
-    const revenueDataQuality: RevenueDataQuality = {
-      upstream_block2_confidence: upstreamB2Confidence,
-      upstream_block3_confidence: upstreamB3Confidence,
-      upstream_block4_confidence: upstreamB4Confidence,
-      methods_with_data: methodsWithData,
-      revenue_cross_validated: revenueCrossValidated,
-      overall_confidence: revenueOverallConfidence,
-    };
-
     const block_context: RevenueBlockContext = {
       revenue_low: revenueRange.revenue_low,
       revenue_mid: revenueRange.revenue_mid,
@@ -497,7 +460,6 @@ export async function POST(req: NextRequest) {
       gross_margin_assumption: "standard_saas_70pct",
       revenue_viability: diagnosisResult.viability,
       data_quality_score: revenueRange.data_quality_score,
-      data_quality: revenueDataQuality,
     };
 
     const output: RevenueBlockOutput = {

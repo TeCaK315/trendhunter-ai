@@ -125,19 +125,6 @@ interface Layer3Data {
   positioning_vectors: string[];
 }
 
-// Multi-Pass: data quality
-interface CompetitionDataQuality {
-  total_reviews_collected: number;
-  validated_relevant: number;
-  irrelevant_filtered: number;
-  non_product_domains_filtered: number; // агрегаторы/retail отфильтрованные до анализа
-  classification_failed: boolean;
-  cross_validated_complaints: number;   // жалобы подтверждённые у 2+ конкурентов
-  is_informational_niche: boolean;      // commercial_intent < 0.3 — ниша информационная
-  commercial_intent_ratio: number | null;
-  overall_confidence: "high" | "medium" | "low";
-}
-
 // #3: Добавлены поля для Блока 5
 interface CompetitionBlockContext {
   gap_type: GapType;
@@ -148,7 +135,6 @@ interface CompetitionBlockContext {
   top_gap_category: ComplaintCategory | null;
   top_competitor_size: "micro" | "small" | "medium" | "large" | null;
   top_competitor_g2_reviews: number | null;
-  data_quality: CompetitionDataQuality; // Multi-Pass
 }
 
 interface CompetitionBlockOutput {
@@ -163,56 +149,6 @@ interface CompetitionBlockOutput {
     layer2: Layer2Data;
     layer3: Layer3Data;
   };
-}
-
-// ——————————————————————————————————————————————————————————————
-// ФИЛЬТР НЕРЕЛЕВАНТНЫХ ДОМЕНОВ
-// Агрегаторы, retail, новостные сайты — не конкуренты-продукты
-// ——————————————————————————————————————————————————————————————
-
-const AGGREGATOR_DOMAINS = [
-  'yelp.com', 'tripadvisor.com', 'yellowpages.com', 'bbb.org',
-  'maps.google.com', 'google.com/maps',
-  'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'tiktok.com',
-  'linkedin.com', 'pinterest.com', 'reddit.com',
-  'youtube.com', 'medium.com', 'substack.com',
-  'wikipedia.org', 'wikihow.com',
-  'amazon.com', 'ebay.com', 'alibaba.com', 'aliexpress.com',
-  'walmart.com', 'target.com', 'bestbuy.com',
-  'craigslist.org', 'nextdoor.com',
-  'quora.com', 'stackoverflow.com',
-  'news.google.com', 'news.yahoo.com',
-];
-
-const RETAIL_CHAINS = [
-  'lidl.com', 'lidl.de', 'aldi.com', 'aldi.de',
-  'carrefour.com', 'tesco.com', 'costco.com',
-  'kroger.com', 'walgreens.com', 'cvs.com',
-  'homedepot.com', 'lowes.com', 'ikea.com',
-  'mcdonalds.com', 'starbucks.com', 'subway.com',
-];
-
-const RETAIL_SIGNALS_IN_SNIPPET = [
-  'store locator', 'grocery', 'restaurant', 'menu',
-  'hours', 'directions', 'delivery', 'pickup',
-  'nearest store', 'find a store', 'locations',
-  'opening hours', 'store hours',
-];
-
-function isNonProductDomain(domain: string, snippet?: string): boolean {
-  const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
-
-  // Проверка по спискам
-  if (AGGREGATOR_DOMAINS.some(d => normalizedDomain.includes(d))) return true;
-  if (RETAIL_CHAINS.some(d => normalizedDomain.includes(d))) return true;
-
-  // Проверка сниппета на retail-сигналы
-  if (snippet) {
-    const lowerSnippet = snippet.toLowerCase();
-    if (RETAIL_SIGNALS_IN_SNIPPET.some(s => lowerSnippet.includes(s))) return true;
-  }
-
-  return false;
 }
 
 // ——————————————————————————————————————————————————————————————
@@ -449,37 +385,25 @@ async function fetchReviews(
 
 async function classifyComplaints(
   reviews: { text: string; source: string }[],
-  competitorDomain: string,
-  niche: string,
-): Promise<{
-  classified: { category: ComplaintCategory; quote: string; source: string }[];
-  totalCollected: number;
-  relevantCount: number;
-  failed: boolean;
-}> {
-  if (reviews.length === 0) return { classified: [], totalCollected: 0, relevantCount: 0, failed: false };
+  _competitorDomain: string,
+): Promise<{ category: ComplaintCategory; quote: string; source: string }[]> {
+  if (reviews.length === 0) return [];
 
   const reviewsText = reviews
     .map((r, i) => `[${i}] (${r.source}) ${r.text.slice(0, 250)}`)
     .join("\n\n");
 
   try {
-    // Multi-Pass 2: нишевый контекст + is_relevant фильтр
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 800,
+      max_tokens: 600,
       system: "Отвечай только валидным JSON без markdown и пояснений.",
       messages: [
         {
           role: "user",
-          content: `Ты анализируешь отзывы о конкуренте ${competitorDomain} в нише: "${niche}".
+          content: `Классифицируй каждый отзыв о продукте по категории жалобы.
 
-Для КАЖДОГО отзыва определи:
-1. is_relevant: относится ли отзыв к продукту ${competitorDomain} в нише "${niche}"? (false если о другом продукте/нише)
-2. is_complaint: это РЕАЛЬНАЯ жалоба или позитивный/нейтральный отзыв?
-3. category: категория жалобы (только если is_relevant=true и is_complaint=true)
-
-Категории жалоб:
+Категории:
 - pricing_model: жалобы на цену, тарифы, стоимость
 - missing_feature: нет нужной функции или возможности
 - ux_bug: плохой UX, баги, неудобный интерфейс
@@ -490,10 +414,10 @@ async function classifyComplaints(
 Отзывы:
 ${reviewsText}
 
-Верни JSON массив:
-[{"is_relevant": true/false, "is_complaint": true/false, "category": "pricing_model", "quote": "краткая цитата 50-100 символов"}, ...]
+Верни JSON массив из ${reviews.length} объектов:
+[{"category": "pricing_model", "quote": "краткая цитата 50-100 символов"}, ...]
 
-ВАЖНО: Если отзыв НЕ относится к нише "${niche}" — ставь is_relevant: false. НЕ маскируй нерелевантные отзывы.`,
+Если отзыв нерелевантен — используй "ux_bug" как дефолт.`,
         },
       ],
     });
@@ -508,11 +432,10 @@ ${reviewsText}
     try {
       result = JSON.parse(cleaned);
     } catch {
-      console.warn(`[Block4] JSON parse failed for ${competitorDomain} complaints`);
-      return { classified: [], totalCollected: reviews.length, relevantCount: 0, failed: true };
+      return [];
     }
 
-    if (!Array.isArray(result)) return { classified: [], totalCollected: reviews.length, relevantCount: 0, failed: true };
+    if (!Array.isArray(result) || result.length !== reviews.length) return [];
 
     const validCategories = [
       "pricing_model",
@@ -523,27 +446,15 @@ ${reviewsText}
       "integration",
     ];
 
-    // Multi-Pass 2: фильтруем только релевантные жалобы
-    const relevant = result.filter((r: any) => r?.is_relevant !== false && r?.is_complaint !== false);
-    const classified = relevant.map((r: any, _i: number) => ({
+    return result.map((r: any, i: number) => ({
       category: (validCategories.includes(r?.category)
         ? r.category
         : "ux_bug") as ComplaintCategory,
-      quote: r?.quote?.slice(0, 150) || "",
-      source: reviews[result.indexOf(r)]?.source || "unknown",
+      quote: r?.quote?.slice(0, 150) || reviews[i].text.slice(0, 100),
+      source: reviews[i].source,
     }));
-
-    console.log(`[Block4] ${competitorDomain}: ${reviews.length} reviews → ${relevant.length} relevant complaints (${reviews.length - relevant.length} filtered)`);
-
-    return {
-      classified,
-      totalCollected: reviews.length,
-      relevantCount: relevant.length,
-      failed: false,
-    };
-  } catch (err) {
-    console.warn(`[Block4] Classification failed for ${competitorDomain}:`, err);
-    return { classified: [], totalCollected: reviews.length, relevantCount: 0, failed: true };
+  } catch {
+    return [];
   }
 }
 
@@ -632,8 +543,7 @@ async function collectLayer2(
   layer1: Layer1Data,
   serpApiKey: string,
   block3Data: any,
-  niche: string,
-): Promise<Layer2Data & { _quality: { totalCollected: number; totalRelevant: number; anyFailed: boolean; crossValidated: number } }> {
+): Promise<Layer2Data> {
   if (layer1.competitors.length === 0) {
     return {
       strategic_gaps: [],
@@ -645,16 +555,12 @@ async function collectLayer2(
         strategic_count: 0,
         execution_count: 0,
       },
-      _quality: { totalCollected: 0, totalRelevant: 0, anyFailed: false, crossValidated: 0 },
     };
   }
 
   const strategicGaps: GapEvidence[] = [];
   const executionGaps: GapEvidence[] = [];
   let totalReviews = 0;
-  let totalCollected = 0;
-  let totalRelevant = 0;
-  let anyFailed = false;
 
   const reviewsPerCompetitor = await Promise.all(
     layer1.competitors.map((competitor) =>
@@ -662,34 +568,25 @@ async function collectLayer2(
     ),
   );
 
-  // Multi-Pass 2: передаём niche для валидации релевантности
   const classifiedPerCompetitor = await Promise.all(
     layer1.competitors.map((competitor, idx) =>
-      classifyComplaints(reviewsPerCompetitor[idx], competitor.domain, niche),
+      classifyComplaints(reviewsPerCompetitor[idx], competitor.domain),
     ),
   );
 
-  // Multi-Pass 3: собираем категории жалоб по всем конкурентам для кросс-валидации
-  const categoriesPerCompetitor = new Map<string, Set<ComplaintCategory>>();
-
   await Promise.all(
     layer1.competitors.map(async (competitor, idx) => {
-      const { classified, totalCollected: tc, relevantCount: rc, failed } = classifiedPerCompetitor[idx];
-      totalCollected += tc;
-      totalRelevant += rc;
-      if (failed) anyFailed = true;
+      const classified = classifiedPerCompetitor[idx];
       totalReviews += classified.length;
 
       if (classified.length === 0) return;
 
-      const competitorCategories = new Set<ComplaintCategory>();
       const categoryCount = new Map<
         ComplaintCategory,
         { count: number; quotes: string[] }
       >();
 
       classified.forEach(({ category, quote }) => {
-        competitorCategories.add(category);
         const existing = categoryCount.get(category) || {
           count: 0,
           quotes: [],
@@ -698,8 +595,6 @@ async function collectLayer2(
         if (existing.quotes.length < 3) existing.quotes.push(quote);
         categoryCount.set(category, existing);
       });
-
-      categoriesPerCompetitor.set(competitor.domain, competitorCategories);
 
       const topCategories = Array.from(categoryCount.entries())
         .sort((a, b) => b[1].count - a[1].count)
@@ -747,15 +642,6 @@ async function collectLayer2(
     }),
   );
 
-  // Multi-Pass 3: кросс-валидация — жалобы встречающиеся у 2+ конкурентов
-  const allCategories = new Map<ComplaintCategory, number>();
-  for (const cats of categoriesPerCompetitor.values()) {
-    for (const cat of cats) {
-      allCategories.set(cat, (allCategories.get(cat) || 0) + 1);
-    }
-  }
-  const crossValidatedCount = Array.from(allCategories.values()).filter(c => c >= 2).length;
-
   return {
     strategic_gaps: strategicGaps,
     execution_gaps: executionGaps,
@@ -769,7 +655,6 @@ async function collectLayer2(
       strategic_count: strategicGaps.length,
       execution_count: executionGaps.length,
     },
-    _quality: { totalCollected, totalRelevant, anyFailed, crossValidated: crossValidatedCount },
   };
 }
 
@@ -1116,30 +1001,8 @@ export async function POST(req: NextRequest) {
     const block2_context = block2Result.data.block_context;
     const block3_context = block3Result.data?.block_context || null;
 
-    const rawCompetitors: CompetitorSignal[] =
+    const competitors: CompetitorSignal[] =
       block2_context.competitors_found || [];
-
-    // —— Фильтр 1: агрегаторные/retail домены ————————————
-    const competitors = rawCompetitors.filter(c => {
-      if (isNonProductDomain(c.domain)) {
-        console.log(`[Block4] Filtered non-product domain: ${c.domain}`);
-        return false;
-      }
-      return true;
-    });
-
-    const filteredDomainCount = rawCompetitors.length - competitors.length;
-    if (filteredDomainCount > 0) {
-      console.log(`[Block4] Filtered ${filteredDomainCount} non-product domains from ${rawCompetitors.length} total`);
-    }
-
-    // —— Фильтр 2: commercial intent check ————————————
-    const commercialIntentRatio: number | null = block2_context.commercial_intent_ratio ?? null;
-    const isInformationalNiche = commercialIntentRatio !== null && commercialIntentRatio < 0.3;
-
-    if (isInformationalNiche) {
-      console.log(`[Block4] LOW commercial intent (${(commercialIntentRatio! * 100).toFixed(0)}%) — niche may be informational, not product-based`);
-    }
 
     if (competitors.length === 0) {
       console.log(
@@ -1154,9 +1017,8 @@ export async function POST(req: NextRequest) {
       block3_context?.price_range,
     );
 
-    // —— Слой 2: Gap анализ (Multi-Pass: с нишевым контекстом) ——
-    const layer2WithQuality = await collectLayer2(layer1, SERPAPI_KEY, block3_context, niche);
-    const { _quality: layer2Quality, ...layer2 } = layer2WithQuality;
+    // —— Слой 2: Gap анализ —————————————————————————
+    const layer2 = await collectLayer2(layer1, SERPAPI_KEY, block3_context);
 
     // —— Слой 3: Точка входа ————————————————————————
     const layer3 = await collectLayer3(layer1, layer2, niche);
@@ -1164,47 +1026,8 @@ export async function POST(req: NextRequest) {
     // —— Диагноз ———————————————————————————————
     const diagnosisResult = makeCompetitionDiagnosis(layer1, layer2, layer3);
 
-    // Если ниша информационная — понижаем уверенность и добавляем предупреждение
-    if (isInformationalNiche) {
-      diagnosisResult.key_factors.push(
-        `⚠ Низкий коммерческий intent (${(commercialIntentRatio! * 100).toFixed(0)}%) — ниша может быть информационной, а не продуктовой. Конкуренты могут быть нерелевантны.`
-      );
-      // Понижаем score если он был высоким на основе ненадёжных данных
-      if (diagnosisResult.score >= 7) {
-        diagnosisResult.score = Math.max(4, diagnosisResult.score - 2);
-        diagnosisResult.diagnosis = "yellow";
-      }
-    }
-
-    // Если все конкуренты были отфильтрованы как non-product
-    if (filteredDomainCount > 0 && competitors.length === 0 && rawCompetitors.length > 0) {
-      diagnosisResult.key_factors.push(
-        `Все ${rawCompetitors.length} найденных доменов — агрегаторы/retail, не продукты в нише. Попробуйте уточнить нишу.`
-      );
-    }
-
     // —— block_context с полями для Блока 5 ————————————
     const topCompetitor = layer1.competitors[0];
-
-    // Multi-Pass: data quality
-    const overallConfidence: "high" | "medium" | "low" =
-      layer2Quality.crossValidated >= 2 && !layer2Quality.anyFailed ? "high"
-      : layer2Quality.totalRelevant >= 5 ? "medium"
-      : "low";
-
-    const dataQuality: CompetitionDataQuality = {
-      total_reviews_collected: layer2Quality.totalCollected,
-      validated_relevant: layer2Quality.totalRelevant,
-      irrelevant_filtered: layer2Quality.totalCollected - layer2Quality.totalRelevant,
-      non_product_domains_filtered: filteredDomainCount,
-      classification_failed: layer2Quality.anyFailed,
-      cross_validated_complaints: layer2Quality.crossValidated,
-      is_informational_niche: isInformationalNiche,
-      commercial_intent_ratio: commercialIntentRatio,
-      overall_confidence: overallConfidence,
-    };
-
-    console.log(`[Block4] Data quality: ${layer2Quality.totalCollected} collected → ${layer2Quality.totalRelevant} relevant (${layer2Quality.totalCollected - layer2Quality.totalRelevant} filtered), ${layer2Quality.crossValidated} cross-validated categories`);
 
     const block_context: CompetitionBlockContext = {
       gap_type: diagnosisResult.gap_type,
@@ -1215,7 +1038,6 @@ export async function POST(req: NextRequest) {
       top_gap_category: layer2.top_gap_category,
       top_competitor_size: topCompetitor?.size.estimate || null,
       top_competitor_g2_reviews: topCompetitor?.size.raw.g2_reviews || null,
-      data_quality: dataQuality, // Multi-Pass
     };
 
     const output: CompetitionBlockOutput = {
