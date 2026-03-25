@@ -4,11 +4,13 @@
  * Pipeline:
  * 1. Scan seed niches → SerpAPI google_trends RELATED_QUERIES → rising queries
  * 2. Filter noise (non-product queries)
- * 3. GPT classify: "can this be a product/SaaS?"
- * 4. Enrich with timeline data (growth_rate)
- * 5. GPT generate final Trend objects
- * 6. Deduplicate against existing trends
- * 7. Save to /api/trends
+ * 3. Deduplicate across niches
+ * 4. GPT classify: "can this be a product/SaaS?"
+ * 4.5. GPT semantic dedup
+ * 5. Topic → Product transformation (NEW: темы → конкретные продуктовые ниши)
+ * 6. Enrich with timeline data (growth_rate)
+ * 7. GPT generate final Trend objects
+ * 8. Save to /api/trends + enrich
  *
  * Budget: ~80 SerpAPI calls per scan cycle (5000/month plan → ~2 cycles/day)
  */
@@ -443,7 +445,167 @@ async function gptDeduplicateQueries(
 }
 
 // ==========================================
-// Step 5: Enrich with Timeline Data
+// Step 5: Topic → Product Transformation
+// Ключевой фильтр: темы трансформируются в конкретные продукты
+// ==========================================
+
+interface ProductNiche extends RisingQuery {
+  productTitle: string;       // "Автоматический аудит кибербезопасности для SMB"
+  productFormat: string;      // "SaaS", "API + дашборд", "мобильное приложение"
+  targetAudience: string;     // "малый бизнес", "HR-менеджеры", "фрилансеры"
+  userOutcome: string;        // "отчёт об уязвимостях за 10 минут"
+  wasTransformed: boolean;    // true если исходный запрос был темой
+}
+
+async function transformToProductNiches(
+  queries: RisingQuery[],
+): Promise<ProductNiche[]> {
+  if (!OPENAI_API_KEY || queries.length === 0) {
+    return queries.map(q => ({
+      ...q,
+      productTitle: q.query,
+      productFormat: 'unknown',
+      targetAudience: 'unknown',
+      userOutcome: 'unknown',
+      wasTransformed: false,
+    }));
+  }
+
+  const queryList = queries.map((q, i) =>
+    `${i + 1}. "${q.query}" (рост: ${q.growth}, категория: ${q.sourceCategory})`
+  ).join('\n');
+
+  try {
+    const content = await callOpenAI([
+      {
+        role: 'system',
+        content: `Ты эксперт по SaaS-продуктам. Тебе дан список растущих поисковых запросов из Google Trends.
+
+Каждый запрос — это либо ТЕМА (информационный контент), либо ПРОДУКТ (конкретный инструмент).
+
+ТЕМА (нельзя монетизировать напрямую):
+- "Советы по кибербезопасности" — нет конкретного результата
+- "Здоровое питание" — нет формата продукта
+- "Удалённая работа" — нет платящей аудитории
+- "cryptocurrency trading" — слишком общий термин
+
+ПРОДУКТ (можно построить и продать):
+- "Автоматический аудит кибербезопасности для SMB" — есть результат (отчёт), формат (SaaS), аудитория (малый бизнес)
+- "AI code review tool" — есть результат (review), формат (SaaS), аудитория (разработчики)
+
+Для КАЖДОГО запроса:
+1. Определи: это ТЕМА или ПРОДУКТ?
+2. Если ТЕМА → придумай 1-2 КОНКРЕТНЫХ продукта, которые можно построить на этом тренде
+3. Если ПРОДУКТ → оставь как есть (1 продукт)
+
+Три критерия ПРОДУКТА:
+✅ Есть конкретный результат для пользователя (отчёт, план, аудит, дашборд, автоматизация)
+✅ Есть понятный формат (SaaS / API / мобильное приложение / маркетплейс / браузерное расширение)
+✅ Есть платящая аудитория (кто конкретно платит: SMB, фрилансеры, HR-менеджеры, e-commerce)
+
+Ответь JSON массивом:
+[
+  {
+    "source_index": 1,
+    "is_topic": true,
+    "products": [
+      {
+        "title_en": "Automated cybersecurity audit for SMB",
+        "title_ru": "Автоматический аудит кибербезопасности для малого бизнеса",
+        "product_format": "SaaS",
+        "target_audience": "малый бизнес",
+        "user_outcome": "отчёт об уязвимостях за 10 минут"
+      }
+    ]
+  }
+]
+
+ВАЖНО:
+- Для тем: 1-2 продукта МАКСИМУМ. Каждый продукт должен быть из РАЗНОЙ ниши применения.
+- Для продуктов: 1 продукт (исходный запрос, немного уточнённый).
+- title_en — краткое название продукта на английском (для Google Trends поиска)
+- title_ru — название на русском (для отображения)
+- Не придумывай абстракции. Каждый продукт должен решать КОНКРЕТНУЮ проблему.`,
+      },
+      {
+        role: 'user',
+        content: queryList,
+      },
+    ], 0.3);
+
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return queries.map(q => ({
+        ...q,
+        productTitle: q.query,
+        productFormat: 'unknown',
+        targetAudience: 'unknown',
+        userOutcome: 'unknown',
+        wasTransformed: false,
+      }));
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed)) {
+      return queries.map(q => ({
+        ...q,
+        productTitle: q.query,
+        productFormat: 'unknown',
+        targetAudience: 'unknown',
+        userOutcome: 'unknown',
+        wasTransformed: false,
+      }));
+    }
+
+    const result: ProductNiche[] = [];
+    for (const item of parsed) {
+      const idx = (item.source_index || 1) - 1;
+      if (idx < 0 || idx >= queries.length) continue;
+      const sourceQuery = queries[idx];
+      const products = item.products || [];
+
+      for (const product of products) {
+        result.push({
+          ...sourceQuery,
+          // Используем английский title для timeline enrichment (Google Trends)
+          query: product.title_en || sourceQuery.query,
+          productTitle: product.title_ru || product.title_en || sourceQuery.query,
+          productFormat: product.product_format || 'SaaS',
+          targetAudience: product.target_audience || 'unknown',
+          userOutcome: product.user_outcome || 'unknown',
+          wasTransformed: item.is_topic === true,
+        });
+      }
+    }
+
+    // Если GPT не вернул ничего полезного, fallback
+    if (result.length === 0) {
+      return queries.map(q => ({
+        ...q,
+        productTitle: q.query,
+        productFormat: 'unknown',
+        targetAudience: 'unknown',
+        userOutcome: 'unknown',
+        wasTransformed: false,
+      }));
+    }
+
+    return result;
+  } catch (err) {
+    console.error('GPT topic→product transformation error:', err);
+    return queries.map(q => ({
+      ...q,
+      productTitle: q.query,
+      productFormat: 'unknown',
+      targetAudience: 'unknown',
+      userOutcome: 'unknown',
+      wasTransformed: false,
+    }));
+  }
+}
+
+// ==========================================
+// Step 6: Enrich with Timeline Data
 // ==========================================
 async function enrichWithTimeline(
   queries: RisingQuery[],
@@ -517,10 +679,17 @@ async function enrichWithTimeline(
 }
 
 // ==========================================
-// Step 6: GPT Generate Final Trend Objects
+// Step 7: GPT Generate Final Trend Objects
+// Использует ProductNiche (уже продуктовые запросы) + timeline данные
 // ==========================================
+
+interface EnrichedProductNiche extends ProductNiche {
+  timelineGrowthRate: number;
+  googleTrendsUrl: string;
+}
+
 async function gptGenerateTrends(
-  queries: EnrichedQuery[],
+  queries: EnrichedProductNiche[],
 ): Promise<Array<{
   title: string;
   category: string;
@@ -528,35 +697,41 @@ async function gptGenerateTrends(
   growth_rate: number;
   why_trending: string;
   source_query?: string;
+  product_format?: string;
+  target_audience?: string;
+  user_outcome?: string;
+  was_transformed?: boolean;
 }>> {
   if (!OPENAI_API_KEY || queries.length === 0) return [];
 
   const queryData = queries.map((q, i) =>
-    `${i + 1}. Запрос: "${q.query}" | Недельный рост: ${q.timelineGrowthRate}% (реальные данные Google Trends, неделя к неделе) | Ниша: ${q.sourceNiche} | Категория: ${q.sourceCategory}`
+    `${i + 1}. Продукт: "${q.productTitle}" | Запрос: "${q.query}" | Формат: ${q.productFormat} | Аудитория: ${q.targetAudience} | Результат: ${q.userOutcome} | Недельный рост: ${q.timelineGrowthRate}% | Ниша: ${q.sourceNiche} | Категория: ${q.sourceCategory}`
   ).join('\n');
 
   try {
     const content = await callOpenAI([
       {
         role: 'system',
-        content: `Ты аналитик SaaS/Tech рынка. На основе растущих поисковых запросов из Google Trends, сформулируй конкретные ПРОДУКТОВЫЕ ИДЕИ.
+        content: `Ты аналитик SaaS/Tech рынка. Тебе даны КОНКРЕТНЫЕ продуктовые идеи, уже трансформированные из Google Trends.
 
-Для каждого запроса создай одну идею SaaS/инструмента. Ответь JSON массивом.
+Для каждого продукта создай финальное описание. Ответь JSON массивом.
 
 Каждый элемент:
 {
-  "source_query": "оригинальный запрос",
+  "source_index": 1,
   "title": "Название продукта на русском (3-7 слов, конкретное и понятное, БЕЗ кавычек)",
   "category": "одна из: AI & ML, SaaS, FinTech, EdTech, HealthTech, E-commerce, Technology, Business, Mobile Apps",
-  "why_trending": "2-3 предложения на русском: почему этот тренд растёт и какую проблему решает продукт."
+  "why_trending": "2-3 предложения на русском: почему растёт спрос и какую конкретную проблему решает продукт для целевой аудитории."
 }
 
 ВАЖНО:
 - title СТРОГО на русском языке, без кавычек, без скобок
-- title должен описывать ПРОДУКТ, а не поисковый запрос
-- В why_trending используй ТОЛЬКО процент "Недельный рост: X%" который дан в данных. НЕ ПРИДУМЫВАЙ другие проценты и числа! Если в данных написано "Недельный рост: 45%", пиши "рост интереса на 45% за неделю". Не пиши 1000%, 500% или другие числа которых нет в данных.
-- КРИТИЧЕСКИ ВАЖНО: если несколько запросов про ОДНУ предметную область (например, несколько запросов про HR, или про CRM, или про email) — создай ТОЛЬКО ОДНУ идею на эту область! НЕ создавай 3 разные HR-идеи из 3 HR-запросов.
-- Каждая идея должна быть из УНИКАЛЬНОЙ предметной области. Максимум 1 идея на область.`,
+- title должен описывать КОНКРЕТНЫЙ ПРОДУКТ (SaaS/инструмент/платформу), НЕ тему или тренд
+- Плохо: "Кибербезопасность для бизнеса" (тема). Хорошо: "Автоаудит кибербезопасности для SMB" (продукт)
+- Плохо: "Здоровое питание" (тема). Хорошо: "Планировщик питания с учётом бюджета" (продукт)
+- В why_trending используй ТОЛЬКО "Недельный рост: X%" из данных. НЕ ПРИДУМЫВАЙ другие проценты!
+- В why_trending упомяни целевую аудиторию и конкретный результат продукта
+- КРИТИЧЕСКИ ВАЖНО: если несколько продуктов из ОДНОЙ предметной области — оставь ОДИН лучший. Максимум 1 идея на область.`,
       },
       {
         role: 'user',
@@ -571,23 +746,17 @@ async function gptGenerateTrends(
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
 
-    // Build a lookup map: source_query → enriched query data
-    const queryMap = new Map<string, EnrichedQuery>();
-    for (const q of queries) {
-      queryMap.set(q.query.toLowerCase(), q);
-    }
-
     // Calculate scores from real data, not GPT hallucinations
-    return parsed.map((item: { title?: string; category?: string; why_trending?: string; source_query?: string }) => {
-      const sourceQuery = item.source_query?.toLowerCase() || '';
-      const enriched = queryMap.get(sourceQuery);
+    return parsed.map((item: { source_index?: number; title?: string; category?: string; why_trending?: string }) => {
+      const idx = (item.source_index || 1) - 1;
+      const source = idx >= 0 && idx < queries.length ? queries[idx] : null;
 
       // Calculate popularity_score from real growthValue (log scale 50-100)
-      const growthValue = enriched?.growthValue || 100;
+      const growthValue = source?.growthValue || 100;
       const calculatedPopularity = Math.min(100, Math.round(50 + Math.log10(Math.max(1, growthValue)) * 12));
 
       // Use real timeline growth rate
-      const calculatedGrowthRate = enriched?.timelineGrowthRate || 0;
+      const calculatedGrowthRate = source?.timelineGrowthRate || 0;
 
       // Clean title: remove quotes and ensure no wrapping punctuation
       let cleanTitle = (item.title || '').replace(/^["«»""]|["«»""]$/g, '').trim();
@@ -595,11 +764,15 @@ async function gptGenerateTrends(
 
       return {
         title: cleanTitle,
-        category: item.category || 'Technology',
+        category: item.category || source?.sourceCategory || 'Technology',
         popularity_score: calculatedPopularity,
         growth_rate: calculatedGrowthRate,
         why_trending: item.why_trending || '',
-        source_query: item.source_query,
+        source_query: source?.query || '',
+        product_format: source?.productFormat,
+        target_audience: source?.targetAudience,
+        user_outcome: source?.userOutcome,
+        was_transformed: source?.wasTransformed,
       };
     });
   } catch (err) {
@@ -686,18 +859,34 @@ export async function POST(request: NextRequest) {
     console.log(`[scan-trends] After semantic dedup: ${semanticDeduped.length} (removed ${semanticRemoved} semantic duplicates)`);
   }
 
-  // --- Step 5: Enrich with Timeline ---
-  const { enriched, callsUsed: enrichCalls } = await enrichWithTimeline(semanticDeduped, maxEnrich);
+  // --- Step 5: Topic → Product Transformation ---
+  const productNiches = await transformToProductNiches(semanticDeduped);
+  const transformedCount = productNiches.filter(p => p.wasTransformed).length;
+  console.log(`[scan-trends] Topic→Product: ${productNiches.length} products from ${semanticDeduped.length} queries (${transformedCount} transformed from topics)`);
+
+  // --- Step 6: Enrich with Timeline ---
+  const { enriched, callsUsed: enrichCalls } = await enrichWithTimeline(productNiches, maxEnrich);
   totalSerpApiCalls += enrichCalls;
   console.log(`[scan-trends] Enriched: ${enriched.length} (${enrichCalls} API calls)`);
 
-  // --- Step 6: GPT Generate Trend Objects ---
-  const allGeneratedTrends = await gptGenerateTrends(enriched);
+  // --- Step 7: GPT Generate Trend Objects ---
+  const enrichedProducts: EnrichedProductNiche[] = enriched.map(e => ({
+    ...(e as unknown as ProductNiche),
+    timelineGrowthRate: e.timelineGrowthRate,
+    googleTrendsUrl: e.googleTrendsUrl,
+    // Preserve ProductNiche fields from the enriched query
+    productTitle: (e as unknown as ProductNiche).productTitle || e.query,
+    productFormat: (e as unknown as ProductNiche).productFormat || 'unknown',
+    targetAudience: (e as unknown as ProductNiche).targetAudience || 'unknown',
+    userOutcome: (e as unknown as ProductNiche).userOutcome || 'unknown',
+    wasTransformed: (e as unknown as ProductNiche).wasTransformed || false,
+  }));
+  const allGeneratedTrends = await gptGenerateTrends(enrichedProducts);
   // Hard limit: max 10 ideas per scan
   const generatedTrends = allGeneratedTrends.slice(0, 10);
   console.log(`[scan-trends] Generated ${generatedTrends.length} trend objects (from ${allGeneratedTrends.length} GPT results, capped at 10)`);
 
-  // --- Step 7: Save to /api/trends ---
+  // --- Step 8: Save to /api/trends ---
   let savedCount = 0;
   let duplicatesSkipped = 0;
 
@@ -713,6 +902,10 @@ export async function POST(request: NextRequest) {
       status: 'active',
       first_detected_at: new Date().toISOString(),
       source_query: trend.source_query,
+      product_format: trend.product_format,
+      target_audience: trend.target_audience,
+      user_outcome: trend.user_outcome,
+      was_topic_transformed: trend.was_transformed,
     }));
 
     // POST to internal /api/trends endpoint
@@ -734,7 +927,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // --- Step 8: Enrich new trends with competition & entry cost ---
+  // --- Step 9: Enrich new trends with competition & entry cost ---
   let enrichedCount = 0;
   if (!dryRun && savedCount > 0) {
     const baseUrl = request.nextUrl.origin;

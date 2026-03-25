@@ -43,4 +43,10 @@ export interface Trend {
 
   // Regional data (Phase 2.5)
   region?: string; // 'global', 'us', 'eu', 'asia', 'ru', etc.
+
+  // Product niche classification (Topic → Product transformation)
+  product_format?: string;      // "SaaS", "API + дашборд", "мобильное приложение"
+  target_audience?: string;     // "малый бизнес", "HR-менеджеры", "фрилансеры"
+  user_outcome?: string;        // "отчёт об уязвимостях за 10 минут"
+  was_topic_transformed?: boolean; // true если исходный запрос был темой, а не продуктом
 }
