@@ -104,22 +104,8 @@ export default function ShowcaseClient({ initialTrends, lastUpdated: initialLast
     return () => clearInterval(refreshInterval);
   }, [fetchTrends]);
 
-  // Lazy auto-scan: trigger background scan if data is older than 6 hours
-  useEffect(() => {
-    if (!lastUpdated) return;
-    const hoursSince = (Date.now() - new Date(lastUpdated).getTime()) / (1000 * 60 * 60);
-    if (hoursSince > 6) {
-      console.log(`[showcase] Data is ${hoursSince.toFixed(1)}h old, triggering background scan...`);
-      fetch('/api/scan-trends', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ auto: true }),
-      }).then(() => {
-        // Refresh trends after scan completes
-        setTimeout(fetchTrends, 5000);
-      }).catch(() => { /* ignore scan errors */ });
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-scan ОТКЛЮЧЁН — расходовал SerpAPI при каждом визите на страницу.
+  // Сканирование только через кнопку "Новые идеи" или cron (vercel.json).
 
   // Timer for generating elapsed time
   useEffect(() => {
