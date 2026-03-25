@@ -450,6 +450,7 @@ async function gptDeduplicateQueries(
 // ==========================================
 
 interface ProductNiche extends RisingQuery {
+  originalQuery: string;      // оригинальный запрос из Google Trends (для timeline enrichment)
   productTitle: string;       // "Автоматический аудит кибербезопасности для SMB"
   productFormat: string;      // "SaaS", "API + дашборд", "мобильное приложение"
   targetAudience: string;     // "малый бизнес", "HR-менеджеры", "фрилансеры"
@@ -463,6 +464,7 @@ async function transformToProductNiches(
   if (!OPENAI_API_KEY || queries.length === 0) {
     return queries.map(q => ({
       ...q,
+      originalQuery: q.query,
       productTitle: q.query,
       productFormat: 'unknown',
       targetAudience: 'unknown',
@@ -537,6 +539,7 @@ async function transformToProductNiches(
     if (!jsonMatch) {
       return queries.map(q => ({
         ...q,
+        originalQuery: q.query,
         productTitle: q.query,
         productFormat: 'unknown',
         targetAudience: 'unknown',
@@ -549,6 +552,7 @@ async function transformToProductNiches(
     if (!Array.isArray(parsed)) {
       return queries.map(q => ({
         ...q,
+        originalQuery: q.query,
         productTitle: q.query,
         productFormat: 'unknown',
         targetAudience: 'unknown',
@@ -567,8 +571,11 @@ async function transformToProductNiches(
       for (const product of products) {
         result.push({
           ...sourceQuery,
-          // Используем английский title для timeline enrichment (Google Trends)
-          query: product.title_en || sourceQuery.query,
+          // ВАЖНО: НЕ меняем query — он используется для Google Trends timeline enrichment
+          // Оригинальный запрос ("cybersecurity tips") имеет данные в Google Trends,
+          // а трансформированный ("Automated cybersecurity audit for SMB") — нет.
+          query: sourceQuery.query,
+          originalQuery: sourceQuery.query,
           productTitle: product.title_ru || product.title_en || sourceQuery.query,
           productFormat: product.product_format || 'SaaS',
           targetAudience: product.target_audience || 'unknown',
@@ -582,6 +589,7 @@ async function transformToProductNiches(
     if (result.length === 0) {
       return queries.map(q => ({
         ...q,
+        originalQuery: q.query,
         productTitle: q.query,
         productFormat: 'unknown',
         targetAudience: 'unknown',
@@ -595,6 +603,7 @@ async function transformToProductNiches(
     console.error('GPT topic→product transformation error:', err);
     return queries.map(q => ({
       ...q,
+      originalQuery: q.query,
       productTitle: q.query,
       productFormat: 'unknown',
       targetAudience: 'unknown',
@@ -875,6 +884,7 @@ export async function POST(request: NextRequest) {
     timelineGrowthRate: e.timelineGrowthRate,
     googleTrendsUrl: e.googleTrendsUrl,
     // Preserve ProductNiche fields from the enriched query
+    originalQuery: (e as unknown as ProductNiche).originalQuery || e.query,
     productTitle: (e as unknown as ProductNiche).productTitle || e.query,
     productFormat: (e as unknown as ProductNiche).productFormat || 'unknown',
     targetAudience: (e as unknown as ProductNiche).targetAudience || 'unknown',
