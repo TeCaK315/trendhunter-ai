@@ -130,8 +130,11 @@ interface CompetitionDataQuality {
   total_reviews_collected: number;
   validated_relevant: number;
   irrelevant_filtered: number;
+  non_product_domains_filtered: number; // агрегаторы/retail отфильтрованные до анализа
   classification_failed: boolean;
   cross_validated_complaints: number;   // жалобы подтверждённые у 2+ конкурентов
+  is_informational_niche: boolean;      // commercial_intent < 0.3 — ниша информационная
+  commercial_intent_ratio: number | null;
   overall_confidence: "high" | "medium" | "low";
 }
 
@@ -160,6 +163,56 @@ interface CompetitionBlockOutput {
     layer2: Layer2Data;
     layer3: Layer3Data;
   };
+}
+
+// ——————————————————————————————————————————————————————————————
+// ФИЛЬТР НЕРЕЛЕВАНТНЫХ ДОМЕНОВ
+// Агрегаторы, retail, новостные сайты — не конкуренты-продукты
+// ——————————————————————————————————————————————————————————————
+
+const AGGREGATOR_DOMAINS = [
+  'yelp.com', 'tripadvisor.com', 'yellowpages.com', 'bbb.org',
+  'maps.google.com', 'google.com/maps',
+  'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'tiktok.com',
+  'linkedin.com', 'pinterest.com', 'reddit.com',
+  'youtube.com', 'medium.com', 'substack.com',
+  'wikipedia.org', 'wikihow.com',
+  'amazon.com', 'ebay.com', 'alibaba.com', 'aliexpress.com',
+  'walmart.com', 'target.com', 'bestbuy.com',
+  'craigslist.org', 'nextdoor.com',
+  'quora.com', 'stackoverflow.com',
+  'news.google.com', 'news.yahoo.com',
+];
+
+const RETAIL_CHAINS = [
+  'lidl.com', 'lidl.de', 'aldi.com', 'aldi.de',
+  'carrefour.com', 'tesco.com', 'costco.com',
+  'kroger.com', 'walgreens.com', 'cvs.com',
+  'homedepot.com', 'lowes.com', 'ikea.com',
+  'mcdonalds.com', 'starbucks.com', 'subway.com',
+];
+
+const RETAIL_SIGNALS_IN_SNIPPET = [
+  'store locator', 'grocery', 'restaurant', 'menu',
+  'hours', 'directions', 'delivery', 'pickup',
+  'nearest store', 'find a store', 'locations',
+  'opening hours', 'store hours',
+];
+
+function isNonProductDomain(domain: string, snippet?: string): boolean {
+  const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
+
+  // Проверка по спискам
+  if (AGGREGATOR_DOMAINS.some(d => normalizedDomain.includes(d))) return true;
+  if (RETAIL_CHAINS.some(d => normalizedDomain.includes(d))) return true;
+
+  // Проверка сниппета на retail-сигналы
+  if (snippet) {
+    const lowerSnippet = snippet.toLowerCase();
+    if (RETAIL_SIGNALS_IN_SNIPPET.some(s => lowerSnippet.includes(s))) return true;
+  }
+
+  return false;
 }
 
 // ——————————————————————————————————————————————————————————————
@@ -1063,8 +1116,30 @@ export async function POST(req: NextRequest) {
     const block2_context = block2Result.data.block_context;
     const block3_context = block3Result.data?.block_context || null;
 
-    const competitors: CompetitorSignal[] =
+    const rawCompetitors: CompetitorSignal[] =
       block2_context.competitors_found || [];
+
+    // —— Фильтр 1: агрегаторные/retail домены ————————————
+    const competitors = rawCompetitors.filter(c => {
+      if (isNonProductDomain(c.domain)) {
+        console.log(`[Block4] Filtered non-product domain: ${c.domain}`);
+        return false;
+      }
+      return true;
+    });
+
+    const filteredDomainCount = rawCompetitors.length - competitors.length;
+    if (filteredDomainCount > 0) {
+      console.log(`[Block4] Filtered ${filteredDomainCount} non-product domains from ${rawCompetitors.length} total`);
+    }
+
+    // —— Фильтр 2: commercial intent check ————————————
+    const commercialIntentRatio: number | null = block2_context.commercial_intent_ratio ?? null;
+    const isInformationalNiche = commercialIntentRatio !== null && commercialIntentRatio < 0.3;
+
+    if (isInformationalNiche) {
+      console.log(`[Block4] LOW commercial intent (${(commercialIntentRatio! * 100).toFixed(0)}%) — niche may be informational, not product-based`);
+    }
 
     if (competitors.length === 0) {
       console.log(
@@ -1089,6 +1164,25 @@ export async function POST(req: NextRequest) {
     // —— Диагноз ———————————————————————————————
     const diagnosisResult = makeCompetitionDiagnosis(layer1, layer2, layer3);
 
+    // Если ниша информационная — понижаем уверенность и добавляем предупреждение
+    if (isInformationalNiche) {
+      diagnosisResult.key_factors.push(
+        `⚠ Низкий коммерческий intent (${(commercialIntentRatio! * 100).toFixed(0)}%) — ниша может быть информационной, а не продуктовой. Конкуренты могут быть нерелевантны.`
+      );
+      // Понижаем score если он был высоким на основе ненадёжных данных
+      if (diagnosisResult.score >= 7) {
+        diagnosisResult.score = Math.max(4, diagnosisResult.score - 2);
+        diagnosisResult.diagnosis = "yellow";
+      }
+    }
+
+    // Если все конкуренты были отфильтрованы как non-product
+    if (filteredDomainCount > 0 && competitors.length === 0 && rawCompetitors.length > 0) {
+      diagnosisResult.key_factors.push(
+        `Все ${rawCompetitors.length} найденных доменов — агрегаторы/retail, не продукты в нише. Попробуйте уточнить нишу.`
+      );
+    }
+
     // —— block_context с полями для Блока 5 ————————————
     const topCompetitor = layer1.competitors[0];
 
@@ -1102,8 +1196,11 @@ export async function POST(req: NextRequest) {
       total_reviews_collected: layer2Quality.totalCollected,
       validated_relevant: layer2Quality.totalRelevant,
       irrelevant_filtered: layer2Quality.totalCollected - layer2Quality.totalRelevant,
+      non_product_domains_filtered: filteredDomainCount,
       classification_failed: layer2Quality.anyFailed,
       cross_validated_complaints: layer2Quality.crossValidated,
+      is_informational_niche: isInformationalNiche,
+      commercial_intent_ratio: commercialIntentRatio,
       overall_confidence: overallConfidence,
     };
 
