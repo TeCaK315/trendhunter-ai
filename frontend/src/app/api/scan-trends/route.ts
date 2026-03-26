@@ -1,66 +1,82 @@
 /**
- * /api/scan-trends — Variant A: Real Google Trends-Based Trend Discovery
+ * /api/scan-trends — Real Google Trends-Based Trend Discovery
  *
  * Pipeline:
- * 1. Scan seed niches → SerpAPI google_trends RELATED_QUERIES → rising queries
+ * 1. Scan ALL seed niches → SerpAPI google_trends RELATED_QUERIES → rising queries
  * 2. Filter noise (non-product queries)
  * 3. Deduplicate across niches
  * 4. GPT classify: "can this be a product/SaaS?"
  * 4.5. GPT semantic dedup
- * 5. Topic → Product transformation (NEW: темы → конкретные продуктовые ниши)
- * 6. Enrich with timeline data (growth_rate)
+ * 5. Topic → Product transformation (темы → конкретные продуктовые ниши)
+ * 6. Enrich with timeline data (top-12 only, growth_rate)
  * 7. GPT generate final Trend objects
- * 8. Save to /api/trends + enrich
+ * 8. Check scan memory → skip already-seen queries
+ * 9. Save to /api/trends + enrich
  *
- * Budget: ~80 SerpAPI calls per scan cycle (5000/month plan → ~2 cycles/day)
+ * Budget: ~28 SerpAPI calls per scan (6 seed + 12 timeline + 10 enrich)
+ * 5000/month → ~5-6 scans/day
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { kv } from '@vercel/kv';
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const SCAN_SECRET = process.env.SCAN_SECRET || '';
 
+// ==========================================
+// Scan Memory: track seen queries across scans
+// ==========================================
+const SCAN_MEMORY_KEY = 'trendhunter:scan_memory';
+const SCAN_MEMORY_MAX_AGE_DAYS = 14; // forget queries older than 2 weeks
+
+interface ScanMemoryEntry {
+  query: string;
+  seenAt: string; // ISO date
+}
+
+function normalizeQueryForMemory(query: string): string {
+  return query.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+async function loadScanMemory(): Promise<Map<string, ScanMemoryEntry>> {
+  const isKV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  if (!isKV) return new Map();
+
+  try {
+    const entries = await kv.get<ScanMemoryEntry[]>(SCAN_MEMORY_KEY);
+    if (!entries) return new Map();
+
+    const cutoff = Date.now() - SCAN_MEMORY_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+    const map = new Map<string, ScanMemoryEntry>();
+    for (const entry of entries) {
+      if (new Date(entry.seenAt).getTime() > cutoff) {
+        map.set(normalizeQueryForMemory(entry.query), entry);
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+async function saveScanMemory(memory: Map<string, ScanMemoryEntry>): Promise<void> {
+  const isKV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  if (!isKV) return;
+
+  try {
+    const entries = Array.from(memory.values());
+    await kv.set(SCAN_MEMORY_KEY, entries);
+  } catch (err) {
+    console.error('[scan-memory] Save error:', err);
+  }
+}
+
 // Category → seed niches for scanning
 const CATEGORY_NICHES: Record<string, string[]> = {
-  'AI & ML': [
-    'AI chatbot', 'AI writing', 'AI code review', 'AI customer service',
-    'AI voice assistant', 'AI image generation', 'AI data analysis',
-    'AI automation', 'machine learning platform', 'AI agent',
-  ],
   'SaaS': [
-    'CRM software', 'invoice automation', 'HR software', 'sales automation',
-    'marketing automation', 'email automation', 'subscription management',
-    'project management', 'workflow automation', 'team collaboration',
-  ],
-  'FinTech': [
-    'cryptocurrency trading', 'personal finance app', 'investment platform',
-    'payment processing', 'expense tracking', 'financial planning',
-    'tax automation', 'banking API', 'budgeting app',
-  ],
-  'EdTech': [
-    'online learning platform', 'AI tutoring', 'language learning',
-    'skill assessment', 'course creation', 'student engagement',
-    'education technology', 'coding bootcamp',
-  ],
-  'HealthTech': [
-    'mental health app', 'fitness tracking', 'telemedicine',
-    'health monitoring', 'medical scheduling', 'wellness app',
-    'patient engagement', 'health data',
-  ],
-  'E-commerce': [
-    'dropshipping', 'inventory management', 'product recommendation',
-    'price tracking', 'ecommerce analytics', 'cart abandonment',
-    'marketplace platform', 'social commerce',
-  ],
-  'Technology': [
-    'no code', 'API integration', 'developer tools', 'cloud platform',
-    'cybersecurity', 'DevOps', 'browser extension', 'productivity tool',
-  ],
-  'Business': [
-    'business analytics', 'supply chain management', 'franchise software',
-    'competitive intelligence', 'business process automation', 'consulting tools',
-    'market research tool', 'lead generation',
+    'CRM software', 'marketing automation', 'HR software',
+    'accounting software', 'project management', 'workflow automation',
   ],
 };
 
@@ -618,7 +634,7 @@ async function transformToProductNiches(
 // ==========================================
 async function enrichWithTimeline(
   queries: RisingQuery[],
-  maxEnrich: number = 25,
+  maxEnrich: number = 12,
 ): Promise<{ enriched: EnrichedQuery[]; callsUsed: number }> {
   if (!SERPAPI_KEY) return { enriched: [], callsUsed: 0 };
 
@@ -814,13 +830,16 @@ export async function POST(request: NextRequest) {
   }
 
   const categories = (body.categories as string[]) || Object.keys(CATEGORY_NICHES);
-  const maxNichesPerCategory = (body.maxNichesPerCategory as number) || 5;
-  const maxEnrich = (body.maxEnrich as number) || 10;
+  const maxEnrich = (body.maxEnrich as number) || 12;
   const dryRun = (body.dryRun as boolean) || false;
 
   let totalSerpApiCalls = 0;
 
-  // --- Step 1: Scan Rising Queries ---
+  // --- Load scan memory (seen queries from previous scans) ---
+  const scanMemory = await loadScanMemory();
+  console.log(`[scan-trends] Scan memory: ${scanMemory.size} queries from last ${SCAN_MEMORY_MAX_AGE_DAYS} days`);
+
+  // --- Step 1: Scan Rising Queries (all seeds, no random sampling) ---
   console.log(`[scan-trends] Starting scan for categories: ${categories.join(', ')}`);
   const allRisingQueries: RisingQuery[] = [];
 
@@ -828,13 +847,8 @@ export async function POST(request: NextRequest) {
     const niches = CATEGORY_NICHES[category];
     if (!niches) continue;
 
-    // Pick random subset of niches to conserve API budget
-    const selectedNiches = [...niches]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, maxNichesPerCategory);
-
-    // Fetch in parallel per category
-    const fetchPromises = selectedNiches.map(niche =>
+    // Fetch ALL seeds in parallel (6 seeds = 6 SerpAPI calls)
+    const fetchPromises = niches.map(niche =>
       fetchRisingQueries(niche, category)
     );
     const results = await Promise.all(fetchPromises);
@@ -852,8 +866,15 @@ export async function POST(request: NextRequest) {
   const filteredOut = allRisingQueries.length - filtered.length;
   console.log(`[scan-trends] After noise filter: ${filtered.length} (removed ${filteredOut})`);
 
+  // --- Step 2.5: Filter already-seen queries (scan memory) ---
+  const unseen = filtered.filter(q => !scanMemory.has(normalizeQueryForMemory(q.query)));
+  const memoryFiltered = filtered.length - unseen.length;
+  if (memoryFiltered > 0) {
+    console.log(`[scan-trends] Scan memory filtered: ${memoryFiltered} already-seen queries (${unseen.length} remaining)`);
+  }
+
   // --- Step 3: Deduplicate ---
-  const deduplicated = deduplicateQueries(filtered);
+  const deduplicated = deduplicateQueries(unseen);
   console.log(`[scan-trends] After dedup: ${deduplicated.length}`);
 
   // --- Step 4: GPT Classification ---
@@ -896,7 +917,15 @@ export async function POST(request: NextRequest) {
   const generatedTrends = allGeneratedTrends.slice(0, 10);
   console.log(`[scan-trends] Generated ${generatedTrends.length} trend objects (from ${allGeneratedTrends.length} GPT results, capped at 10)`);
 
-  // --- Step 8: Save to /api/trends ---
+  // --- Step 8: Update scan memory with all queries we processed ---
+  const now = new Date().toISOString();
+  for (const q of unseen) {
+    scanMemory.set(normalizeQueryForMemory(q.query), { query: q.query, seenAt: now });
+  }
+  await saveScanMemory(scanMemory);
+  console.log(`[scan-trends] Scan memory updated: ${scanMemory.size} total entries`);
+
+  // --- Step 9: Save to /api/trends ---
   let savedCount = 0;
   let duplicatesSkipped = 0;
 
@@ -937,7 +966,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // --- Step 9: Enrich new trends with competition & entry cost ---
+  // --- Step 10: Enrich new trends with competition & entry cost ---
   let enrichedCount = 0;
   if (!dryRun && savedCount > 0) {
     const baseUrl = request.nextUrl.origin;
@@ -1053,16 +1082,15 @@ export async function GET() {
     description: 'POST to this endpoint to scan Google Trends for rising product opportunities',
     params: {
       categories: 'string[] — categories to scan (default: all)',
-      maxNichesPerCategory: 'number — niches per category (default: 5)',
-      maxEnrich: 'number — max queries to enrich with timeline (default: 25)',
+      maxEnrich: 'number — max queries to enrich with timeline (default: 12)',
       dryRun: 'boolean — if true, don\'t save to trends (default: false)',
       secret: 'string — auth secret (if SCAN_SECRET env is set)',
     },
     budget: {
-      estimatedCallsPerScan: '~80 SerpAPI calls',
+      estimatedCallsPerScan: '~28 SerpAPI calls (6 seed + 12 timeline + 10 enrich)',
       monthlyBudget: '5000 calls ($75 plan)',
-      maxScansPerMonth: '~62 scans',
-      maxScansPerDay: '~2 scans',
+      maxScansPerMonth: '~178 scans',
+      maxScansPerDay: '~5-6 scans',
     },
   });
 }
