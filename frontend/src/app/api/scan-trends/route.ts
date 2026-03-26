@@ -415,27 +415,32 @@ async function gptDeduplicateQueries(
     const content = await callOpenAI([
       {
         role: 'system',
-        content: `Тебе дан список поисковых запросов. Найди группы запросов, которые относятся к ОДНОЙ И ТОЙ ЖЕ ПРЕДМЕТНОЙ ОБЛАСТИ / ОДНОМУ ТИПУ ПРОДУКТА.
+        content: `Тебе дан список поисковых запросов. Найди НАСТОЯЩИЕ дубликаты — запросы которые приведут к созданию ИДЕНТИЧНОГО продукта для ИДЕНТИЧНОЙ аудитории.
 
-КРИТЕРИЙ ДУБЛИКАТА: если два запроса приведут к созданию ОДНОГО И ТОГО ЖЕ типа продукта/SaaS — это дубликаты.
+КРИТЕРИЙ ДУБЛИКАТА — оба условия одновременно:
+1. Решают ОДНУ И ТУ ЖЕ проблему для ОДНОЙ И ТОЙ ЖЕ целевой аудитории
+2. Имеют одинаковую core-функцию продукта
 
-Примеры дубликатов (ОДНА предметная область):
-- "CRM comparison tool" и "compare CRM features" и "best CRM software" — всё про CRM
-- "AI email writer" и "email writing AI" и "ai tool for writing emails" — всё про email
-- "invoice automation" и "automated invoicing" и "auto invoice generator" — всё про invoicing
-- "HR benefits software" и "HR payroll software" и "HR software list" и "HR management tool" — ВСЁ про HR софт, это ОДНА идея!
-- "expense tracking app" и "expense management software" и "business expense tracker" — всё про expense tracking
+Разная целевая аудитория = РАЗНЫЙ продукт, даже если используется одно слово.
 
-НЕ дубликаты (РАЗНЫЕ предметные области):
-- "CRM comparison" и "CRM integration" — comparison vs integration, РАЗНЫЕ задачи
-- "email marketing" и "email security" — marketing vs security
+Примеры ДУБЛЕЙ (убирать):
+- "best marketing automation platforms" и "top marketing automation tools" — одна аудитория, одна функция, разные формулировки
+- "AI email writer" и "email writing AI" — идентичный продукт
+- "accounting software solutions" и "best accounting software" — общие запросы без конкретной аудитории
 
-БУДЬ ОЧЕНЬ СТРОГИМ: если запросы из одной предметной области (HR, CRM, email, invoice и т.д.) — группируй их!
+Примеры НЕ-ДУБЛЕЙ (оставлять оба):
+- "restaurant accounting software" и "accounting software for builders" — разная аудитория, разные требования
+- "ai accounting software" и "property management accounting software" — разная технология, разная аудитория
+- "HR payroll software" и "HR recruiting tool" — разные функции
+- "CRM comparison" и "CRM integration" — разные задачи
+- "ai for project management" и "ai accounting software" — разные домены
 
-Для каждой группы оставь ОДИН лучший запрос (наиболее конкретный).
+ВАЖНО: вертикальные ниши (для ресторанов, строителей, недвижимости, SMB) — это РАЗНЫЕ продукты!
+
+Для каждой группы дублей оставь ОДИН лучший (наиболее конкретный).
 
 Верни JSON массив номеров запросов, которые нужно ОСТАВИТЬ:
-[1, 2, 5, 6, 7, 9, 10]`,
+[1, 3, 4, 5, 6, 7, 8, 9, 10]`,
       },
       {
         role: 'user',
@@ -665,8 +670,11 @@ async function enrichWithTimeline(
 
         const data = await response.json();
         const timelineData = data.interest_over_time?.timeline_data || [];
-        // Need at least 14 days of data for week-over-week comparison
-        if (timelineData.length < 10) return null;
+        // Need at least some data for growth comparison
+        if (timelineData.length < 4) {
+          console.log(`[scan-trends] Timeline skip: "${q.query}" — only ${timelineData.length} data points`);
+          return null;
+        }
 
         // Extract daily values
         const values = timelineData.map((point: { values?: Array<{ extracted_value?: number; value?: string }> }) => {
@@ -674,13 +682,14 @@ async function enrichWithTimeline(
           return vals[0]?.extracted_value ?? parseInt(vals[0]?.value || '0') ?? 0;
         });
 
-        // Week-over-week: last 7 days vs previous 7 days
-        const lastWeek = values.slice(-7);
-        const prevWeek = values.slice(-14, -7);
+        // Growth comparison: split data into recent half vs older half
+        const mid = Math.floor(values.length / 2);
+        const recentHalf = values.slice(mid);
+        const olderHalf = values.slice(0, mid);
 
-        const avgLastWeek = lastWeek.reduce((s: number, v: number) => s + v, 0) / lastWeek.length || 0;
-        const avgPrevWeek = prevWeek.reduce((s: number, v: number) => s + v, 0) / prevWeek.length || 1;
-        const timelineGrowthRate = Math.round(((avgLastWeek - avgPrevWeek) / avgPrevWeek) * 100);
+        const avgRecent = recentHalf.reduce((s: number, v: number) => s + v, 0) / recentHalf.length || 0;
+        const avgOlder = olderHalf.reduce((s: number, v: number) => s + v, 0) / olderHalf.length || 1;
+        const timelineGrowthRate = Math.round(((avgRecent - avgOlder) / Math.max(avgOlder, 1)) * 100);
 
         const searchMetadata = data.search_metadata as { google_trends_url?: string } | undefined;
 
@@ -730,7 +739,7 @@ async function gptGenerateTrends(
   if (!OPENAI_API_KEY || queries.length === 0) return [];
 
   const queryData = queries.map((q, i) =>
-    `${i + 1}. Продукт: "${q.productTitle}" | Запрос: "${q.query}" | Формат: ${q.productFormat} | Аудитория: ${q.targetAudience} | Результат: ${q.userOutcome} | Недельный рост: ${q.timelineGrowthRate}% | Ниша: ${q.sourceNiche} | Категория: ${q.sourceCategory}`
+    `${i + 1}. Продукт: "${q.productTitle}" | Запрос: "${q.query}" | Формат: ${q.productFormat} | Аудитория: ${q.targetAudience} | Результат: ${q.userOutcome} | Годовой рост: ${q.growth} | Месячная динамика: ${q.timelineGrowthRate}% | Ниша: ${q.sourceNiche} | Категория: ${q.sourceCategory}`
   ).join('\n');
 
   try {
@@ -750,13 +759,12 @@ async function gptGenerateTrends(
 }
 
 ВАЖНО:
+- Создай описание для КАЖДОГО продукта из списка. Не пропускай ни одного.
 - title СТРОГО на русском языке, без кавычек, без скобок
 - title должен описывать КОНКРЕТНЫЙ ПРОДУКТ (SaaS/инструмент/платформу), НЕ тему или тренд
 - Плохо: "Кибербезопасность для бизнеса" (тема). Хорошо: "Автоаудит кибербезопасности для SMB" (продукт)
-- Плохо: "Здоровое питание" (тема). Хорошо: "Планировщик питания с учётом бюджета" (продукт)
-- В why_trending используй ТОЛЬКО "Недельный рост: X%" из данных. НЕ ПРИДУМЫВАЙ другие проценты!
-- В why_trending упомяни целевую аудиторию и конкретный результат продукта
-- КРИТИЧЕСКИ ВАЖНО: если несколько продуктов из ОДНОЙ предметной области — оставь ОДИН лучший. Максимум 1 идея на область.`,
+- В why_trending упомяни годовой рост из данных и целевую аудиторию. НЕ ПРИДУМЫВАЙ свои проценты!
+- Если несколько продуктов из ОДНОЙ предметной области — оставь ОДИН лучший.`,
       },
       {
         role: 'user',
@@ -766,10 +774,18 @@ async function gptGenerateTrends(
 
     // Extract JSON array from response
     const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
+    if (!jsonMatch) {
+      console.error('[scan-trends] GPT generate: no JSON array found in response:', content.slice(0, 500));
+      return [];
+    }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      console.error('[scan-trends] GPT generate: parsed result is not array');
+      return [];
+    }
+
+    console.log(`[scan-trends] GPT generate: parsed ${parsed.length} items`);
 
     // Calculate scores from real data, not GPT hallucinations
     return parsed.map((item: { source_index?: number; title?: string; category?: string; why_trending?: string }) => {
@@ -881,12 +897,14 @@ export async function POST(request: NextRequest) {
   const classified = await gptClassifyQueries(deduplicated);
   const gptFiltered = deduplicated.length - classified.length;
   console.log(`[scan-trends] After GPT filter: ${classified.length} (GPT removed ${gptFiltered})`);
+  console.log(`[scan-trends] GPT kept:`, classified.map(q => `"${q.query}" (${q.growth})`));
 
   // --- Step 4.5: GPT Semantic Dedup ---
   const semanticDeduped = await gptDeduplicateQueries(classified);
   const semanticRemoved = classified.length - semanticDeduped.length;
   if (semanticRemoved > 0) {
     console.log(`[scan-trends] After semantic dedup: ${semanticDeduped.length} (removed ${semanticRemoved} semantic duplicates)`);
+    console.log(`[scan-trends] Semantic kept:`, semanticDeduped.map(q => `"${q.query}"`));
   }
 
   // --- Step 5: Topic → Product Transformation ---
@@ -912,6 +930,7 @@ export async function POST(request: NextRequest) {
     userOutcome: (e as unknown as ProductNiche).userOutcome || 'unknown',
     wasTransformed: (e as unknown as ProductNiche).wasTransformed || false,
   }));
+  console.log(`[scan-trends] Sending ${enrichedProducts.length} products to GPT:`, enrichedProducts.map(p => `"${p.productTitle}" (${p.query}, growth=${p.timelineGrowthRate}%)`));
   const allGeneratedTrends = await gptGenerateTrends(enrichedProducts);
   // Hard limit: max 10 ideas per scan
   const generatedTrends = allGeneratedTrends.slice(0, 10);
