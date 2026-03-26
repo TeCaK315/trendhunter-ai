@@ -27,7 +27,7 @@ interface EnrichmentResult {
 
 export async function POST(request: NextRequest) {
   try {
-    const { title, category, growth_rate, source_query } = await request.json();
+    const { title, category, growth_rate, source_query, source_growth } = await request.json();
 
     if (!title) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
@@ -233,7 +233,7 @@ Respond ONLY with JSON:
               },
               {
                 role: 'user',
-                content: `Niche: "${title}" (${category || 'Technology'}). Competition: ${competitionCtx} (${playersCtx} players). Growth: ${growth_rate ?? 'unknown'}%. Entry cost: ${costCtx}.`,
+                content: `Niche: "${title}" (${category || 'Technology'}). Competition: ${competitionCtx} (${playersCtx} players). Annual growth: ${source_growth || growth_rate + '%' || 'unknown'} (from Google Trends rising queries). Monthly trend: ${growth_rate ?? 'unknown'}%. Entry cost: ${costCtx}. NOTE: Annual growth is the PRIMARY signal. Monthly fluctuations are normal — do NOT give no_go just because monthly is negative while annual is strong.`,
               },
             ],
           }),

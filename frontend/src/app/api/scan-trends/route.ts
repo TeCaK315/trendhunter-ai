@@ -643,8 +643,15 @@ async function enrichWithTimeline(
 ): Promise<{ enriched: EnrichedQuery[]; callsUsed: number }> {
   if (!SERPAPI_KEY) return { enriched: [], callsUsed: 0 };
 
+  // Gate: only enrich queries with annual growth >= 100% (saves SerpAPI calls on weak signals)
+  const MIN_ANNUAL_GROWTH = 100;
+  const qualified = queries.filter(q => q.growthValue >= MIN_ANNUAL_GROWTH);
+  if (qualified.length < queries.length) {
+    console.log(`[scan-trends] Growth gate: ${queries.length - qualified.length} queries below ${MIN_ANNUAL_GROWTH}% annual growth removed`);
+  }
+
   // Sort by growth (highest first), take top N
-  const sorted = [...queries].sort((a, b) => b.growthValue - a.growthValue);
+  const sorted = [...qualified].sort((a, b) => b.growthValue - a.growthValue);
   const toEnrich = sorted.slice(0, maxEnrich);
   let callsUsed = 0;
 
@@ -729,8 +736,10 @@ async function gptGenerateTrends(
   category: string;
   popularity_score: number;
   growth_rate: number;
+  growth_rate_monthly: number;
   why_trending: string;
   source_query?: string;
+  source_growth?: string;
   product_format?: string;
   target_audience?: string;
   user_outcome?: string;
@@ -746,7 +755,7 @@ async function gptGenerateTrends(
     const content = await callOpenAI([
       {
         role: 'system',
-        content: `Ты аналитик SaaS/Tech рынка. Тебе даны КОНКРЕТНЫЕ продуктовые идеи, уже трансформированные из Google Trends.
+        content: `Ты аналитик SaaS/Tech рынка. Тебе даны продуктовые идеи из Google Trends с реальными данными о росте.
 
 Для каждого продукта создай финальное описание. Ответь JSON массивом.
 
@@ -755,16 +764,19 @@ async function gptGenerateTrends(
   "source_index": 1,
   "title": "Название продукта на русском (3-7 слов, конкретное и понятное, БЕЗ кавычек)",
   "category": "одна из: AI & ML, SaaS, FinTech, EdTech, HealthTech, E-commerce, Technology, Business, Mobile Apps",
-  "why_trending": "2-3 предложения на русском: почему растёт спрос и какую конкретную проблему решает продукт для целевой аудитории."
+  "why_trending": "Одно предложение на русском."
 }
 
-ВАЖНО:
-- Создай описание для КАЖДОГО продукта из списка. Не пропускай ни одного.
-- title СТРОГО на русском языке, без кавычек, без скобок
-- title должен описывать КОНКРЕТНЫЙ ПРОДУКТ (SaaS/инструмент/платформу), НЕ тему или тренд
-- Плохо: "Кибербезопасность для бизнеса" (тема). Хорошо: "Автоаудит кибербезопасности для SMB" (продукт)
-- В why_trending упомяни годовой рост из данных и целевую аудиторию. НЕ ПРИДУМЫВАЙ свои проценты!
-- Если несколько продуктов из ОДНОЙ предметной области — оставь ОДИН лучший.`,
+ПРАВИЛА:
+- Создай описание для КАЖДОГО продукта. Не пропускай ни одного.
+- title СТРОГО на русском, без кавычек. Должен описывать КОНКРЕТНЫЙ ПРОДУКТ, не тему.
+- why_trending — ОДНО предложение. Пиши ТОЛЬКО то, что можно вывести из запроса и его роста:
+  ✅ "Спрос на бухгалтерские инструменты для ресторанов вырос на 250% за год — ниша специализированного учёта активно растёт."
+  ✅ "AI-инструменты для бухгалтерии выросли на 600% — бизнес ищет автоматизацию рутинного учёта."
+  ❌ "Рестораны массово переходят на цифровой учёт после изменений в налоговом законодательстве." (откуда ты это знаешь?)
+  ❌ "Позволяет экономить время и ресурсы" (общие слова без данных)
+- Используй ТОЛЬКО годовой рост из данных. НЕ ПРИДУМЫВАЙ причин, законов, событий.
+- Если несколько продуктов из ОДНОЙ предметной области с ОДИНАКОВОЙ аудиторией — оставь ОДИН лучший.`,
       },
       {
         role: 'user',
@@ -807,9 +819,11 @@ async function gptGenerateTrends(
         title: cleanTitle,
         category: item.category || source?.sourceCategory || 'Technology',
         popularity_score: calculatedPopularity,
-        growth_rate: calculatedGrowthRate,
+        growth_rate: growthValue, // Annual growth from Google Trends (primary)
+        growth_rate_monthly: calculatedGrowthRate, // Monthly timeline trend (secondary context)
         why_trending: item.why_trending || '',
         source_query: source?.query || '',
+        source_growth: source?.growth || '', // Original growth label ("Breakout", "+1,700%")
         product_format: source?.productFormat,
         target_audience: source?.targetAudience,
         user_outcome: source?.userOutcome,
@@ -960,6 +974,7 @@ export async function POST(request: NextRequest) {
       status: 'active',
       first_detected_at: new Date().toISOString(),
       source_query: trend.source_query,
+      source_growth: trend.source_growth,
       product_format: trend.product_format,
       target_audience: trend.target_audience,
       user_outcome: trend.user_outcome,
@@ -1003,7 +1018,7 @@ export async function POST(request: NextRequest) {
         // Enrich in parallel batches of 3
         for (let i = 0; i < unenriched.length; i += 3) {
           const batch = unenriched.slice(i, i + 3);
-          const enrichPromises = batch.map(async (trend: { id: string; title: string; category: string; growth_rate?: number; source_query?: string }) => {
+          const enrichPromises = batch.map(async (trend: { id: string; title: string; category: string; growth_rate?: number; source_query?: string; source_growth?: string }) => {
             try {
               const enrichRes = await fetch(`${baseUrl}/api/enrich-trend`, {
                 method: 'POST',
@@ -1013,6 +1028,7 @@ export async function POST(request: NextRequest) {
                   category: trend.category,
                   growth_rate: trend.growth_rate,
                   source_query: trend.source_query,
+                  source_growth: trend.source_growth,
                 }),
               });
               if (enrichRes.ok) {
