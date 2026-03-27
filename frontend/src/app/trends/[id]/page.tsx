@@ -33,6 +33,7 @@ import MonitoringDashboard from '@/components/blocks/MonitoringDashboard';
 import LandingPageGenerator from '@/components/blocks/LandingPageGenerator';
 import DashboardSidebar from '@/components/layout/DashboardSidebar';
 import DifferentiationBlock from '@/components/blocks/DifferentiationBlock';
+import OverviewDashboard from '@/components/blocks/OverviewDashboard';
 
 interface Trend {
   id: string;
@@ -46,6 +47,7 @@ interface Trend {
   first_detected_at: string;
   source?: string;
   source_query?: string;
+  relevant_subreddits?: string[];
 }
 
 interface AnalysisSegment {
@@ -1441,7 +1443,8 @@ export default function TrendPage() {
     setEvidenceErrors(prev => ({ ...prev, ...errorState }));
 
     // Извлекаем niche и keywords для новых роутов
-    const niche = trend.category || trend.title;
+    // Fix A: source_query (английский) как основной поисковый термин, не русский title/category
+    const niche = trend.source_query || trend.title;
     const keywords = analysis?.key_pain_points?.slice(0, 5) || [trend.source_query || trend.title];
     const trendId = trend.id || `trend-${Date.now()}`;
 
@@ -1451,7 +1454,13 @@ export default function TrendPage() {
         const res = await fetch(blockEndpoints[block], {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trend_id: trendId, niche, keywords }),
+          body: JSON.stringify({
+            trend_id: trendId,
+            niche,
+            keywords,
+            relevant_subreddits: trend.relevant_subreddits,
+            competitors: competition?.competitors?.map(c => c.name) || [],
+          }),
         });
 
         const data = await res.json();
@@ -1463,6 +1472,26 @@ export default function TrendPage() {
           adapted._is_unlocked = !!unlockedBlocks[block];
           adapted._raw_public = data.public; // сохраняем для мержа при unlock
           setEvidenceData(prev => ({ ...prev, [block]: adapted }));
+
+          // Intelligence Layer — вызываем Sonnet анализ после Block 1
+          // Ждём 1с чтобы Supabase upsert гарантированно закоммитился
+          if (block === 'problem') {
+            (async () => {
+              try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                const intelRes = await fetch(`/api/evidence/problem/analyze?trend_id=${encodeURIComponent(trendId)}`);
+                const intel = await intelRes.json();
+                if (intel.data && !intel.fallback) {
+                  setEvidenceData(prev => ({
+                    ...prev,
+                    problem: { ...(prev.problem || {}), intelligence: intel.data },
+                  }));
+                }
+              } catch (e) {
+                console.error('[Intelligence Layer] ❌ Fetch failed:', e);
+              }
+            })();
+          }
         } else {
           setEvidenceErrors(prev => ({ ...prev, [block]: data.error || 'Error' }));
         }
@@ -2973,58 +3002,25 @@ export default function TrendPage() {
 
           {/* Step Content */}
           {currentStep === 'overview' && (
-            <div className="space-y-6">
-              {/* Info */}
-              <div className="grid lg:grid-cols-2 gap-6">
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.overview.information}</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">{t.trendDetail.overview.source}</span>
-                      <span className="text-white">{trend.source || 'Google Trends'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">{t.trendDetail.overview.detected}</span>
-                      <span className="text-white">
-                        {new Date(trend.first_detected_at).toLocaleDateString('ru-RU')}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">{t.trendDetail.overview.status}</span>
-                      <span className="text-emerald-400">{trend.status}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">{t.trendDetail.overview.nextStep}</h3>
-                  <p className="text-zinc-400 mb-4">
-                    {t.trendDetail.overview.runAnalysisDescription}
-                  </p>
-                  <button
-                    onClick={runAnalysis}
-                    disabled={analyzing}
-                    className={`w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                      analyzing
-                        ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                    }`}
-                  >
-                    {analyzing ? (
-                      <>
-                        <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                        {t.trendDetail.overview.analyzing}
-                      </>
-                    ) : (
-                      <>
-                        <span>🔍</span>
-                        {t.trendDetail.overview.runAnalysis}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <OverviewDashboard
+              evidenceData={evidenceData}
+              evidenceProgress={evidenceProgress}
+              analysis={analysis}
+              coinBalance={coinBalance ?? 0}
+              language={language as 'ru' | 'en'}
+              onNavigate={(step, subTab) => {
+                setCurrentStep(step as FlowStep);
+                if (subTab) {
+                  if (['problem', 'demand', 'sellability', 'occupation', 'economics', 'tech', 'analysis'].includes(subTab)) {
+                    setEvidenceSubTab(subTab as EvidenceSubTab);
+                  } else if (['plan', 'differentiation', 'calculator', 'scenarios', 'survey', 'gtm', 'landing', 'report'].includes(subTab)) {
+                    setActionPlanSubTab(subTab as ActionPlanSubTab);
+                  }
+                }
+              }}
+              onRunAnalysis={runAnalysis}
+              analyzing={analyzing}
+            />
           )}
 
           {/* Evidence - Analysis subtab: No analysis yet */}

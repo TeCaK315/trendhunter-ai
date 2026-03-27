@@ -21,17 +21,46 @@ function growthRateToNumber(gr: string): number {
   return -10;
 }
 
-// ─── Block 1: Problem ──────────────────────────────────────
+// ─── Block 1: Problem (NEW — pain_clusters + paying_signals + competitor_mentions) ──
 // combined = { layer1, distribution, diagnosis, score, key_metric,
-//              top_quotes, layer3, key_factors, block_context }
+//              top_quotes, paying_signals, competitor_mentions,
+//              pain_clusters_preview, layer3, key_factors, block_context }
 export function adaptProblemData(raw: any): any {
-  // Flatten top_quotes (Record<PainCategory, Quote[]>) → complaints
-  const allQuotes: any[] = [];
-  if (raw.top_quotes) {
+  const totalComplaints = raw.layer1?.validated_complaints || raw.layer1?.total_complaints || 0;
+  const weightedScore = raw.layer1?.weighted_complaints_score || 0;
+  const bySource = raw.layer1?.by_source || {};
+  const score = raw.score ?? 5;
+  const conf = diagnosisToConfidence(raw.diagnosis);
+  const distribution = raw.distribution || {};
+
+  // ── "У кого болит" — pain_clusters_preview (кластеры, не отдельные посты) ──
+  const clusters = (raw.pain_clusters_preview || []).map((c: any) => ({
+    pain_summary: c.pain_summary || '',
+    source_count: c.source_count || 0,
+    mention_count: c.mention_count || 0,
+    confidence: c.confidence || 'low',
+    category: c.category || 'bad_solution',
+  }));
+
+  // Fallback: если кластеров нет — используем top_quotes
+  const complaints: any[] = [];
+  if (clusters.length > 0) {
+    for (const c of clusters) {
+      complaints.push({
+        text: c.pain_summary,
+        source: `${c.source_count} источников`,
+        source_url: '#',
+        engagement: c.mention_count,
+        data_type: 'real_data',
+        pain_category: c.category,
+        confidence: c.confidence,
+      });
+    }
+  } else if (raw.top_quotes) {
     for (const [category, quotes] of Object.entries(raw.top_quotes)) {
       if (Array.isArray(quotes)) {
         for (const q of quotes as any[]) {
-          allQuotes.push({
+          complaints.push({
             text: q.text || '',
             source: q.source || 'unknown',
             source_url: q.link || '#',
@@ -44,51 +73,58 @@ export function adaptProblemData(raw: any): any {
     }
   }
 
-  const totalComplaints = raw.layer1?.total_complaints || allQuotes.length;
-  const bySource = raw.layer1?.by_source || {};
-  const score = raw.score ?? 5;
-  const conf = diagnosisToConfidence(raw.diagnosis);
-  const distribution = raw.distribution || {};
-
   // "Как часто" — все источники из by_source динамически
   const sourceEntries = Object.entries(bySource).map(([name, count]) => ({
     name,
     count: count as number,
   }));
 
-  // "Текущие решения" — маппим top_quotes в формат reviews
-  // + добавляем distribution breakdown как саммари
-  const categoryLabels: Record<string, string> = {
-    bad_solution: 'Плохая реализация',
-    expensive_solution: 'Слишком дорого',
-    no_solution: 'Решений не существует',
-  };
-  const reviews: any[] = [];
-  if (raw.top_quotes) {
-    for (const [category, quotes] of Object.entries(raw.top_quotes)) {
-      if (Array.isArray(quotes)) {
-        for (const q of quotes as any[]) {
-          reviews.push({
-            title: q.text || '',
-            url: q.link || '#',
-            snippet: `${categoryLabels[category] || category} (${distribution[category] || 0}%)`,
-            source: q.source || 'unknown',
-            rating: null,
-          });
-        }
-      }
-    }
-  }
+  // ── "Текущие решения" — paying_signals (НЕ дубликат top_quotes!) ──
+  const payingSignals = (raw.paying_signals || []).map((p: any) => ({
+    title: p.mentioned_product
+      ? `[${p.mentioned_product}] ${p.text}`
+      : p.text || '',
+    url: p.link || '#',
+    snippet: `${p.paying_confidence === 'high' ? '✓ Подтверждён' : '~ Вероятен'} платящий пользователь`,
+    source: p.source || 'unknown',
+    rating: null,
+  }));
+
+  // ── Competitor mentions ──
+  const competitorMentions = (raw.competitor_mentions || []).map((c: any) => ({
+    competitor: c.competitor || '',
+    mention_count: c.mention_count || 0,
+    sentiment: c.sentiment || 'neutral',
+  }));
 
   // "Готовность платить" — из layer3 paying data
   const payingRatio = raw.layer3?.paying_ratio || 0;
   const payingScore = raw.layer3?.paying_score || 0;
   const context = raw.layer3?.context || 'mixed';
-  const paidCount = payingRatio > 0 ? Math.round((payingRatio / 100) * totalComplaints) : 0;
+  const paidCount = payingSignals.length;
+
+  // ── Человекочитаемый вердикт ──
+  const dominantPain = (Object.entries(distribution) as [string, number][])
+    .sort((a, b) => b[1] - a[1])[0];
+  const dominantLabel = dominantPain
+    ? { bad_solution: 'плохую реализацию', no_solution: 'отсутствие решений', expensive_solution: 'высокие цены' }[dominantPain[0]] || dominantPain[0]
+    : '';
+  const dominantPct = dominantPain ? dominantPain[1] : 0;
+
+  let verdictText = '';
+  if (raw.diagnosis === 'green' && dominantPain) {
+    verdictText = `${dominantPct}% жалующихся указывают на ${dominantLabel}. Рынок готов к альтернативе.`;
+  } else if (raw.diagnosis === 'yellow' && dominantPain?.[0] === 'no_solution') {
+    verdictText = `${dominantPct}% ищут решение которого не существует. Нужно educate the market — это длинный путь.`;
+  } else if (raw.diagnosis === 'red') {
+    verdictText = `Слабый сигнал боли. Рынок либо угасает, либо проблема не критична для пользователей.`;
+  } else if (dominantPain) {
+    verdictText = `${dominantPct}% жалуются на ${dominantLabel}. Сигнал есть, но требует дополнительной валидации.`;
+  }
 
   return {
     who_hurts: {
-      complaints: allQuotes,
+      complaints,
       total_complaints: totalComplaints,
       sources_count: Object.keys(bySource).length,
       severity_score: {
@@ -96,24 +132,28 @@ export function adaptProblemData(raw: any): any {
         formula: raw.key_metric || '',
         confidence: conf,
       },
+      pain_clusters: clusters,
+      weighted_score: weightedScore,
     },
     how_often: {
       google_trends: null,
-      // Все источники динамически (для обновлённого компонента)
       all_sources: sourceEntries,
       reddit_post_count: bySource.reddit || 0,
       so_question_count: bySource.stackoverflow || 0,
       frequency_score: {
         value: Math.min(10, totalComplaints / 10),
-        formula: `${totalComplaints} упоминаний за 30 дней`,
+        formula: `${totalComplaints} валидных из ${raw.layer1?.total_complaints || '?'} собранных`,
         confidence: conf,
       },
       dynamics: raw.layer1?.dynamics || 'stable',
+      dynamics_ratio: raw.layer1?.dynamics_ratio || 1.0,
+      pain_is_chronic: raw.layer1?.pain_is_chronic || false,
     },
     current_solutions: {
-      reviews,
-      total_reviews: reviews.length,
+      reviews: payingSignals,
+      total_reviews: payingSignals.length,
       pain_distribution: distribution,
+      competitor_mentions: competitorMentions,
     },
     willingness_to_pay: {
       pricing_data: [],
@@ -127,12 +167,14 @@ export function adaptProblemData(raw: any): any {
       formula: raw.key_metric || '',
       confidence: conf,
       label: diagnosisToLabel(raw.diagnosis),
+      verdict_text: verdictText,
     },
     ai_summary: raw.key_factors?.length
       ? { text: raw.key_factors.join('. '), data_type: 'ai_synthesis' }
       : null,
     _raw_diagnosis: raw.diagnosis,
     _block_context: raw.block_context,
+    _distribution: distribution,
   };
 }
 

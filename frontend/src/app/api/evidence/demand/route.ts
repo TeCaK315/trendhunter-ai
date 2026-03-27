@@ -1157,7 +1157,7 @@ export async function POST(req: NextRequest) {
       block_number: 2,
       block_type: "demand",
       diagnosis: output.diagnosis,
-      score: Number.isFinite(output.score) ? output.score : 0,
+      score: Math.max(0, Math.min(10, Math.round(Number.isFinite(output.score) ? output.score : 0))),
       conflict_weight: output.conflict_weight,
       key_factors: output.key_factors,
       key_metric: output.key_metric,
