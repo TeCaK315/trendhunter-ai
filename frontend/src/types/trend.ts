@@ -49,4 +49,7 @@ export interface Trend {
   target_audience?: string;     // "малый бизнес", "HR-менеджеры", "фрилансеры"
   user_outcome?: string;        // "отчёт об уязвимостях за 10 минут"
   was_topic_transformed?: boolean; // true если исходный запрос был темой, а не продуктом
+
+  // Block 1 metadata (generated at scan time)
+  relevant_subreddits?: string[];  // GPT-selected subreddits for this niche
 }

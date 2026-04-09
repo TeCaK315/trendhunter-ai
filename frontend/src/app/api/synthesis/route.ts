@@ -20,6 +20,8 @@ import { buildSkepticPrompt } from "@/lib/synthesis/prompts/skeptic";
 import { buildOptimistPrompt } from "@/lib/synthesis/prompts/optimist";
 import { buildArbitratorPrompt } from "@/lib/synthesis/prompts/arbitrator";
 import { BlockOutput, SkepticOutput, OptimistOutput } from "@/types/analysis";
+import { calculateStrategicDelta, getUpliftLevel } from "@/lib/synthesis/delta";
+import { runSalesArchitect } from "@/lib/synthesis/prompts/sales-architect";
 
 const claude = new Anthropic();
 
@@ -37,8 +39,8 @@ const MODELS = {
 async function fetchExternalContext(niche: string): Promise<string> {
   try {
     const queries = [
-      `${niche} regulation law ban 2025 2026`,
-      `${niche} market disruption Google Apple OpenAI announcement`,
+      `"${niche}" market 2025 challenges risks competition`,
+      `"${niche}" regulation law ban 2025 2026`,
     ];
 
     const results = await Promise.all(
@@ -245,6 +247,18 @@ export async function POST(req: NextRequest) {
 
         send("conflicts", { conflicts });
 
+        // —— 6.5 #14: FORCE EXPERIMENT CHECK ———————————————
+        // Если Блок 2 не уверен в данных — принудительный EXPERIMENT
+        const block2 = blocks.find(b => b.block_number === 2);
+        const block2ForceExperiment = block2?.block_context?.force_experiment_by_confidence ?? false;
+        const block2ConfidenceScore = block2?.block_context?.demand_confidence_score ?? 0.5;
+
+        let forceExperimentDemand = '';
+        if (block2ForceExperiment) {
+          forceExperimentDemand = `Уверенность в данных Блока 2 ограничена (${typeof block2ConfidenceScore === 'number' ? block2ConfidenceScore.toFixed(2) : '?'}). Принудительно EXPERIMENT — требуется валидация.`;
+          console.log(`[Synthesis] Force experiment: demand confidence too low (${block2ConfidenceScore})`);
+        }
+
         // —— 7. СКЕПТИК ——————————————————————————————————
         // Sonnet если есть реальные конфликты.
         // Opus если Blind Spot — там нужен более широкий контекст.
@@ -255,11 +269,14 @@ export async function POST(req: NextRequest) {
 
         const isBlindSpot = conflicts[0]?.type === "none";
         const skepticModel = isBlindSpot ? "opus" : "sonnet";
+        const skepticExternalContext = forceExperimentDemand
+          ? `${externalContext}\n\n⚠️ FORCE EXPERIMENT: ${forceExperimentDemand}`
+          : externalContext;
         const skepticPrompt = buildSkepticPrompt(
           niche,
           blocks,
           conflicts,
-          externalContext,
+          skepticExternalContext,
         );
         const skepticOutput: SkepticOutput = await callClaude(
           skepticPrompt,
@@ -305,18 +322,72 @@ export async function POST(req: NextRequest) {
         const arbitratorOutput = await callClaude(arbitratorPrompt, "opus");
         send("arbitrator", { output: arbitratorOutput });
 
+        // —— 9.5 STRATEGIC DELTA + SALES ARCHITECT ————————
+        send("status", { step: "delta", message: "Рассчитываю стратегический разрыв..." });
+
+        let strategicDelta = null;
+        let salesText = '';
+
+        try {
+          const b4ctx = blocks.find(b => b.block_number === 4)?.block_context as any || {};
+          const b5ctx = blocks.find(b => b.block_number === 5)?.block_context as any || {};
+          const b6ctx = blocks.find(b => b.block_number === 6)?.block_context as any || {};
+
+          strategicDelta = calculateStrategicDelta(blocks, arbitratorOutput.verdict_type, arbitratorOutput.confidence);
+
+          if (strategicDelta?.show) {
+            const topOpenGap = (b4ctx.gap_map || [])
+              .filter((g: any) => g.status === 'open')
+              .sort((a: any, b: any) => (b.paying_ratio || 0) - (a.paying_ratio || 0))[0]?.pain ?? 'не определена';
+
+            salesText = await runSalesArchitect(claude, {
+              niche,
+              verdict_type: arbitratorOutput.verdict_type,
+              confidence_percent: Math.round(arbitratorOutput.confidence * 100),
+              cac_mid: b5ctx.cac_mid ?? b5ctx.cac_scenarios?.[(b5ctx.cac_scenarios?.recommended || 'seo_led').toLowerCase()]?.mid ?? null,
+              acquisition_type: b4ctx.acquisition_type ?? 'UNKNOWN',
+              months_to_first_revenue: b5ctx.months_to_first_revenue ?? 6,
+              main_economic_risk: b5ctx.main_economic_risk ?? '',
+              avg_switching_cost: b4ctx.avg_switching_cost ?? 'MEDIUM',
+              top_open_gap: topOpenGap,
+              first_spot_teaser: b6ctx.first_spot_teaser ?? null,
+              uplift_level: getUpliftLevel(strategicDelta.uplift_multiplier),
+            });
+
+            send("strategic_delta", { delta: strategicDelta, sales_text: salesText });
+          }
+        } catch (e) {
+          console.error('[Synthesis] Strategic Delta error:', e);
+        }
+
         // —— 10. СОХРАНЯЕМ РЕЗУЛЬТАТ ——————————————————————
-        await supabase.from("synthesis_results").upsert({
-          trend_id,
-          user_id: user.id,
-          niche,
-          conflicts,
-          skeptic: skepticOutput,
-          optimist: optimistOutput,
-          arbitrator: arbitratorOutput,
-          is_blind_spot: isBlindSpot,
-          created_at: new Date().toISOString(),
-        }, { onConflict: 'trend_id,user_id' });
+        const { error: saveError } = await supabase
+          .from("synthesis_results")
+          .upsert({
+            trend_id,
+            user_id: user.id,
+            niche,
+            conflicts,
+            skeptic: skepticOutput,
+            optimist: optimistOutput,
+            arbitrator: arbitratorOutput,
+            strategic_delta: strategicDelta,
+            sales_text: salesText,
+            bridge_text: arbitratorOutput.bridge_text ?? '',
+            is_blind_spot: isBlindSpot,
+            created_at: new Date().toISOString(),
+          }, { onConflict: 'trend_id,user_id' });
+
+        if (saveError) {
+          console.error('[Synthesis] SAVE FAILED:', saveError);
+          send("error", {
+            message: `Синтез выполнен, но не сохранён: ${saveError.message}`,
+            step: "save",
+            code: saveError.code,
+          });
+          controller.close();
+          return;
+        }
 
         // Финальное событие — фронт знает что всё готово
         send("complete", {

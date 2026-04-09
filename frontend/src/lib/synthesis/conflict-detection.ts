@@ -60,16 +60,17 @@ export function detectConflicts(
     });
   }
 
+  const saleCycleDays = (b3?.block_context as any)?.sale_cycle_days || 0;
   if (
     b5?.diagnosis === "yellow" &&
-    (b3?.block_context as any)?.sale_cycle === "months"
+    saleCycleDays >= 14
   ) {
     conflicts.push({
       weight: 2,
       type: "operational",
-      pair: "Экономика🟡 + цикл months",
+      pair: `Экономика🟡 + цикл ${saleCycleDays}д`,
       mechanism:
-        "Маргинальная unit-экономика плюс длинный цикл продажи = кассовый разрыв до первой выручки.",
+        `Маргинальная unit-экономика плюс ${saleCycleDays}-дневный цикл продажи = кассовый разрыв до первой выручки.`,
       blocks_involved: [3, 5],
     });
   }
@@ -149,6 +150,26 @@ export function detectConflicts(
         "Pricing gap обнаружен: текущие цены рынка занижены относительно ценности. Реальный revenue потенциал может быть выше расчётного.",
       blocks_involved: [5, 6],
     });
+  }
+
+  // Rule 13: High Entry Barrier
+  if (b5?.diagnosis !== 'red' && (b5?.block_context as any)?.high_entry_barrier_flag === true) {
+    conflicts.push({ weight: 1, type: 'manageable', pair: 'Экономика: высокий барьер входа', mechanism: 'GO возможен только с капиталом — бюджет на проверку высокий', blocks_involved: [5] });
+  }
+
+  // Rule 14: Leaky Bucket
+  if ((b5?.block_context as any)?.leaky_bucket_flag === true) {
+    conflicts.push({ weight: 2, type: 'operational', pair: 'Экономика: Retention Hell', mechanism: 'Клиенты уйдут к бесплатным аналогам — отток критический', blocks_involved: [5] });
+  }
+
+  // Rule 15: CAC Spread
+  if ((b5?.block_context as any)?.cac_spread_flag === true) {
+    conflicts.push({ weight: 1, type: 'manageable', pair: 'Экономика: CAC spread', mechanism: 'Экономика критически зависит от выбора канала продаж', blocks_involved: [5] });
+  }
+
+  // Rule 16: Long Payback
+  if ((b5?.block_context as any)?.long_payback_flag === true) {
+    conflicts.push({ weight: 2, type: 'operational', pair: 'Экономика: долгая окупаемость', mechanism: 'Долгая окупаемость клиента — структурная проблема', blocks_involved: [5] });
   }
 
   if (conflicts.length === 0) {

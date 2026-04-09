@@ -404,11 +404,16 @@ async function collectLayer1(
     : dataAvailable ? "medium"
     : "low";
 
+  // Фильтр per-seat цен: если есть хотя бы одна цена >= $15,
+  // исключаем мелкие per-employee/per-user цены из расчёта медианы
+  const accountPrices = prices.filter((p) => p >= 15);
+  const pricesToUse = accountPrices.length > 0 ? accountPrices : prices;
+
   // #5 FIX: явный data_available, null если нет данных
   const priceRange: PriceRange = {
-    minimum: dataAvailable ? prices[0] : null,
-    median: dataAvailable ? prices[Math.floor(prices.length / 2)] : null,
-    premium: dataAvailable ? prices[prices.length - 1] : null,
+    minimum: dataAvailable ? pricesToUse[0] : null,
+    median: dataAvailable ? pricesToUse[Math.floor(pricesToUse.length / 2)] : null,
+    premium: dataAvailable ? pricesToUse[pricesToUse.length - 1] : null,
     currency: "USD",
     sources: uniqueSources.slice(0, 3),
     confidence: pricingConfidence, // Multi-Pass 3: из кросс-валидации
@@ -655,7 +660,8 @@ async function collectLayer2(
   block2_context: any,
   layer1: Layer1_WillingnessToPay,
 ): Promise<Layer2_BarrierToPurchase> {
-  const market_type: "B2B" | "B2C" | "B2B2C" = block1_context.context || "B2C";
+  const market_type: "B2B" | "B2C" | "B2B2C" =
+    (block2_context.commercial_intent_ratio || 0) >= 0.6 ? "B2B" : "B2C";
   const pain_type: string = block1_context.pain_type || "bad_solution";
 
   // —— Budget signals из верифицированных данных —————
@@ -682,8 +688,7 @@ async function collectLayer2(
   // —— Deal cycle из сигналов ————————————————————————
   const onboarding_complexity =
     layer1.first_payment_friction === "high" ? "complex" : "simple";
-  const decision_maker_count =
-    market_type === "B2B" ? 3 : market_type === "B2B2C" ? 2 : 1;
+  const decision_maker_count = market_type === "B2B" ? 3 : 1;
 
   const dealCycle = inferDealCycle({
     market_type,
@@ -846,8 +851,23 @@ async function collectLayer3(
     }
   }
 
+  // #5 FIX: фильтруем нерелевантные subreddit'ы — r/Scams, r/LegalAdvice и т.д.
+  // Эти subreddit'ы часто упоминают бренды конкурентов в контексте жалоб/мошенничества,
+  // но НЕ являются каналами для привлечения покупателей
+  const IRRELEVANT_SUBREDDITS = new Set([
+    'scams', 'legaladvice', 'personalfinance', 'jobs',
+    'recruiting', 'antiwork', 'askreddit', 'outoftheloop',
+    'nostupidquestions', 'explainlikeimfive', 'todayilearned',
+    'news', 'worldnews', 'technology', 'futurology',
+  ]);
+
+  const filteredCommunities = allCommunities.filter((c) => {
+    const subName = c.community_name.replace(/^r\//, '').toLowerCase();
+    return !IRRELEVANT_SUBREDDITS.has(subName);
+  });
+
   // #4 FIX: сортируем по mentioned_frequency — самый упоминаемый = primary
-  allCommunities.sort((a, b) => b.mentioned_frequency - a.mentioned_frequency);
+  filteredCommunities.sort((a, b) => b.mentioned_frequency - a.mentioned_frequency);
 
   // —— Traffic interception points ————————————————————
   const interceptionPoints: TrafficInterceptionPoint[] = [
@@ -859,7 +879,7 @@ async function collectLayer3(
     },
   ];
 
-  if (allCommunities.length > 0) {
+  if (filteredCommunities.length > 0) {
     interceptionPoints.push({
       type: "community", // #3 FIX: теперь валидный тип
       keyword: keywords[0] || niche,
@@ -884,23 +904,23 @@ async function collectLayer3(
 
   // #4 FIX: primary — первый после сортировки (самый упоминаемый)
   const primaryChannel =
-    allCommunities.length > 0
+    filteredCommunities.length > 0
       ? {
-          channel: allCommunities[0].community_name,
-          reasoning: `Наибольшая частота упоминаний: ${allCommunities[0].mentioned_frequency}. Activity: ${allCommunities[0].activity_level}. Trust score: ${allCommunities[0].trust_score}/10`,
+          channel: filteredCommunities[0].community_name,
+          reasoning: `Наибольшая частота упоминаний: ${filteredCommunities[0].mentioned_frequency}. Activity: ${filteredCommunities[0].activity_level}. Trust score: ${filteredCommunities[0].trust_score}/10`,
         }
       : null;
 
   return {
-    communities_via_competitors: allCommunities.filter(
+    communities_via_competitors: filteredCommunities.filter(
       (c) => c.competitor_domain,
     ),
-    communities_via_keywords: allCommunities.filter(
+    communities_via_keywords: filteredCommunities.filter(
       (c) => !c.competitor_domain,
     ),
     traffic_interception_points: interceptionPoints,
     primary_channel: primaryChannel,
-    secondary_channels: allCommunities.slice(1, 3).map((c) => c.community_name),
+    secondary_channels: filteredCommunities.slice(1, 3).map((c) => c.community_name),
   };
 }
 

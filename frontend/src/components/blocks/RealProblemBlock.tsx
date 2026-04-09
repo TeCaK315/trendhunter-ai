@@ -1,33 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import EvidenceBadge, { ScoreDisplay } from '../EvidenceBadge';
-import SourceCard from '../SourceCard';
 
-// ── Intelligence Loading with auto-hide ──
-function IntelligenceLoadingIndicator({ show }: { show: boolean }) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    if (show) {
-      setVisible(true);
-      const timer = setTimeout(() => setVisible(false), 30000);
-      return () => clearTimeout(timer);
-    } else {
-      setVisible(false);
-    }
-  }, [show]);
-  if (!visible) return null;
-  return (
-    <div className="bg-indigo-500/5 rounded-xl p-4 border border-indigo-500/20 animate-pulse">
-      <div className="flex items-center gap-3">
-        <span className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-indigo-300">AI анализирует результаты...</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Types ──
+// ═══════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════
 
 interface PainCluster {
   pain_summary: string;
@@ -56,70 +33,39 @@ interface RealProblemData {
     }>;
     total_complaints: number;
     sources_count: number;
-    severity_score: {
-      value: number;
-      formula?: string;
-      confidence: number;
-    };
+    severity_score: { value: number; formula?: string; confidence: number };
     pain_clusters?: PainCluster[];
     weighted_score?: number;
   };
   how_often: {
-    google_trends: {
-      growth_rate: number;
-      search_query: string;
-      original_query?: string;
-      google_trends_url: string;
-    } | null;
+    google_trends: { growth_rate: number; search_query: string; original_query?: string; google_trends_url: string } | null;
     all_sources?: Array<{ name: string; count: number }>;
     reddit_post_count: number;
     so_question_count: number;
-    frequency_score: {
-      value: number;
-      formula?: string;
-      confidence: number;
-    };
+    frequency_score: { value: number; formula?: string; confidence: number };
     dynamics?: string;
     dynamics_ratio?: number;
     pain_is_chronic?: boolean;
   };
   current_solutions: {
-    reviews: Array<{
-      title: string;
-      url: string;
-      snippet: string;
-      source: string;
-      rating?: number;
-    }>;
+    reviews: Array<{ title: string; url: string; snippet: string; source: string; rating?: number }>;
     total_reviews: number;
     pain_distribution?: Record<string, number>;
     competitor_mentions?: CompetitorMention[];
   };
   willingness_to_pay: {
-    pricing_data: Array<{
-      competitor: string;
-      pricing_url: string;
-      pricing_snippet: string;
-      prices_found: Array<{ amount: string; plan: string; period?: string }>;
-    }>;
+    pricing_data: Array<{ competitor: string; pricing_url: string; pricing_snippet: string; prices_found: Array<{ amount: string; plan: string; period?: string }> }>;
     paid_solution_count: number;
     paying_score?: number;
     paying_ratio?: number;
     context?: string;
   };
-  verdict: {
-    value: number;
-    formula?: string;
-    confidence: number;
-    label?: string;
-    verdict_text?: string;
-  };
-  ai_summary?: {
-    text: string;
-    data_type: string;
-  } | null;
+  verdict: { value: number; formula?: string; confidence: number; label?: string; verdict_text?: string };
+  ai_summary?: { text: string; data_type: string } | null;
   _raw_diagnosis?: string;
   _distribution?: Record<string, number>;
+  _block_context?: any;
+  _competitive_positives?: Array<{ product: string; text: string; source: string }>;
   intelligence?: IntelligenceOutput | null;
 }
 
@@ -137,7 +83,7 @@ interface IntelligenceOutput {
   analytical_context: string;
   top_quote: string;
   top_quote_source: string;
-  [key: string]: unknown; // conclusion_green, conclusion_yellow, conclusion_red
+  [key: string]: unknown;
 }
 
 interface Props {
@@ -146,641 +92,528 @@ interface Props {
   error?: string;
 }
 
-// ── Sub-components ──
+// ═══════════════════════════════════════════════════════════
+// STYLES (injected once)
+// ═══════════════════════════════════════════════════════════
 
-function FrustrationThermometer({ value }: { value: number }) {
-  const clampedValue = Math.max(0, Math.min(10, value));
-  const percentage = clampedValue * 10;
+const CUSTOM_STYLES = `
+@keyframes pb-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes pb-barIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes pb-fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pb-pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,238,154,.18)}60%{box-shadow:0 0 0 6px transparent}}
 
-  const getColor = () => {
-    if (clampedValue <= 3) return 'from-green-500 to-green-400';
-    if (clampedValue <= 5) return 'from-yellow-500 to-yellow-400';
-    if (clampedValue <= 7) return 'from-orange-500 to-orange-400';
-    return 'from-red-600 to-red-400';
-  };
+.pb-shimmer-line{
+  height:2px;
+  background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent);
+  background-size:200%;
+  animation:pb-shimmer 4s linear infinite;
+}
+.pb-bar-anim{transform-origin:left;animation:pb-barIn .8s .3s ease both;transform:scaleX(0)}
+.pb-fade{animation:pb-fadeUp .5s ease both}
+.pb-pulse-dot{animation:pb-pulse 2.4s ease-in-out infinite}
+.pb-card{
+  background:#0D1620;
+  border:1px solid #1A2E42;
+  border-radius:12px;
+  transition:border-color .2s,transform .15s;
+}
+.pb-card:hover{border-color:#243C55;transform:translateY(-1px)}
+`;
 
-  const getLabel = () => {
-    if (clampedValue <= 3) return 'Низкая фрустрация';
-    if (clampedValue <= 5) return 'Умеренная фрустрация';
-    if (clampedValue <= 7) return 'Высокая фрустрация';
-    return 'Критическая фрустрация';
-  };
-
-  return (
-    <div className="bg-zinc-800/50 rounded-lg p-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-zinc-400">Уровень фрустрации</span>
-        <span className="text-sm font-bold">{clampedValue.toFixed(1)}/10</span>
-      </div>
-      <div className="h-3 bg-zinc-700 rounded-full overflow-hidden">
-        <div
-          className={`h-full bg-gradient-to-r ${getColor()} rounded-full transition-all duration-500`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <div className="text-xs text-zinc-400 mt-1">{getLabel()}</div>
-    </div>
-  );
+let stylesInjected = false;
+function injectStyles() {
+  if (stylesInjected || typeof document === 'undefined') return;
+  const style = document.createElement('style');
+  style.textContent = CUSTOM_STYLES;
+  document.head.appendChild(style);
+  stylesInjected = true;
 }
 
-function ConfidenceBadge({ confidence }: { confidence: string }) {
-  const colors = {
-    high: 'bg-green-500/20 text-green-300',
-    medium: 'bg-yellow-500/20 text-yellow-300',
-    low: 'bg-zinc-500/20 text-zinc-400',
-  };
-  const labels = { high: '3+ источника', medium: '2 источника', low: '1 источник' };
-  const c = confidence as keyof typeof colors;
-  return (
-    <span className={`text-xs px-1.5 py-0.5 rounded ${colors[c] || colors.low}`}>
-      {labels[c] || confidence}
-    </span>
-  );
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+const C = {
+  green: '#00EE9A', green2: '#00BB78', amber: '#FFA826', cyan: '#00CFFF', red: '#FF4E5B',
+  t1: '#E8F2FF', t2: '#7AAAC8', t3: '#3E6480', t4: '#243A52',
+  card: '#0D1620', card2: '#111E2A', b1: '#1A2E42', b2: '#243C55',
+};
+
+function diagLabel(d: string): { text: string; color: string; bg: string; border: string } {
+  if (d === 'green') return { text: 'GO · Боль реальная', color: C.green, bg: 'rgba(0,238,154,.08)', border: C.green2 };
+  if (d === 'red') return { text: 'NO · Сигнал слабый', color: C.red, bg: 'rgba(255,78,91,.08)', border: '#CC3E47' };
+  return { text: 'WAIT · Требует внимания', color: C.amber, bg: 'rgba(255,168,38,.08)', border: '#CC8620' };
 }
 
-function PainDistributionBar({ distribution }: { distribution: Record<string, number> }) {
-  const categories = [
-    { key: 'bad_solution', label: 'Плохая реализация', color: 'bg-orange-500' },
-    { key: 'no_solution', label: 'Нет решений', color: 'bg-red-500' },
-    { key: 'expensive_solution', label: 'Слишком дорого', color: 'bg-yellow-500' },
-  ];
+function sourceWeight(name: string): string {
+  const w: Record<string, string> = { g2: 'max weight', capterra: 'max weight', trustpilot: 'high', reddit: 'medium', hackernews: 'medium', stackoverflow: 'medium', quora: 'low' };
+  return w[name] || 'low';
+}
 
-  const total = Object.values(distribution).reduce((s, v) => s + v, 0);
-  if (total === 0) return null;
+function sourceDotColor(name: string): string {
+  const c: Record<string, string> = { g2: C.green, capterra: C.green, trustpilot: C.cyan, reddit: C.t3, hackernews: C.t3, stackoverflow: C.t3, quora: C.t3 };
+  return c[name] || C.t3;
+}
 
+function sourceDisplayName(name: string): string {
+  const n: Record<string, string> = { g2: 'G2 Reviews', capterra: 'Capterra', trustpilot: 'Trustpilot', reddit: 'Reddit', hackernews: 'HackerNews', stackoverflow: 'StackOverflow', quora: 'Quora' };
+  return n[name] || name;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INTELLIGENCE LOADING INDICATOR
+// ═══════════════════════════════════════════════════════════
+
+function IntelligenceLoadingIndicator({ show }: { show: boolean }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (show) { setVisible(true); const t = setTimeout(() => setVisible(false), 30000); return () => clearTimeout(t); }
+    else { setVisible(false); }
+  }, [show]);
+  if (!visible) return null;
   return (
-    <div className="bg-zinc-800/50 rounded-lg p-3">
-      <div className="text-xs text-zinc-400 mb-2">Распределение типов боли</div>
-      <div className="h-3 rounded-full overflow-hidden flex">
-        {categories.map(({ key, color }) => {
-          const pct = distribution[key] || 0;
-          if (pct === 0) return null;
-          return (
-            <div
-              key={key}
-              className={`${color} h-full transition-all`}
-              style={{ width: `${pct}%` }}
-              title={`${pct}%`}
-            />
-          );
-        })}
-      </div>
-      <div className="flex gap-3 mt-2">
-        {categories.map(({ key, label, color }) => {
-          const pct = distribution[key] || 0;
-          if (pct === 0) return null;
-          return (
-            <div key={key} className="flex items-center gap-1">
-              <div className={`w-2 h-2 rounded-full ${color}`} />
-              <span className="text-xs text-zinc-400">{label} {pct}%</span>
-            </div>
-          );
-        })}
+    <div className="pb-card p-4" style={{ borderLeft: `3px solid ${C.cyan}` }}>
+      <div className="flex items-center gap-3">
+        <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: C.cyan, borderTopColor: 'transparent' }} />
+        <span className="text-xs" style={{ color: C.t2 }}>AI анализирует результаты...</span>
       </div>
     </div>
   );
 }
 
-// ── Intelligence Layer Section ──
-
-function IntelligenceSection({ intel, diagnosis }: { intel: IntelligenceOutput; diagnosis: string }) {
-  const conclusionKey = `conclusion_${diagnosis}` as string;
-  const conclusion = (intel[conclusionKey] as string) || '';
-
-  const signalColor = intel.card_signal.label === 'Высокий' ? 'text-green-400' :
-    intel.card_signal.label === 'Средний' ? 'text-yellow-400' : 'text-red-400';
-
-  const dynamicsColor = intel.card_dynamics.label === 'Растёт' ? 'text-green-400' :
-    intel.card_dynamics.label === 'Хроническая' ? 'text-amber-400' :
-    intel.card_dynamics.label === 'Падает' ? 'text-red-400' : 'text-zinc-300';
-
-  return (
-    <div className="space-y-3">
-      {/* Verdict from Sonnet */}
-      <div className="bg-indigo-500/10 rounded-xl p-4 border border-indigo-500/20">
-        <div className="flex items-center gap-2 mb-2">
-          <EvidenceBadge type="ai_synthesis" />
-          <span className="text-xs text-indigo-300 font-medium">AI Аналитика</span>
-        </div>
-        <p className="text-base font-semibold text-white">{intel.verdict_phrase}</p>
-        <p className="text-sm text-zinc-400 mt-1">{intel.verdict_sub}</p>
-      </div>
-
-      {/* Three cards: Signal / Dynamics / Paying */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-zinc-800/50 rounded-lg p-3">
-          <div className="text-xs text-zinc-500 mb-1">Сигнал боли</div>
-          <div className={`text-sm font-bold ${signalColor}`}>{intel.card_signal.label}</div>
-          <p className="text-xs text-zinc-400 mt-1">{intel.card_signal.source_breakdown}</p>
-        </div>
-        <div className="bg-zinc-800/50 rounded-lg p-3">
-          <div className="text-xs text-zinc-500 mb-1">Динамика</div>
-          <div className={`text-sm font-bold ${dynamicsColor}`}>{intel.card_dynamics.label}</div>
-          {intel.card_dynamics.is_chronic && (
-            <p className="text-xs text-amber-300/80 mt-1">{intel.card_dynamics.chronic_explanation}</p>
-          )}
-        </div>
-        <div className="bg-zinc-800/50 rounded-lg p-3">
-          <div className="text-xs text-zinc-500 mb-1">Аудитория</div>
-          <div className="text-sm font-bold text-zinc-200">{intel.card_paying.label}</div>
-          <p className="text-xs text-zinc-400 mt-1">{intel.card_paying.context}</p>
-        </div>
-      </div>
-
-      {/* Key factors */}
-      <div className="bg-zinc-800/30 rounded-lg p-3">
-        <div className="text-xs text-zinc-500 mb-2">Ключевые факторы</div>
-        <ul className="space-y-1">
-          {intel.key_factors.map((f, i) => (
-            <li key={i} className="text-sm text-zinc-300 flex items-start gap-2">
-              <span className="text-indigo-400 mt-0.5 shrink-0">•</span>
-              <span>{f}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Pain type strategy */}
-      <div className="bg-zinc-800/30 rounded-lg p-3">
-        <div className="text-xs text-zinc-500 mb-1">Стратегия входа</div>
-        <p className="text-sm text-zinc-300">{intel.pain_types_analysis.dominant_strategy}</p>
-        {intel.pain_types_analysis.other_types_note && (
-          <p className="text-xs text-zinc-500 mt-1">{intel.pain_types_analysis.other_types_note}</p>
-        )}
-      </div>
-
-      {/* Enriched clusters — strategic meaning + block4 connection */}
-      {intel.clusters_enriched.length > 0 && (
-        <div className="bg-zinc-800/30 rounded-lg p-3">
-          <div className="text-xs text-zinc-500 mb-2">Кластеры боли — стратегический анализ</div>
-          <div className="space-y-3">
-            {intel.clusters_enriched.map((c, i) => (
-              <div key={i} className="border-l-2 border-indigo-500/30 pl-3">
-                <p className="text-sm text-zinc-200">{c.cluster_name}</p>
-                <p className="text-xs text-zinc-400 mt-0.5">{c.strategic_meaning}</p>
-                <p className="text-xs text-indigo-400/80 mt-0.5">{c.block4_connection}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top quote */}
-      {intel.top_quote && (
-        <div className="bg-zinc-800/30 rounded-lg p-3 border-l-2 border-orange-500/40">
-          <p className="text-sm text-zinc-300 italic">&ldquo;{intel.top_quote}&rdquo;</p>
-          <span className="text-xs text-zinc-500 mt-1">— {intel.top_quote_source}</span>
-        </div>
-      )}
-
-      {/* Analytical context */}
-      {intel.analytical_context && (
-        <div className="bg-zinc-800/30 rounded-lg p-3">
-          <div className="text-xs text-zinc-500 mb-1">Контекст</div>
-          <p className="text-sm text-zinc-400 leading-relaxed">{intel.analytical_context}</p>
-        </div>
-      )}
-
-      {/* Conclusion */}
-      {conclusion && (
-        <div className={`rounded-lg p-3 ${
-          diagnosis === 'green' ? 'bg-green-500/10 border border-green-500/20' :
-          diagnosis === 'red' ? 'bg-red-500/10 border border-red-500/20' :
-          'bg-yellow-500/10 border border-yellow-500/20'
-        }`}>
-          <div className="text-xs text-zinc-500 mb-1">Итог</div>
-          <p className="text-sm text-zinc-200">{conclusion}</p>
-        </div>
-      )}
-
-      {/* Counterfact */}
-      {intel.counterfact && (
-        <p className="text-xs text-zinc-500 italic px-1">{intel.counterfact}</p>
-      )}
-    </div>
-  );
-}
-
-// ── Main Component ──
+// ═══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
 
 export default function RealProblemBlock({ data, loading, error }: Props) {
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [showAllComplaints, setShowAllComplaints] = useState(false);
-  const [showAllReviews, setShowAllReviews] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+
+  useEffect(() => { injectStyles(); }, []);
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4 p-4">
-        <div className="h-4 bg-zinc-800 rounded w-1/2" />
-        <div className="h-20 bg-zinc-800 rounded" />
-        <div className="h-20 bg-zinc-800 rounded" />
+      <div className="space-y-3 p-4">
+        <div className="h-4 bg-zinc-800 rounded w-1/2 animate-pulse" />
+        <div className="h-24 bg-zinc-800 rounded animate-pulse" />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="h-32 bg-zinc-800 rounded animate-pulse" />
+          <div className="h-32 bg-zinc-800 rounded animate-pulse" />
+          <div className="h-32 bg-zinc-800 rounded animate-pulse" />
+        </div>
       </div>
     );
   }
+  if (error) return <div className="p-4 text-red-400 text-sm">{error}</div>;
+  if (!data) return <div className="p-4 text-sm" style={{ color: C.t3 }}>Нажмите &quot;Анализировать&quot; для запуска</div>;
 
-  if (error) {
-    return <div className="p-4 text-red-400 text-sm">{error}</div>;
-  }
-
-  if (!data) {
-    return <div className="p-4 text-zinc-400 text-sm">Нажмите &quot;Анализировать&quot; для запуска</div>;
-  }
-
-  const toggle = (section: string) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
-
-  const visibleComplaints = showAllComplaints
-    ? data.who_hurts.complaints
-    : data.who_hurts.complaints.slice(0, 5);
-
-  const visibleReviews = showAllReviews
-    ? data.current_solutions.reviews
-    : data.current_solutions.reviews.slice(0, 5);
-
+  const intel = data.intelligence;
+  const diagnosis = data._raw_diagnosis || 'yellow';
+  const diag = diagLabel(diagnosis);
+  const score = data.verdict.value;
   const distribution = data._distribution || data.current_solutions.pain_distribution || {};
-  const diagnosis = data._raw_diagnosis || '';
+  const weightedScore = data.who_hurts.weighted_score || 0;
+  const payingRatio = data.willingness_to_pay.paying_ratio || 0;
+  const payingScore = data.willingness_to_pay.paying_score || 0;
+  const ctx = data.willingness_to_pay.context || 'mixed';
+  const clusters = data.who_hurts.pain_clusters || [];
+  const allSources = data.how_often.all_sources || [];
+  const totalCollected = data._block_context?.data_quality?.total_collected || 0;
+  const runCount = data._block_context?.run_count || data._block_context?.data_quality?.run_count || 1;
+  const mergedFromPrevious = data._block_context?.data_quality?.merged_from_previous || 0;
 
-  // Category labels for pain_category
-  const categoryLabels: Record<string, string> = {
-    bad_solution: 'Плохая реализация',
-    expensive_solution: 'Слишком дорого',
-    no_solution: 'Нет решений',
+  const dynamicsRatio = data.how_often.dynamics_ratio || 1.0;
+  const dynamicsGrowth = Math.round((dynamicsRatio - 1) * 100);
+  const dynamicsLabel = data.how_often.dynamics === 'growing' ? 'GROWING' : data.how_often.dynamics === 'declining' ? 'DECLINING' : 'STABLE';
+  const dynamicsColor = data.how_often.dynamics === 'growing' ? C.green : data.how_often.dynamics === 'declining' ? C.red : C.amber;
+
+  // Distribution sorted
+  const distEntries = Object.entries(distribution).sort((a, b) => (b[1] as number) - (a[1] as number));
+  const dominantType = distEntries[0]?.[0] || 'bad_solution';
+  const painLabels: Record<string, string> = { bad_solution: 'Плохое решение', no_solution: 'Нет решения', expensive_solution: 'Дорогое решение' };
+  const painDescs: Record<string, string> = {
+    bad_solution: 'Платят конкурентам и злятся.',
+    no_solution: 'Нужно обучать рынок. Длинный цикл.',
+    expensive_solution: 'Flat pricing = быстрые продажи.',
   };
 
-  // Dynamics label
-  const dynamicsLabel = data.how_often.dynamics === 'growing'
-    ? 'Растёт'
-    : data.how_often.dynamics === 'declining'
-    ? 'Падает'
-    : 'Стабильно';
+  // Paying audience label
+  const payingLabel = payingScore >= 60 ? 'STRONG' : payingScore >= 35 ? 'MIXED' : 'WEAK';
+  const payingColor = payingScore >= 60 ? C.cyan : payingScore >= 35 ? C.amber : C.red;
+
+  // Confidence label
+  const confLabel = data._block_context?.data_quality?.classification_confidence?.toUpperCase() || (weightedScore >= 60 ? 'HIGH' : weightedScore >= 30 ? 'MEDIUM' : 'LOW');
 
   return (
-    <div className="space-y-4">
-      {/* Verdict + Human-readable text */}
-      <div className="bg-zinc-900/50 rounded-xl p-4 border border-zinc-800">
-        <ScoreDisplay
-          value={data.verdict.value}
-          label="Реальность проблемы"
-          formula={data.verdict.formula}
-          confidence={data.verdict.confidence}
-        />
-        {data.verdict.verdict_text && (
-          <p className="text-sm text-zinc-300 mt-3 leading-relaxed">
-            {data.verdict.verdict_text}
-          </p>
-        )}
-        {data.verdict.label && (
-          <div className={`inline-block mt-2 text-xs font-medium px-2 py-1 rounded ${
-            diagnosis === 'green' ? 'bg-green-500/20 text-green-300' :
-            diagnosis === 'red' ? 'bg-red-500/20 text-red-300' :
-            'bg-yellow-500/20 text-yellow-300'
-          }`}>
-            {data.verdict.label}
-          </div>
-        )}
+    <div className="space-y-3">
+
+      {/* ═══ HEADER STATS ═══ */}
+      <div className="flex items-center justify-between pb-3 pb-fade" style={{ borderBottom: `1px solid ${C.b1}` }}>
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: C.t3 }}>
+          Блок 1 · <span style={{ color: C.t1 }}>Проблема</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs font-mono" style={{ color: C.t3 }}>
+          <div className="w-1.5 h-1.5 rounded-full pb-pulse-dot" style={{ background: C.green }} />
+          <span>{data.who_hurts.total_complaints} валидных{mergedFromPrevious > 0 ? ` (+${mergedFromPrevious} из прошлых)` : ''}</span>
+          <span style={{ color: C.b2 }}>·</span>
+          <span>{data.who_hurts.sources_count} платформ</span>
+          {runCount > 1 && (
+            <>
+              <span style={{ color: C.b2 }}>·</span>
+              <span>запуск #{runCount}</span>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Intelligence Layer — Sonnet analysis */}
-      {data.intelligence && (
-        <IntelligenceSection intel={data.intelligence} diagnosis={diagnosis} />
-      )}
+      {/* ═══ VERDICT HERO ═══ */}
+      <div className="pb-card relative overflow-hidden pb-fade" style={{ animationDelay: '.05s' }}>
+        <div className="pb-shimmer-line" />
+        <div className="p-5">
+          <div className="flex gap-6">
+            {/* Left: verdict */}
+            <div className="flex-1 min-w-0">
+              {/* Diagnosis pill */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-3" style={{ background: diag.bg, border: `1px solid ${diag.border}`, color: diag.color, letterSpacing: '.04em' }}>
+                <div className="w-1.5 h-1.5 rounded-full pb-pulse-dot" style={{ background: diag.color }} />
+                {diag.text}
+              </div>
 
-      {/* Intelligence Layer loading indicator — auto-hide after 30s */}
-      <IntelligenceLoadingIndicator show={!data.intelligence && !loading && (data.who_hurts?.total_complaints ?? 0) > 0} />
+              {/* Verdict headline */}
+              <h2 className="text-lg font-bold leading-snug mb-1.5" style={{ color: C.t1 }}>
+                {intel?.verdict_phrase || data.verdict.verdict_text || 'Анализ проблемы завершён'}
+              </h2>
+              <p className="text-xs leading-relaxed mb-3" style={{ color: C.t2 }}>
+                {intel?.verdict_sub || data.verdict.formula || ''}
+              </p>
 
-      {/* AI Summary fallback (key_factors — если Intelligence Layer не загрузился) */}
-      {!data.intelligence && data.ai_summary && (
-        <div className="bg-yellow-500/10 rounded-xl p-3 border border-yellow-500/20">
-          <div className="flex items-center gap-2 mb-1">
-            <EvidenceBadge type="ai_synthesis" />
-            <span className="text-xs text-yellow-300 font-medium">Ключевые факторы</span>
+              {/* Key factors as signals */}
+              <div className="space-y-1.5">
+                {(intel?.key_factors || []).slice(0, 3).map((f, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <div className="w-4 h-4 rounded flex items-center justify-center shrink-0 text-[9px] font-bold mt-px" style={{ background: 'rgba(0,238,154,.08)', color: C.green }}>✓</div>
+                    <span style={{ color: C.t2 }}>{f}</span>
+                  </div>
+                ))}
+                {intel?.counterfact && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <div className="w-4 h-4 rounded flex items-center justify-center shrink-0 text-[9px] font-bold mt-px" style={{ background: 'rgba(255,168,38,.08)', color: C.amber }}>⏳</div>
+                    <span style={{ color: C.amber }}>{intel.counterfact}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Score box */}
+            <div className="w-36 shrink-0 rounded-xl p-4 text-center" style={{ background: C.card2, border: `1px solid ${C.b1}` }}>
+              <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: C.t3 }}>Score</div>
+              <div className="text-3xl font-extrabold leading-none" style={{ color: diag.color }}>
+                {score.toFixed(1)}
+                <span className="text-sm" style={{ color: C.t3 }}>/10</span>
+              </div>
+              <div className="mt-2">
+                <div className="h-1 rounded-full overflow-hidden" style={{ background: C.b1 }}>
+                  <div className="h-full rounded-full pb-bar-anim" style={{ width: `${score * 10}%`, background: diag.color }} />
+                </div>
+                <div className="text-[10px] text-right mt-1 font-mono" style={{ color: C.t3 }}>{Math.round(score * 10)}%</div>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-zinc-300">{data.ai_summary.text}</p>
+        </div>
+      </div>
+
+      {/* ═══ 3 METRIC CARDS ═══ */}
+      <div className="grid grid-cols-3 gap-3 pb-fade" style={{ animationDelay: '.12s' }}>
+
+        {/* Card 1: Signal Strength */}
+        <div className="pb-card relative overflow-hidden p-4">
+          <div className="absolute top-0 left-0 right-0 h-16 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% -10%, rgba(0,238,154,.14), transparent 70%)` }} />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,238,154,.08)', border: '1px solid rgba(0,238,154,.12)' }}>
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="2" y="10" width="3" height="7" rx="1.5" fill={C.green}/><rect x="7.5" y="6.5" width="3" height="10.5" rx="1.5" fill={C.green} opacity=".65"/><rect x="13" y="2" width="3" height="15" rx="1.5" fill={C.green} opacity=".38"/></svg>
+              </div>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,238,154,.08)', color: C.green, border: '1px solid rgba(0,238,154,.15)' }}>{confLabel}</span>
+            </div>
+            <div className="text-2xl font-extrabold leading-none" style={{ color: C.green }}>
+              {Math.round(weightedScore)}<span className="text-xs" style={{ color: C.t3 }}>/100</span>
+            </div>
+            <div className="text-[8px] uppercase tracking-wider mt-0.5 mb-2" style={{ color: C.t3 }}>Взвешенный сигнал</div>
+            <div className="h-0.5 rounded-full overflow-hidden mb-2" style={{ background: C.b1 }}>
+              <div className="h-full rounded-full pb-bar-anim" style={{ width: `${Math.min(100, weightedScore)}%`, background: C.green }} />
+            </div>
+            <div className="border-t pt-2 space-y-1" style={{ borderColor: C.b1 }}>
+              {allSources.slice(0, 7).map((s, i) => (
+                <div key={i} className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1 h-1 rounded-full" style={{ background: s.count > 0 ? sourceDotColor(s.name) : C.t4 }} />
+                    <span style={{ color: s.count > 0 ? C.t2 : C.t4 }}>{sourceDisplayName(s.name)}</span>
+                  </div>
+                  <span className="font-mono" style={{ color: s.count > 0 ? C.t3 : C.t4 }}>
+                    {s.count > 0 ? `${s.count} · ${sourceWeight(s.name)}` : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Market Dynamics */}
+        <div className="pb-card relative overflow-hidden p-4">
+          <div className="absolute top-0 left-0 right-0 h-16 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% -10%, rgba(255,168,38,.12), transparent 70%)` }} />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,168,38,.08)', border: '1px solid rgba(255,168,38,.12)' }}>
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M2 14l4.5-5.5 3.5 2.5L16 4" stroke={C.amber} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 4h4v4" stroke={C.amber} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,168,38,.08)', color: dynamicsColor, border: '1px solid rgba(255,168,38,.15)' }}>{dynamicsLabel}</span>
+            </div>
+            <div className="text-2xl font-extrabold leading-none" style={{ color: dynamicsColor }}>
+              {dynamicsGrowth >= 0 ? '+' : ''}{dynamicsGrowth}%
+            </div>
+            <div className="text-[8px] uppercase tracking-wider mt-0.5 mb-3" style={{ color: C.t3 }}>За 3 месяца</div>
+            {/* Ratio comparison pills */}
+            <div className="flex gap-1.5 mb-2">
+              <div className="px-2 py-0.5 rounded text-[10px]" style={{ background: C.card2, border: `1px solid ${C.b1}`, color: C.t2 }}>
+                ×{dynamicsRatio.toFixed(2)}
+              </div>
+              {data.how_often.pain_is_chronic && (
+                <div className="px-2 py-0.5 rounded text-[10px]" style={{ background: 'rgba(255,168,38,.06)', border: '1px solid rgba(255,168,38,.15)', color: C.amber }}>
+                  Хроническая
+                </div>
+              )}
+            </div>
+            {data.how_often.pain_is_chronic && (
+              <p className="text-[10px] leading-relaxed" style={{ color: C.t3 }}>Хроническая боль 12+ мес · стабильный рынок</p>
+            )}
+          </div>
+        </div>
+
+        {/* Card 3: Paying Audience */}
+        <div className="pb-card relative overflow-hidden p-4">
+          <div className="absolute top-0 left-0 right-0 h-16 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% -10%, rgba(0,207,255,.12), transparent 70%)` }} />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,207,255,.08)', border: '1px solid rgba(0,207,255,.12)' }}>
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke={C.cyan} strokeWidth="1.6" fill="none"/><path d="M3.5 16c0-3.04 2.46-5.5 5.5-5.5s5.5 2.46 5.5 5.5" stroke={C.cyan} strokeWidth="1.6" strokeLinecap="round" fill="none"/></svg>
+              </div>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,207,255,.08)', color: payingColor, border: '1px solid rgba(0,207,255,.15)' }}>{payingLabel}</span>
+            </div>
+            {/* Donut-style display */}
+            <div className="flex justify-center my-1">
+              <svg width="64" height="64" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="30" fill="none" stroke={C.b1} strokeWidth="8"/>
+                <circle cx="40" cy="40" r="30" fill="none" stroke={payingColor} strokeWidth="8" strokeLinecap="round"
+                  strokeDasharray={`${(payingRatio / 100) * 188.5} 188.5`}
+                  transform="rotate(-90 40 40)"
+                  style={{ transition: 'stroke-dasharray .8s ease' }}
+                />
+                <text x="40" y="44" textAnchor="middle" fill={C.t1} fontSize="14" fontWeight="800">{payingRatio}%</text>
+              </svg>
+            </div>
+            <div className="text-[8px] uppercase tracking-wider text-center mb-2" style={{ color: C.t3 }}>Платящих покупателей</div>
+            <div className="border-t pt-2 space-y-1" style={{ borderColor: C.b1 }}>
+              <div className="flex items-start gap-1.5 text-[10px]">
+                <div className="w-1 h-1 rounded-full mt-1 shrink-0" style={{ background: C.cyan }} />
+                <span style={{ color: C.t2 }}>Score: {payingScore}</span>
+              </div>
+              <div className="flex items-start gap-1.5 text-[10px]">
+                <div className="w-1 h-1 rounded-full mt-1 shrink-0" style={{ background: C.cyan }} />
+                <span style={{ color: C.t2 }}>{ctx.toUpperCase()} · {ctx === 'b2b' ? 'длинный цикл продажи' : ctx === 'b2c' ? 'решение за дни' : 'смешанная аудитория'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ PAIN DISTRIBUTION ═══ */}
+      {distEntries.length > 0 && (
+        <div className="pb-card p-4 pb-fade" style={{ animationDelay: '.19s' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold" style={{ color: C.t2 }}>Распределение типов боли</span>
+            <div className="flex-1 h-px" style={{ background: C.b1 }} />
+          </div>
+          <div className="grid grid-cols-3">
+            {distEntries.map(([key, pct], i) => (
+              <div key={key} className="px-4 relative" style={{ paddingLeft: i === 0 ? 0 : undefined }}>
+                {i < distEntries.length - 1 && (
+                  <div className="absolute right-0 top-[5%] bottom-[5%] w-px" style={{ background: C.b1 }} />
+                )}
+                <div className="text-2xl font-extrabold leading-none" style={{ color: i === 0 ? C.amber : C.t3 }}>
+                  {pct as number}%
+                </div>
+                <div className="text-xs font-bold mt-0.5 mb-1" style={{ color: i === 0 ? C.t1 : C.t2 }}>
+                  {painLabels[key] || key}
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: C.t3 }}>{painDescs[key] || ''}</p>
+                {i === 0 && intel?.pain_types_analysis?.dominant_strategy && (
+                  <p className="text-[10px] italic mt-1 leading-relaxed" style={{ color: C.t2 }}>→ {intel.pain_types_analysis.dominant_strategy}</p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Pain Distribution Bar */}
-      {Object.keys(distribution).length > 0 && (
-        <PainDistributionBar distribution={distribution} />
+      {/* ═══ PAIN CLUSTERS ═══ */}
+      {clusters.length > 0 && (
+        <div className="pb-card p-4 pb-fade" style={{ animationDelay: '.26s' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold" style={{ color: C.t2 }}>Подтверждённые кластеры боли</span>
+            <div className="flex-1 h-px" style={{ background: C.b1 }} />
+          </div>
+          <div className="divide-y" style={{ borderColor: C.b1 }}>
+            {clusters.map((cluster, i) => {
+              const enriched = intel?.clusters_enriched?.[i];
+              const isHigh = cluster.confidence === 'high';
+              const confColor = isHigh ? C.green : cluster.confidence === 'medium' ? C.amber : C.t3;
+              const confBg = isHigh ? 'rgba(0,238,154,.08)' : cluster.confidence === 'medium' ? 'rgba(255,168,38,.08)' : 'rgba(62,100,128,.08)';
+              const confBorder = isHigh ? 'rgba(0,238,154,.15)' : cluster.confidence === 'medium' ? 'rgba(255,168,38,.15)' : 'rgba(62,100,128,.15)';
+
+              // Find matching complaint for quote
+              const quote = data.who_hurts.complaints.find(c => c.pain_category === cluster.category);
+
+              return (
+                <div key={i} className="py-3 relative first:pt-0 last:pb-0" style={{ borderColor: C.b1 }}>
+                  {/* Left accent bar */}
+                  <div className="absolute left-[-16px] top-3 bottom-3 w-[2px] rounded-r" style={{ background: confColor }} />
+
+                  {/* Header */}
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <span className="text-xs font-bold" style={{ color: C.t1 }}>{enriched?.cluster_name || cluster.pain_summary}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: confBg, color: confColor, border: `1px solid ${confBorder}` }}>
+                      {cluster.confidence.toUpperCase()} · {cluster.source_count} ист.
+                    </span>
+                    <span className="ml-auto text-[10px] font-mono" style={{ color: C.t3 }}>{cluster.mention_count} упоминаний</span>
+                  </div>
+
+                  {/* Body: quote + insight */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      {quote && (
+                        <div className="rounded-lg p-2.5" style={{ background: C.card2, borderLeft: `2px solid ${C.b2}` }}>
+                          <p className="text-[11px] italic leading-relaxed" style={{ color: C.t1 }}>{quote.text}</p>
+                          <p className="text-[9px] font-mono mt-1" style={{ color: C.t3 }}>{quote.source}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-between">
+                      {enriched?.strategic_meaning && (
+                        <p className="text-[11px] leading-relaxed" style={{ color: C.t3 }}>{enriched.strategic_meaning}</p>
+                      )}
+                      {enriched?.block4_connection && (
+                        <div className="flex items-center gap-1 text-[10px] mt-1" style={{ color: C.cyan, opacity: 0.8 }}>
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                          {enriched.block4_connection}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Section 1: У кого болит (Pain Clusters) */}
-      <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
-        <button
-          onClick={() => toggle('who_hurts')}
-          className="w-full flex items-center justify-between p-3 text-left"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">У кого болит</span>
-            <EvidenceBadge type={data.who_hurts.total_complaints > 0 ? 'real_data' : 'no_data'} />
-            <span className="text-xs text-zinc-400">
-              {data.who_hurts.total_complaints > 0
-                ? `${data.who_hurts.total_complaints} жалоб из ${data.who_hurts.sources_count} источников`
-                : 'Нет данных'}
-            </span>
+      {/* ═══ COMPETITIVE POSITIVES (Capterra) ═══ */}
+      {(data._competitive_positives || []).length > 0 && (
+        <div className="pb-card p-4 pb-fade" style={{ animationDelay: '.30s' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold" style={{ color: C.t2 }}>Что нравится пользователям у конкурентов</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,238,154,.06)', color: C.green, border: '1px solid rgba(0,238,154,.12)' }}>Capterra</span>
+            <div className="flex-1 h-px" style={{ background: C.b1 }} />
           </div>
-          <span className="text-zinc-500">{expandedSection === 'who_hurts' ? '−' : '+'}</span>
-        </button>
-        {expandedSection === 'who_hurts' && (
-          <div className="px-3 pb-3 space-y-2">
-            <ScoreDisplay
-              value={data.who_hurts.severity_score.value}
-              label="Серьёзность проблемы"
-              formula={data.who_hurts.severity_score.formula}
-              confidence={data.who_hurts.severity_score.confidence}
-            />
-            <FrustrationThermometer value={data.who_hurts.severity_score.value} />
-
-            {/* Pain clusters with confidence badges — не кликабельные (кластер = агрегат нескольких постов) */}
-            <div className="mt-3 space-y-2">
-              {visibleComplaints.map((c, i) => (
-                <div key={i} className="border-l-2 border-red-500/40 pl-3 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <p className="text-sm text-zinc-200">{c.text}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-zinc-500">{c.source}</span>
-                        {c.engagement > 0 && (
-                          <span className="text-xs text-zinc-400">{c.engagement} упоминаний</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0 mt-1">
-                      {c.pain_category && (
-                        <span className="text-xs text-zinc-500">
-                          {categoryLabels[c.pain_category] || c.pain_category}
-                        </span>
-                      )}
-                      {c.confidence && <ConfidenceBadge confidence={c.confidence} />}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {data.who_hurts.complaints.length > 5 && (
-                <button
-                  onClick={() => setShowAllComplaints(!showAllComplaints)}
-                  className="w-full py-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                  {showAllComplaints ? 'Свернуть' : `Показать ещё ${data.who_hurts.complaints.length - 5}`}
-                </button>
-              )}
-              {data.who_hurts.complaints.length === 0 && (
-                <p className="text-sm text-zinc-400">Кластеров боли не обнаружено</p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Section 2: Как часто */}
-      <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
-        <button
-          onClick={() => toggle('how_often')}
-          className="w-full flex items-center justify-between p-3 text-left"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">Как часто</span>
-            <EvidenceBadge type="calculated" />
-            {data.how_often.dynamics && (
-              <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                data.how_often.dynamics === 'growing' ? 'bg-green-500/20 text-green-300' :
-                data.how_often.dynamics === 'declining' ? 'bg-red-500/20 text-red-300' :
-                'bg-zinc-500/20 text-zinc-300'
-              }`}>
-                {dynamicsLabel}
-                {data.how_often.dynamics_ratio && data.how_often.dynamics_ratio !== 1.0
-                  ? ` (×${data.how_often.dynamics_ratio})`
-                  : ''}
-              </span>
-            )}
-          </div>
-          <span className="text-zinc-500">{expandedSection === 'how_often' ? '−' : '+'}</span>
-        </button>
-        {expandedSection === 'how_often' && (
-          <div className="px-3 pb-3 space-y-3">
-            <ScoreDisplay
-              value={data.how_often.frequency_score.value}
-              label="Частота упоминаний"
-              formula={data.how_often.frequency_score.formula}
-              confidence={data.how_often.frequency_score.confidence}
-            />
-            {/* Хроническая боль */}
-            {data.how_often.pain_is_chronic && (
-              <div className="bg-amber-500/10 rounded-lg px-3 py-2 border border-amber-500/20">
-                <span className="text-xs text-amber-300">Хроническая боль — проблема существует давно, не только последние месяцы</span>
-              </div>
-            )}
-            {/* Все источники динамически */}
-            {data.how_often.all_sources && data.how_often.all_sources.length > 0 ? (
-              <div className="grid gap-2 text-center" style={{
-                gridTemplateColumns: `repeat(${Math.min(data.how_often.all_sources.length, 4)}, 1fr)`
-              }}>
-                {data.how_often.all_sources.map((src, i) => (
-                  <div key={i} className="bg-zinc-800/50 rounded p-2">
-                    <div className="text-lg font-bold">{src.count}</div>
-                    <div className="text-xs text-zinc-400 capitalize">{src.name}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-zinc-800/50 rounded p-2">
-                  <div className="text-lg font-bold">{data.how_often.reddit_post_count}</div>
-                  <div className="text-xs text-zinc-400">Reddit</div>
-                </div>
-                <div className="bg-zinc-800/50 rounded p-2">
-                  <div className="text-lg font-bold">{data.how_often.so_question_count}</div>
-                  <div className="text-xs text-zinc-400">Stack Overflow</div>
-                </div>
-                <div className="bg-zinc-800/50 rounded p-2">
-                  <div className="text-lg font-bold">
-                    {data.how_often.google_trends ? `${data.how_often.google_trends.growth_rate}%` : '—'}
-                  </div>
-                  <div className="text-xs text-zinc-400">Trends рост</div>
-                </div>
-              </div>
-            )}
-            {data.how_often.google_trends && (
-              <a
-                href={data.how_often.google_trends.google_trends_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-indigo-400 hover:text-indigo-300 block"
-              >
-                Google Trends: &quot;{data.how_often.google_trends.original_query || data.how_often.google_trends.search_query}&quot;
-              </a>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Section 3: Текущие решения (Paying Signals — НЕ дубликат) */}
-      <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
-        <button
-          onClick={() => toggle('solutions')}
-          className="w-full flex items-center justify-between p-3 text-left"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">Текущие решения</span>
-            <EvidenceBadge type={data.current_solutions.total_reviews > 0 ? 'real_data' : 'no_data'} />
-            <span className="text-xs text-zinc-400">
-              {data.current_solutions.total_reviews > 0
-                ? `${data.current_solutions.total_reviews} платящих пользователей`
-                : 'Платящих не найдено'}
-            </span>
-          </div>
-          <span className="text-zinc-500">{expandedSection === 'solutions' ? '−' : '+'}</span>
-        </button>
-        {expandedSection === 'solutions' && (
-          <div className="px-3 pb-3 space-y-2">
-            {/* Competitor mentions */}
-            {data.current_solutions.competitor_mentions && data.current_solutions.competitor_mentions.length > 0 && (
-              <div className="bg-zinc-800/50 rounded-lg p-3 mb-2">
-                <div className="text-xs text-zinc-400 mb-2">Упомянутые конкуренты</div>
-                <div className="flex flex-wrap gap-2">
-                  {data.current_solutions.competitor_mentions.map((c, i) => (
-                    <span
-                      key={i}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                        c.sentiment === 'negative'
-                          ? 'bg-red-500/10 text-red-300'
-                          : 'bg-zinc-700 text-zinc-300'
-                      }`}
-                    >
-                      {c.competitor}
-                      <span className="text-zinc-500">({c.mention_count})</span>
-                      {c.sentiment === 'negative' && <span className="text-red-400">-</span>}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Paying signals */}
-            {visibleReviews.map((r, i) => (
-              <SourceCard
-                key={i}
-                title={r.title}
-                url={r.url}
-                source={r.source}
-                snippet={r.snippet}
-                rating={r.rating}
-                dataType="real_data"
-              />
-            ))}
-            {data.current_solutions.reviews.length > 5 && (
-              <button
-                onClick={() => setShowAllReviews(!showAllReviews)}
-                className="w-full py-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                {showAllReviews ? 'Свернуть' : `Показать ещё ${data.current_solutions.reviews.length - 5}`}
-              </button>
-            )}
-            {data.current_solutions.reviews.length === 0 && (
-              <p className="text-sm text-zinc-400">Платящих пользователей не найдено в данной нише</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Section 4: Готовность платить */}
-      <div className="bg-zinc-900/50 rounded-xl border border-zinc-800">
-        <button
-          onClick={() => toggle('willingness')}
-          className="w-full flex items-center justify-between p-3 text-left"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">Готовность платить</span>
-            <EvidenceBadge type={data.willingness_to_pay.paid_solution_count > 0 ? 'real_data' : 'no_data'} />
-            <span className="text-xs text-zinc-400">
-              {data.willingness_to_pay.paid_solution_count > 0
-                ? `${data.willingness_to_pay.paid_solution_count} платящих`
-                : 'Нет данных'}
-            </span>
-          </div>
-          <span className="text-zinc-500">{expandedSection === 'willingness' ? '−' : '+'}</span>
-        </button>
-        {expandedSection === 'willingness' && (
-          <div className="px-3 pb-3 space-y-3">
-            {(data.willingness_to_pay.paying_ratio !== undefined && data.willingness_to_pay.paying_ratio > 0) && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-zinc-800/50 rounded p-2">
-                    <div className="text-lg font-bold text-green-400">{data.willingness_to_pay.paying_ratio}%</div>
-                    <div className="text-xs text-zinc-400">Платящие юзеры</div>
-                  </div>
-                  <div className="bg-zinc-800/50 rounded p-2">
-                    <div className="text-lg font-bold">{data.willingness_to_pay.paid_solution_count}</div>
-                    <div className="text-xs text-zinc-400">Платят сейчас</div>
-                  </div>
-                  <div className="bg-zinc-800/50 rounded p-2">
-                    <div className="text-lg font-bold uppercase">{data.willingness_to_pay.context || '—'}</div>
-                    <div className="text-xs text-zinc-400">Контекст</div>
-                  </div>
-                </div>
-                {/* Paying score bar */}
-                <div className="bg-zinc-800/50 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-zinc-400">Уверенность в готовности платить</span>
-                    <span className="text-sm font-bold">{data.willingness_to_pay.paying_score || 0}</span>
-                  </div>
-                  <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        (data.willingness_to_pay.paying_score || 0) >= 40 ? 'bg-green-500' :
-                        (data.willingness_to_pay.paying_score || 0) >= 20 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${Math.min(100, ((data.willingness_to_pay.paying_score || 0) / 100) * 100)}%` }}
-                    />
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-1">
-                    {(data.willingness_to_pay.paying_score || 0) >= 40 ? 'Высокая готовность — люди уже платят за решения' :
-                     (data.willingness_to_pay.paying_score || 0) >= 20 ? 'Средняя — часть пользователей платит' :
-                     'Низкая — мало сигналов об оплате'}
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* Pricing cards если есть */}
-            {data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found?.length > 0).map((pd, i) => (
-              <div key={i} className="bg-zinc-800/50 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">{pd.competitor}</span>
-                  {pd.pricing_url && (
-                    <a
-                      href={pd.pricing_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-indigo-400 hover:text-indigo-300"
-                    >
-                      Страница цен
-                    </a>
-                  )}
-                </div>
-                {pd.prices_found?.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {pd.prices_found.map((p, j) => (
-                      <span key={j} className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-300 rounded text-xs">
-                        {p.amount}
-                        <span className="text-zinc-500">
-                          {p.period === 'yr' ? '/год' : p.period === 'user/mo' ? '/юзер/мес' : '/мес'}
-                        </span>
-                        {p.plan && <span className="text-zinc-500">({p.plan})</span>}
-                      </span>
-                    ))}
-                  </div>
-                ) : pd.pricing_snippet ? (
-                  <p className="text-xs text-zinc-400">{pd.pricing_snippet}</p>
-                ) : null}
+          <div className="grid grid-cols-2 gap-2">
+            {(data._competitive_positives || []).slice(0, 6).map((pos, i) => (
+              <div key={i} className="rounded-lg p-2.5" style={{ background: C.card2, borderLeft: `2px solid ${C.b2}` }}>
+                <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: C.cyan }}>{pos.product}</div>
+                <p className="text-[10px] leading-relaxed" style={{ color: C.t2 }}>{pos.text.slice(0, 200)}{pos.text.length > 200 ? '...' : ''}</p>
               </div>
             ))}
-            {(!data.willingness_to_pay.paying_ratio || data.willingness_to_pay.paying_ratio === 0) &&
-             data.willingness_to_pay.pricing_data.filter(pd => pd.pricing_url || pd.prices_found?.length > 0).length === 0 && (
-              <p className="text-sm text-zinc-400">Данные о ценах не найдены. Детальные цены конкурентов — в блоке Продаваемость.</p>
-            )}
           </div>
-        )}
+        </div>
+      )}
+
+      {/* ═══ BOTTOM ROW: CONCLUSION + INTELLIGENCE ═══ */}
+      <div className="grid grid-cols-2 gap-3 pb-fade" style={{ animationDelay: '.33s' }}>
+
+        {/* Conclusion */}
+        <div className="pb-card p-4">
+          {/* Diagnosis badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-base font-extrabold mb-2" style={{ background: `${diag.bg}`, border: `1px solid ${diag.border}30`, color: diag.color }}>
+            {diagnosis === 'green' && <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            {diagnosis === 'green' ? 'GO' : diagnosis === 'red' ? 'NO' : 'WAIT'}
+          </div>
+          <h3 className="text-[11px] font-bold mb-1" style={{ color: C.t2 }}>Итог · Блок 1 → Проблема</h3>
+          <p className="text-[11px] leading-relaxed mb-3" style={{ color: C.t2 }}>
+            {intel?.[`conclusion_${diagnosis}`] as string || data.verdict.verdict_text || ''}
+          </p>
+          {/* Flow chain */}
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono" style={{ background: 'rgba(0,238,154,.05)', border: `1px solid rgba(0,238,154,.15)`, color: C.green }}>{dominantType}</span>
+            <span className="text-[10px]" style={{ color: C.t4 }}>→</span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono" style={{ background: C.card2, border: `1px solid ${C.b1}`, color: C.t3 }}>
+              {dominantType === 'bad_solution' ? 'короткий цикл' : dominantType === 'no_solution' ? 'educate market' : 'ценовая война'}
+            </span>
+            <span className="text-[10px]" style={{ color: C.t4 }}>→</span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-mono" style={{ background: 'rgba(0,207,255,.05)', border: '1px solid rgba(0,207,255,.15)', color: C.cyan }}>Блок 3</span>
+          </div>
+        </div>
+
+        {/* Intelligence Layer */}
+        <div className="pb-card p-4" style={{ borderLeft: `3px solid ${C.green}`, borderRadius: '0 12px 12px 0' }}>
+          <div className="text-[8px] uppercase tracking-[.12em] mb-2" style={{ color: C.cyan, opacity: 0.8 }}>Intelligence Layer · Аналитический контекст</div>
+          <p className="text-[11px] leading-[1.75]" style={{ color: C.t2 }}>
+            {intel?.analytical_context || data.ai_summary?.text || 'Intelligence Layer загружается...'}
+          </p>
+        </div>
       </div>
+
+      {/* Intelligence loading */}
+      <IntelligenceLoadingIndicator show={!data.intelligence && !loading && (data.who_hurts?.total_complaints ?? 0) > 0} />
+
+      {/* ═══ SOURCES BAR (collapsible) ═══ */}
+      <div className="pb-card overflow-hidden pb-fade" style={{ animationDelay: '.40s' }}>
+        <button
+          onClick={() => setSourcesOpen(!sourcesOpen)}
+          className="w-full flex items-center justify-between px-4 py-2.5 text-[11px] transition-colors hover:bg-[#111E2A]"
+          style={{ color: C.t3 }}
+        >
+          <div className="flex items-center gap-2">
+            <svg width="11" height="11" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            Источники · {data.who_hurts.total_complaints} валидных постов · {allSources.filter(s => s.count > 0).map(s => sourceDisplayName(s.name)).join(', ')}
+          </div>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ transform: sourcesOpen ? 'rotate(180deg)' : '', transition: 'transform .25s' }}>
+            <path d="M2.5 4.5l3.5 3.5 3.5-3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        <div style={{ maxHeight: sourcesOpen ? '400px' : '0', overflow: 'hidden', transition: 'max-height .35s ease' }}>
+          {/* Header row */}
+          <div className="grid grid-cols-4 px-4 py-2 text-[9px] uppercase tracking-wider" style={{ background: C.card2, borderTop: `1px solid ${C.b1}`, color: C.t3 }}>
+            <div>Платформа</div>
+            <div className="text-right">Собрано</div>
+            <div className="text-right">Прошло</div>
+            <div className="text-right">%</div>
+          </div>
+          {allSources.map((s, i) => {
+            const total = totalCollected > 0 ? Math.round(s.count / data.who_hurts.total_complaints * totalCollected / allSources.length) : s.count * 3;
+            const pct = total > 0 ? Math.round((s.count / Math.max(total, s.count)) * 100) : 0;
+            const pctColor = pct >= 70 ? C.green : pct >= 40 ? C.amber : C.t3;
+            return (
+              <div key={i} className="grid grid-cols-4 px-4 py-2 text-[11px] transition-colors hover:bg-[#111E2A]" style={{ borderTop: `1px solid ${C.b1}` }}>
+                <div className="flex items-center gap-2" style={{ color: C.t2 }}>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: sourceDotColor(s.name) }} />
+                  {sourceDisplayName(s.name)}
+                </div>
+                <div className="text-right" style={{ color: C.t3 }}>{total}</div>
+                <div className="text-right" style={{ color: pct >= 70 ? C.green : C.t3 }}>{s.count}</div>
+                <div className="text-right font-mono" style={{ color: pctColor }}>{pct}%</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </div>
   );
 }

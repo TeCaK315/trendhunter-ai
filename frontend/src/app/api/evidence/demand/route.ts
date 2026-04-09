@@ -86,6 +86,7 @@ interface CompetitorSignal {
   source: "paid" | "organic"; // paid = конкурент с рекламным бюджетом
   query: string; // по какому коммерческому запросу найден
   position?: number; // позиция в органике
+  serp_frequency?: number; // сколько раз этот домен встречался в SERP
 }
 
 interface Layer1Data {
@@ -134,6 +135,7 @@ interface DemandBlockOutput {
   key_factors: string[];
   key_metric: string;
   block_context: {
+    niche: string;
     // intent_type: 'hype' — специальный кейс, не входит в IntentType.
     // Потребители (Блок 4, Синтез) должны явно обрабатывать 'hype'.
     intent_type: IntentType | "hype";
@@ -155,6 +157,15 @@ interface DemandBlockOutput {
     volume_confidence: VolumeConfidence; // → Блок 5: снижает confidence Revenue Range
     rising_queries_ratio: number;
     historical_volume_ratio: number; // для оценки зрелости рынка
+    // #5: GEO validation
+    geo_top_market?: string;
+    geo_demand_mismatch?: boolean;
+    // #10: demand confidence
+    demand_confidence_score?: number;
+    // #13: structural decline
+    is_structural_decline?: boolean;
+    // #14: force experiment for synthesis
+    force_experiment_by_confidence?: boolean;
     // Data quality — для downstream блоков и UI
     data_quality: {
       total_keywords: number;
@@ -162,6 +173,11 @@ interface DemandBlockOutput {
       failed_batches: number;
       classification_confidence: 'high' | 'medium' | 'low';
       cross_validated_with_serp: boolean;
+    };
+    data_quality_verdict?: {
+      verdict: string;
+      reason: string;
+      recommendation: string | null;
     };
   };
   layers: {
@@ -200,6 +216,9 @@ const AGGREGATOR_STOPLIST = [
   "twitter.com",
   "x.com",
   "facebook.com",
+  "instagram.com",
+  "tiktok.com",
+  "pinterest.com",
   // Wiki / encyclopedic
   "wikipedia.org",
   "en.wikipedia.org",
@@ -207,7 +226,126 @@ const AGGREGATOR_STOPLIST = [
   "techcrunch.com",
   "venturebeat.com",
   "hackernews.ycombinator.com",
+  // Big Tech (не конкуренты для SaaS-ниш)
+  "google.com",
+  "maps.google.com",
+  "apple.com",
+  "microsoft.com",
+  "bing.com",
+  "amazon.com",
+  "meta.com",
+  // Общие платформы
+  "github.com",
+  "stackoverflow.com",
+  "stackexchange.com",
+  "docs.google.com",
+  "support.google.com",
+  "support.apple.com",
+  "support.microsoft.com",
 ];
+
+// Домены верхнего уровня которые не являются SaaS-конкурентами
+const NON_COMPETITOR_TLDS = [".gov", ".edu", ".mil", ".int"];
+
+// ————————————————————————————————————————————————————————————
+// #5 — GEO VALIDATOR: нормализация названий стран в ISO коды
+// ————————————————————————————————————————————————————————————
+const COUNTRY_ALIASES: Record<string, string[]> = {
+  "US": ["United States", "USA", "America", "North America"],
+  "DE": ["Germany", "Deutschland", "European Union", "Europe"],
+  "GB": ["United Kingdom", "UK", "Great Britain", "England"],
+  "UA": ["Ukraine", "Украина"],
+  "FR": ["France", "Francia"],
+  "PL": ["Poland", "Польша"],
+  "CA": ["Canada"],
+  "AU": ["Australia"],
+  "IN": ["India"],
+  "BR": ["Brazil", "Brasil"],
+  "JP": ["Japan"],
+  "KR": ["South Korea", "Korea"],
+  "IL": ["Israel"],
+  "NL": ["Netherlands", "Holland"],
+  "SE": ["Sweden"],
+  "SG": ["Singapore"],
+};
+
+function normalizeToCountryCode(market: string): string {
+  const upper = market.toUpperCase().trim();
+  if (upper.length === 2) return upper;
+  for (const [code, aliases] of Object.entries(COUNTRY_ALIASES)) {
+    if (aliases.some(a => a.toLowerCase() === market.toLowerCase().trim()))
+      return code;
+  }
+  return upper.slice(0, 2);
+}
+
+// ————————————————————————————————————————————————————————————
+// #10 — DEMAND CONFIDENCE: взвешенная сумма вместо произведения
+// ————————————————————————————————————————————————————————————
+function calculateDemandConfidence(ctx: {
+  hasDegradedData: boolean;
+  dataScarcity: 'HIGH' | 'MEDIUM' | 'LOW';
+  noTimeseries5y: boolean;
+  noTimeseries3m: boolean;
+  trendStability: 'HIGH' | 'MEDIUM' | 'LOW';
+  crossValidation: -1 | 0 | 1;
+  isLowVolumeData: boolean;
+}): number {
+  const criticalPenalties: number[] = [];
+  const moderatePenalties: number[] = [];
+
+  if (ctx.hasDegradedData) criticalPenalties.push(0.55);
+  if (ctx.dataScarcity === 'HIGH') criticalPenalties.push(0.4);
+
+  if (ctx.noTimeseries5y || ctx.noTimeseries3m) moderatePenalties.push(0.3);
+  if (ctx.trendStability === 'LOW') moderatePenalties.push(0.3);
+  if (ctx.crossValidation === -1) moderatePenalties.push(0.2);
+  if (ctx.isLowVolumeData) moderatePenalties.push(0.25);
+
+  const allPenalties = [
+    ...criticalPenalties,
+    ...moderatePenalties.map(p => p * 0.5),
+  ];
+
+  if (allPenalties.length === 0) return 1.0;
+
+  const avgPenalty = allPenalties.reduce((a, b) => a + b, 0) / allPenalties.length;
+  const rawScore = Math.max(1.0 - avgPenalty, 0.25);
+
+  if (ctx.crossValidation === 1) return Math.min(rawScore * 1.1, 1.0);
+  return rawScore;
+}
+
+// ————————————————————————————————————————————————————————————
+// #13 — REMOVE OUTLIERS для structural decline
+// ————————————————————————————————————————————————————————————
+function removeOutliers(arr: number[]): number[] {
+  if (arr.length < 4) return arr;
+  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const std = Math.sqrt(
+    arr.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / arr.length
+  );
+  if (std === 0) return arr;
+  return arr.filter(x => Math.abs(x - mean) <= 2 * std);
+}
+
+function avgArr(arr: number[]): number {
+  return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+}
+
+function detectStructuralDecline(timeline5y: Array<{ date: string; value: number }>): boolean {
+  const values = timeline5y.map(t => t.value);
+  if (values.length < 104) return false; // need 2+ years
+
+  const twoYearsAgo = removeOutliers(values.slice(0, 52));
+  const oneYearAgo = removeOutliers(values.slice(52, 104));
+  const recent = removeOutliers(values.slice(-52));
+
+  return (
+    avgArr(twoYearsAgo) > avgArr(oneYearAgo) * 1.1 &&
+    avgArr(oneYearAgo) > avgArr(recent) * 1.1
+  );
+}
 
 function extractDomain(url: string): string {
   try {
@@ -218,7 +356,10 @@ function extractDomain(url: string): string {
 }
 
 function isAggregator(domain: string): boolean {
-  return AGGREGATOR_STOPLIST.some((stop) => domain.includes(stop));
+  if (AGGREGATOR_STOPLIST.some((stop) => domain.includes(stop))) return true;
+  // .gov, .edu и т.д. — не SaaS конкуренты
+  if (NON_COMPETITOR_TLDS.some((tld) => domain.endsWith(tld))) return true;
+  return false;
 }
 
 // ————————————————————————————————————————————————————————————
@@ -257,11 +398,17 @@ async function collectDemandData(
   historicalVolumeRatio: number;
   volume3mAgoIndex?: number;
   keywordsSource: KeywordsSource;
+  timeline_5y: Array<{ date: string; value: number }>;
+  timeline_3m: Array<{ date: string; value: number }>;
+  geo_breakdown: Array<{ region: string; label: string; value: number }>;
 }> {
-  const seedQuery = `${niche} ${keywords[0] || ""}`;
+  // Google Trends работает лучше с короткими фразами (2-3 слова)
+  // Длинный seed вроде "HR software comparison painful onboarding" → нули
+  // Используем только niche для Trends, keywords — для классификации
+  const seedQuery = niche;
 
-  // Trends + Historical параллельно
-  const [trendsData, trendsHistorical] = await Promise.all([
+  // Trends + Historical 5y + Historical 3m + Geo параллельно
+  const [trendsData, trendsHistorical, trendsHistorical3m, trendsGeo] = await Promise.all([
     fetchSerpAPI(
       "google_trends",
       {
@@ -279,12 +426,43 @@ async function collectDemandData(
       },
       serpApiKey,
     ),
+    fetchSerpAPI(
+      "google_trends",
+      {
+        q: seedQuery,
+        data_type: "TIMESERIES",
+        date: "today 3-m",
+      },
+      serpApiKey,
+    ),
+    fetchSerpAPI(
+      "google_trends",
+      {
+        q: seedQuery,
+        data_type: "GEO_MAP",
+      },
+      serpApiKey,
+    ),
   ]);
 
   // —— Keywords ————————————————————————————————————————
   let keywordsSource: KeywordsSource = "google_trends";
-  let topRaw: any[] = trendsData?.related_queries?.top || [];
-  let risingRaw: any[] = trendsData?.related_queries?.rising || [];
+
+  // Pre-filter: отбрасываем related queries без слов из seed query
+  const seedWords = seedQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const isRelevantQuery = (q: any): boolean => {
+    const query = (q.query || q.topic?.title || "").toLowerCase();
+    return seedWords.some(word => query.includes(word));
+  };
+
+  let topRaw: any[] = (trendsData?.related_queries?.top || []).filter(isRelevantQuery);
+  let risingRaw: any[] = (trendsData?.related_queries?.rising || []).filter(isRelevantQuery);
+
+  // Если фильтрация убрала всё — берём без фильтра (лучше мусор чем ничего)
+  if (topRaw.length === 0 && risingRaw.length === 0) {
+    topRaw = trendsData?.related_queries?.top || [];
+    risingRaw = trendsData?.related_queries?.rising || [];
+  }
 
   // Fallback: Claude генерирует keywords только если Trends пустой
   // Флаг has_insufficient_data = true передаётся в block_context
@@ -338,12 +516,39 @@ async function collectDemandData(
       timelineData[threeMonthsAgoIdx]?.values?.[0]?.extracted_value;
   }
 
+  // Map timeline data to simple {date, value} format
+  const timeline_5y = timelineData.map((point: any) => ({
+    date: point.date || '',
+    value: point.values?.[0]?.extracted_value ?? 0,
+  }));
+
+  const timelineData3m = trendsHistorical3m?.interest_over_time?.timeline_data || [];
+  const timeline_3m = timelineData3m.map((point: any) => ({
+    date: point.date || '',
+    value: point.values?.[0]?.extracted_value ?? 0,
+  }));
+
+  // —— Гео-данные ————————————————————————————————————————
+  const geoRaw = trendsGeo?.interest_by_region?.map((r: any) => ({
+    region: r.geo || '',
+    label: r.location || r.geo || '',
+    value: r.max_value_index ?? r.value ?? 0,
+  })) || [];
+  // Топ-10 по значению, отсекаем нули
+  const geo_breakdown = geoRaw
+    .filter((g: any) => g.value > 0)
+    .sort((a: any, b: any) => b.value - a.value)
+    .slice(0, 10);
+
   return {
     topKeywords,
     risingKeywords,
     historicalVolumeRatio,
     volume3mAgoIndex,
     keywordsSource,
+    timeline_5y,
+    timeline_3m,
+    geo_breakdown,
   };
 }
 
@@ -402,10 +607,39 @@ async function collectCompetitorsAndAdDensity(
     ),
   );
 
+  function extractCompanyName(domain: string, fallback: string): string {
+    // Убираем субдомены: "editorial.rottentomatoes.com" → "rottentomatoes.com"
+    const parts = domain.replace(/^www\./, "").split(".");
+    const mainPart = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+
+    // Слишком короткий или нечитаемый → fallback на title
+    if (mainPart.length < 3) return fallback;
+
+    // Капитализируем первую букву
+    return mainPart.charAt(0).toUpperCase() + mainPart.slice(1);
+  }
+
+  // #15: track serp_frequency per domain across all queries
+  const domainFrequency = new Map<string, number>();
   const allCompetitors: CompetitorSignal[] = [];
   const seenDomains = new Set<string>();
   let totalAds = 0;
   let totalResults = 0;
+
+  // First pass: count domain frequency across all SERP results
+  serpResults.forEach((serpData) => {
+    if (!serpData) return;
+    const allUrls = [
+      ...(serpData?.ads || serpData?.paid || []).map((a: any) => a?.link || a?.url || a?.displayed_link || ''),
+      ...(serpData?.organic_results || []).map((r: any) => r?.link || r?.url || ''),
+    ];
+    for (const url of allUrls) {
+      const domain = extractDomain(url);
+      if (domain && !isAggregator(domain)) {
+        domainFrequency.set(domain, (domainFrequency.get(domain) || 0) + 1);
+      }
+    }
+  });
 
   serpResults.forEach((serpData, idx) => {
     if (!serpData) return;
@@ -426,9 +660,10 @@ async function collectCompetitorsAndAdDensity(
       seenDomains.add(domain);
       allCompetitors.push({
         domain,
-        name: ad.title || ad.name || domain,
+        name: extractCompanyName(domain, ad.title || ad.name || domain),
         source: "paid",
         query,
+        serp_frequency: domainFrequency.get(domain) || 1,
       });
     });
 
@@ -442,21 +677,31 @@ async function collectCompetitorsAndAdDensity(
       seenDomains.add(domain);
       allCompetitors.push({
         domain,
-        name: r.title || domain,
+        name: extractCompanyName(domain, r.title || domain),
         source: "organic",
         query,
         position: pos + 1,
+        serp_frequency: domainFrequency.get(domain) || 1,
       });
     });
   });
 
-  // Платные конкуренты первыми — они важнее для Блока 4
-  const competitors = allCompetitors.sort((a, b) =>
-    a.source === "paid" && b.source === "organic" ? -1 : 1,
-  );
+  // #15: Платные конкуренты первыми, фильтр по frequency >= 2 (кроме paid — они всегда проходят)
+  const competitors = allCompetitors
+    .filter(c => c.source === 'paid' || (c.serp_frequency ?? 1) >= 2)
+    .sort((a, b) => {
+      if (a.source === 'paid' && b.source !== 'paid') return -1;
+      if (a.source !== 'paid' && b.source === 'paid') return 1;
+      return (b.serp_frequency ?? 1) - (a.serp_frequency ?? 1);
+    });
 
-  // Средняя ad density по всем коммерческим запросам
-  const serpAdDensity = totalResults > 0 ? totalAds / totalResults : 0;
+  // Ad density: сколько рекламных слотов занято из максимальных 4 на страницу
+  // Google показывает максимум 4 объявления на странице SERP
+  const queriesCount = serpResults.filter(Boolean).length;
+  const maxAdsPerQuery = 4;
+  const serpAdDensity = queriesCount > 0
+    ? Math.min(totalAds / (queriesCount * maxAdsPerQuery), 1.0)
+    : 0;
 
   return {
     competitors,
@@ -520,7 +765,10 @@ async function classifyIntentBatch(
 ): Promise<{ classified: SearchKeyword[]; failed: boolean }> {
   if (keywords.length === 0) return { classified: [], failed: false };
 
-  const queriesText = keywords.map((k, i) => `[${i}] ${k.query}`).join("\n");
+  const queriesText = keywords.map((k, i) => {
+    const vol = k.volume != null ? ` (volume: ${k.volume})` : '';
+    return `[${i}] ${k.query}${vol}`;
+  }).join("\n");
 
   try {
     const response = await claude.messages.create({
@@ -536,7 +784,26 @@ Classify each query's intent:
 - "commercial": user wants to BUY, subscribe, compare pricing, find a tool/service, read reviews before purchase, find alternatives to switch to
 - "informational": user wants to LEARN, understand concepts, find tutorials, get definitions, read news/articles
 
-Context matters: "best ${niche} tools" = commercial (comparing to buy), "what is ${niche}" = informational (learning).
+Classify intent based ONLY on query text. Do not consider volume — volume weighting is handled separately.
+
+Commercial intent signals (user is comparing or ready to buy):
+- "best X tools / software / platforms / apps / solutions"
+- "X alternatives", "X vs Y", "X compared to Y"
+- "X pricing / cost / price"
+- "X reviews / rating"
+- "top X for [use case]"
+- "compare X", "X competitors"
+- "buy X", "X free trial", "X demo"
+
+Informational intent signals (user is learning):
+- "what is X", "how does X work", "X explained"
+- "X tutorial", "X guide", "X examples"
+- "X benefits", "X definition"
+- "history of X", "X statistics"
+
+Mixed intent (classify as mixed):
+- Queries that could be either depending on context
+- Brand name only without qualifier
 
 Queries:
 ${queriesText}
@@ -643,6 +910,267 @@ function detectHype(
 }
 
 // ————————————————————————————————————————————————————————————
+// СЕЗОННОСТЬ — анализ месячных паттернов из 5y timeline
+// Детерминированно, без LLM. 0 дополнительных SerpAPI вызовов.
+// ————————————————————————————————————————————————————————————
+const MONTH_NAMES_RU = [
+  'январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
+  'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь',
+];
+
+interface SeasonalityResult {
+  monthly_avg: number[];         // 12 средних значений по месяцам
+  peak_months: number[];         // индексы месяцев-пиков (0-11)
+  low_months: number[];          // индексы месяцев-спадов
+  has_seasonality: boolean;      // std/mean > 0.15
+  current_phase: string;         // "peak" | "rising" | "declining" | "low"
+  interpretation: string;        // текст для UI
+}
+
+function analyzeSeasonality(
+  timeline: Array<{ date: string; value: number }>,
+): SeasonalityResult | null {
+  if (timeline.length < 52) return null; // нужен хотя бы год
+
+  // Группируем по месяцам (date может быть "Jan 1 – 7, 2024" или ISO)
+  const monthBuckets: number[][] = Array.from({ length: 12 }, () => []);
+
+  for (const point of timeline) {
+    const dateStr = point.date;
+    let month = -1;
+
+    // Пробуем ISO формат (2024-01-07)
+    const isoMatch = dateStr.match(/(\d{4})-(\d{2})/);
+    if (isoMatch) {
+      month = parseInt(isoMatch[2], 10) - 1;
+    } else {
+      // SerpAPI формат: "Jan 1 – 7, 2024"
+      const monthMap: Record<string, number> = {
+        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+      };
+      const serpMatch = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/);
+      if (serpMatch) month = monthMap[serpMatch[1]];
+    }
+
+    if (month >= 0 && month < 12 && point.value > 0) {
+      monthBuckets[month].push(point.value);
+    }
+  }
+
+  const monthlyAvg = monthBuckets.map(vals =>
+    vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0
+  );
+
+  const nonZero = monthlyAvg.filter(v => v > 0);
+  if (nonZero.length < 6) return null;
+
+  const mean = nonZero.reduce((a, b) => a + b, 0) / nonZero.length;
+  const std = Math.sqrt(nonZero.reduce((s, v) => s + (v - mean) ** 2, 0) / nonZero.length);
+  const hasSeasonality = mean > 0 && (std / mean) > 0.15;
+
+  if (!hasSeasonality) return null;
+
+  // Пики = месяцы где avg > mean + 0.5*std
+  const peakThreshold = mean + std * 0.5;
+  const lowThreshold = mean - std * 0.5;
+  const peakMonths = monthlyAvg.map((v, i) => v >= peakThreshold ? i : -1).filter(i => i >= 0);
+  const lowMonths = monthlyAvg.map((v, i) => v > 0 && v <= lowThreshold ? i : -1).filter(i => i >= 0);
+
+  // Текущая фаза — учитываем направление через ближайшие месяцы
+  const currentMonth = new Date().getMonth();
+  const nextMonth = (currentMonth + 1) % 12;
+  const nextNextMonth = (currentMonth + 2) % 12;
+  const movingToPeak = peakMonths.includes(nextMonth) || peakMonths.includes(nextNextMonth);
+  const movingToLow = lowMonths.includes(nextMonth) || lowMonths.includes(nextNextMonth);
+
+  const currentPhase = peakMonths.includes(currentMonth) ? 'peak'
+    : lowMonths.includes(currentMonth) ? 'low'
+    : movingToPeak ? 'rising'
+    : movingToLow ? 'declining'
+    : monthlyAvg[currentMonth] > mean ? 'rising' : 'declining';
+
+  const peakNames = peakMonths.map(m => MONTH_NAMES_RU[m]).join(', ');
+  const phaseText = currentPhase === 'peak' ? 'вы в пике спроса'
+    : currentPhase === 'rising' ? 'спрос растёт к пику'
+    : currentPhase === 'low' ? 'сейчас спад — подготовьтесь к следующему пику'
+    : 'спрос снижается от пика';
+
+  return {
+    monthly_avg: monthlyAvg,
+    peak_months: peakMonths,
+    low_months: lowMonths,
+    has_seasonality: true,
+    current_phase: currentPhase,
+    interpretation: `Пик спроса: ${peakNames}. Сейчас ${MONTH_NAMES_RU[currentMonth]} — ${phaseText}.`,
+  };
+}
+
+// ————————————————————————————————————————————————————————————
+// BUYING STAGE — определяем где покупатель в цикле решения
+// Детерминированно из keywords, 0 API calls
+// ————————————————————————————————————————————————————————————
+interface BuyingStageResult {
+  awareness: number;
+  consideration: number;
+  decision: number;
+  dominant_stage: 'awareness' | 'consideration' | 'decision';
+  interpretation: string;
+}
+
+const BUYING_PATTERNS: Record<string, string[]> = {
+  awareness: ['what is', 'how to', 'guide', 'tutorial', 'learn', 'explain', 'introduction', 'basics', 'overview'],
+  consideration: ['best', 'top', 'comparison', 'vs', 'alternative', 'review', 'compare', 'which', 'recommend'],
+  decision: ['pricing', 'cost', 'buy', 'demo', 'trial', 'free', 'discount', 'coupon', 'plan', 'subscription', 'signup'],
+};
+
+function analyzeBuyingStage(keywords: SearchKeyword[]): BuyingStageResult | null {
+  if (keywords.length < 3) return null;
+
+  let awareness = 0, consideration = 0, decision = 0;
+
+  for (const kw of keywords) {
+    const q = kw.query.toLowerCase();
+    let matched = false;
+    for (const pattern of BUYING_PATTERNS.decision) {
+      if (q.includes(pattern)) { decision++; matched = true; break; }
+    }
+    if (!matched) {
+      for (const pattern of BUYING_PATTERNS.consideration) {
+        if (q.includes(pattern)) { consideration++; matched = true; break; }
+      }
+    }
+    if (!matched) {
+      for (const pattern of BUYING_PATTERNS.awareness) {
+        if (q.includes(pattern)) { awareness++; matched = true; break; }
+      }
+    }
+    // Unmatched keywords = не классифицированы, не считаем
+  }
+
+  const total = awareness + consideration + decision;
+  if (total < 2) return null;
+
+  const pctAwareness = Math.round((awareness / total) * 100);
+  const pctConsideration = Math.round((consideration / total) * 100);
+  const pctDecision = Math.round((decision / total) * 100);
+
+  const dominant = pctDecision >= pctConsideration && pctDecision >= pctAwareness ? 'decision'
+    : pctConsideration >= pctAwareness ? 'consideration'
+    : 'awareness';
+
+  const stageTexts = {
+    awareness: `${pctAwareness}% запросов — стадия осознания. Люди только узнают о проблеме, нужен контент-маркетинг.`,
+    consideration: `${pctConsideration}% запросов — стадия выбора. Люди уже знают что нужно, сравнивают варианты.`,
+    decision: `${pctDecision}% запросов — стадия покупки. Люди готовы платить, ищут цены и пробные версии.`,
+  };
+
+  return {
+    awareness: pctAwareness,
+    consideration: pctConsideration,
+    decision: pctDecision,
+    dominant_stage: dominant,
+    interpretation: stageTexts[dominant],
+  };
+}
+
+// ————————————————————————————————————————————————————————————
+// ТРЕНД КОНКУРЕНТОВ — растут или падают (1 SerpAPI вызов)
+// ————————————————————————————————————————————————————————————
+interface CompetitorTrend {
+  name: string;
+  domain: string;
+  growth: number | null; // % изменения
+  direction: 'up' | 'down' | 'stable';
+}
+
+async function fetchCompetitorTrends(
+  competitors: CompetitorSignal[],
+  serpApiKey: string,
+): Promise<CompetitorTrend[]> {
+  // Берём топ-5 уникальных конкурентов (предпочтительно paid)
+  const seen = new Set<string>();
+  const topCompetitors: CompetitorSignal[] = [];
+  for (const c of competitors) {
+    const key = c.domain.replace(/\..+$/, ''); // "rippling" from "rippling.com"
+    if (!seen.has(key) && key.length > 2) {
+      seen.add(key);
+      topCompetitors.push(c);
+      if (topCompetitors.length >= 5) break;
+    }
+  }
+
+  if (topCompetitors.length === 0) return [];
+
+  // Google Trends compare: до 5 терминов через запятую
+  const compareQuery = topCompetitors.map(c =>
+    c.domain.replace(/\..+$/, '') // "rippling", "bamboohr", "workday"
+  ).join(',');
+
+  try {
+    const trendsData = await fetchSerpAPI(
+      'google_trends',
+      { q: compareQuery, data_type: 'TIMESERIES', date: 'today 12-m' },
+      serpApiKey,
+    );
+
+    const timelineData = trendsData?.interest_over_time?.timeline_data || [];
+    if (timelineData.length < 4) return [];
+
+    // Для каждого конкурента: рост за последние 3 месяца vs первые 3 месяца
+    return topCompetitors.map((c, idx) => {
+      const name = c.name || c.domain;
+      const domain = c.domain;
+
+      const values = timelineData.map((p: any) =>
+        p.values?.[idx]?.extracted_value ?? 0
+      );
+
+      const windowSize = Math.max(1, Math.floor(values.length * 0.25));
+      const firstAvg = values.slice(0, windowSize).reduce((a: number, b: number) => a + b, 0) / windowSize;
+      const lastAvg = values.slice(-windowSize).reduce((a: number, b: number) => a + b, 0) / windowSize;
+
+      let growth: number | null = null;
+      if (firstAvg >= 3) {
+        growth = Math.round(((lastAvg - firstAvg) / firstAvg) * 100);
+      }
+
+      const direction: 'up' | 'down' | 'stable' = growth === null ? 'stable'
+        : growth > 10 ? 'up' : growth < -10 ? 'down' : 'stable';
+
+      return { name, domain, growth, direction };
+    });
+  } catch (e) {
+    console.error('[Block2] Competitor trends failed:', e);
+    return [];
+  }
+}
+
+// ————————————————————————————————————————————————————————————
+// РАСЧЁТ РОСТА ИЗ TIMELINE — реальные данные, не хардкоды
+// ————————————————————————————————————————————————————————————
+function calculateGrowthFromTimeline(
+  timeline: Array<{ date: string; value: number }>,
+): number | null {
+  if (timeline.length < 2) return null;
+
+  // Берём среднее первых 10% и последних 10% точек для устойчивости
+  const windowSize = Math.max(1, Math.floor(timeline.length * 0.1));
+  const firstWindow = timeline.slice(0, windowSize);
+  const lastWindow = timeline.slice(-windowSize);
+
+  const avgFirst = firstWindow.reduce((s, p) => s + p.value, 0) / firstWindow.length;
+  const avgLast = lastWindow.reduce((s, p) => s + p.value, 0) / lastWindow.length;
+
+  // Защита от near-zero базового периода — рост ненадёжен
+  if (avgFirst < 5) return null;
+
+  // Ограничиваем диапазон: -99% .. +500%
+  const raw = ((avgLast - avgFirst) / avgFirst) * 100;
+  return Math.min(500, Math.max(-99, Math.round(raw)));
+}
+
+// ————————————————————————————————————————————————————————————
 // АГРЕГАЦИЯ
 // ————————————————————————————————————————————————————————————
 function aggregate(
@@ -670,7 +1198,17 @@ function aggregate(
   // TODO v2: взвешенное среднее (первый keyword важнее двадцатого)
   // или медиана для устойчивости к выбросам
 
-  const risingRatio = total > 0 ? risingKeywords.length / total : 0;
+  // #9: rising_queries_ratio через Set для дедупликации
+  const allQueriesSet = new Set([
+    ...topKeywords.map(k => k.query.toLowerCase().trim()),
+    ...risingKeywords.map(k => k.query.toLowerCase().trim()),
+  ]);
+  const risingSet = new Set(
+    risingKeywords.map(k => k.query.toLowerCase().trim()),
+  );
+  const risingRatio = risingSet.size > 0
+    ? risingSet.size / Math.max(allQueriesSet.size, 1)
+    : 0;
 
   // growthRate — использует именованную константу
   // FIX #1: порядок условий — growing первый (правильный)
@@ -691,11 +1229,38 @@ function aggregate(
 
   // —— Layer 2 ————————————————————————————————————————
   const classified = allKeywords.filter((k) => k.intent !== "mixed");
+
+  // Volume-weighted commercial_intent_ratio:
+  // Высокочастотный коммерческий запрос весит больше низкочастотного информационного
+  const volumes = classified
+    .map(k => k.volume)
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+    .sort((a, b) => a - b);
+  const medianVolume = volumes.length > 0
+    ? volumes[Math.floor(volumes.length / 2)]
+    : 10;
+
+  // #12: isLowVolumeData flag
+  const isLowVolumeData = volumes.length < classified.length * 0.3;
+
+  function getIntentWeight(volume: number | undefined | null, intent: string, median: number): number {
+    const v = typeof volume === 'number' && Number.isFinite(volume) ? volume : median;
+    if (v <= 10) return 1;
+    const cap = intent === 'commercial' ? 5 : 2; // commercial keywords can weigh more
+    return Math.min(Math.log2(v / 10), cap);
+  }
+
+  const totalWeight = classified.reduce((sum, k) => sum + getIntentWeight(k.volume, k.intent, medianVolume), 0);
+  const weightedCommercial = classified.reduce((sum, k) => {
+    const intentScore = k.intent === 'commercial' ? 1.0 : 0.0;
+    return sum + intentScore * getIntentWeight(k.volume, k.intent, medianVolume);
+  }, 0);
+  const commercialRatio = totalWeight > 0 ? weightedCommercial / totalWeight : 0;
+
+  // Unweighted count for diagnostics
   const commercialCount = classified.filter(
     (k) => k.intent === "commercial",
   ).length;
-  const commercialRatio =
-    classified.length > 0 ? commercialCount / classified.length : 0;
 
   const ambiguousCount = allKeywords.filter(
     (k) => k.intent_confidence === "low",
@@ -811,7 +1376,8 @@ function makeDemandDiagnosis(
   if (growth_rate === "declining") {
     return {
       diagnosis: "yellow",
-      score: Math.max(1, 3 + Math.log10(Math.max(demand_index / 10, 0.1))),
+      // Cap at 6 for declining — yellow diagnosis should never show score > 6
+      score: Math.min(6, Math.max(1, 3 + Math.log10(Math.max(demand_index / 10, 0.1)))),
       conflict_weight: 2,
       reason: "declining_market",
       key_factors: [
@@ -994,6 +1560,9 @@ export async function POST(req: NextRequest) {
       historicalVolumeRatio,
       volume3mAgoIndex,
       keywordsSource,
+      timeline_5y,
+      timeline_3m,
+      geo_breakdown,
     } = await collectDemandData(niche, keywords, SERPAPI_KEY);
 
     if (topKeywords.length === 0 && risingKeywords.length === 0) {
@@ -1045,6 +1614,15 @@ export async function POST(req: NextRequest) {
       [...classifiedTop, ...classifiedRising],
       SERPAPI_KEY,
     );
+
+    // —— 3.5. ДОПОЛНИТЕЛЬНЫЕ АНАЛИЗЫ (параллельно) ————————————
+    // Сезонность (из timeline_5y, 0 API), Buying stage (из keywords, 0 API),
+    // Тренд конкурентов (+1 API, параллельно)
+    const seasonality = analyzeSeasonality(timeline_5y);
+    const buyingStage = analyzeBuyingStage([...classifiedTop, ...classifiedRising]);
+    const competitorTrends = competitors.length > 0
+      ? await fetchCompetitorTrends(competitors, SERPAPI_KEY)
+      : [];
 
     // —— 4. АГРЕГАЦИЯ ————————————————————————————————————————
     const layers = aggregate(
@@ -1105,6 +1683,35 @@ export async function POST(req: NextRequest) {
     }
 
     // —— 8. ФИНАЛЬНЫЙ OUTPUT —————————————————————————————————
+    // —— 7.5 GEO VALIDATION, STRUCTURAL DECLINE, DEMAND CONFIDENCE ——
+    // #5: GEO — нормализуем и сравниваем topMarket с target
+    const topGeoRegion = geo_breakdown?.[0]?.region || geo_breakdown?.[0]?.label || 'US';
+    const topMarketCode = normalizeToCountryCode(topGeoRegion);
+    const targetCode = normalizeToCountryCode('US'); // default target
+    const geoDemandMismatch = topMarketCode !== targetCode;
+
+    // #13: Structural decline
+    const isStructuralDecline = detectStructuralDecline(timeline_5y);
+
+    // #10: Demand confidence score
+    const demandConfidenceScore = calculateDemandConfidence({
+      hasDegradedData: keywordsSource === 'claude_fallback',
+      dataScarcity: allKeywordsToClassify.length < 5 ? 'HIGH'
+        : allKeywordsToClassify.length < 15 ? 'MEDIUM' : 'LOW',
+      noTimeseries5y: timeline_5y.length < 52,
+      noTimeseries3m: timeline_3m.length < 4,
+      trendStability: layers.layer3.rising_queries_ratio > 0.7 ? 'LOW'
+        : layers.layer3.rising_queries_ratio > 0.4 ? 'MEDIUM' : 'HIGH',
+      crossValidation: serpAdDensity > 0 || competitors.length > 0 ? 1
+        : competitors.length === 0 && layers.layer2.commercial_intent_ratio > 0.6 ? -1
+        : 0,
+      isLowVolumeData: classifiedKeywords.filter(k =>
+        typeof k.volume === 'number' && Number.isFinite(k.volume)
+      ).length < classifiedKeywords.length * 0.3,
+    });
+
+    const forceExperiment = demandConfidenceScore < 0.4;
+
     // FIX #5: intent_type теперь может быть 'mixed' для серой зоны
     const output: DemandBlockOutput = {
       diagnosis: diagnosisResult.diagnosis,
@@ -1113,6 +1720,7 @@ export async function POST(req: NextRequest) {
       key_factors: diagnosisResult.key_factors,
       key_metric: diagnosisResult.key_metric,
       block_context: {
+        niche,
         intent_type: isHype
           ? "hype"
           : layers.layer2.commercial_intent_ratio >= 0.6
@@ -1139,6 +1747,15 @@ export async function POST(req: NextRequest) {
         volume_confidence: layers.layer1.volume_confidence, // → Блок 5
         rising_queries_ratio: layers.layer3.rising_queries_ratio,
         historical_volume_ratio: historicalVolumeRatio,
+        // #5: GEO validation
+        geo_top_market: topMarketCode,
+        geo_demand_mismatch: geoDemandMismatch,
+        // #10: demand confidence
+        demand_confidence_score: demandConfidenceScore,
+        // #13: structural decline
+        is_structural_decline: isStructuralDecline,
+        // #14: force experiment flag for synthesis
+        force_experiment_by_confidence: forceExperiment,
         data_quality: {
           total_keywords: allKeywordsToClassify.length,
           classified_successfully: classifiedKeywords.filter(k => k.intent !== 'mixed').length,
@@ -1149,6 +1766,59 @@ export async function POST(req: NextRequest) {
       },
       layers,
     };
+
+    // —— 8.5. ANALYZER — DATA QUALITY VERDICT ————————————————
+    let demandAnalyzerVerdict: { verdict: string; reason: string; recommendation: string | null } = {
+      verdict: 'PARTIAL',
+      reason: 'Analyzer не запускался',
+      recommendation: null,
+    };
+    try {
+      const analyzerRes = await claude.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 512,
+        system: 'Ты — аналитик качества данных. Не маркетолог. Верни ТОЛЬКО валидный JSON без markdown, без объяснений.',
+        messages: [{
+          role: 'user',
+          content: `Оцени качество данных спроса:
+${JSON.stringify({
+  total_keywords: allKeywordsToClassify.length,
+  classified_non_mixed: classifiedKeywords.filter(k => k.intent !== 'mixed').length,
+  failed_batches: intentFailedBatches,
+  total_batches: batches.length,
+  commercial_intent_ratio: Math.round(layers.layer2.commercial_intent_ratio * 100) + '%',
+  serp_ad_density: Math.round(serpAdDensity * 100) + '%',
+  competitors_found: competitors.length,
+  keywords_source: keywordsSource,
+  cross_validated: serpAdDensity > 0 || competitors.length > 0,
+  classification_confidence: classificationConfidence,
+}, null, 2)}
+
+Правила:
+- RELIABLE: >15 keywords, failed_batches=0, cross_validated=true, confidence=high
+- PARTIAL: есть данные но пробелы
+- UNRELIABLE: <5 keywords, или >50% failed batches, или keywords_source=claude_fallback
+- При сомнении: PARTIAL
+
+Схема: {"verdict":"RELIABLE|PARTIAL|UNRELIABLE","reason":"одно предложение","recommendation":"строка или null"}`,
+        }],
+      });
+      const rawText = analyzerRes.content[0].type === 'text' ? analyzerRes.content[0].text.trim() : '';
+      const cleanText = rawText.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanText);
+      demandAnalyzerVerdict = {
+        verdict: parsed.verdict || 'PARTIAL',
+        reason: parsed.reason || '',
+        recommendation: parsed.recommendation ?? null,
+      };
+    } catch (e: any) {
+      console.error('[Block2 Analyzer] Error:', e.message);
+      demandAnalyzerVerdict = { verdict: 'PARTIAL', reason: 'Ошибка парсинга ответа Analyzer', recommendation: 'Повторите анализ' };
+    }
+    console.log(`[Block2 Analyzer] Verdict: ${demandAnalyzerVerdict.verdict}`);
+
+    // Добавляем в output
+    output.block_context.data_quality_verdict = demandAnalyzerVerdict as any;
 
     // —— 9. UPSERT В SUPABASE ————————————————————————————————
     const { error: dbError } = await supabase.from("block_results").upsert({
@@ -1164,6 +1834,14 @@ export async function POST(req: NextRequest) {
       block_context: output.block_context,
       raw_data: {
         layers: output.layers,
+        timeline_5y,
+        timeline_3m,
+        growth_5y: calculateGrowthFromTimeline(timeline_5y),
+        growth_3m: calculateGrowthFromTimeline(timeline_3m),
+        geo_breakdown,
+        seasonality,
+        buying_stage: buyingStage,
+        competitor_trends: competitorTrends,
         premium: {
           layer2: output.layers.layer2,
           layer3: output.layers.layer3,
@@ -1205,6 +1883,14 @@ export async function POST(req: NextRequest) {
         top_keywords: output.layers.layer1.top_keywords?.slice(0, 10),
         rising_keywords: output.layers.layer1.rising_keywords?.slice(0, 5),
         competitors_found: competitors,
+        timeline_5y,
+        timeline_3m,
+        growth_5y: calculateGrowthFromTimeline(timeline_5y),
+        growth_3m: calculateGrowthFromTimeline(timeline_3m),
+        geo_breakdown,
+        seasonality,
+        buying_stage: buyingStage,
+        competitor_trends: competitorTrends,
         diagnosis: output.diagnosis,
         score: output.score,
         key_metric: output.key_metric,

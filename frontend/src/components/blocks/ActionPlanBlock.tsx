@@ -340,7 +340,7 @@ export default function ActionPlanBlock({ data, loading, error }: Props) {
             label="Сегмент"
             value={data.target_customer.segment || '—'}
             type="calculated"
-            sublabel={data.target_customer.segment_confidence > 0 ? `${data.target_customer.segment_confidence}% уверенности` : undefined}
+            sublabel={data.target_customer.segment_confidence > 0 ? `${Math.round(data.target_customer.segment_confidence * 100)}% уверенности` : undefined}
           />
           <MetricCard
             label="Ценовая чувствительность"

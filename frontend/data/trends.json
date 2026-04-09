@@ -1,6 +1,326 @@
 {
   "trends": [
     {
+      "id": "trend-1775666689411-1",
+      "title": "Сервисы автоматизации рабочих процессов",
+      "category": "SaaS",
+      "popularity_score": 78,
+      "growth_rate": 200,
+      "why_trending": "Спрос на услуги автоматизации рабочих процессов вырос на 200% за год — компании стремятся оптимизировать свои операции.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-04-08T16:44:49.411Z",
+      "source_query": "workflow automation services",
+      "source_growth": "+200%",
+      "product_format": "unknown",
+      "target_audience": "unknown",
+      "user_outcome": "unknown",
+      "was_topic_transformed": false,
+      "signal_type": "growing",
+      "relevant_subreddits": [
+        "automation",
+        "Zapier",
+        "Integromat",
+        "IFTTT",
+        "n8n"
+      ],
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 191,
+      "enriched_at": "2026-04-08T16:45:01.637Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 2,
+      "sentiment": {
+        "positive": 6,
+        "negative": 0,
+        "neutral": 2,
+        "sample_quotes": [
+          "Лучшее - это Power Automate, он нативно интегрируется со всем пакетом Office.",
+          "Автоматизация контента и SEO с помощью babylovegrowth экономит кучу времени."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS for workflow automation requires integration with various tools and APIs, which adds complexity but is manageable.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Этот рынок имеет высокий потенциал роста и стоит того, чтобы в него входить."
+      }
+    },
+    {
+      "id": "trend-1774553190007-1",
+      "title": "Лучшие платформы автоматизации маркетинга",
+      "category": "SaaS",
+      "popularity_score": 88,
+      "growth_rate": 1550,
+      "why_trending": "Интерес к лучшим платформам автоматизации маркетинга увеличился на 1550% за год — бизнес активно ищет эффективные инструменты для продвижения.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-26T19:26:30.008Z",
+      "source_query": "best marketing automation platforms",
+      "source_growth": "+1,550%",
+      "product_format": "unknown",
+      "target_audience": "unknown",
+      "user_outcome": "unknown",
+      "was_topic_transformed": false,
+      "signal_type": "growing",
+      "relevant_subreddits": [
+        "marketingautomation",
+        "digital_marketing",
+        "emailmarketing",
+        "marketing",
+        "PPC"
+      ],
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 0,
+      "enriched_at": "2026-03-26T19:26:43.584Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -2,
+      "sentiment": {
+        "positive": 6,
+        "negative": 0,
+        "neutral": 1,
+        "sample_quotes": [
+          "Очень удобный, отличная интеграция с CRM и надежные потоки автоматизации.",
+          "Привет, я большой фанат HubSpot."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS platform requires integration with various APIs and managing user data, but it's feasible with existing tools.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Рынок автоматизации маркетинга растет, и есть возможность занять свою нишу."
+      }
+    },
+    {
+      "id": "trend-1774553190008-2",
+      "title": "Отзывы о программном обеспечении CRM",
+      "category": "SaaS",
+      "popularity_score": 86,
+      "growth_rate": 1100,
+      "why_trending": "Запросы на отзывы о CRM-системах выросли на 1100% за год — пользователи стремятся выбрать надежные решения для управления клиентами.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-26T19:26:30.008Z",
+      "source_query": "crm software reviews",
+      "source_growth": "+1,100%",
+      "product_format": "unknown",
+      "target_audience": "unknown",
+      "user_outcome": "unknown",
+      "was_topic_transformed": false,
+      "signal_type": "growing",
+      "relevant_subreddits": [
+        "CRM",
+        "Salesforce",
+        "Zoho",
+        "HubSpot",
+        "Pipedrive"
+      ],
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 24,
+      "enriched_at": "2026-03-26T19:26:47.061Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 57,
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS platform with integrations and user feedback mechanisms requires moderate technical complexity.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Этот рынок имеет высокий потенциал роста и стоит того, чтобы в него входить."
+      }
+    },
+    {
+      "id": "trend-1774553190008-5",
+      "title": "Каталог лучших AI инструментов 2026",
+      "category": "SaaS",
+      "popularity_score": 100,
+      "growth_rate": 999999,
+      "why_trending": "Спрос на каталоги AI инструментов для бизнеса резко возрос, что свидетельствует о растущем интересе к новым технологиям.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-26T19:26:30.008Z",
+      "source_query": "ai tools you should know in 2026",
+      "source_growth": "Breakout",
+      "product_format": "SaaS",
+      "target_audience": "предприниматели, разработчики, маркетологи",
+      "user_outcome": "доступ к актуальной информации о лучших AI инструментах на 2026 год",
+      "was_topic_transformed": false,
+      "signal_type": "breakout",
+      "relevant_subreddits": [
+        "ArtificialIntelligence",
+        "MachineLearning",
+        "AItools",
+        "DataScience",
+        "ChatGPT"
+      ]
+    },
+    {
+      "id": "trend-1774553190007-0",
+      "title": "Сравнение программного обеспечения для HR",
+      "category": "SaaS",
+      "popularity_score": 89,
+      "growth_rate": 1700,
+      "why_trending": "Спрос на сравнение HR-программ вырос на 1700% за год — компании ищут оптимальные решения для управления персоналом.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-26T19:26:30.007Z",
+      "source_query": "hr software comparison",
+      "source_growth": "+1,700%",
+      "product_format": "unknown",
+      "target_audience": "unknown",
+      "user_outcome": "unknown",
+      "was_topic_transformed": false,
+      "signal_type": "growing",
+      "relevant_subreddits": [
+        "humanresources",
+        "HRTech",
+        "recruiting",
+        "peopleops",
+        "HRIS"
+      ],
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 26,
+      "enriched_at": "2026-03-26T19:26:50.469Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 8,
+      "sentiment": {
+        "positive": 3,
+        "negative": 1,
+        "neutral": 4,
+        "sample_quotes": [
+          "Мне нравится. Интегрирует зарплату, расходы, платежи поставщикам.",
+          "Переход на нормальную HR-систему реально меняет дело."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS platform with integrations and APIs for HR software comparison requires moderate technical complexity.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Этот рынок имеет высокий потенциал роста, что делает его привлекательным для входа."
+      }
+    },
+    {
+      "id": "trend-1774492563732-2",
+      "title": "Инструмент управления бухгалтерией для ресторанов",
+      "category": "SaaS",
+      "popularity_score": 79,
+      "growth_rate": -67,
+      "why_trending": "С ростом на 250% в год, этот продукт решает проблему автоматизации учёта и отчётности для ресторанов, позволяя им экономить время и ресурсы. Упрощение бухгалтерских процессов за 10 минут делает его незаменимым для владельцев ресторанов.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-26T02:36:03.732Z",
+      "source_query": "restaurant accounting software",
+      "product_format": "SaaS",
+      "target_audience": "рестораны",
+      "user_outcome": "автоматизация учёта и отчётности за 10 минут",
+      "was_topic_transformed": true,
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 8,
+      "monthly_searches": 13,
+      "enriched_at": "2026-03-26T02:36:19.968Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -3,
+      "sentiment": {
+        "positive": 3,
+        "negative": 4,
+        "neutral": 1,
+        "sample_quotes": [
+          "очень рекомендую",
+          "очень полезный и мощный"
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS product requires integration with various accounting systems and compliance with financial regulations, but it is manageable with existing frameworks.",
+      "quick_verdict": {
+        "decision": "no_go",
+        "summary": "Рынок перенасыщен и наблюдается снижение роста."
+      }
+    },
+    {
+      "id": "trend-1774492520132-0",
+      "title": "Инструмент сравнения функций автоматизации маркетинга",
+      "category": "SaaS",
+      "popularity_score": 86,
+      "growth_rate": -78,
+      "why_trending": "Спрос на инструменты сравнения функций автоматизации маркетинга вырос на 1,000% в год, так как маркетологи стремятся оптимизировать свои процессы и выбирать наиболее эффективные платформы. Этот продукт помогает пользователям быстро и удобно сравнивать возможности различных решений, что существенно экономит время и ресурсы.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-26T02:35:20.132Z",
+      "source_query": "marketing automation features",
+      "product_format": "SaaS",
+      "target_audience": "маркетологи",
+      "user_outcome": "сравнительный анализ функций различных платформ",
+      "was_topic_transformed": true,
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 9,
+      "monthly_searches": 31,
+      "enriched_at": "2026-03-26T02:35:39.418Z",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": -14,
+      "sentiment": {
+        "positive": 1,
+        "negative": 1,
+        "neutral": 6,
+        "sample_quotes": [
+          "мы дешевле, чем все остальные решения",
+          "он намного громоздче"
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building a SaaS tool with integrations and APIs for marketing automation comparison requires moderate technical complexity.",
+      "quick_verdict": {
+        "decision": "no_go",
+        "summary": "Ниша слишком рискованна из-за высокой конкуренции и снижения роста."
+      }
+    },
+    {
+      "id": "trend-1774373735768-1",
+      "title": "Платформа для интеграции API",
+      "category": "Technology",
+      "popularity_score": 82,
+      "growth_rate": 53,
+      "why_trending": "рост интереса на 53% за неделю. Платформы интеграции API позволяют компаниям легко соединять различные приложения и системы, что значительно упрощает обмен данными и автоматизацию процессов.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-03-24T17:35:35.768Z",
+      "source_query": "api integration platforms",
+      "competition_level": "medium",
+      "entry_cost_estimate": "$5K-15K",
+      "top_players_count": 10,
+      "monthly_searches": 12,
+      "enriched_at": "2026-03-24T17:35:50.657Z",
+      "data_confidence": "verified",
+      "growth_rate_source": "google_trends",
+      "growth_rate_verified": 53,
+      "sentiment": {
+        "positive": 1,
+        "negative": 0,
+        "neutral": 6,
+        "sample_quotes": [
+          "Мы рады представить Poozle, платформу для интеграции API с открытым исходным кодом."
+        ]
+      },
+      "difficulty_score": 5,
+      "difficulty_reasoning": "Building an MVP for an API integration platform requires some technical knowledge and the ability to work with various APIs, but it can be achieved with existing tools and frameworks.",
+      "quick_verdict": {
+        "decision": "go",
+        "summary": "Это хорошая возможность для входа в растущий рынок."
+      }
+    },
+    {
       "id": "trend-1774271899559-4",
       "title": "Программное обеспечение для управления запасами",
       "category": "E-commerce",
@@ -1065,5 +1385,5 @@
       "enriched_at": "2026-03-13T17:34:53.864Z"
     }
   ],
-  "lastUpdated": "2026-03-23T13:31:02.750Z"
+  "lastUpdated": "2026-04-08T16:46:01.063Z"
 }

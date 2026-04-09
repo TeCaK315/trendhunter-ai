@@ -14,9 +14,13 @@ import { useLanguage, useTranslateContent } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import RealProblemBlock from '@/components/blocks/RealProblemBlock';
 import DemandGrowthBlock from '@/components/blocks/DemandGrowthBlock';
+import DemandBlock from '@/components/blocks/DemandBlock';
 import MarketSellabilityBlock from '@/components/blocks/MarketSellabilityBlock';
+import SellabilityBlock from '@/components/blocks/SellabilityBlock';
 import MarketOccupationBlock from '@/components/blocks/MarketOccupationBlock';
+import CompetitionBlock from '@/components/blocks/CompetitionBlock';
 import UnitEconomicsBlock from '@/components/blocks/UnitEconomicsBlock';
+import EconomicsBlock from '@/components/blocks/EconomicsBlock';
 import TechFeasibilityBlock from '@/components/blocks/TechFeasibilityBlock';
 import BlindSpotsBlock from '@/components/blocks/BlindSpotsBlock';
 import SynthesisPanel from '@/components/blocks/SynthesisPanel';
@@ -1411,10 +1415,10 @@ export default function TrendPage() {
     const newBlockEndpoints: Record<string, string> = {
       problem: '/api/evidence/problem',
       demand: '/api/evidence/demand',
-      sellability: '/api/evidence/sellability',
+      sellability: '/api/evidence/sellability-v2',
       occupation: '/api/evidence/competition',
-      economics: '/api/evidence/revenue-sizing',
-      tech: '/api/evidence/blind-spots',
+      economics: '/api/evidence/revenue-sizing-v2',
+      tech: '/api/evidence/blind-spots-v2',
     };
 
     // Старые роуты (fallback — пока новые UI компоненты не готовы)
@@ -1473,8 +1477,8 @@ export default function TrendPage() {
           adapted._raw_public = data.public; // сохраняем для мержа при unlock
           setEvidenceData(prev => ({ ...prev, [block]: adapted }));
 
-          // Intelligence Layer — вызываем Sonnet анализ после Block 1
-          // Ждём 1с чтобы Supabase upsert гарантированно закоммитился
+          // Intelligence Layer — вызываем Sonnet анализ после Block 1 и Block 2
+          // Ждём 1.5с чтобы Supabase upsert гарантированно закоммитился
           if (block === 'problem') {
             (async () => {
               try {
@@ -1488,7 +1492,75 @@ export default function TrendPage() {
                   }));
                 }
               } catch (e) {
-                console.error('[Intelligence Layer] ❌ Fetch failed:', e);
+                console.error('[Intelligence Layer Block 1] ❌ Fetch failed:', e);
+              }
+            })();
+          }
+          if (block === 'demand') {
+            (async () => {
+              try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                const intelRes = await fetch(`/api/evidence/demand/analyze?trend_id=${encodeURIComponent(trendId)}`);
+                const intel = await intelRes.json();
+                if (intel.data && !intel.fallback) {
+                  setEvidenceData(prev => ({
+                    ...prev,
+                    demand: { ...(prev.demand || {}), intelligence: intel.data },
+                  }));
+                }
+              } catch (e) {
+                console.error('[Intelligence Layer Block 2] ❌ Fetch failed:', e);
+              }
+            })();
+          }
+          if (block === 'sellability') {
+            (async () => {
+              try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                const intelRes = await fetch(`/api/evidence/sellability/analyze?trend_id=${encodeURIComponent(trendId)}&niche=${encodeURIComponent(niche)}`);
+                const intel = await intelRes.json();
+                if (intel.data && !intel.fallback) {
+                  setEvidenceData(prev => ({
+                    ...prev,
+                    sellability: { ...(prev.sellability || {}), intelligence: intel.data },
+                  }));
+                }
+              } catch (e) {
+                console.error('[Intelligence Layer Block 3] ❌ Fetch failed:', e);
+              }
+            })();
+          }
+          if (block === 'occupation') {
+            (async () => {
+              try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                const intelRes = await fetch(`/api/evidence/competition/analyze?trend_id=${encodeURIComponent(trendId)}&niche=${encodeURIComponent(niche)}`);
+                const intel = await intelRes.json();
+                if (intel.data && !intel.fallback) {
+                  setEvidenceData(prev => ({
+                    ...prev,
+                    occupation: { ...(prev.occupation || {}), intelligence: intel.data },
+                  }));
+                }
+              } catch (e) {
+                console.error('[Intelligence Layer Block 4] ❌ Fetch failed:', e);
+              }
+            })();
+          }
+          if (block === 'economics') {
+            (async () => {
+              try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                const intelRes = await fetch(`/api/evidence/revenue-sizing-v2/narrative?trend_id=${encodeURIComponent(trendId)}`);
+                const intel = await intelRes.json();
+                if (intel.data) {
+                  setEvidenceData(prev => ({
+                    ...prev,
+                    economics: { ...(prev.economics || {}), intelligence_output: intel.data },
+                  }));
+                }
+              } catch (e) {
+                console.error('[Intelligence Layer Block 5] ❌ Fetch failed:', e);
               }
             })();
           }
@@ -1507,11 +1579,13 @@ export default function TrendPage() {
 
     // Волновое выполнение — блоки зависят друг от друга:
     // Wave 1: problem (блок 1) + demand (блок 2) — без зависимостей
-    // Wave 2: sellability (блок 3) + occupation (блок 4) — зависят от 1+2
-    // Wave 3: economics (блок 5) — зависит от 2,3,4
-    // Wave 4: tech/blind-spots (блок 6) — зависит от 1-5
+    // Wave 2: occupation (блок 4) — зависит от 1+2
+    // Wave 3: sellability (блок 3) — зависит от блока 4 (реальные цены конкурентов)
+    // Wave 4: economics (блок 5) — зависит от 2,3,4
+    // Wave 5: tech/blind-spots (блок 6) — зависит от 1-5
     await Promise.allSettled([runBlock('problem'), runBlock('demand')]);
-    await Promise.allSettled([runBlock('sellability'), runBlock('occupation')]);
+    await runBlock('occupation');
+    await runBlock('sellability');
     await runBlock('economics');
     await runBlock('tech');
   };
@@ -2689,7 +2763,7 @@ export default function TrendPage() {
                   onUnlock={() => unlockBlock('demand')}
                   label="Детали интента + ключевые слова"
                 >
-                  <DemandGrowthBlock
+                  <DemandBlock
                     data={evidenceData.demand}
                     loading={evidenceLoading.demand}
                     error={evidenceErrors.demand}
@@ -2704,10 +2778,11 @@ export default function TrendPage() {
                   onUnlock={() => unlockBlock('sellability')}
                   label="Барьеры + каналы продаж"
                 >
-                  <MarketSellabilityBlock
+                  <SellabilityBlock
                     data={evidenceData.sellability}
                     loading={evidenceLoading.sellability}
                     error={evidenceErrors.sellability}
+                    trendTitle={trend?.title}
                   />
                 </PremiumOverlay>
               )}
@@ -2719,7 +2794,7 @@ export default function TrendPage() {
                   onUnlock={() => unlockBlock('occupation')}
                   label="Gap анализ + точка входа"
                 >
-                  <MarketOccupationBlock
+                  <CompetitionBlock
                     data={evidenceData.occupation}
                     loading={evidenceLoading.occupation}
                     error={evidenceErrors.occupation}
@@ -2734,7 +2809,7 @@ export default function TrendPage() {
                   onUnlock={() => unlockBlock('economics')}
                   label="Unit-экономика + Runway"
                 >
-                  <UnitEconomicsBlock
+                  <EconomicsBlock
                     data={evidenceData.economics}
                     loading={evidenceLoading.economics}
                     error={evidenceErrors.economics}
@@ -3031,6 +3106,8 @@ export default function TrendPage() {
               coinBalance={coinBalance}
               onBalanceUpdate={(b) => setCoinBalance(b)}
               language={language}
+              trendTitle={trend?.title}
+              evidenceData={evidenceData}
             />
           )}
 
@@ -4600,7 +4677,7 @@ export default function TrendPage() {
         </div>
         </div>{/* End Dashboard: Sidebar + Content */}
 
-      {/* Chat with context */}
+      {/* Chat with context — disabled
       <TrendChat
         trendContext={{
           title: trend.title,
@@ -4615,6 +4692,7 @@ export default function TrendPage() {
         }}
         language={language}
       />
+      */}
 
       {/* MVP Type Selector Modal - REMOVED
           META агент теперь автоматически определяет тип проекта

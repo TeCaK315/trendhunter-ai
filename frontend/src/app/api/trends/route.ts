@@ -41,10 +41,21 @@ async function getTrendsData(): Promise<TrendsData> {
   if (isKVConfigured()) {
     try {
       const data = await kv.get<TrendsData>(TRENDS_KEY);
-      return data || { trends: [], lastUpdated: null };
+      if (data && data.trends && data.trends.length > 0) {
+        return data;
+      }
+      // KV is empty — fall back to seed data from file
+      const seed = loadSeedData();
+      if (seed.trends.length > 0) {
+        console.log(`KV empty, falling back to seed data (${seed.trends.length} trends)`);
+        return seed;
+      }
+      return { trends: [], lastUpdated: null };
     } catch (error) {
       console.error('KV read error:', error);
-      return { trends: [], lastUpdated: null };
+      // On KV error, also try seed data
+      const seed = loadSeedData();
+      return seed.trends.length > 0 ? seed : { trends: [], lastUpdated: null };
     }
   }
   return localTrendsStorage;

@@ -125,7 +125,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const premiumData = blockResult.raw_data?.premium
+    // v1 blocks store premium in raw_data.premium
+    // v2 blocks store everything in raw_data directly (no .premium wrapper)
+    const premiumData = blockResult.raw_data?.premium || blockResult.raw_data
     if (!premiumData) {
       return NextResponse.json(
         { error: 'Premium data not available for this block' },

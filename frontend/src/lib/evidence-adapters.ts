@@ -16,9 +16,9 @@ function diagnosisToLabel(d: string): string {
 }
 
 function growthRateToNumber(gr: string): number {
-  if (gr === 'growing') return 15;
-  if (gr === 'stable') return 2;
-  return -10;
+  if (gr === 'growing') return 8;
+  if (gr === 'stable') return 5;
+  return 2;
 }
 
 // ─── Block 1: Problem (NEW — pain_clusters + paying_signals + competitor_mentions) ──
@@ -73,11 +73,21 @@ export function adaptProblemData(raw: any): any {
     }
   }
 
-  // "Как часто" — все источники из by_source динамически
-  const sourceEntries = Object.entries(bySource).map(([name, count]) => ({
-    name,
-    count: count as number,
-  }));
+  // "Как часто" — все источники из by_source + sources_attempted
+  // Показываем ВСЕ опрошенные источники, даже если 0 валидных постов
+  const sourcesAttempted: string[] = raw.block_context?.data_quality?.sources_attempted || [];
+  const sourceMap = new Map<string, number>();
+  // Сначала заполняем из attempted (все источники, включая с 0)
+  for (const s of sourcesAttempted) {
+    sourceMap.set(s, 0);
+  }
+  // Затем перезаписываем реальными данными
+  for (const [name, count] of Object.entries(bySource)) {
+    sourceMap.set(name, count as number);
+  }
+  const sourceEntries = Array.from(sourceMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 
   // ── "Текущие решения" — paying_signals (НЕ дубликат top_quotes!) ──
   const payingSignals = (raw.paying_signals || []).map((p: any) => ({
@@ -175,6 +185,7 @@ export function adaptProblemData(raw: any): any {
     _raw_diagnosis: raw.diagnosis,
     _block_context: raw.block_context,
     _distribution: distribution,
+    _competitive_positives: (raw.block_context?.competitive_positives || []) as Array<{ product: string; text: string; source: string }>,
   };
 }
 
@@ -197,10 +208,17 @@ export function adaptDemandData(raw: any): any {
     volume: k.volume,
   }));
 
-  // Конструируем trends_12m из доступных данных
+  // Реальные данные из timeline (не хардкоды!)
   const demandIndex = layer1.demand_index || 0;
   const growthRate = layer1.growth_rate || 'stable';
-  const growthPercent = growthRate === 'growing' ? 15 : growthRate === 'declining' ? -10 : 2;
+
+  // Timeline данные из raw_data (пробрасываются из route.ts)
+  const timeline5y: Array<{ date: string; value: number }> = raw.timeline_5y || [];
+  const timeline3m: Array<{ date: string; value: number }> = raw.timeline_3m || [];
+
+  // Реальный % роста из timeline точек
+  const growth5y = raw.growth_5y ?? null;
+  const growth3m = raw.growth_3m ?? null;
 
   // Google Trends URL для данной ниши
   const keywordForUrl = raw.block_context?.competitors_found?.[0]?.query
@@ -210,41 +228,28 @@ export function adaptDemandData(raw: any): any {
     ? `https://trends.google.com/trends/explore?q=${encodeURIComponent(keywordForUrl)}`
     : '';
 
+  // Берём последние 52 точки из 5y timeline (≈12 месяцев) для sparkline
+  const timeline12m = timeline5y.length > 52
+    ? timeline5y.slice(-52)
+    : timeline5y;
+
   const trends12m = demandIndex > 0 ? {
-    growth_rate: growthPercent,
+    growth_rate: growth5y,
     search_query: keywordForUrl,
     original_query: keywordForUrl,
     google_trends_url: trendsUrl,
-    interest_timeline: [],  // нет детальных точек
+    interest_timeline: timeline12m,
   } : null;
 
   const trends3m = demandIndex > 0 ? {
-    growth_rate: Math.round(growthPercent * 0.8),
+    growth_rate: growth3m,
     search_query: keywordForUrl,
     original_query: keywordForUrl,
     google_trends_url: trendsUrl,
   } : null;
 
-  // "Новые игроки" — конвертируем competitors_found в формат компонента
+  // "Новые игроки" — конкуренты из SERP (платные и органические)
   const competitors = raw.competitors_found || [];
-  const paidCompetitors = competitors.filter((c: any) => c.source === 'paid');
-  const organicCompetitors = competitors.filter((c: any) => c.source === 'organic');
-
-  // Платные конкуренты → funding_news (они вкладывают в рекламу = инвестируют)
-  const fundingNews = paidCompetitors.slice(0, 5).map((c: any) => ({
-    title: c.name || c.domain,
-    url: `https://${c.domain}`,
-    snippet: `Рекламируется по запросу: "${c.query}"`,
-    date: 'Paid Ads',
-  }));
-
-  // Органические конкуренты → show_hn_posts (просто показать как новых игроков)
-  const showHnPosts = organicCompetitors.slice(0, 5).map((c: any) => ({
-    title: c.name || c.domain,
-    url: `https://${c.domain}`,
-    points: c.position ? (10 - c.position) : 0,
-    snippet: `Органическая позиция #${c.position || '?'} по "${c.query}"`,
-  }));
 
   // Коммерческий/информационный расчёт
   const commercialRatio = layer2.commercial_intent_ratio || raw.commercial_intent_ratio || 0;
@@ -277,14 +282,13 @@ export function adaptDemandData(raw: any): any {
       rising_queries_ratio: layer3.rising_queries_ratio || 0,
     },
     new_players: {
-      producthunt_launches: [],
-      show_hn_posts: showHnPosts,
-      funding_news: fundingNews,
       new_entrants_count: competitors.length,
       competitors_found: competitors.slice(0, 10).map((c: any) => ({
         name: c.name || c.domain,
         domain: c.domain,
         source: c.source,
+        query: c.query,
+        position: c.position,
       })),
     },
     search_intent: {
@@ -296,7 +300,19 @@ export function adaptDemandData(raw: any): any {
       intent_type: commercialRatio > 0.6 ? 'commercial' : commercialRatio < 0.4 ? 'informational' : 'mixed',
       top_keywords: topKeywords,
     },
-    geo_breakdown: [],
+    geo_breakdown: (raw.geo_breakdown || []).map((g: any) => ({
+      region: g.region,
+      label: g.label,
+      value: g.value,
+    })),
+    seasonality: raw.seasonality || null,
+    buying_stage: raw.buying_stage || null,
+    competitor_trends: (raw.competitor_trends || []).map((ct: any) => ({
+      name: ct.name,
+      domain: ct.domain,
+      growth: ct.growth,
+      direction: ct.direction,
+    })),
     verdict: {
       value: score,
       formula: raw.key_metric || '',
@@ -411,6 +427,30 @@ export function adaptSellabilityData(raw: any): any {
     }
   }
 
+  // Communities — структурированные данные с URL
+  const communities = allCommunities.slice(0, 5).map((comm: any) => ({
+    name: comm.community_name || '',
+    channel_type: comm.channel_type || 'subreddit',
+    url: comm.url || '#',
+    member_count: comm.member_count || 0,
+    mentioned_frequency: comm.mentioned_frequency || 0,
+    competitor_domain: comm.competitor_domain || null,
+  }));
+
+  // Traffic interception points — структурированные
+  const trafficPoints = (raw.traffic_interception_points || []).slice(0, 5).map((p: any) => {
+    if (typeof p === 'string') return { type: 'other', keyword: p, difficulty: 'medium', tactics: [] };
+    return {
+      type: p.type || 'other',
+      keyword: p.keyword || '',
+      difficulty: p.difficulty || 'medium',
+      tactics: Array.isArray(p.tactics) ? p.tactics : [],
+    };
+  });
+
+  // Budget signals из layer2
+  const budgetSignals = layers.layer2?.budget_signals || raw.block_context?.budget_signals || null;
+
   return {
     who_pays: {
       buyer_discussions: buyerDiscussions,
@@ -430,14 +470,31 @@ export function adaptSellabilityData(raw: any): any {
       price_range: priceRange.min && priceRange.max
         ? `$${priceRange.min} – $${priceRange.max}`
         : null,
+      price_min: priceRange.minimum ?? priceRange.min ?? null,
+      price_premium: priceRange.premium ?? priceRange.max ?? null,
       psychological_threshold: raw.psychological_threshold || null,
+      payment_model: raw.payment_model || null,
+      has_trial_period: raw.has_trial_period ?? null,
     },
     sales_cycle: {
       complexity: saleCycleMap[raw.sale_cycle] || 'Неизвестно',
       reasoning: raw.path_to_first_payment || raw.block_context?.path_to_first_payment || '',
       days: raw.sale_cycle_days || null,
       budget_exists: raw.budget_category_exists ?? null,
+      deal_cycle_reasoning: layers.layer2?.deal_cycle_reasoning || raw.block_context?.deal_cycle_reasoning || null,
+      budget_signals: budgetSignals,
+      market_type: layers.layer2?.market_type || raw.block_context?.market_type || null,
+      has_trial_period: raw.has_trial_period ?? null,
+      pain_type: raw.block_context?.pain_type || null,
     },
+    path_to_money: {
+      path_to_first_payment: raw.path_to_first_payment || raw.block_context?.path_to_first_payment || null,
+      time_to_first_revenue_days: raw.time_to_first_revenue_days || raw.block_context?.time_to_first_revenue_days || null,
+      market_readiness_score: raw.block_context?.market_readiness_score ?? null,
+      main_barrier: raw.block_context?.main_barrier || null,
+    },
+    communities,
+    traffic_interception_points: trafficPoints,
     verdict: {
       value: score,
       formula: raw.key_metric || '',
@@ -483,7 +540,7 @@ export function adaptCompetitionData(raw: any): any {
       unmet_needs: executionGaps.map((g: any) => ({
         title: g.title || g.quote || '',
         url: '#',
-        subreddit: g.source || '',
+        source: g.source || '',
         score: g.count || 0,
         gap_type: 'execution',
       })),
@@ -508,9 +565,57 @@ export function adaptCompetitionData(raw: any): any {
         confidence: conf,
       },
     },
-    feature_gap_matrix: null,
-    pricing_benchmark: null,
+    // gap_type — ключевая метрика для UI и Синтеза
+    gap_type: raw.block_context?.gap_type || raw.gap_type || 'none',
+
+    // Strategic gap summary от Sonnet
+    strategic_gap_summary: raw.layers?.layer3?.strategic_gap_summary || null,
+
+    // Entry point reasoning от Sonnet
+    entry_point_reasoning: raw.layers?.layer3?.entry_point_reasoning || null,
+
+    // Размеры конкурентов (для отображения)
+    competitor_sizes: (raw.layers?.layer1?.competitors || []).map((c: any) => ({
+      domain: c.domain,
+      name: c.name,
+      size: c.size?.estimate || null,
+      g2_reviews: c.size?.raw?.g2_reviews || null,
+      primary_segment: c.primary_segment || null,
+    })),
+
+    // Детали классификации
+    classification_details: raw.layers?.layer2?.classification_details || null,
+
+    // Структурированные gap-данные
+    feature_gap_matrix: (raw.layers?.layer2?.strategic_gaps?.length > 0 || raw.layers?.layer2?.execution_gaps?.length > 0)
+      ? [
+          ...(raw.layers?.layer2?.strategic_gaps || []).map((g: any) => ({
+            category: g.complaint_category,
+            type: 'strategic' as const,
+            quote: g.quote,
+            competitor: g.competitor_domain,
+            reasoning: g.reasoning,
+          })),
+          ...(raw.layers?.layer2?.execution_gaps || []).map((g: any) => ({
+            category: g.complaint_category,
+            type: 'execution' as const,
+            quote: g.quote,
+            competitor: g.competitor_domain,
+          })),
+        ]
+      : null,
+
+    // Competitor profiles с размерами
+    pricing_benchmark: (raw.layers?.layer1?.competitors || []).length > 0
+      ? (raw.layers.layer1.competitors as any[]).map((c: any) => ({
+          domain: c.domain,
+          segment: c.primary_segment,
+          size: c.size?.estimate || null,
+        }))
+      : null,
+
     traffic_sources: null,
+
     competitor_complaints: competitors.length > 0
       ? {
           entries: competitors
@@ -630,10 +735,10 @@ export function adaptRevenueSizingData(raw: any): any {
 export function adaptBlockData(block: string, raw: any): any {
   switch (block) {
     case 'problem': return adaptProblemData(raw);
-    case 'demand': return adaptDemandData(raw);
-    case 'sellability': return adaptSellabilityData(raw);
-    case 'occupation': return adaptCompetitionData(raw);
-    case 'economics': return adaptRevenueSizingData(raw);
+    case 'demand': return raw;
+    case 'sellability': return raw; // sellability-v2 — SellabilityBlock получает raw данные
+    case 'occupation': return raw; // CompetitionBlock получает raw данные
+    case 'economics': return raw;
     case 'tech': return raw; // blind-spots — передаём как есть для нового компонента
     default: return raw;
   }

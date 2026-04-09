@@ -53,7 +53,8 @@ type ComplaintCategory =
   | "ux_bug"
   | "performance"
   | "support"
-  | "integration";
+  | "integration"
+  | "irrelevant";
 
 interface CompetitorSignal {
   domain: string;
@@ -191,7 +192,7 @@ async function estimateCompetitorSize(
     fetchSerpAPI(
       "google",
       {
-        q: `site:g2.com "${competitor.domain}" OR "${competitor.name}" reviews`,
+        q: `site:g2.com "${competitor.name}" reviews`,
         gl: "us",
         num: "5",
       },
@@ -219,14 +220,30 @@ async function estimateCompetitorSize(
 
   // Прокси 1: G2 отзывы (наивысший приоритет)
   if (g2Data?.organic_results?.length) {
-    const snippet = g2Data.organic_results[0]?.snippet || "";
-    const match = snippet.match(/(\d[\d,]*)\s*(reviews?|ratings?)/i);
-    if (match) {
-      const count = parseInt(match[1].replace(/,/g, ""));
-      if (count > 0) {
-        raw.g2_reviews = count;
+    // Приоритет 1: rich_snippet — точные данные из Google structured data
+    for (const result of g2Data.organic_results) {
+      const richReviews = result?.rich_snippet?.top?.detected_extensions?.reviews;
+      if (richReviews && richReviews > 0) {
+        raw.g2_reviews = richReviews;
         proxies_used++;
         primary_proxy = "g2";
+        break;
+      }
+    }
+    // Приоритет 2: fallback на snippet regex
+    if (!raw.g2_reviews) {
+      for (const result of g2Data.organic_results) {
+        const snippet = result?.snippet || "";
+        const match = snippet.match(/(\d[\d,]*)\s*(reviews?|ratings?)/i);
+        if (match) {
+          const count = parseInt(match[1].replace(/,/g, ""));
+          if (count > 0) {
+            raw.g2_reviews = count;
+            proxies_used++;
+            primary_proxy = "g2";
+            break;
+          }
+        }
       }
     }
   }
@@ -261,8 +278,7 @@ async function estimateCompetitorSize(
   let confidence: CompetitorSize["confidence"] = "low";
 
   if (raw.g2_reviews) {
-    // CALIBRATE_AFTER_50_ANALYSES: 300 пользователей / отзыв
-    userEstimate = raw.g2_reviews * 300;
+    userEstimate = raw.g2_reviews * 7;
     confidence = raw.g2_reviews >= 10 ? "high" : "medium";
   } else if (raw.linkedin_employees) {
     userEstimate = raw.linkedin_employees * 100;
@@ -275,11 +291,11 @@ async function estimateCompetitorSize(
   const estimate: CompetitorSize["estimate"] =
     userEstimate === 0
       ? "micro"
-      : userEstimate < 100
+      : userEstimate < 500
         ? "micro"
-        : userEstimate < 1000
+        : userEstimate < 5000
           ? "small"
-          : userEstimate < 10000
+          : userEstimate < 50000
             ? "medium"
             : "large";
 
@@ -349,11 +365,11 @@ async function fetchReviews(
   competitor: CompetitorProfile,
   serpApiKey: string,
 ): Promise<{ text: string; source: string }[]> {
-  const [g2Reviews, trustpilotReviews] = await Promise.all([
+  const [g2Reviews, trustpilotReviews, capterraReviews] = await Promise.all([
     fetchSerpAPI(
       "google",
       {
-        q: `site:g2.com "${competitor.domain}" "1 star" OR "2 stars" reviews problems`,
+        q: `site:g2.com "${competitor.name}" "1 star" OR "2 stars" reviews problems`,
         gl: "us",
         num: "10",
       },
@@ -362,22 +378,57 @@ async function fetchReviews(
     fetchSerpAPI(
       "google",
       {
-        q: `site:trustpilot.com "${competitor.domain}" OR "${competitor.name}" bad review`,
+        q: `site:trustpilot.com "${competitor.name}" "1 star" OR "2 stars" OR terrible OR awful`,
         gl: "us",
         num: "5",
       },
       serpApiKey,
     ),
+    fetchSerpAPI(
+      "google",
+      {
+        q: `site:capterra.com "${competitor.name}" reviews problems`,
+        gl: "us",
+        num: "8",
+      },
+      serpApiKey,
+    ),
   ]);
+
+  // Fix 3: мусорные паттерны — тексты самих платформ, не отзывы пользователей
+  const JUNK_PATTERNS = [
+    /g2 takes pride/i,
+    /showing unbiased reviews/i,
+    /learn more about the cost/i,
+    /read verified reviews/i,
+    /capterra is free/i,
+    /find the best software/i,
+    /compare verified reviews/i,
+    /sponsored listing/i,
+    /how would you rate your experience/i,
+    /unsure of what to choose/i,
+    /check capterra to compare/i,
+    /write a review/i,
+  ];
+
+  const isJunk = (text: string) =>
+    JUNK_PATTERNS.some((pattern) => pattern.test(text)) || text.length < 40;
 
   const reviews: { text: string; source: string }[] = [];
 
   g2Reviews?.organic_results?.forEach((r: any) => {
-    if (r.snippet) reviews.push({ text: r.snippet, source: "g2" });
+    if (r.snippet && !isJunk(r.snippet))
+      reviews.push({ text: r.snippet, source: "g2" });
   });
 
   trustpilotReviews?.organic_results?.forEach((r: any) => {
-    if (r.snippet) reviews.push({ text: r.snippet, source: "trustpilot" });
+    if (r.snippet && !isJunk(r.snippet))
+      reviews.push({ text: r.snippet, source: "trustpilot" });
+  });
+
+  capterraReviews?.organic_results?.forEach((r: any) => {
+    if (r.snippet && !isJunk(r.snippet))
+      reviews.push({ text: r.snippet, source: "capterra" });
   });
 
   return reviews.slice(0, 15);
@@ -386,7 +437,8 @@ async function fetchReviews(
 async function classifyComplaints(
   reviews: { text: string; source: string }[],
   _competitorDomain: string,
-): Promise<{ category: ComplaintCategory; quote: string; source: string }[]> {
+  niche: string,
+): Promise<{ category: ComplaintCategory; quote: string; source: string; is_relevant: boolean; severity: number }[]> {
   if (reviews.length === 0) return [];
 
   const reviewsText = reviews
@@ -396,12 +448,13 @@ async function classifyComplaints(
   try {
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 600,
+      max_tokens: 800,
       system: "Отвечай только валидным JSON без markdown и пояснений.",
       messages: [
         {
           role: "user",
-          content: `Классифицируй каждый отзыв о продукте по категории жалобы.
+          content: `Ты анализируешь отзывы о конкурентах в нише "${niche}".
+Классифицируй каждый отзыв по категории жалобы и определи релевантность к нише.
 
 Категории:
 - pricing_model: жалобы на цену, тарифы, стоимость
@@ -410,14 +463,16 @@ async function classifyComplaints(
 - performance: медленно, падает, нестабильно
 - support: плохая поддержка, нет ответов
 - integration: проблемы с интеграциями, API
+- irrelevant: отзыв НЕ относится к нише "${niche}" (спам, другой продукт, общие комментарии без конкретной жалобы)
 
 Отзывы:
 ${reviewsText}
 
 Верни JSON массив из ${reviews.length} объектов:
-[{"category": "pricing_model", "quote": "краткая цитата 50-100 символов"}, ...]
+[{"category": "pricing_model", "quote": "краткая цитата 50-100 символов", "is_relevant": true, "severity": 7}, ...]
 
-Если отзыв нерелевантен — используй "ux_bug" как дефолт.`,
+severity: 1-10, насколько серьёзна жалоба (10 = критично для пользователя).
+is_relevant: false если отзыв не относится к нише или не содержит конкретной жалобы.`,
         },
       ],
     });
@@ -444,6 +499,7 @@ ${reviewsText}
       "performance",
       "support",
       "integration",
+      "irrelevant",
     ];
 
     return result.map((r: any, i: number) => ({
@@ -452,6 +508,8 @@ ${reviewsText}
         : "ux_bug") as ComplaintCategory,
       quote: r?.quote?.slice(0, 150) || reviews[i].text.slice(0, 100),
       source: reviews[i].source,
+      is_relevant: r?.is_relevant !== false,
+      severity: typeof r?.severity === "number" ? Math.min(10, Math.max(1, r.severity)) : 5,
     }));
   } catch {
     return [];
@@ -543,6 +601,7 @@ async function collectLayer2(
   layer1: Layer1Data,
   serpApiKey: string,
   block3Data: any,
+  niche: string,
 ): Promise<Layer2Data> {
   if (layer1.competitors.length === 0) {
     return {
@@ -570,13 +629,14 @@ async function collectLayer2(
 
   const classifiedPerCompetitor = await Promise.all(
     layer1.competitors.map((competitor, idx) =>
-      classifyComplaints(reviewsPerCompetitor[idx], competitor.domain),
+      classifyComplaints(reviewsPerCompetitor[idx], competitor.domain, niche),
     ),
   );
 
   await Promise.all(
     layer1.competitors.map(async (competitor, idx) => {
-      const classified = classifiedPerCompetitor[idx];
+      const allClassified = classifiedPerCompetitor[idx];
+      const classified = allClassified.filter(c => c.category !== "irrelevant" && c.is_relevant);
       totalReviews += classified.length;
 
       if (classified.length === 0) return;
@@ -628,9 +688,7 @@ async function collectLayer2(
           quote: topQuotes[0]?.quote || topCategories[0]?.sample_quote || "",
           source: topQuotes[0]?.source || "g2",
           competitor_domain: competitor.domain,
-          reasoning: gapAnalysis.is_strategic
-            ? gapAnalysis.reasoning
-            : undefined,
+          reasoning: gapAnalysis.reasoning || undefined,
         };
 
         if (gapAnalysis.is_strategic) {
@@ -918,7 +976,7 @@ function makeCompetitionDiagnosis(
       reason: "execution_gap",
       key_factors: [
         `Execution Gap у ${topGap.competitor_domain}: ${topGap.complaint_category}`,
-        "Конкурент может исправить за квартал — окно закроется",
+        topGap.reasoning || "Окно входа открыто — конкурент не исправил проблему",
         `${layer1.paid_count} платных конкурентов в SERP — высокая конкуренция`,
       ],
       key_metric: `Execution Gap: ${topGap.complaint_category}`,
@@ -1018,7 +1076,7 @@ export async function POST(req: NextRequest) {
     );
 
     // —— Слой 2: Gap анализ —————————————————————————
-    const layer2 = await collectLayer2(layer1, SERPAPI_KEY, block3_context);
+    const layer2 = await collectLayer2(layer1, SERPAPI_KEY, block3_context, niche);
 
     // —— Слой 3: Точка входа ————————————————————————
     const layer3 = await collectLayer3(layer1, layer2, niche);

@@ -94,7 +94,7 @@ export function ScoreDisplay({ value, maxValue = 10, confidence, label, formula 
     <div className="space-y-1">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium text-zinc-300">{label}</span>
-        <span className="text-sm font-bold text-white">{value}/{maxValue}</span>
+        <span className="text-sm font-bold text-white">{Math.round(Math.min(value, maxValue) * 10) / 10}/{maxValue}</span>
       </div>
       <div className="w-full bg-zinc-700 rounded-full h-2">
         <div
@@ -104,7 +104,7 @@ export function ScoreDisplay({ value, maxValue = 10, confidence, label, formula 
       </div>
       <div className="flex justify-between text-xs text-zinc-500">
         {formula && <span title={formula}>Формула: {formula.substring(0, 40)}{formula.length > 40 ? '...' : ''}</span>}
-        {confidence !== undefined && <span>Уверенность: {confidence}%</span>}
+        {confidence !== undefined && <span>Уверенность: {Math.round(confidence * 100)}%</span>}
       </div>
     </div>
   );

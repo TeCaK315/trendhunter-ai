@@ -107,15 +107,15 @@ function sizeEstimateToCustomerCount(
 ): number {
   switch (sizeEstimate) {
     case "micro":
-      return 50;
+      return 250;
     case "small":
-      return 500;
+      return 2500;
     case "medium":
-      return 3000;
+      return 25000;
     case "large":
-      return 15000;
+      return 75000;
     default:
-      return 100;
+      return 250;
   }
 }
 
@@ -131,7 +131,7 @@ function calculateMethod1(
   let dataSource: "g2_reviews" | "competitor_size_fallback";
 
   if (topCompetitorG2Reviews && topCompetitorG2Reviews > 0) {
-    competitorCustomers = topCompetitorG2Reviews * 300;
+    competitorCustomers = topCompetitorG2Reviews * 7;
     dataSource = "g2_reviews";
   } else if (topCompetitorSize) {
     competitorCustomers = sizeEstimateToCustomerCount(topCompetitorSize);

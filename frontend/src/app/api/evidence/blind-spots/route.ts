@@ -92,7 +92,9 @@ function detectBlindSpotTypes(
     depends_on_blocks: number[];
   }[] = [];
 
-  const payingRatio = b1?.paying_users_ratio || 0;
+  // paying_users_ratio приходит из Block 1 как процент (0-100), нормализуем в 0-1
+  const rawPayingRatio = b1?.paying_users_ratio || 0;
+  const payingRatio = rawPayingRatio > 1 ? rawPayingRatio / 100 : rawPayingRatio;
   const commercialIntent = b2?.commercial_intent_ratio || 0;
   const demandIndex = b2?.demand_index || 0;
   const risingQueriesRatio = b2?.rising_queries_ratio || 0;
@@ -176,12 +178,13 @@ function detectBlindSpotTypes(
 
   // 5. LOCK-IN OPPORTUNITY
   // #2 FIX: убран ux_bug — UX проблема ≠ switching cost
-  // Только integration + missing_feature указывают на реальный lock-in
+  // integration, missing_feature, support — указывают на lock-in
+  // support добавлен: плохая поддержка при высоких switching costs = ловушка
   const hasLockinComplaints =
-    ["integration", "missing_feature"].includes(topGapCategory || "") &&
-    gapType === "strategic";
+    ["integration", "missing_feature", "support"].includes(topGapCategory || "") &&
+    gapType !== "none";
 
-  if (topCompetitorSize === "large" && hasLockinComplaints) {
+  if ((topCompetitorSize === "large" || topCompetitorSize === "medium") && hasLockinComplaints) {
     candidates.push({
       type: "lockin_opportunity",
       signals: [
@@ -344,20 +347,26 @@ function makeDiagnosis(blindSpots: BlindSpot[]): {
   }
 
   const highImpactCount = blindSpots.filter((s) => s.impact === "high").length;
+  const mediumImpactCount = blindSpots.filter((s) => s.impact === "medium").length;
 
   const totalImpact: BlindSpotImpact =
-    highImpactCount >= 2 ? "high" : highImpactCount === 1 ? "medium" : "low";
+    highImpactCount >= 2 ? "high"
+    : highImpactCount >= 1 || mediumImpactCount >= 2 ? "medium"
+    : mediumImpactCount >= 1 ? "medium"
+    : "low";
 
   const diagnosis: "green" | "yellow" | "red" =
     highImpactCount >= 2 && blindSpots.length >= 3
       ? "green"
-      : highImpactCount >= 1
+      : highImpactCount >= 1 || mediumImpactCount >= 2
         ? "yellow"
-        : "red";
+        : mediumImpactCount >= 1
+          ? "yellow"
+          : "red";
 
   const score = Math.min(
     10,
-    3 + highImpactCount * 2 + (blindSpots.length > 3 ? 1 : 0),
+    3 + highImpactCount * 2 + mediumImpactCount * 1 + (blindSpots.length > 3 ? 1 : 0),
   );
 
   // #3: conflict_weight — high impact усиливает любой диагноз раздела
@@ -432,11 +441,11 @@ export async function POST(req: NextRequest) {
 
     // Multi-Pass 3: извлекаем confidence из upstream блоков
     const upstreamConfidence: Record<number, 'high' | 'medium' | 'low' | 'unknown'> = {
-      1: b1?.data_quality?.overall_confidence || 'unknown',  // из Block 1 (problem)
-      2: b2?.data_quality?.classification_confidence || 'unknown', // из Block 2 (demand)
-      3: b3?.data_quality?.overall_data_confidence || 'unknown', // из Block 3 (sellability)
-      4: b4?.data_quality?.overall_confidence || 'unknown', // из Block 4 (market occupation)
-      5: b5?.data_quality?.overall_confidence || 'unknown', // из Block 5 (economics)
+      1: b1?.classification_confidence || b1?.data_quality?.overall_confidence || 'unknown',
+      2: b2?.data_quality?.classification_confidence || 'unknown',
+      3: b3?.data_quality?.overall_data_confidence || 'unknown',
+      4: b4?.top_competitor_g2_reviews ? 'high' : b4?.competitor_count > 0 ? 'medium' : 'unknown',
+      5: b5?.confidence || 'unknown',
     };
 
     console.log('[Block6] Upstream confidence:', upstreamConfidence);
@@ -541,6 +550,7 @@ export async function POST(req: NextRequest) {
         first_spot:
           blindSpots.length > 0
             ? {
+                type: blindSpots[0].type,
                 title: blindSpots[0].title,
                 insight: blindSpots[0].insight,
                 impact: blindSpots[0].impact,

@@ -17,6 +17,7 @@ const claude = new Anthropic()
 /** Вес источника: G2 review >> random Quora question */
 const SOURCE_WEIGHT: Record<string, number> = {
   g2: 5,
+  capterra: 5,
   trustpilot: 4,
   hackernews: 3,
   reddit: 2,
@@ -27,6 +28,7 @@ const SOURCE_WEIGHT: Record<string, number> = {
 /** Базовая вероятность что автор — платящий пользователь (по типу площадки) */
 const SOURCE_PAYING_PROBABILITY: Record<string, number> = {
   g2: 0.95,        // пишут только пользователи продуктов
+  capterra: 0.90,  // верифицированные пользователи, чуть ниже G2
   trustpilot: 0.80, // большинство пишут после покупки
   reddit: 0.20,     // смесь пользователей и любопытных
   hackernews: 0.15,  // в основном обсуждают, не обязательно платят
@@ -49,7 +51,7 @@ type Context = 'b2b' | 'b2c' | 'mixed'
 type DataConfidence = 'high' | 'medium' | 'low'
 
 interface RawPost {
-  source: 'reddit' | 'quora' | 'g2' | 'appstore' | 'trustpilot' | 'hackernews' | 'stackoverflow'
+  source: 'reddit' | 'quora' | 'g2' | 'appstore' | 'trustpilot' | 'hackernews' | 'stackoverflow' | 'capterra'
   text: string
   link: string
   upvotes: number
@@ -86,7 +88,8 @@ interface PainCluster {
 interface Layer1Data {
   total_complaints: number
   validated_complaints: number  // after relevance filtering
-  weighted_complaints_score: number  // ΣsourceWeight × (1 + engagementBonus)
+  weighted_complaints_score: number          // ΣsourceWeight × (1 + engagementBonus)
+  weighted_complaints_normalized: number     // average weighted score per post
   by_source: Record<string, number>
   dynamics: Dynamics
   dynamics_ratio: number             // last3m / prev3m from Google Trends
@@ -146,6 +149,18 @@ interface ProblemBlockOutput {
       queries_used: string[]        // какие запросы делались в SerpAPI
       subreddits_used: string[]     // какие subreddits использовались
       pre_filter_keywords: string[] // какие слова использовал pre-filter
+      sources_attempted?: string[]   // список всех источников
+      // Кумулятивные данные
+      total_cumulative?: number       // общее число постов после мержа
+      new_this_run?: number           // новых в этом запуске
+      merged_from_previous?: number   // добавлено из предыдущего анализа
+      run_count?: number              // номер запуска
+      single_source_clusters?: number // кластеры из 1 источника
+    }
+    data_quality_verdict?: {
+      verdict: 'RELIABLE' | 'PARTIAL' | 'UNRELIABLE'
+      reason: string
+      recommendation: string | null
     }
     // Intelligence Layer — плоские поля для Sonnet промпта
     niche: string
@@ -154,6 +169,8 @@ interface ProblemBlockOutput {
     distribution: Record<PainCategory, number>
     weighted_complaints_score: number
     paying_score: number
+    competitive_positives?: Array<{ product: string; text: string; source: 'capterra' }>
+    run_count?: number
   }
   layers: {
     layer1: Layer1Data
@@ -186,6 +203,65 @@ async function fetchFromSource(
     const data = await res.json()
     return data.organic_results || data.results || []
   } catch {
+    return []
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CAPTERRA REVIEWS (через Google site:capterra.com)
+// SerpAPI не имеет нативного Capterra engine — используем Google
+// ══════════════════════════════════════════════════════════════
+
+async function fetchCapterraReviews(
+  productName: string,
+  serpApiKey: string,
+  queryType: 'negative' | 'positive' = 'negative'
+): Promise<RawPost[]> {
+  try {
+    // Запрос 1: отзывы (reviews в URL, snippet содержит реальные боли)
+    // Запрос 2: сравнения и альтернативы (тоже содержат пользовательские данные)
+    const reviewQuery = queryType === 'negative'
+      ? `site:capterra.com "${productName}" reviews cons OR disadvantage OR problem OR issue`
+      : `site:capterra.com "${productName}" reviews pros OR advantage OR best`
+    const compareQuery = queryType === 'negative'
+      ? `site:capterra.com "${productName}" alternatives OR compare OR vs OR switching`
+      : `site:capterra.com "${productName}" recommend OR top OR best`
+
+    const [reviewRes, compareRes] = await Promise.all([
+      fetch(`https://serpapi.com/search?${new URLSearchParams({
+        engine: 'google', q: reviewQuery, api_key: serpApiKey, num: '15',
+      })}`, { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : { organic_results: [] }).catch(() => ({ organic_results: [] })),
+      fetch(`https://serpapi.com/search?${new URLSearchParams({
+        engine: 'google', q: compareQuery, api_key: serpApiKey, num: '10',
+      })}`, { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : { organic_results: [] }).catch(() => ({ organic_results: [] })),
+    ])
+
+    const allResults = [
+      ...(reviewRes.organic_results || []),
+      ...(compareRes.organic_results || []),
+    ]
+
+    // Фильтруем — только capterra.com ссылки (site: не гарантирует 100%)
+    const seen = new Set<string>()
+    const posts = allResults
+      .filter((r: any) => {
+        const url = (r.link || '').toLowerCase()
+        if (!url.includes('capterra.com') || seen.has(url)) return false
+        seen.add(url)
+        return true
+      })
+      .map((r: any) => ({
+        source: 'capterra' as const,
+        text: `${r.title || ''} ${r.snippet || ''}`.slice(0, 800),
+        link: r.link || '',
+        upvotes: 0,
+        date: r.date || '',
+      }))
+
+    console.log(`[Capterra] "${productName}" (${queryType}): ${posts.length} results (reviews: ${(reviewRes.organic_results || []).length}, compare: ${(compareRes.organic_results || []).length})`)
+    return posts
+  } catch (err) {
+    console.log(`[Capterra] Error for "${productName}":`, (err as Error).message)
     return []
   }
 }
@@ -430,7 +506,7 @@ async function collectFromSources(
   tbs: string = 'qdr:3m',
   collectionPeriod: 'recent' | 'historical' = 'recent',
   competitors: string[] = []
-): Promise<{ posts: RawPost[]; serpCalls: number }> {
+): Promise<{ posts: RawPost[]; serpCalls: number; competitive_positives: Array<{ product: string; text: string; source: 'capterra' }> }> {
   const posts: RawPost[] = []
   const seen = new Set<string>()
 
@@ -504,6 +580,7 @@ async function collectFromSources(
       const urlLower = url.toLowerCase()
       const sourceType = urlLower.includes('reddit.com') ? 'reddit'
         : urlLower.includes('g2.com') ? 'g2'
+        : urlLower.includes('capterra.com') ? 'capterra'
         : urlLower.includes('trustpilot.com') ? 'trustpilot'
         : urlLower.includes('quora.com') ? 'quora'
         : urlLower.includes('news.ycombinator.com') ? 'hackernews'
@@ -518,6 +595,49 @@ async function collectFromSources(
         date: r.date || '',
         collection_period: collectionPeriod,
       })
+    }
+  }
+
+  // ── 2.5. Capterra Reviews (через Google site:capterra.com) ──
+  const capterraPositives: Array<{ product: string; text: string; source: 'capterra' }> = []
+  let capterraCalls = 0
+
+  if (competitors.length > 0) {
+    const topComp = competitors.slice(0, 3)
+    const [negResults, posResults] = await Promise.all([
+      Promise.all(topComp.map(c => fetchCapterraReviews(c, serpApiKey, 'negative'))),
+      Promise.all(topComp.map(c => fetchCapterraReviews(c, serpApiKey, 'positive'))),
+    ])
+    capterraCalls = topComp.length * 4  // 2 queries per call × 2 calls (neg + pos)
+
+    // Негативные → rawPosts
+    for (let i = 0; i < topComp.length; i++) {
+      for (const review of negResults[i]) {
+        if (!review.link || seen.has(review.link)) continue
+        seen.add(review.link)
+        posts.push({ ...review, collection_period: collectionPeriod })
+      }
+    }
+
+    // Позитивные → competitive_positives (не в rawPosts)
+    for (let i = 0; i < topComp.length; i++) {
+      for (const review of posResults[i]) {
+        capterraPositives.push({
+          product: topComp[i],
+          text: review.text,
+          source: 'capterra',
+        })
+      }
+    }
+  } else {
+    // Без конкурентов — ищем по нише
+    const nicheReviews = await fetchCapterraReviews(niche, serpApiKey, 'negative')
+    capterraCalls = 2  // 2 queries per call
+
+    for (const review of nicheReviews) {
+      if (!review.link || seen.has(review.link)) continue
+      seen.add(review.link)
+      posts.push({ ...review, collection_period: collectionPeriod })
     }
   }
 
@@ -545,7 +665,8 @@ async function collectFromSources(
 
   return {
     posts: posts.slice(0, 300),
-    serpCalls: serpQueries.length + broadQueries.length,
+    serpCalls: serpQueries.length + broadQueries.length + capterraCalls,
+    competitive_positives: capterraPositives.slice(0, 10),
   }
 }
 
@@ -706,6 +827,7 @@ function detectPayingUser(
     /(отменил|отписался|ушёл с|перешёл с|switched from|cancelled)/i,
     /(i (use|used|pay|paid|subscribed|bought))/i,
     /(my (account|plan|subscription|tier))/i,
+    /upgraded?\s+to\s+(paid|pro|premium)|pro\s+plan|premium\s+plan|paid\s+(version|tier)/i,
   ]
 
   const mediumSignals = [
@@ -845,7 +967,11 @@ async function clusterPains(
       system: 'Respond with valid JSON only, no markdown or explanations.',
       messages: [{
         role: 'user',
-        content: `Group these user pain points from the "${niche}" niche into clusters of SAME or VERY SIMILAR complaints.
+        content: `You are analyzing pain points in the "${niche}" market.
+Group by TYPE OF PAIN (what problem users face), not by product name or surface symptoms.
+Each cluster must represent a distinct unmet need that exists across multiple users.
+Ignore which product is mentioned — focus on the underlying pain pattern.
+Do not create clusters for a single product's issues — clusters must be market-wide patterns.
 
 Pain points:
 ${summaries}
@@ -916,6 +1042,13 @@ Respond as JSON:
       return confDiff !== 0 ? confDiff : b.mention_count - a.mention_count
     })
 
+    // SINGLE_SOURCE_CLUSTER detection: 3+ posts from exactly 1 source = suspicious
+    for (const cluster of clusters) {
+      if (cluster.source_count === 1 && cluster.mention_count >= 3) {
+        ;(cluster as any).patterns = [...((cluster as any).patterns || []), 'SINGLE_SOURCE_CLUSTER']
+      }
+    }
+
     return clusters
   } catch (error) {
     console.error('[Block1 Pass3] Clustering error', error)
@@ -964,7 +1097,12 @@ function aggregate(
   )
 
   // Взвешенный скор: sourceWeight × (1 + engagementBonus)
+  // raw sum для диагноза (пороги калиброваны под сумму)
   const weightedComplaintsScore = relevantPosts.reduce((sum, p) => sum + p.weighted_score, 0)
+  // normalized для отображения (не зависит от количества постов)
+  const weightedComplaintsNormalized = relevantPosts.length > 0
+    ? Math.round((weightedComplaintsScore / relevantPosts.length) * 100) / 100
+    : 0
 
   const postsWithDates = relevantPosts.filter((p) => p.date && p.date.trim() !== '')
   const has_date_confidence = postsWithDates.length >= 10
@@ -1051,6 +1189,7 @@ function aggregate(
       total_complaints: posts.length,  // all collected
       validated_complaints: total,      // after relevance filter
       weighted_complaints_score: Math.round(weightedComplaintsScore * 10) / 10,
+      weighted_complaints_normalized: weightedComplaintsNormalized,
       by_source: bySource,
       dynamics,
       dynamics_ratio: trendsDynamics.ratio,
@@ -1061,6 +1200,70 @@ function aggregate(
     layer2: { distribution, top_quotes, pain_clusters: clusters },
     layer3: { paying_score, paying_ratio, context },
     classificationConfidence,
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ANALYZER — DATA QUALITY VERDICT (Шаг 5.5)
+// Sonnet оценивает качество собранных данных перед диагнозом
+// ══════════════════════════════════════════════════════════════
+
+async function analyzeDataQuality(
+  clusters: PainCluster[],
+  summary: {
+    total_collected: number
+    validated_relevant: number
+    relevance_rate: number
+    sources_count: number
+    high_confidence_clusters: number
+    single_source_clusters: number
+    unmatched_ratio: number
+  }
+): Promise<{
+  verdict: 'RELIABLE' | 'PARTIAL' | 'UNRELIABLE'
+  reason: string
+  recommendation: string | null
+}> {
+  const fallback = { verdict: 'PARTIAL' as const, reason: 'Analyzer unavailable', recommendation: null }
+
+  try {
+    const prompt = `You are a data quality analyst. NOT a marketer.
+
+Analyze this market research data quality:
+${JSON.stringify({ summary, clusters_count: clusters.length, cluster_summaries: clusters.slice(0, 5).map(c => ({ pain: c.pain_summary, sources: c.source_count, mentions: c.mention_count, confidence: c.confidence })) }, null, 2)}
+
+Rules:
+- RELIABLE: validated_relevant > 15, unmatched_ratio < 0.4, clusters are consistent
+- PARTIAL: some data but gaps or inconsistencies
+- UNRELIABLE: < 5 validated records, or unmatched_ratio > 0.6, or major contradictions
+- When in doubt: PARTIAL not RELIABLE
+
+Return JSON only:
+{
+  "verdict": "RELIABLE|PARTIAL|UNRELIABLE",
+  "reason": "one paragraph explanation",
+  "recommendation": "what user should do if PARTIAL or UNRELIABLE, null if RELIABLE"
+}`
+
+    const response = await claude.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return fallback
+
+    const parsed = JSON.parse(jsonMatch[0])
+    return {
+      verdict: parsed.verdict || 'PARTIAL',
+      reason: parsed.reason || '',
+      recommendation: parsed.recommendation ?? null,
+    }
+  } catch (error: any) {
+    console.error('[Block1 Analyzer] Error:', error.message)
+    return fallback
   }
 }
 
@@ -1244,6 +1447,76 @@ export async function POST(req: NextRequest) {
     const competitorsList = competitors || []
 
     // ══════════════════════════════════════════════════════════
+    // ШАГ 0 — CONTEXT INJECTION (мягкий режим)
+    // Если Context Object не найден — продолжаем без него (legacy)
+    // ══════════════════════════════════════════════════════════
+    let contextObject: any = null
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000'
+      const ctxRes = await fetch(`${baseUrl}/api/block0/context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ niche }),
+      })
+      if (ctxRes.ok) {
+        const ctxData = await ctxRes.json()
+        contextObject = ctxData.context_object ?? null
+        console.log(`[Block1 Context] Loaded context (from_cache=${ctxData.from_cache}, confidence=${ctxData.confidence_score})`)
+      }
+    } catch (e: any) {
+      console.warn(`[Block1 Context] Failed to load context object: ${e.message} — continuing in legacy mode`)
+    }
+
+    // Fallback anchor: если contextObject = null — генерируем минимальные сигналы через Haiku
+    // Используются только для pre-filtering, не для диагноза
+    let anchorSignals: string[] = []
+    if (!contextObject) {
+      try {
+        const anchorRes = await claude.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 512,
+          messages: [{
+            role: 'user',
+            content: `List 10 real user complaints about "${niche}". These should be exact phrases real users write online. Return JSON array of strings only. No explanation.`,
+          }],
+        })
+        const anchorText = anchorRes.content[0].type === 'text' ? anchorRes.content[0].text : '[]'
+        const anchorMatch = anchorText.match(/\[[\s\S]*\]/)
+        if (anchorMatch) {
+          anchorSignals = JSON.parse(anchorMatch[0]).filter((s: any) => typeof s === 'string')
+          console.log(`[Block1 Context] Fallback anchor: ${anchorSignals.length} signals from Haiku`)
+        }
+      } catch (e: any) {
+        console.warn(`[Block1 Context] Fallback anchor failed: ${e.message}`)
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // КУМУЛЯТИВНЫЙ РЕЖИМ — читаем предыдущие результаты из БД
+    // Старые validated posts сохраняются и дополняются новыми
+    // ══════════════════════════════════════════════════════════
+    let previousPosts: ValidatedPost[] = []
+    let previousPositives: Array<{ product: string; text: string; source: 'capterra' }> = []
+    let runCount = 1
+
+    const { data: existingBlock } = await supabase
+      .from('block_results')
+      .select('raw_data, block_context')
+      .eq('trend_id', trend_id)
+      .eq('user_id', user.id)
+      .eq('block_number', 1)
+      .maybeSingle()
+
+    if (existingBlock) {
+      previousPosts = (existingBlock.raw_data?.posts || []) as ValidatedPost[]
+      previousPositives = (existingBlock.block_context?.competitive_positives || []) as typeof previousPositives
+      runCount = (existingBlock.block_context?.run_count || 1) + 1
+      console.log(`[Block1 Cumulative] Found ${previousPosts.length} previous validated posts, run #${runCount}`)
+    }
+
+    // ══════════════════════════════════════════════════════════
     // PASS 1 — НАЙТИ ИСТОЧНИКИ
     // ══════════════════════════════════════════════════════════
     console.log(`[Block1 Pass1] Discovering sources for "${niche}"...`)
@@ -1273,6 +1546,19 @@ export async function POST(req: NextRequest) {
         rawPosts.push(post)
       }
     }
+
+    // Собираем competitive_positives из Capterra (дедуплицируем)
+    const allPositives = [
+      ...(recentResult.competitive_positives || []),
+      ...(historicalResult.competitive_positives || []),
+    ]
+    const seenPositiveTexts = new Set<string>()
+    const competitivePositives = allPositives.filter(p => {
+      const key = p.text.slice(0, 100)
+      if (seenPositiveTexts.has(key)) return false
+      seenPositiveTexts.add(key)
+      return true
+    }).slice(0, 10)
 
     // pain_is_chronic: historical-only постов больше чем recent × 2
     const recentOnlyCount = recentResult.posts.length
@@ -1320,7 +1606,21 @@ export async function POST(req: NextRequest) {
       .filter(k => k.includes(' '))
       .map(k => k.toLowerCase())
 
-    const allFilterWords = [...new Set(filterWords)]
+    // Context-aware pre-filter: добавляем сигналы из Context Object или fallback anchor
+    const contextSignalWords: string[] = []
+    if (contextObject?.signal_vocabulary?.real_pain_signals) {
+      for (const signal of contextObject.signal_vocabulary.real_pain_signals) {
+        const words = signal.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3)
+        contextSignalWords.push(...words)
+      }
+    } else if (anchorSignals.length > 0) {
+      for (const signal of anchorSignals) {
+        const words = signal.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3)
+        contextSignalWords.push(...words)
+      }
+    }
+
+    const allFilterWords = [...new Set([...filterWords, ...contextSignalWords])]
 
     const preFilteredPosts = (allFilterWords.length > 0 || filterPhrases.length > 0)
       ? rawPosts.filter(post => {
@@ -1335,6 +1635,19 @@ export async function POST(req: NextRequest) {
     console.log(`[Block1 PreFilter] Keywords: [${allFilterWords.join(', ')}] Phrases: [${filterPhrases.join(', ')}]`)
     if (preFilterDropped > 0) {
       console.log(`[Block1 PreFilter] Dropped ${preFilterDropped}/${rawPosts.length} irrelevant posts (no niche keywords in text)`)
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // LANGUAGE FILTER — понижаем вес постов на неправильном языке
+    // Не удаляем (может быть полезный insight), но снижаем source_weight
+    // ══════════════════════════════════════════════════════════
+    const targetLanguage = contextObject?.market_identity?.primary_language ?? 'en'
+    for (const post of preFilteredPosts) {
+      const cyrillicRatio = (post.text.match(/[\u0400-\u04FF]/g) || []).length / Math.max(post.text.length, 1)
+      const postLanguage = cyrillicRatio > 0.3 ? 'ru' : 'en'
+      if (postLanguage !== targetLanguage) {
+        (post as any)._language_mismatch = true
+      }
     }
 
     // ══════════════════════════════════════════════════════════
@@ -1371,7 +1684,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Build validated posts (only from successful batches)
-    const validatedPosts: ValidatedPost[] = []
+    let validatedPosts: ValidatedPost[] = []
     let validationIdx = 0
 
     for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
@@ -1383,12 +1696,13 @@ export async function POST(req: NextRequest) {
           const validation = allValidationResults[validationIdx]
           const { is_paying, confidence, weight } = detectPayingUser(post.text, post.source, competitorsList)
 
-          // Weighted score: sourceWeight × (1 + engagementBonus)
+          // Weighted score: sourceWeight × (1 + engagementBonus) × languagePenalty
           const sw = SOURCE_WEIGHT[post.source] ?? 1
           const engagementBonus = SOURCES_WITH_ENGAGEMENT.has(post.source)
             ? Math.log10(post.upvotes + 1)
             : 0
-          const weightedScore = sw * (1 + engagementBonus)
+          const languagePenalty = (post as any)._language_mismatch ? 0.6 : 1.0
+          const weightedScore = sw * (1 + engagementBonus) * languagePenalty
 
           validatedPosts.push({
             ...post,
@@ -1414,9 +1728,70 @@ export async function POST(req: NextRequest) {
     console.log(`[Block1 Pass2] ${relevantCount}/${validatedPosts.length} posts relevant (${relevanceRate}%), ${failedBatchCount} batches failed`)
 
     // ══════════════════════════════════════════════════════════
+    // КУМУЛЯТИВНЫЙ МЕРЖ — только relevant посты
+    // Старые relevant посты сохраняются, новые дополняют (дедуп по link)
+    // ══════════════════════════════════════════════════════════
+    // Фильтруем новые — только relevant
+    const newRelevantPosts = validatedPosts.filter(p => p.is_relevant)
+    const newPostLinks = new Set(newRelevantPosts.map(p => p.link))
+    const newPostCount = newRelevantPosts.length
+
+    // Старые — тоже только relevant (на случай если в БД попали нерелевантные)
+    const previousRelevantPosts = previousPosts.filter(p => p.is_relevant)
+
+    // Добавляем старые relevant посты которых нет в новом сборе
+    let mergedFromPrevious = 0
+    for (const oldPost of previousRelevantPosts) {
+      if (oldPost.link && !newPostLinks.has(oldPost.link)) {
+        newRelevantPosts.push(oldPost)
+        newPostLinks.add(oldPost.link)
+        mergedFromPrevious++
+      }
+    }
+
+    // Перезаписываем validatedPosts — теперь это кумулятивный набор ТОЛЬКО relevant
+    // Все посты в массиве is_relevant=true → aggregate() использует их все
+    validatedPosts = newRelevantPosts
+
+    if (mergedFromPrevious > 0) {
+      console.log(`[Block1 Cumulative] Merged ${mergedFromPrevious} previous relevant + ${newPostCount} new relevant = ${validatedPosts.length} total`)
+    } else {
+      console.log(`[Block1 Cumulative] ${newPostCount} relevant posts (no previous data to merge)`)
+    }
+
+    // Cap: оставляем только топ-50 по качеству, чтобы метрики не раздувались
+    const MAX_POSTS = 50;
+    if (validatedPosts.length > MAX_POSTS) {
+      validatedPosts = validatedPosts
+        .filter(p => p.is_relevant)
+        .sort((a, b) => {
+          const scoreA = (a.weighted_score || 1) * (a.upvotes > 100 ? 1.3 : a.upvotes > 20 ? 1.15 : 1);
+          const scoreB = (b.weighted_score || 1) * (b.upvotes > 100 ? 1.3 : b.upvotes > 20 ? 1.15 : 1);
+          return scoreB - scoreA;
+        })
+        .slice(0, MAX_POSTS);
+      console.log(`[Block1 Cap] Trimmed to ${MAX_POSTS} top-quality posts`)
+    }
+
+    // Мерж competitive_positives
+    const mergedPositiveTexts = new Set(competitivePositives.map(p => p.text.slice(0, 100)))
+    for (const oldPos of previousPositives) {
+      const key = oldPos.text.slice(0, 100)
+      if (!mergedPositiveTexts.has(key)) {
+        competitivePositives.push(oldPos)
+        mergedPositiveTexts.add(key)
+      }
+    }
+    const finalPositives = competitivePositives.slice(0, 15)
+
+    // После мержа ВСЕ посты в validatedPosts — relevant
+    const cumulativeRelevantCount = validatedPosts.length
+    console.log(`[Block1 Cumulative] Total relevant: ${cumulativeRelevantCount}`)
+
+    // ══════════════════════════════════════════════════════════
     // PASS 3 — КРОСС-ВАЛИДАЦИЯ КЛАСТЕРАМИ
     // ══════════════════════════════════════════════════════════
-    console.log(`[Block1 Pass3] Clustering ${relevantCount} relevant pains...`)
+    console.log(`[Block1 Pass3] Clustering ${cumulativeRelevantCount} relevant pains...`)
     const clusters = await clusterPains(validatedPosts, niche)
     const highConfClusters = clusters.filter(c => c.confidence === 'high').length
     const medConfClusters = clusters.filter(c => c.confidence === 'medium').length
@@ -1437,6 +1812,26 @@ export async function POST(req: NextRequest) {
     const diagnosisResult = makeDiagnosis(layers, classificationConfidence)
 
     // ══════════════════════════════════════════════════════════
+    // ШАГ 5.5 — ANALYZER (DATA QUALITY VERDICT)
+    // ══════════════════════════════════════════════════════════
+    const singleSourceClusters = clusters.filter(c => (c as any).patterns?.includes('SINGLE_SOURCE_CLUSTER')).length
+    const unmatchedRatio = layer1.total_complaints > 0
+      ? 1 - (layer1.validated_complaints / layer1.total_complaints)
+      : 0
+    const dataQualityVerdict = await analyzeDataQuality(clusters, {
+      total_collected: rawPosts.length,
+      validated_relevant: layer1.validated_complaints,
+      relevance_rate: layer1.validated_complaints > 0
+        ? Math.round((layer1.validated_complaints / rawPosts.length) * 100)
+        : 0,
+      sources_count: Object.keys(layer1.by_source).length,
+      high_confidence_clusters: highConfClusters,
+      single_source_clusters: singleSourceClusters,
+      unmatched_ratio: Math.round(unmatchedRatio * 100) / 100,
+    })
+    console.log(`[Block1 Analyzer] Verdict: ${dataQualityVerdict.verdict} — ${dataQualityVerdict.reason.slice(0, 100)}`)
+
+    // ══════════════════════════════════════════════════════════
     // ФИНАЛЬНЫЙ OUTPUT
     // ══════════════════════════════════════════════════════════
     const output: ProblemBlockOutput = {
@@ -1452,16 +1847,25 @@ export async function POST(req: NextRequest) {
         classification_confidence: classificationConfidence,
         data_quality: {
           total_collected: rawPosts.length,
+          total_cumulative: validatedPosts.length,
+          new_this_run: newPostCount,
+          merged_from_previous: mergedFromPrevious,
           pre_filter_dropped: preFilterDropped,
           sent_to_validation: preFilteredPosts.length,
-          validated_relevant: relevantCount,
-          relevance_rate: relevanceRate,
+          validated_relevant: cumulativeRelevantCount,
+          relevance_rate: validatedPosts.length > 0
+            ? Math.round((cumulativeRelevantCount / validatedPosts.length) * 100)
+            : 0,
           cross_validated_clusters: clusters.length,
           high_confidence_clusters: highConfClusters,
           queries_used: sources.map(s => s.query),
           subreddits_used: sources.filter(s => s.type === 'subreddit').map(s => s.name),
           pre_filter_keywords: [...allFilterWords, ...filterPhrases],
+          sources_attempted: ['reddit', 'g2', 'trustpilot', 'quora', 'hackernews', 'stackoverflow', 'capterra'],
+          run_count: runCount,
+          single_source_clusters: singleSourceClusters,
         },
+        data_quality_verdict: dataQualityVerdict,
         // Intelligence Layer — плоские поля для Sonnet промпта
         niche,
         dynamics: layer1.dynamics,
@@ -1469,6 +1873,8 @@ export async function POST(req: NextRequest) {
         distribution: layers.layer2.distribution,
         weighted_complaints_score: layer1.weighted_complaints_score,
         paying_score: layer3.paying_score,
+        competitive_positives: finalPositives,
+        run_count: runCount,
       },
       layers,
       raw_data: { posts: validatedPosts },
@@ -1498,6 +1904,9 @@ export async function POST(req: NextRequest) {
           block_context: output.block_context,
         },
       },
+      // Сброс Intelligence Layer — данные изменились, Sonnet переанализирует
+      intelligence_output: null,
+      intelligence_updated_at: null,
     }, { onConflict: 'trend_id,user_id,block_number' })
 
     if (dbError) throw new Error(`Supabase error: ${dbError.message}`)
@@ -1579,6 +1988,7 @@ export async function POST(req: NextRequest) {
         key_metric: output.key_metric,
         key_factors: output.key_factors,
         block_context: output.block_context,
+        data_quality_verdict: dataQualityVerdict,
       },
       has_premium: true,
     })

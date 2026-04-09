@@ -16,17 +16,41 @@ export async function GET(req: NextRequest) {
 
     const supabase = getServerSupabase()
 
-    const { data, error } = await supabase
-      .from('synthesis_results')
-      .select('conflicts, skeptic, optimist, arbitrator, is_blind_spot, created_at')
-      .eq('trend_id', trendId)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+    // Load synthesis + block timestamps in parallel
+    const [synthesisRes, blocksRes] = await Promise.all([
+      supabase
+        .from('synthesis_results')
+        .select('conflicts, skeptic, optimist, arbitrator, is_blind_spot, created_at')
+        .eq('trend_id', trendId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+      supabase
+        .from('block_results')
+        .select('block_number, updated_at, created_at')
+        .eq('trend_id', trendId)
+        .eq('user_id', user.id),
+    ])
 
-    if (error || !data) {
+    if (synthesisRes.error || !synthesisRes.data) {
       return NextResponse.json({ result: null })
+    }
+
+    const data = synthesisRes.data
+
+    // Staleness check: any block updated AFTER synthesis was created?
+    let is_stale = false
+    let stale_blocks: number[] = []
+    if (blocksRes.data && data.created_at) {
+      const synthesisTime = new Date(data.created_at).getTime()
+      for (const block of blocksRes.data) {
+        const blockTime = block.updated_at || block.created_at
+        if (blockTime && new Date(blockTime).getTime() > synthesisTime) {
+          is_stale = true
+          stale_blocks.push(block.block_number)
+        }
+      }
     }
 
     return NextResponse.json({
@@ -38,6 +62,8 @@ export async function GET(req: NextRequest) {
       },
       is_blind_spot: data.is_blind_spot,
       created_at: data.created_at,
+      is_stale,
+      stale_blocks: stale_blocks.sort((a, b) => a - b),
     })
   } catch (error: any) {
     console.error('[Synthesis cached]', error)

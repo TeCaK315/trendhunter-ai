@@ -1,20 +1,22 @@
 /**
  * /api/scan-trends — Real Google Trends-Based Trend Discovery
  *
- * Pipeline:
- * 1. Scan ALL seed niches → SerpAPI google_trends RELATED_QUERIES → rising queries
- * 2. Filter noise (non-product queries)
- * 3. Deduplicate across niches
- * 4. GPT classify: "can this be a product/SaaS?"
- * 4.5. GPT semantic dedup
- * 5. Topic → Product transformation (темы → конкретные продуктовые ниши)
- * 6. Enrich with timeline data (top-12 only, growth_rate)
- * 7. GPT generate final Trend objects
- * 8. Check scan memory → skip already-seen queries
- * 9. Save to /api/trends + enrich
+ * TWO MODES in one scan:
  *
- * Budget: ~28 SerpAPI calls per scan (6 seed + 12 timeline + 10 enrich)
- * 5000/month → ~5-6 scans/day
+ * MODE 1 — "Растущий рынок" (Established Growth):
+ *   12-month window, annual growth ≥ 100%, full pipeline with enrich
+ *   Pipeline: seeds → rising queries → filter → dedup → GPT classify → semantic dedup
+ *            → Topic→Product → timeline enrich → GPT generate → save + enrich-trend
+ *
+ * MODE 2 — "🔥 BREAKOUT" (Fresh Signals):
+ *   3-month window, Breakout OR monthly growth > 150%, simplified pipeline
+ *   Pipeline: seeds → rising queries → filter → dedup → GPT classify
+ *            → simplified describe → GPT generate → save (NO enrich-trend)
+ *
+ * Budget: ~41 SerpAPI calls per combined scan
+ *   Mode 1: 6 seed + 12 timeline + 10 enrich = ~28
+ *   Mode 2: 8 seed + ~5 timeline = ~13
+ *   5000/month → ~4 scans/day
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -73,12 +75,24 @@ async function saveScanMemory(memory: Map<string, ScanMemoryEntry>): Promise<voi
 }
 
 // Category → seed niches for scanning
+// Mode 1 seeds: 6 verified seeds (12-month window)
 const CATEGORY_NICHES: Record<string, string[]> = {
   'SaaS': [
     'CRM software', 'marketing automation', 'HR software',
     'accounting software', 'project management', 'workflow automation',
   ],
 };
+
+// Mode 2 seeds: same 6 + 2 exclusive (3-month window, Breakout signals)
+const MODE2_EXTRA_SEEDS: Record<string, string[]> = {
+  'SaaS': [
+    'AI tools for business', 'AI automation',
+  ],
+};
+
+// Mode 2 gate thresholds
+const MODE2_BREAKOUT_VALUE = 999999;  // growthValue for Breakout status
+const MODE2_HIGH_GROWTH_THRESHOLD = 500; // % — non-Breakout but still explosive (was 5000, lowered based on real data)
 
 // Words indicating a query is NOT a product opportunity
 const NOISE_PATTERNS = [
@@ -103,6 +117,27 @@ const NOISE_PATTERNS = [
   // Too generic informational
   /^(market|industry|sector|economy|global|world|international)\s+(news|report|data|statistics|trends)$/i,
 ];
+
+// Hard filters: technically incompatible with META agent (Next.js web app generator)
+// These aren't business judgments — these are architecture constraints.
+// A browser extension, mobile app, or hardware product cannot be generated as a Next.js project.
+const INCOMPATIBLE_PRODUCT_PATTERNS = [
+  // Browser extensions — different architecture entirely (manifest.json, content scripts)
+  /\b(browser extension|chrome extension|firefox extension|safari extension)\b/i,
+  /\bextension\b/i,
+  // Mobile apps — requires React Native/Flutter/Swift, not Next.js
+  /\b(mobile app|ios app|android app|native app)\b/i,
+  // Hardware / physical products
+  /\b(hardware|device|sensor|wearable|robot|drone|printer|scanner)\b/i,
+  // Closed/proprietary APIs that can't be integrated
+  /\b(grok\s+ai|grok\s+automation)\b/i,
+  // WordPress/Shopify plugins — different ecosystem
+  /\b(wordpress plugin|shopify app|woocommerce plugin)\b/i,
+];
+
+function isIncompatibleProduct(query: string): boolean {
+  return INCOMPATIBLE_PRODUCT_PATTERNS.some(pattern => pattern.test(query));
+}
 
 // Words suggesting a product/SaaS opportunity
 const PRODUCT_SIGNAL_WORDS = [
@@ -136,15 +171,19 @@ interface ScanResult {
   serpApiCallsUsed: number;
   scanDurationMs: number;
   categories: string[];
+  mode1_trends: number;
+  mode2_breakouts: number;
   error?: string;
 }
 
 // ==========================================
 // Step 1: Fetch Rising Queries from Google Trends
+// period: 'today 12-m' (Mode 1) or 'today 3-m' (Mode 2)
 // ==========================================
 async function fetchRisingQueries(
   niche: string,
   category: string,
+  period: string = 'today 12-m',
 ): Promise<{ queries: RisingQuery[]; callsUsed: number }> {
   if (!SERPAPI_KEY) return { queries: [], callsUsed: 0 };
 
@@ -152,7 +191,7 @@ async function fetchRisingQueries(
     engine: 'google_trends',
     q: niche,
     data_type: 'RELATED_QUERIES',
-    date: 'today 12-m',
+    date: period,
     api_key: SERPAPI_KEY,
   });
 
@@ -200,6 +239,9 @@ function filterNoise(queries: RisingQuery[]): RisingQuery[] {
     for (const pattern of NOISE_PATTERNS) {
       if (pattern.test(text)) return false;
     }
+
+    // Hard filter: technically incompatible with META agent (Next.js)
+    if (isIncompatibleProduct(q.query)) return false;
 
     // Prefer queries with product signals (but don't require — GPT will decide)
     // Only skip queries that are purely navigational single words
@@ -328,6 +370,41 @@ async function callOpenAI(
 
   const data = await response.json();
   return data.choices?.[0]?.message?.content || '';
+}
+
+// ==========================================
+// Step 5.5: Discover relevant subreddits for Block 1
+// Called once per card at scan time — 0 extra cost at analysis time
+// ==========================================
+
+async function getRelevantSubreddits(sourceQuery: string): Promise<string[]> {
+  if (!OPENAI_API_KEY || !sourceQuery) return [];
+
+  try {
+    const raw = await callOpenAI([{
+      role: 'user',
+      content: `For the niche "${sourceQuery}", find 3-5 most relevant subreddits where people discuss problems with tools and software in this area.
+
+Rules:
+- Only real, existing subreddits
+- Where people complain about tools, not just discuss the topic
+- No generic ones (entrepreneur, smallbusiness) — niche-specific only
+- Return ONLY a JSON array of strings without "r/" prefix
+
+Example for "HR software comparison": ["humanresources", "recruiting", "hris", "peopleops"]
+
+Respond with JSON array only: ["sub1", "sub2", "sub3"]`
+    }], 0.3);
+
+    const cleaned = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return Array.isArray(parsed)
+      ? parsed.filter((s: unknown): s is string => typeof s === 'string').slice(0, 5)
+      : [];
+  } catch (e) {
+    console.warn('[scan-trends] getRelevantSubreddits failed:', e);
+    return [];
+  }
 }
 
 async function gptClassifyQueries(
@@ -731,6 +808,7 @@ interface EnrichedProductNiche extends ProductNiche {
 
 async function gptGenerateTrends(
   queries: EnrichedProductNiche[],
+  signalType: 'growing' | 'breakout' = 'growing',
 ): Promise<Array<{
   title: string;
   category: string;
@@ -744,6 +822,7 @@ async function gptGenerateTrends(
   target_audience?: string;
   user_outcome?: string;
   was_transformed?: boolean;
+  signal_type: 'growing' | 'breakout';
 }>> {
   if (!OPENAI_API_KEY || queries.length === 0) return [];
 
@@ -828,11 +907,185 @@ async function gptGenerateTrends(
         target_audience: source?.targetAudience,
         user_outcome: source?.userOutcome,
         was_transformed: source?.wasTransformed,
+        signal_type: signalType,
       };
     });
   } catch (err) {
     console.error('GPT trend generation error:', err);
     return [];
+  }
+}
+
+// ==========================================
+// Mode 2: Breakout Gate — only keep explosive signals
+// ==========================================
+// Additional noise patterns for Mode 2 (3-month window has more SEO spam)
+const MODE2_NOISE_PATTERNS = [
+  // Domain-specific spam (seo spam with embedded URLs)
+  /\.(com|in|net|org|io)\b/i,
+  // Non-English queries (Hindi, German UI searches etc.)
+  /\b(kaise|kare|kya|hai)\b/i,
+  // Vehicle/phone reviews (common Breakout noise)
+  /\b(review|brezza|innova|hycross|phone\s+\d|car\s+\d)\b/i,
+  // Near me / location queries
+  /\bnear me\b/i,
+  // Specific retail brands
+  /^(lidl|walmart|costco|target|aldi|ikea)\b/i,
+];
+
+// Product signal words — if a Breakout query contains one, it auto-passes GPT classify
+const MODE2_PRODUCT_SIGNALS = [
+  'software', 'tool', 'platform', 'automation',
+  'system', 'solution', 'saas', 'ai for', 'tracker',
+  'manager', 'dashboard', 'integration', 'api integration',
+  // Note: 'extension' and 'app' removed — hard filter catches incompatible product types
+  // before this check runs. Any 'extension' or 'mobile app' is already filtered out.
+];
+
+function filterBreakoutSignals(queries: RisingQuery[]): RisingQuery[] {
+  return queries.filter(q => {
+    // Must pass growth threshold
+    const passesGrowth = q.growthValue >= MODE2_BREAKOUT_VALUE || q.growthValue >= MODE2_HIGH_GROWTH_THRESHOLD;
+    if (!passesGrowth) return false;
+
+    // Extra noise filter for Mode 2 spam
+    const text = q.query.toLowerCase();
+    for (const pattern of MODE2_NOISE_PATTERNS) {
+      if (pattern.test(text)) return false;
+    }
+
+    return true;
+  });
+}
+
+function hasProductSignal(query: string): boolean {
+  const text = query.toLowerCase();
+  return MODE2_PRODUCT_SIGNALS.some(signal => text.includes(signal));
+}
+
+// ==========================================
+// Mode 2: Simplified Describe (no Topic→Product invention)
+// Describes what the signal IS, doesn't invent a product
+// ==========================================
+async function describeBreakoutSignals(
+  queries: RisingQuery[],
+): Promise<ProductNiche[]> {
+  if (!OPENAI_API_KEY || queries.length === 0) {
+    return queries.map(q => ({
+      ...q,
+      originalQuery: q.query,
+      productTitle: q.query,
+      productFormat: 'unknown',
+      targetAudience: 'unknown',
+      userOutcome: 'unknown',
+      wasTransformed: false,
+    }));
+  }
+
+  const queryList = queries.map((q, i) =>
+    `${i + 1}. "${q.query}" (рост: ${q.growth}, категория: ${q.sourceCategory})`
+  ).join('\n');
+
+  try {
+    const content = await callOpenAI([
+      {
+        role: 'system',
+        content: `Тебе даны BREAKOUT-запросы из Google Trends (взрывной рост за 3 месяца).
+
+Для каждого запроса — кратко опиши, ЧТО это за сигнал и КАКОЙ продукт можно построить.
+
+НЕ ПРИДУМЫВАЙ сложных трансформаций. Просто:
+1. Если запрос УЖЕ описывает продукт/инструмент → оставь как есть
+2. Если запрос — тема → опиши 1 ОЧЕВИДНЫЙ продукт на базе этого тренда
+
+Ответь JSON массивом:
+[
+  {
+    "source_index": 1,
+    "title_en": "краткое название продукта (English)",
+    "title_ru": "краткое название продукта (Russian)",
+    "product_format": "SaaS / API / browser extension / mobile app",
+    "target_audience": "кто будет платить",
+    "user_outcome": "что получит пользователь"
+  }
+]
+
+ВАЖНО: Один вход = один выход. Не множь продукты. Краткость и конкретность.`,
+      },
+      {
+        role: 'user',
+        content: queryList,
+      },
+    ], 0.2);
+
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return queries.map(q => ({
+        ...q,
+        originalQuery: q.query,
+        productTitle: q.query,
+        productFormat: 'unknown',
+        targetAudience: 'unknown',
+        userOutcome: 'unknown',
+        wasTransformed: false,
+      }));
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed)) {
+      return queries.map(q => ({
+        ...q,
+        originalQuery: q.query,
+        productTitle: q.query,
+        productFormat: 'unknown',
+        targetAudience: 'unknown',
+        userOutcome: 'unknown',
+        wasTransformed: false,
+      }));
+    }
+
+    const result: ProductNiche[] = [];
+    for (const item of parsed) {
+      const idx = (item.source_index || 1) - 1;
+      if (idx < 0 || idx >= queries.length) continue;
+      const sourceQuery = queries[idx];
+
+      result.push({
+        ...sourceQuery,
+        query: sourceQuery.query,
+        originalQuery: sourceQuery.query,
+        productTitle: item.title_ru || item.title_en || sourceQuery.query,
+        productFormat: item.product_format || 'SaaS',
+        targetAudience: item.target_audience || 'unknown',
+        userOutcome: item.user_outcome || 'unknown',
+        wasTransformed: false, // Mode 2 doesn't "transform" — it describes
+      });
+    }
+
+    if (result.length === 0) {
+      return queries.map(q => ({
+        ...q,
+        originalQuery: q.query,
+        productTitle: q.query,
+        productFormat: 'unknown',
+        targetAudience: 'unknown',
+        userOutcome: 'unknown',
+        wasTransformed: false,
+      }));
+    }
+
+    return result;
+  } catch (err) {
+    console.error('GPT describeBreakoutSignals error:', err);
+    return queries.map(q => ({
+      ...q,
+      originalQuery: q.query,
+      productTitle: q.query,
+      productFormat: 'unknown',
+      targetAudience: 'unknown',
+      userOutcome: 'unknown',
+      wasTransformed: false,
+    }));
   }
 }
 
@@ -862,103 +1115,283 @@ export async function POST(request: NextRequest) {
   const categories = (body.categories as string[]) || Object.keys(CATEGORY_NICHES);
   const maxEnrich = (body.maxEnrich as number) || 12;
   const dryRun = (body.dryRun as boolean) || false;
+  // Allow disabling specific modes via body params (default: both enabled)
+  const enableMode1 = (body.mode1 as boolean) !== false;
+  const enableMode2 = (body.mode2 as boolean) !== false;
 
   let totalSerpApiCalls = 0;
+  let mode1TrendsCount = 0;
+  let mode2TrendsCount = 0;
 
   // --- Load scan memory (seen queries from previous scans) ---
   const scanMemory = await loadScanMemory();
   console.log(`[scan-trends] Scan memory: ${scanMemory.size} queries from last ${SCAN_MEMORY_MAX_AGE_DAYS} days`);
 
-  // --- Step 1: Scan Rising Queries (all seeds, no random sampling) ---
-  console.log(`[scan-trends] Starting scan for categories: ${categories.join(', ')}`);
-  const allRisingQueries: RisingQuery[] = [];
+  // Debug info for dryRun mode
+  const debug: Record<string, unknown> = {};
 
-  for (const category of categories) {
-    const niches = CATEGORY_NICHES[category];
-    if (!niches) continue;
+  // Collect all generated trends from both modes
+  type GeneratedTrend = {
+    title: string;
+    category: string;
+    popularity_score: number;
+    growth_rate: number;
+    growth_rate_monthly: number;
+    why_trending: string;
+    source_query?: string;
+    source_growth?: string;
+    product_format?: string;
+    target_audience?: string;
+    user_outcome?: string;
+    was_transformed?: boolean;
+    signal_type: 'growing' | 'breakout';
+  };
+  const allGeneratedTrends: GeneratedTrend[] = [];
+  let filteredOut = 0;
+  let gptFiltered = 0;
+  const allUnseenQueries: RisingQuery[] = []; // for scan memory update
 
-    // Fetch ALL seeds in parallel (6 seeds = 6 SerpAPI calls)
-    const fetchPromises = niches.map(niche =>
-      fetchRisingQueries(niche, category)
-    );
-    const results = await Promise.all(fetchPromises);
+  // =============================================
+  // MODE 1: "Растущий рынок" (12-month, full pipeline)
+  // =============================================
+  if (enableMode1) {
+    console.log(`[scan-trends] === MODE 1: Растущий рынок (12-month) ===`);
+    const mode1Rising: RisingQuery[] = [];
 
-    for (const result of results) {
-      allRisingQueries.push(...result.queries);
-      totalSerpApiCalls += result.callsUsed;
+    for (const category of categories) {
+      const niches = CATEGORY_NICHES[category];
+      if (!niches) continue;
+
+      const fetchPromises = niches.map(niche =>
+        fetchRisingQueries(niche, category, 'today 12-m')
+      );
+      const results = await Promise.all(fetchPromises);
+
+      for (const result of results) {
+        mode1Rising.push(...result.queries);
+        totalSerpApiCalls += result.callsUsed;
+      }
+    }
+
+    console.log(`[scan-trends] M1: Found ${mode1Rising.length} rising queries`);
+
+    // Filter noise
+    const m1Filtered = filterNoise(mode1Rising);
+    filteredOut += mode1Rising.length - m1Filtered.length;
+    console.log(`[scan-trends] M1: After noise filter: ${m1Filtered.length}`);
+
+    // Filter already-seen
+    const m1Unseen = m1Filtered.filter(q => !scanMemory.has(normalizeQueryForMemory(q.query)));
+    const m1MemoryFiltered = m1Filtered.length - m1Unseen.length;
+    if (m1MemoryFiltered > 0) {
+      console.log(`[scan-trends] M1: Scan memory filtered: ${m1MemoryFiltered} (${m1Unseen.length} remaining)`);
+    }
+    allUnseenQueries.push(...m1Unseen);
+
+    // Deduplicate
+    const m1Deduped = deduplicateQueries(m1Unseen);
+    console.log(`[scan-trends] M1: After dedup: ${m1Deduped.length}`);
+
+    // GPT Classification
+    const m1Classified = await gptClassifyQueries(m1Deduped);
+    gptFiltered += m1Deduped.length - m1Classified.length;
+    console.log(`[scan-trends] M1: After GPT filter: ${m1Classified.length}`);
+
+    // Semantic Dedup
+    const m1SemDeduped = await gptDeduplicateQueries(m1Classified);
+    if (m1Classified.length - m1SemDeduped.length > 0) {
+      console.log(`[scan-trends] M1: After semantic dedup: ${m1SemDeduped.length}`);
+    }
+
+    // Topic → Product Transformation
+    const m1Products = await transformToProductNiches(m1SemDeduped);
+    console.log(`[scan-trends] M1: Topic→Product: ${m1Products.length} products`);
+
+    // Enrich with Timeline
+    const { enriched: m1Enriched, callsUsed: m1EnrichCalls } = await enrichWithTimeline(m1Products, maxEnrich);
+    totalSerpApiCalls += m1EnrichCalls;
+    console.log(`[scan-trends] M1: Enriched: ${m1Enriched.length} (${m1EnrichCalls} API calls)`);
+
+    // GPT Generate
+    const m1EnrichedProducts: EnrichedProductNiche[] = m1Enriched.map(e => ({
+      ...(e as unknown as ProductNiche),
+      timelineGrowthRate: e.timelineGrowthRate,
+      googleTrendsUrl: e.googleTrendsUrl,
+      originalQuery: (e as unknown as ProductNiche).originalQuery || e.query,
+      productTitle: (e as unknown as ProductNiche).productTitle || e.query,
+      productFormat: (e as unknown as ProductNiche).productFormat || 'unknown',
+      targetAudience: (e as unknown as ProductNiche).targetAudience || 'unknown',
+      userOutcome: (e as unknown as ProductNiche).userOutcome || 'unknown',
+      wasTransformed: (e as unknown as ProductNiche).wasTransformed || false,
+    }));
+
+    const m1Generated = await gptGenerateTrends(m1EnrichedProducts, 'growing');
+    const m1Capped = m1Generated.slice(0, 10);
+    mode1TrendsCount = m1Capped.length;
+    allGeneratedTrends.push(...m1Capped);
+    console.log(`[scan-trends] M1: Generated ${m1Capped.length} trends`);
+  }
+
+  // =============================================
+  // MODE 2: "🔥 BREAKOUT" (3-month, simplified pipeline)
+  // =============================================
+  if (enableMode2) {
+    console.log(`[scan-trends] === MODE 2: 🔥 BREAKOUT (3-month) ===`);
+    const mode2Rising: RisingQuery[] = [];
+
+    for (const category of categories) {
+      // Mode 2 uses same seeds + extra seeds
+      const baseNiches = CATEGORY_NICHES[category] || [];
+      const extraNiches = MODE2_EXTRA_SEEDS[category] || [];
+      const allNiches = [...baseNiches, ...extraNiches];
+
+      const fetchPromises = allNiches.map(niche =>
+        fetchRisingQueries(niche, category, 'today 3-m')
+      );
+      const results = await Promise.all(fetchPromises);
+
+      for (const result of results) {
+        mode2Rising.push(...result.queries);
+        totalSerpApiCalls += result.callsUsed;
+      }
+    }
+
+    console.log(`[scan-trends] M2: Found ${mode2Rising.length} rising queries (3-month window)`);
+
+    // Filter noise
+    const m2Filtered = filterNoise(mode2Rising);
+    filteredOut += mode2Rising.length - m2Filtered.length;
+
+    // Filter already-seen
+    const m2Unseen = m2Filtered.filter(q => !scanMemory.has(normalizeQueryForMemory(q.query)));
+    allUnseenQueries.push(...m2Unseen);
+
+    // Deduplicate (also against Mode 1 queries to avoid overlap)
+    const m2Deduped = deduplicateQueries(m2Unseen);
+    console.log(`[scan-trends] M2: After filter+dedup: ${m2Deduped.length}`);
+
+    // Collect debug data BEFORE gate
+    if (dryRun) {
+      debug.mode2_all_queries = m2Deduped.map(q => {
+        const passesGrowth = q.growthValue >= MODE2_BREAKOUT_VALUE || q.growthValue >= MODE2_HIGH_GROWTH_THRESHOLD;
+        const text = q.query.toLowerCase();
+        const blockedByNoise = MODE2_NOISE_PATTERNS.some(p => p.test(text));
+        const isBreakout = q.growthValue >= MODE2_BREAKOUT_VALUE;
+        const productSignal = hasProductSignal(q.query);
+        return {
+          query: q.query,
+          growth: q.growth,
+          growthValue: q.growthValue,
+          sourceNiche: q.sourceNiche,
+          isBreakout,
+          passesGrowth,
+          blockedByNoise,
+          passesGate: passesGrowth && !blockedByNoise,
+          autoPassClassify: productSignal, // product signal = auto-pass classify
+          hasProductSignal: productSignal,
+        };
+      });
+      debug.mode2_total_rising = mode2Rising.length;
+      debug.mode2_after_noise = m2Filtered.length;
+      debug.mode2_after_memory = m2Unseen.length;
+      debug.mode2_after_dedup = m2Deduped.length;
+    }
+
+    // BREAKOUT GATE — only keep explosive signals
+    const m2Breakouts = filterBreakoutSignals(m2Deduped);
+    console.log(`[scan-trends] M2: After Breakout gate: ${m2Breakouts.length} (from ${m2Deduped.length})`);
+
+    if (dryRun) {
+      debug.mode2_after_gate = m2Breakouts.length;
+    }
+
+    if (m2Breakouts.length > 0) {
+      // Split: product signal queries auto-pass classify, rest → GPT classify
+      // Rationale: if a query already contains "software", "tool", "platform" etc.,
+      // it's clearly a product search — no need for GPT to verify
+      const autoPass: RisingQuery[] = [];
+      const needClassify: RisingQuery[] = [];
+      for (const q of m2Breakouts) {
+        if (hasProductSignal(q.query)) {
+          autoPass.push(q);
+          console.log(`[scan-trends] M2: Auto-pass (product signal): "${q.query}" (${q.growth})`);
+        } else {
+          needClassify.push(q);
+        }
+      }
+
+      // GPT classify only the uncertain ones
+      const gptClassified = needClassify.length > 0
+        ? await gptClassifyQueries(needClassify)
+        : [];
+      gptFiltered += needClassify.length - gptClassified.length;
+
+      const m2Classified = [...autoPass, ...gptClassified];
+      console.log(`[scan-trends] M2: After classify: ${m2Classified.length} (${autoPass.length} auto-pass + ${gptClassified.length} GPT-approved)`);
+
+      // Simplified describe (no full Topic→Product transformation)
+      const m2Products = await describeBreakoutSignals(m2Classified);
+      console.log(`[scan-trends] M2: Described ${m2Products.length} breakout signals`);
+
+      // Timeline enrich (shorter budget — max 5)
+      const { enriched: m2Enriched, callsUsed: m2EnrichCalls } = await enrichWithTimeline(m2Products, 5);
+      totalSerpApiCalls += m2EnrichCalls;
+      console.log(`[scan-trends] M2: Enriched: ${m2Enriched.length} (${m2EnrichCalls} API calls)`);
+
+      // GPT Generate (same function, but with 'breakout' signal_type)
+      const m2EnrichedProducts: EnrichedProductNiche[] = m2Enriched.map(e => ({
+        ...(e as unknown as ProductNiche),
+        timelineGrowthRate: e.timelineGrowthRate,
+        googleTrendsUrl: e.googleTrendsUrl,
+        originalQuery: (e as unknown as ProductNiche).originalQuery || e.query,
+        productTitle: (e as unknown as ProductNiche).productTitle || e.query,
+        productFormat: (e as unknown as ProductNiche).productFormat || 'unknown',
+        targetAudience: (e as unknown as ProductNiche).targetAudience || 'unknown',
+        userOutcome: (e as unknown as ProductNiche).userOutcome || 'unknown',
+        wasTransformed: (e as unknown as ProductNiche).wasTransformed || false,
+      }));
+
+      const m2Generated = await gptGenerateTrends(m2EnrichedProducts, 'breakout');
+      const m2Capped = m2Generated.slice(0, 5); // Max 5 breakout cards per scan
+      mode2TrendsCount = m2Capped.length;
+      allGeneratedTrends.push(...m2Capped);
+      console.log(`[scan-trends] M2: Generated ${m2Capped.length} breakout trends`);
     }
   }
 
-  console.log(`[scan-trends] Found ${allRisingQueries.length} rising queries (${totalSerpApiCalls} API calls)`);
+  // =============================================
+  // SAVE & ENRICH (combined for both modes)
+  // =============================================
 
-  // --- Step 2: Filter Noise ---
-  const filtered = filterNoise(allRisingQueries);
-  const filteredOut = allRisingQueries.length - filtered.length;
-  console.log(`[scan-trends] After noise filter: ${filtered.length} (removed ${filteredOut})`);
+  // Hard limit: max 15 ideas per combined scan (10 growing + 5 breakout)
+  const generatedTrends = allGeneratedTrends.slice(0, 15);
+  console.log(`[scan-trends] Combined: ${generatedTrends.length} trends (${mode1TrendsCount} growing + ${mode2TrendsCount} breakout)`);
 
-  // --- Step 2.5: Filter already-seen queries (scan memory) ---
-  const unseen = filtered.filter(q => !scanMemory.has(normalizeQueryForMemory(q.query)));
-  const memoryFiltered = filtered.length - unseen.length;
-  if (memoryFiltered > 0) {
-    console.log(`[scan-trends] Scan memory filtered: ${memoryFiltered} already-seen queries (${unseen.length} remaining)`);
-  }
-
-  // --- Step 3: Deduplicate ---
-  const deduplicated = deduplicateQueries(unseen);
-  console.log(`[scan-trends] After dedup: ${deduplicated.length}`);
-
-  // --- Step 4: GPT Classification ---
-  const classified = await gptClassifyQueries(deduplicated);
-  const gptFiltered = deduplicated.length - classified.length;
-  console.log(`[scan-trends] After GPT filter: ${classified.length} (GPT removed ${gptFiltered})`);
-  console.log(`[scan-trends] GPT kept:`, classified.map(q => `"${q.query}" (${q.growth})`));
-
-  // --- Step 4.5: GPT Semantic Dedup ---
-  const semanticDeduped = await gptDeduplicateQueries(classified);
-  const semanticRemoved = classified.length - semanticDeduped.length;
-  if (semanticRemoved > 0) {
-    console.log(`[scan-trends] After semantic dedup: ${semanticDeduped.length} (removed ${semanticRemoved} semantic duplicates)`);
-    console.log(`[scan-trends] Semantic kept:`, semanticDeduped.map(q => `"${q.query}"`));
-  }
-
-  // --- Step 5: Topic → Product Transformation ---
-  const productNiches = await transformToProductNiches(semanticDeduped);
-  const transformedCount = productNiches.filter(p => p.wasTransformed).length;
-  console.log(`[scan-trends] Topic→Product: ${productNiches.length} products from ${semanticDeduped.length} queries (${transformedCount} transformed from topics)`);
-
-  // --- Step 6: Enrich with Timeline ---
-  const { enriched, callsUsed: enrichCalls } = await enrichWithTimeline(productNiches, maxEnrich);
-  totalSerpApiCalls += enrichCalls;
-  console.log(`[scan-trends] Enriched: ${enriched.length} (${enrichCalls} API calls)`);
-
-  // --- Step 7: GPT Generate Trend Objects ---
-  const enrichedProducts: EnrichedProductNiche[] = enriched.map(e => ({
-    ...(e as unknown as ProductNiche),
-    timelineGrowthRate: e.timelineGrowthRate,
-    googleTrendsUrl: e.googleTrendsUrl,
-    // Preserve ProductNiche fields from the enriched query
-    originalQuery: (e as unknown as ProductNiche).originalQuery || e.query,
-    productTitle: (e as unknown as ProductNiche).productTitle || e.query,
-    productFormat: (e as unknown as ProductNiche).productFormat || 'unknown',
-    targetAudience: (e as unknown as ProductNiche).targetAudience || 'unknown',
-    userOutcome: (e as unknown as ProductNiche).userOutcome || 'unknown',
-    wasTransformed: (e as unknown as ProductNiche).wasTransformed || false,
-  }));
-  console.log(`[scan-trends] Sending ${enrichedProducts.length} products to GPT:`, enrichedProducts.map(p => `"${p.productTitle}" (${p.query}, growth=${p.timelineGrowthRate}%)`));
-  const allGeneratedTrends = await gptGenerateTrends(enrichedProducts);
-  // Hard limit: max 10 ideas per scan
-  const generatedTrends = allGeneratedTrends.slice(0, 10);
-  console.log(`[scan-trends] Generated ${generatedTrends.length} trend objects (from ${allGeneratedTrends.length} GPT results, capped at 10)`);
-
-  // --- Step 8: Update scan memory with all queries we processed ---
+  // Update scan memory with all queries we processed
   const now = new Date().toISOString();
-  for (const q of unseen) {
+  for (const q of allUnseenQueries) {
     scanMemory.set(normalizeQueryForMemory(q.query), { query: q.query, seenAt: now });
   }
   await saveScanMemory(scanMemory);
   console.log(`[scan-trends] Scan memory updated: ${scanMemory.size} total entries`);
 
-  // --- Step 9: Save to /api/trends ---
+  // Step 5.5: Discover relevant subreddits for Block 1 (parallel for all trends)
+  // One GPT-4o-mini call per trend — runs once at scan time, not at analysis time
+  const subredditMap = new Map<string, string[]>();
+  if (!dryRun && generatedTrends.length > 0) {
+    console.log(`[scan-trends] Discovering subreddits for ${generatedTrends.length} trends...`);
+    const subredditPromises = generatedTrends.map(async (trend) => {
+      const query = trend.source_query || trend.title;
+      if (!subredditMap.has(query)) {
+        const subs = await getRelevantSubreddits(query);
+        subredditMap.set(query, subs);
+      }
+    });
+    await Promise.all(subredditPromises);
+    console.log(`[scan-trends] Subreddits discovered for ${subredditMap.size} unique queries`);
+  }
+
+  // Save to /api/trends
   let savedCount = 0;
   let duplicatesSkipped = 0;
 
@@ -979,9 +1412,10 @@ export async function POST(request: NextRequest) {
       target_audience: trend.target_audience,
       user_outcome: trend.user_outcome,
       was_topic_transformed: trend.was_transformed,
+      signal_type: trend.signal_type, // 'growing' | 'breakout'
+      relevant_subreddits: subredditMap.get(trend.source_query || trend.title) || [],
     }));
 
-    // POST to internal /api/trends endpoint
     try {
       const baseUrl = request.nextUrl.origin;
       const saveResponse = await fetch(`${baseUrl}/api/trends`, {
@@ -1000,22 +1434,24 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // --- Step 10: Enrich new trends with competition & entry cost ---
+  // Enrich new trends with competition & entry cost
+  // ONLY for Mode 1 ('growing') trends — Breakout cards skip enrichment
   let enrichedCount = 0;
   if (!dryRun && savedCount > 0) {
     const baseUrl = request.nextUrl.origin;
     const MAX_ENRICH_PER_SCAN = 10;
 
     try {
-      // Get current trends to find un-enriched ones
       const trendsResponse = await fetch(`${baseUrl}/api/trends`);
       if (trendsResponse.ok) {
         const trendsData = await trendsResponse.json();
+        // Only enrich 'growing' type trends (skip 'breakout')
         const unenriched = (trendsData.trends || [])
-          .filter((t: { enriched_at?: string }) => !t.enriched_at)
+          .filter((t: { enriched_at?: string; signal_type?: string }) =>
+            !t.enriched_at && t.signal_type !== 'breakout'
+          )
           .slice(0, MAX_ENRICH_PER_SCAN);
 
-        // Enrich in parallel batches of 3
         for (let i = 0; i < unenriched.length; i += 3) {
           const batch = unenriched.slice(i, i + 3);
           const enrichPromises = batch.map(async (trend: { id: string; title: string; category: string; growth_rate?: number; source_query?: string; source_growth?: string }) => {
@@ -1042,9 +1478,8 @@ export async function POST(request: NextRequest) {
           const results = await Promise.all(enrichPromises);
           const successfulEnrichments = results.filter(Boolean);
           enrichedCount += successfulEnrichments.length;
-          totalSerpApiCalls += successfulEnrichments.length; // 1 SerpAPI call per enrichment
+          totalSerpApiCalls += successfulEnrichments.length;
 
-          // Update trends with enrichment data
           if (successfulEnrichments.length > 0) {
             const currentData = await fetch(`${baseUrl}/api/trends`).then(r => r.json());
             const updatedTrends = (currentData.trends || []).map((t: Record<string, unknown>) => {
@@ -1069,8 +1504,6 @@ export async function POST(request: NextRequest) {
               return t;
             });
 
-            // Save updated trends back via internal POST (we need to use saveTrendsData-like approach)
-            // Since we can't import saveTrendsData from trends route, we use a direct approach
             await fetch(`${baseUrl}/api/trends`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -1084,7 +1517,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (enrichedCount > 0) {
-      console.log(`[scan-trends] Enriched ${enrichedCount} trends with competition & entry cost data`);
+      console.log(`[scan-trends] Enriched ${enrichedCount} growing trends (breakout cards skip enrichment)`);
     }
   }
 
@@ -1093,17 +1526,28 @@ export async function POST(request: NextRequest) {
   const result: ScanResult = {
     success: true,
     newTrendsCount: dryRun ? generatedTrends.length : savedCount,
-    totalScanned: allRisingQueries.length,
+    totalScanned: allGeneratedTrends.length,
     filteredOut,
     gptFiltered,
-    enriched: enriched.length,
+    enriched: enrichedCount,
     duplicatesSkipped,
     serpApiCallsUsed: totalSerpApiCalls,
     scanDurationMs,
     categories,
+    mode1_trends: mode1TrendsCount,
+    mode2_breakouts: mode2TrendsCount,
   };
 
-  console.log(`[scan-trends] Complete: ${result.newTrendsCount} new trends, ${enrichedCount} enriched, ${totalSerpApiCalls} API calls, ${scanDurationMs}ms`);
+  console.log(`[scan-trends] Complete: ${result.newTrendsCount} new (${mode1TrendsCount} growing + ${mode2TrendsCount} breakout), ${enrichedCount} enriched, ${totalSerpApiCalls} API calls, ${scanDurationMs}ms`);
+
+  // Include debug info and generated trends in dryRun response
+  if (dryRun) {
+    return NextResponse.json({
+      ...result,
+      debug,
+      generatedTrends: allGeneratedTrends,
+    });
+  }
 
   return NextResponse.json(result);
 }
@@ -1114,18 +1558,22 @@ export async function GET() {
     status: 'ready',
     categories: Object.keys(CATEGORY_NICHES),
     totalNiches: Object.values(CATEGORY_NICHES).flat().length,
-    description: 'POST to this endpoint to scan Google Trends for rising product opportunities',
+    mode2ExtraSeeds: Object.values(MODE2_EXTRA_SEEDS).flat().length,
+    description: 'POST to this endpoint to scan Google Trends. Runs Mode 1 (12-month growing) + Mode 2 (3-month breakout) in one scan.',
     params: {
       categories: 'string[] — categories to scan (default: all)',
       maxEnrich: 'number — max queries to enrich with timeline (default: 12)',
       dryRun: 'boolean — if true, don\'t save to trends (default: false)',
+      mode1: 'boolean — enable Mode 1 growing scan (default: true)',
+      mode2: 'boolean — enable Mode 2 breakout scan (default: true)',
       secret: 'string — auth secret (if SCAN_SECRET env is set)',
     },
     budget: {
-      estimatedCallsPerScan: '~28 SerpAPI calls (6 seed + 12 timeline + 10 enrich)',
+      mode1: '~28 SerpAPI calls (6 seed + 12 timeline + 10 enrich)',
+      mode2: '~13 SerpAPI calls (8 seed + 5 timeline, no enrich)',
+      combined: '~41 SerpAPI calls per scan',
       monthlyBudget: '5000 calls ($75 plan)',
-      maxScansPerMonth: '~178 scans',
-      maxScansPerDay: '~5-6 scans',
+      maxScansPerDay: '~4 scans',
     },
   });
 }

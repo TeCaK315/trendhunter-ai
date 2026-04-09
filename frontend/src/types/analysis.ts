@@ -65,4 +65,5 @@ export interface ArbitratorOutput {
     addresses: string;
   }>;
   confidence: number;
+  confidence_factors?: string[];
 }
