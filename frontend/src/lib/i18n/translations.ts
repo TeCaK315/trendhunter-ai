@@ -13,6 +13,7 @@ export interface Translations {
     lkStrategies: string;
     lkRoadmap: string;
     lkProjects: string;
+    lkCredits: string;
     collapse: string;
     sectionDiscover: string;
     sectionWorkspace: string;
@@ -535,6 +536,7 @@ export const translations: Record<Language, Translations> = {
       lkStrategies: 'Стратегии',
       lkRoadmap: 'Роадмап Pro',
       lkProjects: 'Проекты',
+      lkCredits: 'Пополнить монеты',
       collapse: 'Свернуть',
       sectionDiscover: 'Обзор',
       sectionWorkspace: 'Рабочее пространство',
@@ -1018,6 +1020,7 @@ export const translations: Record<Language, Translations> = {
       lkStrategies: 'Strategies',
       lkRoadmap: 'Roadmap Pro',
       lkProjects: 'Projects',
+      lkCredits: 'Buy Credits',
       collapse: 'Collapse',
       sectionDiscover: 'Discover',
       sectionWorkspace: 'Workspace',

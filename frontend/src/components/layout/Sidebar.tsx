@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from '@/lib/i18n';
@@ -12,12 +12,65 @@ interface NavItemConfig {
   labelKey: 'home' | 'nicheResearch' | 'favorites' | 'projects' | 'lk';
   icon: React.ReactNode;
   tourId?: string;
-  subItems?: Array<{ href: string; labelKey: 'lkHome' | 'lkResearch' | 'lkStrategies' | 'lkRoadmap' | 'lkProjects' }>;
+  subItems?: Array<{ href: string; labelKey: 'lkHome' | 'lkResearch' | 'lkStrategies' | 'lkRoadmap' | 'lkProjects' | 'lkCredits' }>;
 }
 
 // Get links from environment variables (only show if configured)
 const DISCORD_INVITE = process.env.NEXT_PUBLIC_DISCORD_INVITE;
 const GITHUB_REPO = process.env.NEXT_PUBLIC_GITHUB_REPO;
+
+function CreditsWidget({ collapsed }: { collapsed: boolean }) {
+  const [balance, setBalance] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/credits/balance')
+      .then(r => r.json())
+      .then(d => setBalance(d.balance ?? 0))
+      .catch(() => {})
+  }, [])
+
+  if (balance === null) return null
+
+  return (
+    <a
+      href="/lk/credits"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: collapsed ? 0 : 8,
+        padding: collapsed ? '8px 0' : '8px 12px',
+        margin: '0 8px 8px',
+        borderRadius: 8,
+        background: 'var(--color-background-secondary)',
+        textDecoration: 'none',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        transition: 'background 0.15s',
+      }}
+    >
+      <span style={{ fontSize: 16 }}>🪙</span>
+      {!collapsed && (
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--color-text-primary)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {balance.toLocaleString()} монет
+          </div>
+          <div style={{
+            fontSize: 11,
+            color: 'var(--color-text-secondary)',
+          }}>
+            Пополнить →
+          </div>
+        </div>
+      )}
+    </a>
+  )
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -81,6 +134,7 @@ export default function Sidebar() {
         { href: '/lk/research', labelKey: 'lkResearch' },
         { href: '/lk/roadmap', labelKey: 'lkRoadmap' },
         { href: '/lk/projects', labelKey: 'lkProjects' },
+        { href: '/lk/credits', labelKey: 'lkCredits' },
       ],
     },
   ];
@@ -210,6 +264,9 @@ export default function Sidebar() {
 
       {/* Footer: Help, Discord, Collapse */}
       <div className="p-3 border-t border-zinc-800/50 space-y-2">
+        {/* Credits balance widget */}
+        <CreditsWidget collapsed={collapsed} />
+
         {/* Help button */}
         <div className="relative">
           <button
