@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database.types';
 
 // Lazy initialization — не создаём клиент на уровне модуля
 // чтобы билд на Vercel не падал при отсутствии env vars
@@ -11,7 +12,7 @@ function getSupabaseAnonKey() {
   return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 }
 
-// Client for browser usage (lazy)
+// Client for browser usage (lazy) — untyped (legacy code relies on loose typing)
 export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
   get(_target, prop) {
     if (!_supabase) {
@@ -21,7 +22,7 @@ export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
   },
 });
 
-// Server client with service role (for admin operations)
+// Server client with service role (for admin operations) — untyped
 export function getServerSupabase() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   if (!serviceRoleKey) {
@@ -29,6 +30,17 @@ export function getServerSupabase() {
     return supabase;
   }
   return createClient(getSupabaseUrl(), serviceRoleKey);
+}
+
+// Typed server client — для roadmap-кода, использует сгенерированные Database-типы.
+// Не используем глобально, чтобы не ломать legacy untyped call sites.
+export function getTypedServerSupabase(): SupabaseClient<Database> {
+  const url = getSupabaseUrl();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || getSupabaseAnonKey();
+  if (!url || !key) {
+    throw new Error('Missing Supabase env vars (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
+  }
+  return createClient<Database>(url, key);
 }
 
 // Check if Supabase is configured

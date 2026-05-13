@@ -3,6 +3,21 @@
     {
       "path": "/api/cron/scan",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/roadmap/cron",
+      "schedule": "0 9 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "src/app/api/roadmap/cron/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/roadmap/chat/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/roadmap/summarize/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }

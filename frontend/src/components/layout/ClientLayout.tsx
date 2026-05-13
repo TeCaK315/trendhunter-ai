@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
@@ -18,6 +19,8 @@ function LayoutContent({ children }: ClientLayoutProps) {
   const [mounted, setMounted] = useState(false);
   const { collapsed } = useSidebar();
   const { data: session } = useSession();
+  const pathname = usePathname();
+  const isRoadmap = pathname?.startsWith('/roadmap/');
   const isAuthenticated = !!session?.user;
 
   useEffect(() => {
@@ -27,14 +30,14 @@ function LayoutContent({ children }: ClientLayoutProps) {
   return (
     <>
       {/* Desktop Sidebar - only for authenticated users */}
-      {isAuthenticated && (
+      {isAuthenticated && !isRoadmap && (
         <div className="hidden lg:block">
           <Sidebar />
         </div>
       )}
 
       {/* Mobile Navigation - only for authenticated users */}
-      {isAuthenticated && (
+      {isAuthenticated && !isRoadmap && (
         <div className="lg:hidden">
           <MobileNav />
         </div>
@@ -43,7 +46,7 @@ function LayoutContent({ children }: ClientLayoutProps) {
       {/* Main content with responsive margin */}
       <main className={`min-h-screen bg-[#09090b] transition-all duration-300
         ${isAuthenticated ? 'pt-16 lg:pt-0' : 'pt-0'}
-        ${isAuthenticated ? (collapsed ? 'lg:ml-[72px]' : 'lg:ml-64') : 'lg:ml-0'}
+        ${isAuthenticated && !isRoadmap ? (collapsed ? 'lg:ml-[72px]' : 'lg:ml-64') : 'lg:ml-0'}
       `}>
         {children}
       </main>
