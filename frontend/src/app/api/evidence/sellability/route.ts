@@ -268,6 +268,7 @@ async function fetchCompetitorPricing(
     // относятся именно к продукту в НАШЕЙ нише, а не случайное упоминание
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
+      temperature: 0,
       max_tokens: 400,
       system: "Отвечай только валидным JSON без markdown.",
       messages: [
@@ -464,6 +465,7 @@ async function collectLayer1(
       // Multi-Pass 2: нишевый контекст для Reddit budget mentions
       const response = await claude.messages.create({
         model: "claude-haiku-4-5-20251001",
+      temperature: 0,
         max_tokens: 400,
         system: "Отвечай только валидным JSON.",
         messages: [

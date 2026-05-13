@@ -222,10 +222,43 @@ const AGGREGATOR_STOPLIST = [
   // Wiki / encyclopedic
   "wikipedia.org",
   "en.wikipedia.org",
-  // News
+  // News & Media
   "techcrunch.com",
   "venturebeat.com",
   "hackernews.ycombinator.com",
+  "forbes.com",
+  "businessinsider.com",
+  "wired.com",
+  "cnet.com",
+  "zdnet.com",
+  "mashable.com",
+  "theverge.com",
+  "engadget.com",
+  "inc.com",
+  "entrepreneur.com",
+  "wsj.com",
+  "bloomberg.com",
+  "reuters.com",
+  "thebalancemoney.com",
+  "investopedia.com",
+  "nerdwallet.com",
+  "fastcompany.com",
+  "hbr.org",
+  // Нишевые медиа
+  "housingwire.com",
+  "inman.com",
+  // Tech обзоры
+  "pcmag.com",
+  "techradar.com",
+  "tomsguide.com",
+  "tomshardware.com",
+  "digitaltrends.com",
+  // SEO/контент фермы
+  "clutch.co",
+  "goodfirms.co",
+  "expertise.com",
+  "trustradius.com",
+  "sourceforge.net",
   // Big Tech (не конкуренты для SaaS-ниш)
   "google.com",
   "maps.google.com",
@@ -717,6 +750,46 @@ async function collectCompetitorsAndAdDensity(
 // has_insufficient_data = true передаётся в block_context.
 // Блок 5 читает этот флаг и понижает confidence Revenue Range.
 // ————————————————————————————————————————————————————————————
+
+// 2.5 — детерминированное расширение семантического ядра.
+// Используется когда Trends дал < 20 ключевых, чтобы перейти из PARTIAL в RELIABLE.
+// 5 категорий: продукт-формы, AI-вариации, сравнения/альтернативы, боли, конкуренты-альтернативы.
+function buildExpandedKeywords(niche: string): string[] {
+  const base = niche.toLowerCase().trim();
+  const cleanBase = base.replace(/\bservices?\b/g, '').trim() || base;
+  return [
+    // Категория 1 — продукт-формы (люди ищут решение)
+    `${base} software`,
+    `${base} tools`,
+    `${base} platform`,
+    `${base} solution`,
+    `best ${base}`,
+
+    // Категория 2 — AI-вариации (быстрорастущий сегмент)
+    `ai ${base}`,
+    `automated ${base}`,
+    `${cleanBase} automation`,
+
+    // Категория 3 — сравнения и альтернативы (коммерческий интент)
+    `${base} alternatives`,
+    `${base} vs`,
+    `top ${base}`,
+    `${base} for small business`,
+    `${base} for enterprise`,
+
+    // Категория 4 — боли и информационный интент с конверсией
+    `how to automate ${cleanBase}`,
+    `${base} problems`,
+    `${base} pricing`,
+    `${base} review`,
+
+    // Категория 5 — конкуренты-альтернативы (растущий интент)
+    `zapier alternative`,
+    `make.com alternative`,
+    `n8n alternative`,
+  ];
+}
+
 async function generateFallbackKeywords(
   niche: string,
   seedKeywords: string[],
@@ -724,6 +797,7 @@ async function generateFallbackKeywords(
   try {
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
+      temperature: 0,
       max_tokens: 300,
       system: "Отвечай только валидным JSON без markdown и пояснений.",
       messages: [
@@ -773,6 +847,7 @@ async function classifyIntentBatch(
   try {
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
+      temperature: 0,
       max_tokens: 600,
       system: "Respond with valid JSON only, no markdown or explanations.",
       messages: [
@@ -1351,7 +1426,7 @@ function makeDemandDiagnosis(
   if (isHype) {
     return {
       diagnosis: "red",
-      score: Math.max(1, 2 + Math.log10(Math.max(demand_index, 1))),
+      score: Math.min(10, Math.max(1, 2 + Math.log10(Math.max(demand_index, 1)))),
       conflict_weight: 3,
       reason: "hype_without_foundation",
       key_factors: [
@@ -1418,17 +1493,11 @@ function makeDemandDiagnosis(
       conflict_weight: 1,
       reason: "commercial_market",
       key_factors: [
-        `${Math.round(
-          commercial_intent_ratio * 100,
-        )}% запросов коммерческие (уверенность: ${commercial_intent_confidence})`,
-        `Спрос индекс: ${demand_index} (тренд: ${growth_rate})`,
-        `${Math.round(
-          serp_ad_density * 100,
-        )}% SERP с рекламой — конкуренты платят за трафик`,
+        `${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить`,
+        `Спрос ${growth_rate === 'growing' ? 'растёт' : 'стабильный'}`,
+        `${Math.round(serp_ad_density * 100)}% поисковых страниц содержат рекламу — рынок коммерческий`,
       ],
-      key_metric: `${Math.round(
-        commercial_intent_ratio * 100,
-      )}% коммерческий интент, индекс ${demand_index}`,
+      key_metric: `${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить · спрос ${growth_rate === 'growing' ? 'растёт' : 'стабильный'}`,
     };
   }
 
@@ -1446,15 +1515,11 @@ function makeDemandDiagnosis(
       conflict_weight: 1,
       reason: "micro_b2b_market",
       key_factors: [
-        `${Math.round(
-          commercial_intent_ratio * 100,
-        )}% коммерческих запросов — сильный покупательский интент`,
-        `Индекс ${demand_index} — нишевой рынок, но пользователи готовы платить`,
+        `${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить — сильный покупательский интент`,
+        `Нишевой рынок — спрос узкий, но пользователи готовы платить`,
         `Стратегия: account-based marketing, не массовая реклама`,
       ],
-      key_metric: `${Math.round(
-        commercial_intent_ratio * 100,
-      )}% коммерческий интент — микро-B2B`,
+      key_metric: `${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить · нишевой B2B`,
     };
   }
 
@@ -1466,15 +1531,11 @@ function makeDemandDiagnosis(
       conflict_weight: 2,
       reason: "informational_market",
       key_factors: [
-        `${Math.round(
-          commercial_intent_ratio * 100,
-        )}% запросов коммерческие — люди ищут знания, не продукт`,
+        `Только ${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить — люди ищут знания, не продукт`,
         `Монетизация: контент, SEO, email-list — не SaaS`,
-        `Спрос индекс: ${demand_index} — аудитория есть, стратегия другая`,
+        `Аудитория есть, но стратегия другая — content-first GTM`,
       ],
-      key_metric: `${Math.round(
-        (1 - commercial_intent_ratio) * 100,
-      )}% информационный интент`,
+      key_metric: `${Math.round((1 - commercial_intent_ratio) * 100)}% запросов — информационные`,
     };
   }
 
@@ -1487,17 +1548,11 @@ function makeDemandDiagnosis(
       conflict_weight: 2,
       reason: "grey_zone",
       key_factors: [
-        `Смешанный интент: ${Math.round(
-          commercial_intent_ratio * 100,
-        )}% коммерческие, ${Math.round(
-          (1 - commercial_intent_ratio) * 100,
-        )}% информационные`,
+        `Смешанный интент: ${Math.round(commercial_intent_ratio * 100)}% хотят купить, ${Math.round((1 - commercial_intent_ratio) * 100)}% ищут информацию`,
         `Люди ищут знания перед покупкой — длинный цикл принятия решения`,
         `Стратегия: content-first GTM → SEO/блог → потом SaaS`,
       ],
-      key_metric: `${Math.round(
-        commercial_intent_ratio * 100,
-      )}% коммерческий интент — серая зона`,
+      key_metric: `${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить · серая зона`,
     };
   }
 
@@ -1510,14 +1565,294 @@ function makeDemandDiagnosis(
     conflict_weight: 2,
     reason: "insufficient_volume",
     key_factors: [
-      `Индекс ${demand_index} — ниже порога ${DEMAND_THRESHOLDS.standard_min_index} для коммерческого рынка`,
-      `Коммерческий интент: ${Math.round(
-        commercial_intent_ratio * 100,
-      )}% — желание есть, рынок слишком мал`,
+      `Объём поиска ниже порога коммерческого рынка`,
+      `${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить — желание есть, но рынок слишком мал`,
       `Нишевой рынок — проверьте смежные ниши или рассчитайте LTV для окупаемости`,
     ],
-    key_metric: `Индекс ${demand_index} — недостаточный объём`,
+    key_metric: `${Math.round(commercial_intent_ratio * 100)}% запросов с намерением купить · недостаточный объём`,
   };
+}
+
+// ════════════════════════════════════════════════════════════════
+// INTERPRETATION LAYER (Block 2)
+// ════════════════════════════════════════════════════════════════
+// Фоновая генерация человекочитаемой интерпретации блока.
+// Кэш 24ч в block_interpretations. Не блокирует основной ответ.
+
+async function generateDemandInterpretation(
+  trendId: string,
+  niche: string,
+  diagnosis: string,
+  blockContext: Record<string, any>,
+  supabase: ReturnType<typeof getServerSupabase>,
+  anthropic: Anthropic,
+): Promise<void> {
+  // 2.8 — Кэш с учётом смены диагноза: если diagnosis поменялся — регенерируем
+  const { data: existing } = await supabase
+    .from("block_interpretations")
+    .select("id, generated_at, headline")
+    .eq("trend_id", trendId)
+    .eq("block_id", "demand")
+    .maybeSingle();
+
+  if (existing && (existing as any).generated_at) {
+    const age = Date.now() - new Date((existing as any).generated_at).getTime();
+    const isFresh = age < 24 * 60 * 60 * 1000;
+    const existingHeadline = ((existing as any).headline ?? '').toLowerCase();
+    // Смена диагноза: RED (hype) но headline говорит "зрелый/стабильный"
+    // или наоборот — не-RED но headline говорит "хайп/нестабильный"
+    const isHypeDiagnosis = diagnosis === 'red';
+    const headlineContradictsHype =
+      isHypeDiagnosis &&
+      !existingHeadline.includes('хайп') &&
+      !existingHeadline.includes('нестабильн') &&
+      !existingHeadline.includes('временн') &&
+      !existingHeadline.includes('риск');
+    const headlineContradictsStable =
+      !isHypeDiagnosis &&
+      (existingHeadline.includes('хайп') || existingHeadline.includes('риск хайпа'));
+
+    const diagnosisChanged = headlineContradictsHype || headlineContradictsStable;
+    if (isFresh && !diagnosisChanged) return;
+    if (diagnosisChanged) {
+      console.log(`[Block2 Interpretation] Diagnosis changed (red=${isHypeDiagnosis}), headline contradicts — regenerating`);
+    }
+  }
+
+  // Извлекаем данные из block_context
+  const commercialIntentRatio = blockContext?.commercial_intent_ratio ?? 0;
+  const commercialIntentPct = Math.round(commercialIntentRatio * 100);
+  const growthRate =
+    blockContext?.layers?.layer1?.growth_rate ??
+    blockContext?.growth_rate ??
+    "unknown";
+  const hasDecliningSignal = blockContext?.has_declining_signal ?? false;
+  const hasHypeRisk = blockContext?.has_hype_risk ?? false;
+  const geoTopMarket = blockContext?.geo_top_market ?? "US";
+  const serpAdDensity = blockContext?.serp_ad_density ?? 0;
+  const serpAdPct = Math.round(serpAdDensity * 100);
+  const risingQueriesRatio = blockContext?.rising_queries_ratio ?? 0;
+  const historicalVolumeRatio = blockContext?.historical_volume_ratio ?? 1;
+
+  // 2.6 + 2.9 — Rising queries: только РЕАЛЬНЫЕ (volume = строка "+N%" или "Breakout")
+  // Синтетические из buildExpandedKeywords имеют volume: 50 (число) — фильтруем
+  const risingKeywordsRaw =
+    blockContext?.layers?.layer1?.rising_keywords ??
+    blockContext?.rising_keywords ??
+    [];
+  const risingKeywordsAll: any[] = (Array.isArray(risingKeywordsRaw) ? risingKeywordsRaw : [])
+    .filter((kw: any) => {
+      // 2.9 — отсеиваем синтетические (volume = число, не строка)
+      if (typeof kw?.volume === 'number') return false;
+      if (kw?.volume == null) return false;
+      const vol = String(kw.volume);
+      return vol.includes('%') || vol.toLowerCase() === 'breakout';
+    });
+
+  const risingHumanDetailed = risingKeywordsAll
+    .filter((kw) => String(kw.volume).toLowerCase() !== 'breakout')
+    .slice(0, 3)
+    .map((kw) => {
+      const rawVol = String(kw.volume ?? '0').replace('%', '').replace('+', '');
+      const pct = parseInt(rawVol);
+      const multiplier = !Number.isNaN(pct) && pct > 0
+        ? `(×${(pct / 100 + 1).toFixed(1)} за год)`
+        : '';
+      return `"${kw.query ?? '?'}" ${multiplier}`.trim();
+    })
+    .filter(Boolean)
+    .join(', ');
+
+  const breakoutQueries = risingKeywordsAll
+    .filter((kw) => String(kw?.volume ?? '').toLowerCase() === 'breakout')
+    .map((kw) => `"${kw.query ?? '?'}"`)
+    .slice(0, 3)
+    .join(', ');
+
+  // 2.6 — Конкуренты: платные с frequency + органические лидеры
+  const competitorsFound: any[] = Array.isArray(blockContext?.competitors_found)
+    ? blockContext.competitors_found
+    : [];
+  const paidCompetitorsDetailed = competitorsFound
+    .filter((c) => c?.source === 'paid')
+    .map((c) => c?.serp_frequency
+      ? `${c?.name ?? c?.domain ?? '?'} (${c.serp_frequency} поисковых страниц)`
+      : (c?.name ?? c?.domain ?? '?'))
+    .slice(0, 4)
+    .join(', ');
+  const organicLeaders = competitorsFound
+    .filter((c) => c?.source === 'organic' && (c?.position ?? 99) <= 2)
+    .map((c) => c?.name ?? c?.domain ?? '?')
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(', ');
+
+  // Текущий месяц для сезонности
+  const currentMonth = new Date().toLocaleString('ru', { month: 'long' });
+
+  // 2.7 — Сигнал тайминга входа
+  // Q2 (мар-май) и Q4 (сен-ноя) в B2B SaaS — сильные сезоны (бюджеты + возврат после лета)
+  // Август — традиционный спад
+  const currentMonthNum = new Date().getMonth() + 1; // 1-12
+  const isGrowing = growthRate === 'growing';
+  const timingSignal: 'good' | 'neutral' | 'wait' =
+    hasDecliningSignal ? 'wait'
+    : isGrowing && [3, 4, 5, 9, 10, 11].includes(currentMonthNum) ? 'good'
+    : 'neutral';
+  const timingText =
+    timingSignal === 'good'
+      ? `Сейчас (${currentMonth}) — хорошее время: спрос растёт и сезон активный`
+      : timingSignal === 'wait'
+      ? `Спрос снижается — лучше дождаться следующего цикла или входить с очень узким сегментом`
+      : `Сейчас нейтральный период — ни пик ни провал`;
+
+  // 2.10 — Hype risk: ключевой сигнал для интерпретации
+  const diagnosisReason = blockContext?.diagnosis_reason ?? '';
+  const isHypeWithoutFoundation = diagnosisReason === 'hype_without_foundation' || hasHypeRisk;
+  const risingPct = Math.round(risingQueriesRatio * 100);
+  const hypeWarning = isHypeWithoutFoundation
+    ? `${risingPct}% запросов — новые, без исторической базы. Коммерческий спрос есть, но устойчивость не проверена.`
+    : null;
+
+  // data_sufficiency — поднят порог до 20 после 2.5
+  const totalKeywords = blockContext?.data_quality?.total_keywords ?? 0;
+  // Fix 2: учитываем качество классификации, не только количество
+  const classificationConf = blockContext?.data_quality?.classification_confidence ?? 'low';
+  const crossValidated = blockContext?.data_quality?.cross_validated_with_serp ?? false;
+  const dataSufficiency: 'sufficient' | 'limited' =
+    // 15+ реальных ключей + high confidence + cross-validated → sufficient
+    (totalKeywords >= 15 && classificationConf === 'high' && crossValidated) ? 'sufficient'
+    // 20+ ключей независимо → sufficient
+    : totalKeywords >= 20 ? 'sufficient'
+    : 'limited';
+
+  const systemPrompt = `Ты — аналитик рынков для предпринимателей.
+Пишешь на русском языке. Твои тексты читают люди которые думают
+войти в новую нишу — они не технари, они бизнесмены.
+
+ЖЁСТКИЕ ПРАВИЛА:
+- Никогда не используй: demand_index, commercial_intent_ratio,
+  serp_ad_density, PARTIAL, confidence, volume, keyword_count,
+  classified_successfully, rising_queries_ratio
+- Никогда не пиши: "данных недостаточно", "сложно сказать",
+  "рекомендуется расширить семантическое ядро"
+- Не упоминай Google Trends, SerpAPI, источники данных
+- Только конкретные выводы, без оговорок
+- Тон: уверенный аналитик который хорошо знает этот рынок`;
+
+  const userPrompt = `Проанализируй спрос в нише: "${niche}"
+
+ТЕХНИЧЕСКИЕ ДАННЫЕ (не используй эти термины в тексте):
+- Диагноз: ${diagnosis}
+- Готовность покупать: ${commercialIntentPct}% ищущих хотят купить, а не просто изучают
+- Тренд: ${growthRate === 'growing' ? 'растёт' : growthRate === 'declining' ? 'падает' : 'стабильный'}
+- Исторический рост: рынок вырос в ${Number(historicalVolumeRatio).toFixed(1)} раза за последние годы
+- Падающий сигнал: ${hasDecliningSignal ? 'да — спрос снижается' : 'нет'}
+- Хайп-риск: ${hasHypeRisk ? 'да — может быть временный всплеск' : 'нет'}
+- Рекламодатели в нише: ${paidCompetitorsDetailed || 'нет платной рекламы'}
+- Органические лидеры SERP: ${organicLeaders || 'не определены'}
+- Растущие запросы с цифрами: ${risingHumanDetailed || 'нет значимых растущих запросов'}
+${breakoutQueries ? `- Взрывной рост (Breakout): ${breakoutQueries}` : ''}
+- Доля растущих запросов: ${Math.round(risingQueriesRatio * 100)}% от всех запросов нише
+- Главный рынок: ${geoTopMarket}
+- Текущий месяц: ${currentMonth}
+- Тайминг входа: ${timingText}
+- Риск хайпа: ${isHypeWithoutFoundation ? `ДА — ${risingPct}% запросов новые, без исторической базы` : 'нет — спрос исторически устойчивый'}
+- Достаточность данных: ${dataSufficiency === 'sufficient' ? 'данных достаточно' : 'ключевых слов немного — дополни знаниями о рынке'}
+${hypeWarning ? `\nКРИТИЧЕСКИЙ СИГНАЛ: ${hypeWarning}` : ''}
+
+${dataSufficiency === 'limited' ? `ВАЖНО: Данных немного. Дополни анализ своими знаниями о рынке "${niche}". Формулируй как конкретный анализ, не как общие знания.` : ''}
+
+${isHypeWithoutFoundation ? `ВАЖНО ДЛЯ ЭТОГО АНАЛИЗА: спрос показывает признаки хайпа.
+headline ОБЯЗАТЕЛЬНО должен отражать это:
+- НЕ пиши "высокий стабильный спрос" или "зрелый рынок"
+- ПИШИ честное предупреждение: "спрос взрывной — но устойчивость под вопросом" или похожее
+main_insight должен объяснить что ${risingPct}% запросов новые и что это означает.` : 'ВАЖНО: используй конкретные запросы и цифры роста в тексте. Не пиши абстрактно "спрос растёт" — назови КАКОЙ запрос и НА СКОЛЬКО.'}
+
+Ответь на три вопроса предпринимателя:
+1. Много ли людей ищут это — и растёт ли это число?
+2. Они хотят купить или просто изучают?
+3. Сейчас хорошее время для входа или лучше подождать?
+
+Напиши анализ в формате JSON:
+
+{
+  "headline": "одно предложение-диагноз про спрос (максимум 12 слов)",
+  "main_insight": "2-3 предложения. Включи конкретные растущие запросы с цифрами. Назови кто рекламируется. Объясни что это означает для нового игрока.",
+  "key_facts": [
+    ${isHypeWithoutFoundation
+      ? `"факт 1: конкретный факт про масштаб роста с числом — какой запрос и на сколько вырос",
+    "факт 2: ЧЕСТНОЕ ПРЕДУПРЕЖДЕНИЕ — ${risingPct}% запросов появились недавно, нет данных держится ли спрос. Объясни что это значит.",
+    "факт 3: практический вывод — как проверить устойчивость спроса перед входом"`
+      : `"факт 1: КОНКРЕТНЫЙ растущий тренд с числом — какой именно запрос вырос и на сколько (бери из растущих запросов выше)",
+    "факт 2: про покупательское намерение с процентом и что это значит",
+    "факт 3: про конкурентную обстановку — назови КТО платит за рекламу или какие органические лидеры, и что это означает"`}
+  ],
+  "decision_impact": "одно-два предложения: когда лучше входить и почему именно сейчас или позже — используй данные о тайминге выше"
+}
+
+ПРИМЕРЫ ХОРОШИХ ФАКТОВ (конкретные):
+- "Запросы 'n8n workflow automation' выросли в 6.5 раза за год — AI-автоматизация переключает рынок"
+- "82% ищущих готовы купить — это не исследование, это поиск подрядчика"
+- "Рекламу покупают только Kissflow и ManageEngine — корпоративный сегмент, SMB открыт"
+
+ПРИМЕРЫ ПЛОХИХ ФАКТОВ (ЗАПРЕЩЕНО):
+- "Спрос растёт" — без цифр и без названия запроса
+- "Рынок коммерческий" — без конкретных рекламодателей
+- "Запросы об AI-автоматизации выросли в 3.5 раза за год" — нет конкретного запроса в кавычках
+- "82% коммерческий интент, уверенность: medium" — технический термин
+- "Спрос индекс: 1116721413687958" — непонятное число
+
+Верни ТОЛЬКО валидный JSON, без markdown и без пояснений.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 800,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const raw = (response.content[0] as any)?.text ?? "";
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+
+    if (
+      !parsed.headline ||
+      !parsed.main_insight ||
+      !Array.isArray(parsed.key_facts) ||
+      parsed.key_facts.length !== 3 ||
+      !parsed.decision_impact
+    ) {
+      console.error("[Block2 Interpretation] Invalid structure:", parsed);
+      return;
+    }
+
+    const { error: saveError } = await supabase
+      .from("block_interpretations")
+      .upsert(
+        {
+          trend_id: trendId,
+          block_id: "demand",
+          headline: parsed.headline,
+          main_insight: parsed.main_insight,
+          key_facts: parsed.key_facts,
+          decision_impact: parsed.decision_impact,
+          model_used: "claude-sonnet-4-6",
+          data_sufficiency: dataSufficiency,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: "trend_id,block_id" },
+      );
+
+    if (saveError) {
+      console.error("[Block2 Interpretation] Save failed:", saveError);
+      return;
+    }
+    console.log("[Block2 Interpretation] Generated for trend:", trendId);
+  } catch (error) {
+    console.error("[Block2 Interpretation] Failed:", error);
+  }
 }
 
 // ————————————————————————————————————————————————————————————
@@ -1575,11 +1910,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // —— 1.5. РАСШИРЕНИЕ СЕМАНТИЧЕСКОГО ЯДРА (2.5) ————————————
+    // Если Trends + rising дают < 20 ключевых — добавляем синтетические,
+    // чтобы перейти из data_quality_verdict: PARTIAL в RELIABLE.
+    // Они классифицируются Haiku тем же батчем — реальный intent сохраняется.
+    const baseKeywordsCombined = [...topKeywords, ...risingKeywords];
+    const MIN_KEYWORDS_THRESHOLD = 20;
+    const expandedKeywordsRaw: SearchKeyword[] =
+      baseKeywordsCombined.length < MIN_KEYWORDS_THRESHOLD
+        ? buildExpandedKeywords(niche).map((q) => ({
+            query: q,
+            source: 'top' as const,
+            volume: 50, // нейтральный индекс — точное значение неизвестно
+            intent: 'mixed' as const,
+            intent_confidence: 'low' as const,
+          }))
+        : [];
+
+    // Дедупликация — не добавляем то что уже есть в Trends
+    const existingQueries = new Set(
+      baseKeywordsCombined.map((k) => k.query.toLowerCase()),
+    );
+    const expandedNew = expandedKeywordsRaw.filter((k) => {
+      const q = k.query.toLowerCase();
+      if (existingQueries.has(q)) return false;
+      // Не дублируем если существующий query содержит синтетический или наоборот
+      for (const e of existingQueries) {
+        if (e.includes(q) || q.includes(e)) return false;
+      }
+      existingQueries.add(q);
+      return true;
+    });
+
+    if (expandedNew.length > 0) {
+      console.log(`[Block2] Expanding semantic core: +${expandedNew.length} synthetic keywords (Trends gave ${baseKeywordsCombined.length})`);
+    }
+
     // —— 2. КЛАССИФИКАЦИЯ ИНТЕНТА БАТЧАМИ (Pass 2) ——————————
     // MAX_CONCURRENT = 5 — защита от rate limiting Haiku
     const MAX_CONCURRENT = 5;
     const BATCH_SIZE = 15;
-    const allKeywordsToClassify = [...topKeywords, ...risingKeywords];
+    const allKeywordsToClassify = [...baseKeywordsCombined, ...expandedNew].slice(0, 25);
     const batches: SearchKeyword[][] = [];
     for (let i = 0; i < allKeywordsToClassify.length; i += BATCH_SIZE) {
       batches.push(allKeywordsToClassify.slice(i, i + BATCH_SIZE));
@@ -1713,9 +2084,26 @@ export async function POST(req: NextRequest) {
     const forceExperiment = demandConfidenceScore < 0.4;
 
     // FIX #5: intent_type теперь может быть 'mixed' для серой зоны
+    // Информативный score: варьируется внутри диагноза по силе сигналов
+    const computedDemandScore = (() => {
+      let s = diagnosisResult.diagnosis === 'green' ? 7 : diagnosisResult.diagnosis === 'yellow' ? 4 : 2;
+      const ir = layers.layer2.commercial_intent_ratio ?? 0;
+      const ad = serpAdDensity ?? 0;
+      if (ir > 0.7) s += 1;
+      if (ir > 0.85) s += 0.5;
+      if (ad > 0.2) s += 0.5;
+      if (layers.layer3.rising_queries_count >= 3) s += 0.5;
+      if ((historicalVolumeRatio ?? 1) >= 2) s += 0.5;
+      if (isHype) s -= 1;
+      if (layers.layer1.growth_rate === 'declining') s -= 2;
+      if (isStructuralDecline) s -= 1;
+      if (keywordsSource === 'claude_fallback') s -= 1;
+      return Math.max(1, Math.min(10, Math.round(s)));
+    })();
+
     const output: DemandBlockOutput = {
       diagnosis: diagnosisResult.diagnosis,
-      score: diagnosisResult.score,
+      score: computedDemandScore,
       conflict_weight: diagnosisResult.conflict_weight,
       key_factors: diagnosisResult.key_factors,
       key_metric: diagnosisResult.key_metric,
@@ -1820,6 +2208,31 @@ ${JSON.stringify({
     // Добавляем в output
     output.block_context.data_quality_verdict = demandAnalyzerVerdict as any;
 
+    // —— 8.5. Фильтрация синтетических ключей перед сохранением ——
+    // Синтетические из buildExpandedKeywords имеют volume: 50 (число).
+    // Реальные из Google Trends — volume: строка ("+250%", "Breakout", etc.)
+    const isSyntheticKw = (kw: any) => typeof kw?.volume === 'number' && kw.volume === 50 && kw.intent_confidence === 'low';
+    const isRealRising = (kw: any) => {
+      if (typeof kw?.volume === 'number') return false;
+      if (!kw?.volume) return false;
+      const vol = String(kw.volume);
+      return vol.includes('%') || vol.toLowerCase() === 'breakout';
+    };
+
+    // Фильтруем rising_keywords — только реальные
+    const origRisingCount = output.layers.layer1.rising_keywords.length;
+    output.layers.layer1.rising_keywords = output.layers.layer1.rising_keywords.filter(isRealRising);
+    const filteredRisingCount = origRisingCount - output.layers.layer1.rising_keywords.length;
+
+    // Фильтруем top_keywords — убираем явно синтетические
+    const origTopCount = output.layers.layer1.top_keywords.length;
+    output.layers.layer1.top_keywords = output.layers.layer1.top_keywords.filter((kw: any) => !isSyntheticKw(kw));
+    const filteredTopCount = origTopCount - output.layers.layer1.top_keywords.length;
+
+    if (filteredRisingCount > 0 || filteredTopCount > 0) {
+      console.log(`[Block2] Filtered synthetic keywords before save: ${filteredRisingCount} rising, ${filteredTopCount} top`);
+    }
+
     // —— 9. UPSERT В SUPABASE ————————————————————————————————
     const { error: dbError } = await supabase.from("block_results").upsert({
       trend_id,
@@ -1855,6 +2268,18 @@ ${JSON.stringify({
     }, { onConflict: 'trend_id,user_id,block_number' });
 
     if (dbError) throw new Error(`Supabase error: ${dbError.message}`);
+
+    // —— 9.5. INTERPRETATION LAYER (фоновая генерация) ——————————
+    generateDemandInterpretation(
+      trend_id,
+      niche,
+      output.diagnosis,
+      output.block_context as Record<string, any>,
+      supabase,
+      claude,
+    ).catch((err) =>
+      console.error("[Block2 Interpretation] Background error:", err),
+    );
 
     // —— 10. ПОЛЕЗНЫЙ ЛОГГИНГ ПОСЛЕ ДИАГНОЗА —————————————————
     console.log("[Block2] Diagnosis result:", {

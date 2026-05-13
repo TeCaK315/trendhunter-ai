@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchCompanySearch, fetchLinkedInCompanies } from '@/lib/data-fetchers';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
@@ -293,6 +294,9 @@ ${contextSection}
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body: FindCompaniesRequest = await request.json();
 

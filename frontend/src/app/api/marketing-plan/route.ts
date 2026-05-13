@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAgent, parseJSONResponse, formatErrorForUser, type OpenAIError } from '@/lib/openai';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 /**
  * /api/marketing-plan
@@ -216,6 +217,9 @@ const MARKETING_PLAN_SYSTEM_PROMPT = `Ты Senior Marketing Strategist с 15+ л
 }`;
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const clientIP = getClientIP(request);
     const rateLimitResult = checkRateLimit(`marketing:${clientIP}`, RATE_LIMITS.analysis);

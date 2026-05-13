@@ -171,6 +171,8 @@ interface ProblemBlockOutput {
     paying_score: number
     competitive_positives?: Array<{ product: string; text: string; source: 'capterra' }>
     run_count?: number
+    // 1.8 — source bias при высоком paying_ratio (> 50% при 1-2 прогонах)
+    paying_ratio_source_note?: 'high_review_platform_bias'
   }
   layers: {
     layer1: Layer1Data
@@ -436,6 +438,7 @@ async function discoverSources(
       try {
         const response = await claude.messages.create({
           model: 'claude-haiku-4-5-20251001',
+          temperature: 0,
           max_tokens: 300,
           system: 'Respond with valid JSON only, no markdown.',
           messages: [{
@@ -542,10 +545,70 @@ async function collectFromSources(
     }
   }
 
-  // ── 2. Широкие запросы без site: — ловят блоги, форумы, Medium, etc. ──
   const nicheQueryPart = niche.split(/\s+/).length <= 2
     ? `"${niche}"`
     : niche.split(/\s+/).filter(w => w.length > 2).join(' ')
+
+  // ── 1.5. Pain-loaded queries (1.4 — поднять relevance_rate с 23% до 40%+) ──
+  // Идея: люди жалуются конкретными словами (frustrated/broken/alternative) —
+  // искать именно эти слова на тех же площадках. Дополнительно к 1, не вместо.
+  const subredditNames = sources
+    .filter((s) => s.type === 'subreddit')
+    .slice(0, 4)
+    .map((s) => s.name); // например 'r/automation'
+
+  const painQueries: string[] = [];
+
+  // Reddit — для каждого top-subreddit два варианта: жалобы и альтернативы
+  for (const sub of subredditNames) {
+    painQueries.push(`site:reddit.com/${sub} ${nicheQueryPart} problem OR issue OR frustrated`);
+    painQueries.push(`site:reddit.com/${sub} ${nicheQueryPart} alternative OR "switched from" OR "looking for"`);
+  }
+
+  // G2 / Capterra — отзывы с явными болями (платящие пользователи, высокий вес)
+  // 1.6A — более точные G2/Capterra запросы: прямо на страницы отзывов, не списки сравнений
+  painQueries.push(`site:g2.com ${nicheQueryPart} "what do you dislike"`);
+  painQueries.push(`site:g2.com ${nicheQueryPart} reviews pros-and-cons`);
+  painQueries.push(`site:capterra.com ${nicheQueryPart} reviews "what could be improved"`);
+  painQueries.push(`site:capterra.com ${nicheQueryPart} "cons" review`);
+
+  // HackerNews + Quora — технические/общие боли
+  painQueries.push(`site:news.ycombinator.com ${nicheQueryPart} "doesn't work" OR problem OR frustrated`);
+  painQueries.push(`site:quora.com "problems with ${niche}" OR "issues with ${niche}"`);
+
+  const painResults = await Promise.all(
+    painQueries.map((q) => fetchFromSource(q, 'google', serpApiKey, { tbs, num: '20' }))
+  );
+
+  for (const results of painResults) {
+    for (const r of results) {
+      const url = r.link || r.url || '';
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+
+      const urlLower = url.toLowerCase();
+      const sourceType: RawPost['source'] =
+        urlLower.includes('reddit.com') ? 'reddit'
+        : urlLower.includes('g2.com') ? 'g2'
+        : urlLower.includes('capterra.com') ? 'capterra'
+        : urlLower.includes('trustpilot.com') ? 'trustpilot'
+        : urlLower.includes('quora.com') ? 'quora'
+        : urlLower.includes('news.ycombinator.com') ? 'hackernews'
+        : urlLower.includes('stackoverflow.com') ? 'stackoverflow'
+        : 'quora';
+
+      posts.push({
+        source: sourceType,
+        text: r.snippet || r.description || '',
+        link: url,
+        upvotes: r.upvotes || 0,
+        date: r.date || '',
+        collection_period: collectionPeriod,
+      });
+    }
+  }
+
+  // ── 2. Широкие запросы без site: — ловят блоги, форумы, Medium, etc. ──
 
   const broadQueries: string[] = [
     // Широкий поиск по нише + общие review/problem сигналы
@@ -1410,6 +1473,222 @@ function makeDiagnosis(
 }
 
 // ══════════════════════════════════════════════════════════════
+// INTERPRETATION LAYER (Block 1)
+// ══════════════════════════════════════════════════════════════
+// Генерирует человекочитаемую интерпретацию блока в фоне.
+// Кэш 24ч в таблице block_interpretations. Не блокирует основной ответ.
+
+async function generateProblemInterpretation(
+  trendId: string,
+  niche: string,
+  diagnosis: string,
+  blockContext: Record<string, any>,
+  painClustersRich: PainCluster[],
+  supabase: ReturnType<typeof getServerSupabase>,
+  anthropic: Anthropic,
+  forceRegenerate: boolean = false
+): Promise<void> {
+  if (!forceRegenerate) {
+    // Проверяем кэш — пропускаем если интерпретация свежая (< 24ч)
+    const { data: existing } = await supabase
+      .from('block_interpretations')
+      .select('id, generated_at')
+      .eq('trend_id', trendId)
+      .eq('block_id', 'problem')
+      .maybeSingle()
+
+    if (existing && (existing as any).generated_at) {
+      const age = Date.now() - new Date((existing as any).generated_at).getTime()
+      if (age < 24 * 60 * 60 * 1000) return
+    }
+  }
+
+  console.log(`[Block1 Interpretation] forceRegenerate=${forceRegenerate}, generating fresh`)
+
+  const validatedCount = blockContext?.data_quality?.validated_relevant ?? 0
+  const dataSufficiency: 'sufficient' | 'limited' = validatedCount >= 30 ? 'sufficient' : 'limited'
+
+  const payingRatio = blockContext?.paying_users_ratio ?? 0
+  const painType = blockContext?.pain_type ?? 'unknown'
+  const dynamics = blockContext?.dynamics ?? 'unknown'
+  const painScale = blockContext?.pain_scale ?? 0
+  const distribution = blockContext?.distribution ?? {}
+
+  // 1.5 — Берём богатые pain clusters из переданного raw_data
+  // Сортируем по mention_count + фильтруем по confidence/частоте
+  const topClusters = (Array.isArray(painClustersRich) ? painClustersRich : [])
+    .filter((c) => c.confidence === 'high' || (c.mention_count ?? 0) >= 5)
+    .sort((a, b) => (b.mention_count ?? 0) - (a.mention_count ?? 0))
+    .slice(0, 3)
+    .map((c) => ({
+      summary: c.pain_summary ?? '',
+      mentions: c.mention_count ?? 0,
+      sources: c.source_count ?? 1,
+      category: c.category ?? 'unknown',
+      products: (c.mentioned_products ?? []).slice(0, 3),
+    }))
+    .filter((c) => c.summary)
+
+  // 1.7 — Динамика между прогонами (если run_count > 1)
+  const runCount = blockContext?.run_count ?? blockContext?.data_quality?.run_count ?? 1;
+  const mergedFromPrevious = blockContext?.data_quality?.merged_from_previous ?? 0;
+  let dynamicsSignal: string | null = null;
+
+  // Если есть merged данные — вычисляем дельту по paying_ratio и pain_scale
+  // (предыдущий прогон хранил часть данных которые merged в текущий)
+  if (runCount > 1 && mergedFromPrevious > 0) {
+    // Простая эвристика: если paying_ratio сильно изменился — это значимая динамика
+    const previousPayingHint = blockContext?.previous_paying_ratio;
+    if (previousPayingHint != null && Math.abs(payingRatio - previousPayingHint) >= 5) {
+      dynamicsSignal = payingRatio > previousPayingHint
+        ? `доля платящих выросла с ${previousPayingHint}% до ${payingRatio}% за ${runCount} прогонов`
+        : `доля платящих снизилась с ${previousPayingHint}% до ${payingRatio}% за ${runCount} прогонов`;
+    }
+  }
+  // Fallback: сообщить сколько данных накоплено
+  if (!dynamicsSignal && runCount > 1) {
+    dynamicsSignal = `это ${runCount}-й прогон анализа, накоплено ${validatedCount} подтверждённых постов (${mergedFromPrevious} из предыдущих запусков)`;
+  }
+
+  // 1.8 — Source bias note для высокого paying_ratio
+  const payingNote =
+    payingRatio > 50 && runCount <= 2
+      ? 'высокий процент платящих может отражать то что большинство отзывов пришло с G2/Capterra где пишут только пользователи которые уже купили продукт — реальный процент платящих на рынке ниже'
+      : null;
+
+  const painTypeRu =
+    painType === 'bad_solution' ? 'недовольны существующими решениями'
+    : painType === 'no_solution' ? 'нет хорошего решения'
+    : painType === 'expensive_solution' ? 'дорогие существующие решения'
+    : 'смешанный тип'
+
+  const dynamicsRu =
+    dynamics === 'growing' ? 'интерес растёт'
+    : dynamics === 'declining' ? 'интерес падает'
+    : 'стабильно'
+
+  const systemPrompt = `Ты — аналитик рынков для предпринимателей.
+Пишешь на русском языке. Твои тексты читают люди которые думают
+войти в новую нишу — они не технари, они бизнесмены.
+
+ЖЁСТКИЕ ПРАВИЛА:
+- Никогда не используй слова: данных, метрика, кластер, confidence,
+  relevance, validated, score, paying_score, weighted
+- Никогда не пиши: "данных недостаточно", "сложно сказать",
+  "требует дополнительного исследования", "PARTIAL"
+- Никогда не упоминай источники данных (Reddit, G2, SerpAPI)
+- Только конкретные выводы, никаких оговорок
+- Тон: уверенный аналитик который хорошо знает этот рынок`
+
+  // 1.5 — Конкретные паттерны жалоб для прямого использования в тексте
+  const clustersSection = topClusters.length > 0
+    ? `\nКОНКРЕТНЫЕ ПАТТЕРНЫ ЖАЛОБ (топ по частоте упоминаний — это РЕАЛЬНЫЕ боли пользователей, которые ОБЯЗАТЕЛЬНО надо использовать в тексте):
+${topClusters.map((c, i) =>
+  `${i + 1}. "${c.summary}" — ${c.mentions} упоминаний из ${c.sources} независимых источников${c.products.length ? ` (упоминают: ${c.products.join(', ')})` : ''}`
+).join('\n')}
+
+Используй эти конкретные боли в headline и в key_facts[0]. Они реальные, не придуманные. Хотя бы одну назови по существу — по тому, на что жалуются пользователи, а не "X% участников начинают поиск с нуля".\n`
+    : '';
+
+  const userPrompt = `Проанализируй рыночную проблему в нише: "${niche}"
+
+ТЕХНИЧЕСКИЕ ДАННЫЕ (не упоминай их в тексте):
+- Диагноз: ${diagnosis}
+- Доля тех кто платит за решение: ${payingRatio}%
+- Тип проблемы: ${painTypeRu}
+- Тренд: ${dynamicsRu}
+- Количество обсуждений найдено: ${painScale}
+- Распределение: ${distribution.bad_solution || 0}% недовольны решениями, ${distribution.no_solution || 0}% ищут решение с нуля
+- Достаточность данных: ${dataSufficiency === 'sufficient' ? 'данных достаточно' : 'данных немного, используй знания о рынке'}
+${dynamicsSignal ? `\nДИНАМИКА (изменение между прогонами): ${dynamicsSignal}` : ''}
+${payingNote ? `\nПРИМЕЧАНИЕ О ДОЛЕ ПЛАТЯЩИХ: ${payingNote}` : ''}
+${clustersSection}
+${dataSufficiency === 'limited' ? `ВАЖНО: Внешних данных немного. Дополни анализ своими знаниями о рынке "${niche}" и смежных рынках. Формулируй как конкретный анализ этой ниши, не как общие знания. Используй фразы "как правило в этой нише", "большинство игроков этого рынка" — но не "данных мало".` : ''}
+
+Напиши анализ проблемы в формате JSON:
+
+{
+  "headline": "одно предложение-диагноз (максимум 12 слов, начни с главного вывода)",
+  "main_insight": "2-3 предложения. Кто жалуется и на что КОНКРЕТНО (используй паттерны жалоб выше). Платят ли за решение. Растёт или падает интерес.",
+  "key_facts": [
+    "факт 1: КОНКРЕТНАЯ боль из паттернов выше — самая частая жалоба, переведённая на простой русский язык, с числом упоминаний",
+    "факт 2: про долю платящих и что это означает для нового игрока",
+    "факт 3: ${dynamicsSignal ? 'ОБЯЗАТЕЛЬНО про динамику — что изменилось между прогонами анализа, используй данные из секции ДИНАМИКА выше' : 'про тренд или динамику рынка с числом'}"
+  ],
+  "decision_impact": "одно-два предложения: что это означает для решения войти или нет в нишу"
+}
+
+ТРЕБОВАНИЯ К ФАКТАМ:
+- key_facts[0] ОБЯЗАТЕЛЬНО опирается на конкретные паттерны жалоб, а не на проценты-агрегаты
+- key_facts[1] и key_facts[2] начинаются с числа или процента
+- Используй данные выше как основу, конкретные боли — без пересказа на технический язык
+- Никаких технических терминов в тексте
+
+ПРИМЕРЫ ХОРОШИХ ФАКТОВ:
+- "Главная жалоба: существующие инструменты не справляются со сложными workflow — это подтверждают 9 независимых источников"
+- "Каждый пятый участник рынка уже платит за решение — у них активный бюджет"
+- "Интерес к нише вырос в 1.5 раза за последний год"
+
+ПРИМЕРЫ ПЛОХИХ ФАКТОВ (ЗАПРЕЩЕНО):
+- "54% участников рынка начинают поиск с нуля" — общий процент без конкретики
+- "Paying score: 85 (19% платящие)" — технический термин
+- "2 подтверждённых кластера болей (3+ источника)" — техническое
+- "Взвешенный масштаб: 133.7" — непонятное число
+
+Верни ТОЛЬКО валидный JSON, без markdown и без пояснений.`
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+
+    const raw = (response.content[0] as any)?.text ?? ''
+    const clean = raw.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(clean)
+
+    if (
+      !parsed.headline ||
+      !parsed.main_insight ||
+      !Array.isArray(parsed.key_facts) ||
+      parsed.key_facts.length !== 3 ||
+      !parsed.decision_impact
+    ) {
+      console.error('[Block1 Interpretation] Invalid structure:', parsed)
+      return
+    }
+
+    const { error: saveError } = await supabase
+      .from('block_interpretations')
+      .upsert(
+        {
+          trend_id: trendId,
+          block_id: 'problem',
+          headline: parsed.headline,
+          main_insight: parsed.main_insight,
+          key_facts: parsed.key_facts,
+          decision_impact: parsed.decision_impact,
+          model_used: 'claude-sonnet-4-6',
+          data_sufficiency: dataSufficiency,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: 'trend_id,block_id' }
+      )
+
+    if (saveError) {
+      console.error('[Block1 Interpretation] Save failed:', saveError)
+      return
+    }
+    console.log('[Block1 Interpretation] Generated successfully for trend:', trendId)
+  } catch (error) {
+    // Интерпретация некритична — логируем но не ломаем pipeline
+    console.error('[Block1 Interpretation] Failed:', error)
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // ОСНОВНОЙ РОУТ
 // ══════════════════════════════════════════════════════════════
 
@@ -1476,6 +1755,7 @@ export async function POST(req: NextRequest) {
       try {
         const anchorRes = await claude.messages.create({
           model: 'claude-haiku-4-5-20251001',
+          temperature: 0,
           max_tokens: 512,
           messages: [{
             role: 'user',
@@ -1503,17 +1783,23 @@ export async function POST(req: NextRequest) {
 
     const { data: existingBlock } = await supabase
       .from('block_results')
-      .select('raw_data, block_context')
+      .select('raw_data, block_context, score, diagnosis')
       .eq('trend_id', trend_id)
       .eq('user_id', user.id)
       .eq('block_number', 1)
       .maybeSingle()
 
+    // Fix B/C: предыдущие score и diagnosis для smoothing/dampening
+    let previousScore: number | null = null;
+    let previousDiagnosis: string | null = null;
+
     if (existingBlock) {
       previousPosts = (existingBlock.raw_data?.posts || []) as ValidatedPost[]
       previousPositives = (existingBlock.block_context?.competitive_positives || []) as typeof previousPositives
       runCount = (existingBlock.block_context?.run_count || 1) + 1
-      console.log(`[Block1 Cumulative] Found ${previousPosts.length} previous validated posts, run #${runCount}`)
+      previousScore = existingBlock.score ?? null;
+      previousDiagnosis = existingBlock.diagnosis ?? null;
+      console.log(`[Block1 Cumulative] Found ${previousPosts.length} previous validated posts, run #${runCount}, prevScore=${previousScore}, prevDiag=${previousDiagnosis}`)
     }
 
     // ══════════════════════════════════════════════════════════
@@ -1638,11 +1924,40 @@ export async function POST(req: NextRequest) {
     }
 
     // ══════════════════════════════════════════════════════════
+    // 1.6B — RELEVANCE SIGNAL FILTER (перед Haiku — экономим токены)
+    // Пост должен иметь минимум 80 символов И содержать хотя бы один
+    // сигнал боли/покупки. Это снижает sent_to_validation с ~300 до ~100-120.
+    // ══════════════════════════════════════════════════════════
+    const PAIN_SIGNALS = [
+      'problem', 'issue', 'frustrated', "doesn't work", 'doesn\'t work',
+      'hate', 'terrible', 'broken', 'missing', 'lack', 'dislike', 'cons',
+      'worst', 'slow', 'expensive', 'paying', 'paid', 'buy', 'purchase',
+      'subscription', 'pricing', 'cost', 'looking for', 'switched',
+      'alternative', 'replaced', 'moved from', 'used to use', 'better than',
+      'compared to', 'review', 'workflow', 'automat', // partial match for automation
+      // Русские сигналы
+      'проблем', 'не работ', 'дорого', 'альтернатив', 'перешёл', 'заменил',
+    ];
+
+    const preFilteredWithSignals = preFilteredPosts.filter((post) => {
+      const text = (post.text || '').toLowerCase();
+      // Минимальная длина — короткие сниппеты не несут полезных жалоб
+      if (text.length < 80) return false;
+      // Хотя бы один pain/purchase сигнал
+      return PAIN_SIGNALS.some((s) => text.includes(s));
+    });
+
+    const signalFilterDropped = preFilteredPosts.length - preFilteredWithSignals.length;
+    if (signalFilterDropped > 0) {
+      console.log(`[Block1 SignalFilter] Dropped ${signalFilterDropped}/${preFilteredPosts.length} posts without pain/purchase signals (kept ${preFilteredWithSignals.length})`);
+    }
+
+    // ══════════════════════════════════════════════════════════
     // LANGUAGE FILTER — понижаем вес постов на неправильном языке
     // Не удаляем (может быть полезный insight), но снижаем source_weight
     // ══════════════════════════════════════════════════════════
     const targetLanguage = contextObject?.market_identity?.primary_language ?? 'en'
-    for (const post of preFilteredPosts) {
+    for (const post of preFilteredWithSignals) {
       const cyrillicRatio = (post.text.match(/[\u0400-\u04FF]/g) || []).length / Math.max(post.text.length, 1)
       const postLanguage = cyrillicRatio > 0.3 ? 'ru' : 'en'
       if (postLanguage !== targetLanguage) {
@@ -1653,14 +1968,14 @@ export async function POST(req: NextRequest) {
     // ══════════════════════════════════════════════════════════
     // PASS 2 — ВАЛИДАЦИЯ РЕЛЕВАНТНОСТИ + КЛАССИФИКАЦИЯ
     // ══════════════════════════════════════════════════════════
-    console.log(`[Block1 Pass2] Validating relevance of ${preFilteredPosts.length} posts...`)
+    console.log(`[Block1 Pass2] Validating relevance of ${preFilteredWithSignals.length} posts (signal-filtered from ${preFilteredPosts.length})...`)
 
     const BATCH_SIZE = 10
     const MAX_CONCURRENT = 5
 
     const batches: RawPost[][] = []
-    for (let i = 0; i < preFilteredPosts.length; i += BATCH_SIZE) {
-      batches.push(preFilteredPosts.slice(i, i + BATCH_SIZE))
+    for (let i = 0; i < preFilteredWithSignals.length; i += BATCH_SIZE) {
+      batches.push(preFilteredWithSignals.slice(i, i + BATCH_SIZE))
     }
 
     const allValidationResults: ValidationResult[] = []
@@ -1834,9 +2149,55 @@ export async function POST(req: NextRequest) {
     // ══════════════════════════════════════════════════════════
     // ФИНАЛЬНЫЙ OUTPUT
     // ══════════════════════════════════════════════════════════
+    // Информативный score: варьируется внутри диагноза по силе сигналов
+    const computedScore = (() => {
+      let s = diagnosisResult.diagnosis === 'green' ? 7 : diagnosisResult.diagnosis === 'yellow' ? 4 : 2;
+      if ((layer3.paying_ratio ?? 0) > 30) s += 1;
+      if ((layer3.paying_ratio ?? 0) > 60) s += 1;
+      if (highConfClusters >= 3) s += 0.5;
+      if (diagnosisResult.pain_type === 'bad_solution') s += 0.5;
+      if (layer1.dynamics === 'growing') s += 0.5;
+      if (layer1.validated_complaints >= 50) s += 0.5;
+      if (layer1.dynamics === 'declining') s -= 1;
+      if (highConfClusters === 0) s -= 1;
+      if ((layer3.paying_ratio ?? 0) < 10) s -= 1;
+      return Math.max(1, Math.min(10, Math.round(s)));
+    })();
+
+    // ── Fix B: Score smoothing при повторных прогонах (70% текущий + 30% предыдущий)
+    const smoothedScore = previousScore !== null && runCount > 1
+      ? Math.round(computedScore * 0.7 + previousScore * 0.3)
+      : computedScore;
+    if (previousScore !== null && smoothedScore !== computedScore) {
+      console.log(`[Block1] Score smoothing: ${computedScore} → ${smoothedScore} (prev=${previousScore})`);
+    }
+
+    // ── Fix C: Diagnosis dampening при малом N
+    const stableDiagnosis = (() => {
+      const newDiag = diagnosisResult.diagnosis;
+      if (!previousDiagnosis || runCount <= 1) return newDiag;
+      const cumulative = validatedPosts.length;
+      // При < 30 постах — не меняем диагноз
+      if (cumulative < 30) {
+        console.log(`[Block1] Keeping baseline diagnosis ${previousDiagnosis} (cumulative=${cumulative} < 30)`);
+        return previousDiagnosis as Diagnosis;
+      }
+      // При 30-60 — не прыгаем через ступень (RED↔GREEN)
+      if (cumulative < 60) {
+        const order: Record<string, number> = { red: 0, yellow: 1, green: 2 };
+        const prevO = order[previousDiagnosis] ?? 1;
+        const newO = order[newDiag] ?? 1;
+        if (Math.abs(prevO - newO) > 1) {
+          console.log(`[Block1] Dampening diagnosis jump: ${previousDiagnosis} → ${newDiag} → yellow`);
+          return 'yellow' as Diagnosis;
+        }
+      }
+      return newDiag;
+    })();
+
     const output: ProblemBlockOutput = {
-      diagnosis: diagnosisResult.diagnosis,
-      score: diagnosisResult.score,
+      diagnosis: stableDiagnosis,
+      score: smoothedScore,
       conflict_weight: diagnosisResult.conflict_weight,
       key_factors: diagnosisResult.key_factors,
       key_metric: diagnosisResult.key_metric,
@@ -1844,6 +2205,10 @@ export async function POST(req: NextRequest) {
         pain_type: diagnosisResult.pain_type,
         pain_scale: layer1.validated_complaints,
         paying_users_ratio: layer3.paying_ratio,
+        // 1.8 — source bias note при высоком paying_ratio
+        paying_ratio_source_note: layer3.paying_ratio > 50 && runCount <= 2
+          ? 'high_review_platform_bias'
+          : undefined,
         classification_confidence: classificationConfidence,
         data_quality: {
           total_collected: rawPosts.length,
@@ -1851,7 +2216,7 @@ export async function POST(req: NextRequest) {
           new_this_run: newPostCount,
           merged_from_previous: mergedFromPrevious,
           pre_filter_dropped: preFilterDropped,
-          sent_to_validation: preFilteredPosts.length,
+          sent_to_validation: preFilteredWithSignals.length,
           validated_relevant: cumulativeRelevantCount,
           relevance_rate: validatedPosts.length > 0
             ? Math.round((cumulativeRelevantCount / validatedPosts.length) * 100)
@@ -1910,6 +2275,20 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'trend_id,user_id,block_number' })
 
     if (dbError) throw new Error(`Supabase error: ${dbError.message}`)
+
+    // ══════════════════════════════════════════════════════════
+    // INTERPRETATION LAYER (фоновая генерация, не блокирует ответ)
+    // ══════════════════════════════════════════════════════════
+    generateProblemInterpretation(
+      trend_id,
+      niche,
+      output.diagnosis,
+      output.block_context as Record<string, any>,
+      output.layers.layer2.pain_clusters ?? [],
+      supabase,
+      claude,
+      true
+    ).catch((err) => console.error('[Block1 Interpretation] Background error:', err))
 
     // ══════════════════════════════════════════════════════════
     // ОТВЕТ — PUBLIC + PREVIEW ДАННЫЕ

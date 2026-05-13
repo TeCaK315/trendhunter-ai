@@ -268,20 +268,84 @@ async function fetchBlocksData(supabase: any, trendId: string, userId: string): 
     top_competitor_name: bc4.top_competitor ?? undefined,
     revenue_mid: bc5.revenue_mid ?? null,
     monthly_revenue_mid: bc5.monthly_revenue_mid ?? null,
+    // 6.2 — Берём самый дешёвый CAC, а не recommended (который мог быть SALES_LED $6000)
     cac_mid: (() => {
       const cs = bc5.cac_scenarios;
       if (!cs) return null;
+      // Приоритет: cheapest PLG/community/SEO → потом recommended → потом sales_led
+      const cheapest = Math.min(
+        cs.plg?.mid ?? Infinity,
+        cs.community_led?.mid ?? Infinity,
+        cs.seo_led?.mid ?? Infinity,
+      );
+      if (Number.isFinite(cheapest) && cheapest > 0) return cheapest;
       const key = (cs.recommended || 'seo_led').toLowerCase();
       return cs[key]?.mid ?? null;
     })(),
-    experiment_budget: bc5.experiment_budget ?? null,
+    // 6.2 — min_signal_budget (реалистичный) вместо experiment_budget ($168K)
+    experiment_budget: bc5.min_signal_budget ?? bc5.experiment_budget ?? null,
     revenue_quality: bc5.revenue_quality ?? 'MEDIUM',
     churn_level: bc5.churn_level ?? 'MEDIUM',
     economics_confidence: bc5.economics_confidence ?? 'MEDIUM',
     payback_months: bc5.payback_months ?? null,
     niche: bc2.niche ?? bc1.niche ?? 'Unknown',
-    market_type: bc3.monetization_archetype?.includes('ENTERPRISE') ? 'B2B' : undefined,
+    // 6.2 — market_type: приоритет Block 5 (уже содержит B2C override) → Block 1 context
+    market_type: bc5.market_type ?? bc1.context ?? (bc3.monetization_archetype?.includes('ENTERPRISE') ? 'B2B' : undefined),
   };
+}
+
+// ─── HELPERS ────────────────────────────────────────────────
+
+// FIX 3: умная обрезка teaser по границе предложения, не на полуслове.
+// teaser попадает в block_context.first_spot_teaser → используется в gap_drivers
+// синтеза. Раньше делалось slice(0, 120) → текст обрывался на "прове".
+function buildTeaser(insight: string, maxLen: number = 240): string {
+  if (!insight) return '';
+
+  const cleanTrailing = (s: string) => s.replace(/[,\s—–\-]+$/u, '').trim();
+
+  // Берём первую непустую строку
+  const firstLine = insight
+    .split('\n')
+    .map((l: string) => l.trim())
+    .find((l: string) => l.length > 0) ?? insight;
+
+  if (firstLine.length <= maxLen) {
+    return cleanTrailing(firstLine);
+  }
+
+  const slice = firstLine.slice(0, maxLen);
+
+  // 1. Ищем конец предложения (. ! ?) — с конца, минимум 100 символов
+  for (let i = slice.length - 1; i >= 100; i--) {
+    if (slice[i] === '.' || slice[i] === '!' || slice[i] === '?') {
+      const next = slice[i + 1];
+      // Не сокращения типа Mr. Dr. т.п.
+      if (!next || next === ' ' || next === '"' || next === '\'' || next === ')') {
+        return slice.slice(0, i + 1).trim();
+      }
+    }
+  }
+
+  // 2. Тире ` — ` как естественная точка разрыва (частый паттерн в русских текстах)
+  const dashIdx = slice.lastIndexOf(' — ');
+  if (dashIdx > 120) {
+    return cleanTrailing(slice.slice(0, dashIdx)) + '…';
+  }
+  const enDashIdx = slice.lastIndexOf(' – ');
+  if (enDashIdx > 120) {
+    return cleanTrailing(slice.slice(0, enDashIdx)) + '…';
+  }
+
+  // 3. Запятая после 140 символов
+  const commaIdx = slice.lastIndexOf(',');
+  if (commaIdx > 140) {
+    return cleanTrailing(slice.slice(0, commaIdx)) + '…';
+  }
+
+  // 4. По границе слова
+  const lastSpace = slice.lastIndexOf(' ');
+  return cleanTrailing(lastSpace > 100 ? slice.slice(0, lastSpace) : slice) + '…';
 }
 
 // ─── CLAUDE INSIGHT GENERATION ──────────────────────────────
@@ -311,7 +375,7 @@ async function generateInsight(
       return {
         insight,
         title: TITLES[payload.position],
-        teaser: insight.split('\n').filter((l: string) => l.trim())[0]?.slice(0, 120) ?? '',
+        teaser: buildTeaser(insight),
       };
     }
 
@@ -328,7 +392,6 @@ async function generateInsight(
       insight,
       title: TITLES[payload.position],
       teaser: insight.split('\n').filter((l: string) => l.trim())[0]?.slice(0, 120) ?? '',
-      confidence_override: 'LOW' as const,
     };
 
   } catch (e) {
@@ -393,6 +456,7 @@ async function validateWithHaiku(
   try {
     const msg = await claude.messages.create({
       model: 'claude-haiku-4-5-20251001',
+      temperature: 0,
       max_tokens: 200,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -445,7 +509,15 @@ async function saveResults(supabase: any, trendId: string, userId: string, resul
     block_number: 6,
     block_type: 'blind_spots_v2',
     diagnosis: result.diagnosis.toLowerCase(),
-    score: result.diagnosis === 'GREEN' ? 8 : result.diagnosis === 'YELLOW' ? 5 : 3,
+    score: (() => {
+      const sc = result.spots_count ?? 0;
+      const imp = result.spots.some(s => (s.impact ?? '').toUpperCase() === 'HIGH') ? 'HIGH'
+        : result.spots.some(s => (s.impact ?? '').toUpperCase() === 'MEDIUM') ? 'MEDIUM' : 'LOW';
+      if (sc === 0) return 9;
+      if (sc === 1) return imp === 'HIGH' ? 4 : imp === 'MEDIUM' ? 5 : 6;
+      if (sc === 2) return imp === 'HIGH' ? 3 : imp === 'MEDIUM' ? 4 : 5;
+      return imp === 'HIGH' ? 2 : imp === 'MEDIUM' ? 3 : 4; // 3+
+    })(),
     conflict_weight: result.diagnosis === 'RED' ? 1 : result.diagnosis === 'YELLOW' ? 2 : 3,
     key_factors: result.spots.map(s => `${s.type}: ${s.teaser.slice(0, 60)}`),
     key_metric: result.spots_count > 0 ? `${result.spots_count} слепых пятен обнаружено` : 'Слепых пятен не обнаружено',
@@ -463,6 +535,207 @@ async function saveResults(supabase: any, trendId: string, userId: string, resul
     intelligence_output: null,
     intelligence_updated_at: null,
   }, { onConflict: 'trend_id,user_id,block_number' });
+}
+
+// ════════════════════════════════════════════════════════════════
+// 6.2 — SPOT ACTION (короткое "что делать" для каждого пятна)
+// ════════════════════════════════════════════════════════════════
+
+async function generateSpotAction(
+  spotInsight: string,
+  spotType: string,
+  niche: string,
+  anthropic: Anthropic,
+): Promise<string> {
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 150,
+      messages: [
+        {
+          role: 'user',
+          content: `Ниша: "${niche}"
+Тип риска: ${spotType}
+Инсайт: ${spotInsight.slice(0, 500)}
+
+Напиши ОДНО конкретное действие которое снижает этот риск.
+Максимум 2 предложения. Начни с глагола.
+Формат: конкретно что сделать + почему это снижает риск.
+Запрещено: "рассмотрите возможность", "стоит подумать",
+"можно было бы". Только конкретное действие.`,
+        },
+      ],
+    });
+    return ((response.content[0] as any)?.text ?? '').trim();
+  } catch {
+    return '';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// 6.3 — INTERPRETATION LAYER (вводный summary перед пятнами)
+// ════════════════════════════════════════════════════════════════
+
+async function generateBlindSpotsInterpretation(
+  trendId: string,
+  niche: string,
+  diagnosis: string,
+  result: Record<string, any>,
+  supabase: ReturnType<typeof getServerSupabase>,
+  anthropic: Anthropic,
+  forceRegenerate: boolean = false,
+): Promise<void> {
+  console.log(`[Block6 Interpretation] forceRegenerate=${forceRegenerate}, spots=${(Array.isArray(result?.spots) ? result.spots : []).length}`);
+
+  // Кэш — пропускаем если forceRegenerate ИЛИ если интерпретация свежее 24ч
+  if (!forceRegenerate) {
+    const { data: existing } = await supabase
+      .from('block_interpretations')
+      .select('id, generated_at')
+      .eq('trend_id', trendId)
+      .eq('block_id', 'blind_spots')
+      .maybeSingle();
+
+    if (existing && (existing as any).generated_at) {
+      const age = Date.now() - new Date((existing as any).generated_at).getTime();
+      if (age < 24 * 60 * 60 * 1000) return;
+    }
+  }
+
+  const spots: any[] = Array.isArray(result?.spots) ? result.spots : [];
+  const spotsCount = result?.spots_count ?? spots.length;
+  const mode = result?.mode ?? 'normal';
+  const blindSpotsImpact =
+    result?.blind_spots_impact ??
+    (spots.some((s: any) => (s.impact || '').toUpperCase() === 'HIGH')
+      ? 'HIGH'
+      : spots.some((s: any) => (s.impact || '').toUpperCase() === 'MEDIUM')
+        ? 'MEDIUM'
+        : 'LOW');
+
+  // 6.3 — богатые данные из пятен для summary
+  const spot1Title = spots[0]?.title ?? '';
+  const spot1Teaser = spots[0]?.teaser ?? '';
+  const spot1Impact = (spots[0]?.impact ?? 'MEDIUM').toUpperCase();
+  const spot1Action = spots[0]?.action ?? '';
+
+  const spot2Title = spots[1]?.title ?? '';
+  const spot2Teaser = spots[1]?.teaser ?? '';
+  const spot2Action = spots[1]?.action ?? '';
+
+  const isUnknownMode = mode === 'unknown';
+  // Fix 2: пятна найдены = sufficient (они реальные, даже при low quality_confidence)
+  const dataSufficiency: 'sufficient' | 'limited' = spotsCount > 0 ? 'sufficient' : 'limited';
+
+  const systemPrompt = `Ты — аналитик рисков для предпринимателей.
+Пишешь на русском языке. Кратко и по делу.
+
+ЖЁСТКИЕ ПРАВИЛА:
+- Никогда: STRUCTURAL, CONTRADICTION, BEHAVIORAL, TIMING,
+  blind_spots_impact, spots_count как технические термины,
+  behavior_gap, incentive_misalignment, CAC_spread — вместо них
+  используй русские описания ("разрыв между намерением и действием",
+  "интересы не совпадают")
+- Никогда: "данных недостаточно", UNKNOWN mode
+- Тон: честный аналитик который помогает не потерять деньги`;
+
+  const userPrompt = `Проанализируй слепые пятна в нише: "${niche}"
+
+ДАННЫЕ:
+- Диагноз: ${diagnosis}
+- Найдено скрытых рисков: ${spotsCount}
+- Серьёзность: ${blindSpotsImpact === 'HIGH'
+    ? 'высокая — могут изменить решение о входе'
+    : blindSpotsImpact === 'MEDIUM' ? 'средняя — важно учесть до старта'
+    : 'невысокая — учесть но не блокирует'}
+
+${spot1Title ? `ПЕРВОЕ ПЯТНО ("${spot1Title}"):
+- Суть: ${spot1Teaser}
+- Серьёзность: ${spot1Impact === 'HIGH' ? 'высокая' : spot1Impact === 'MEDIUM' ? 'средняя' : 'низкая'}
+${spot1Action ? `- Что делать: ${spot1Action.slice(0, 200)}` : ''}` : ''}
+
+${spot2Title ? `ВТОРОЕ ПЯТНО ("${spot2Title}"):
+- Суть: ${spot2Teaser}
+${spot2Action ? `- Что делать: ${spot2Action.slice(0, 200)}` : ''}` : ''}
+
+Напиши ВВОДНЫЙ контекст перед детальными пятнами.
+Это НЕ пересказ — это ответ на вопрос "зачем мне это читать и что меня ждёт".
+
+ВАЖНО:
+- Упомяни конкретную суть главного риска (первое пятно) но не пересказывай полностью
+- Не используй технические термины (behavior_gap, incentive_misalignment, CAC_spread)
+- Пиши как человек который уже знает ответ
+
+{
+  "headline": "одно предложение — главный характер рисков КОНКРЕТНО (не абстрактно, не 'два серьёзных риска')",
+  "main_insight": "2-3 предложения. Упомяни суть ПЕРВОГО риска конкретно. Объясни почему это меняет картину. Оставь интригу — пользователь прочитает детали ниже.",
+  "key_facts": [
+    "факт 1: конкретная суть первого пятна — одно предложение без пересказа всего инсайта",
+    "факт 2: почему это неочевидно — что большинство входящих в нишу не замечают",
+    "факт 3: блокируют ли риски вход или требуют изменения подхода"
+  ],
+  "decision_impact": "одно предложение: что конкретно изменить в подходе перед входом"
+}
+
+ПРИМЕРЫ ХОРОШЕГО headline:
+- "82% покупательского намерения — но только каждый четвёртый действительно платит"
+- "Рынок большой, конкуренции мало — но это не возможность, это вопрос без ответа"
+
+ПРИМЕРЫ ПЛОХОГО (запрещено):
+- "Два серьёзных риска, способных изменить решение" — нет конкретики
+- "Разрыв между метриками и реальностью" — абстрактно
+- "behavior_gap в связке с incentive_misalignment" — тех.термины
+
+Верни ТОЛЬКО валидный JSON, без markdown и без пояснений.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const raw = (response.content[0] as any)?.text ?? '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    if (
+      !parsed.headline ||
+      !parsed.main_insight ||
+      !Array.isArray(parsed.key_facts) ||
+      parsed.key_facts.length !== 3 ||
+      !parsed.decision_impact
+    ) {
+      console.error('[Block6 Interpretation] Invalid structure:', parsed);
+      return;
+    }
+
+    const { error: saveError } = await supabase
+      .from('block_interpretations')
+      .upsert(
+        {
+          trend_id: trendId,
+          block_id: 'blind_spots',
+          headline: parsed.headline,
+          main_insight: parsed.main_insight,
+          key_facts: parsed.key_facts,
+          decision_impact: parsed.decision_impact,
+          model_used: 'claude-sonnet-4-6',
+          data_sufficiency: dataSufficiency,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: 'trend_id,block_id' },
+      );
+
+    if (saveError) {
+      console.error('[Block6 Interpretation] Save failed:', saveError);
+      return;
+    }
+    console.log('[Block6 Interpretation] Generated for trend:', trendId);
+  } catch (error) {
+    console.error('[Block6 Interpretation] Failed:', error);
+  }
 }
 
 // ─── MAIN HANDLER ────────────────────────────────────────────
@@ -605,6 +878,36 @@ export async function POST(req: NextRequest) {
     else if (spots.length >= 2) diagnosis = 'RED';
     else if (spots.length === 1) diagnosis = 'YELLOW';
 
+    // 5.5 — 6.2: для каждого незаблокированного пятна генерируем "что делать" параллельно
+    const visibleSpots = spots.filter((s) => !(s as any).locked && s.insight);
+    if (visibleSpots.length > 0) {
+      const actions = await Promise.all(
+        visibleSpots.map((s) =>
+          generateSpotAction(s.insight, String(s.type ?? ''), data.niche, claude),
+        ),
+      );
+      let aIdx = 0;
+      for (const s of spots) {
+        if ((s as any).locked || !s.insight) continue;
+        (s as any).action = actions[aIdx++] ?? '';
+      }
+    }
+
+    // Score = GREEN(8) / YELLOW(5) / RED(3) — то же самое что в saveResults
+    // Информативный score: зависит от количества + серьёзности пятен
+    const blockScore = (() => {
+      const sc = spots.length;
+      const imp = spots.some(s => (s.impact ?? '').toUpperCase() === 'HIGH') ? 'HIGH'
+        : spots.some(s => (s.impact ?? '').toUpperCase() === 'MEDIUM') ? 'MEDIUM' : 'LOW';
+      let s: number;
+      if (sc === 0) s = 9;
+      else if (sc === 1) s = imp === 'HIGH' ? 4 : imp === 'MEDIUM' ? 5 : 6;
+      else if (sc === 2) s = imp === 'HIGH' ? 3 : imp === 'MEDIUM' ? 4 : 5;
+      else s = imp === 'HIGH' ? 2 : imp === 'MEDIUM' ? 3 : 4;
+      if (spots.some(s2 => s2.type === 'CONTRADICTION' && (s2.impact ?? '').toUpperCase() === 'HIGH')) s += 1; // revenue multiplier bonus
+      return Math.max(1, Math.min(10, s));
+    })();
+
     const finalResult: BlindSpotResult = {
       spots,
       mode: payload.mode,
@@ -618,7 +921,20 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Block6v2] Done: ${spots.length} spots, diagnosis=${diagnosis}`);
 
-    return NextResponse.json({ success: true, public: finalResult, has_premium: true });
+    // 7. Interpretation Layer (фоновая генерация, не блокирует ответ)
+    generateBlindSpotsInterpretation(
+      trend_id,
+      data.niche,
+      diagnosis,
+      finalResult as unknown as Record<string, any>,
+      supabase,
+      claude,
+      true, // forceRegenerate: каждый прогон Блока 6 обновляет interpretation
+    ).catch((err) =>
+      console.error('[Block6 Interpretation] Background error:', err),
+    );
+
+    return NextResponse.json({ success: true, public: { ...finalResult, score: blockScore }, has_premium: true });
 
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'trends.json');
 const ANALYSIS_FILE = path.join(process.cwd(), 'data', 'analysis.json');
@@ -120,6 +121,9 @@ interface AnalysisData {
 
 // POST - Save analysis results from n8n Pain Point Detector
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const analysis: TrendAnalysis = await request.json();
 
@@ -184,6 +188,9 @@ export async function POST(request: NextRequest) {
 
 // GET - Retrieve analysis for a specific trend or all analyses
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(request.url);
     const trendId = searchParams.get('trend_id');

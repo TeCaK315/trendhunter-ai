@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { callAgent } from '@/lib/openai';
 import { fetchCompetitorPricing } from '@/lib/data-fetchers';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const MONITOR_FILE = path.join(process.cwd(), 'data', 'trend-monitors.json');
@@ -368,6 +369,9 @@ async function generateRecommendation(trendTitle: string, items: DigestItem[]): 
 
 // POST - Create or update a trend monitor
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { action, trend_id, trend_title, check_interval_days = 7, alert_threshold = 20, competitor_names = [] } = body;
@@ -643,6 +647,9 @@ export async function POST(request: NextRequest) {
 
 // GET - Get all monitors or specific monitor
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(request.url);
     const trendId = searchParams.get('trend_id');

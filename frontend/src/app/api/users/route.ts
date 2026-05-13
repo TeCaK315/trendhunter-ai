@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabase, isSupabaseConfigured, DbUser } from '@/lib/supabase';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 // Admin users list (same as in useIdeasLimit hook)
 const ADMIN_USERS = [
@@ -15,6 +16,9 @@ function isAdminUser(email: string | null, githubUsername: string | null): boole
 
 // POST - Create or update user on login
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   if (!isSupabaseConfigured()) {
     return NextResponse.json({
       success: false,
@@ -113,6 +117,9 @@ export async function POST(request: NextRequest) {
 
 // GET - Get current user info
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   if (!isSupabaseConfigured()) {
     return NextResponse.json({
       success: false,

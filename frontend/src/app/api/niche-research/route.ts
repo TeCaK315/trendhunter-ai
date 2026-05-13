@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { researchNiche, isAIConfigured } from '@/lib/ai';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 interface NicheResearchRequest {
   niche: string;
@@ -10,6 +11,9 @@ interface NicheResearchRequest {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     // Rate limiting
     const clientIP = getClientIP(request);

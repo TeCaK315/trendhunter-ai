@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { getAuthUser } from '@/lib/auth-helpers'
 import {
   fetchGoogleTrends,
   fetchProductHunt,
@@ -27,6 +28,9 @@ import {
  */
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { query, context } = body;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const SURVEYS_FILE = path.join(process.cwd(), 'data', 'surveys.json');
 
@@ -42,6 +43,9 @@ async function writeSurveys(surveys: Survey[]): Promise<void> {
 
 // POST — save a new survey
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { trend_id, title, description, questions, target_icp } = body;
@@ -90,6 +94,9 @@ export async function POST(request: NextRequest) {
 
 // GET — get survey by id (public, needed for survey form page)
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(request.url);
     const surveyId = searchParams.get('survey_id');

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getServerSupabase } from '@/lib/supabase'
 import { createHash } from 'crypto'
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const claude = new Anthropic()
 
@@ -70,6 +71,9 @@ const PROMPT_VERSION = '1.0'
 // ── Route ────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await req.json()
     const niche = (body.niche || '').trim()

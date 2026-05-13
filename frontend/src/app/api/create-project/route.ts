@@ -1395,12 +1395,16 @@ function generateRepoName(projectName: string): string {
 // import { generateProjectFiles as generateTemplateFiles } from '@/lib/templates/generator';
 // import { type ProductType } from '@/lib/templates';
 // import { generateMVP, MVPType } from '@/lib/mvp-templates';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 // Типы для обратной совместимости (но шаблоны не используются)
 type ProductType = 'landing' | 'saas' | 'ai-wrapper' | 'ecommerce';
 type MVPType = 'ai-tool' | 'calculator' | 'dashboard' | 'landing-waitlist';
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { context, project_name, create_github_repo, product_type, mvp_type, auto_deploy } = body;

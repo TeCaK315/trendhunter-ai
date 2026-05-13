@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateCodeWithClaude, type ProjectSpec } from '@/lib/code-generator';
 import { assembleProject } from '@/lib/blocks/block-assembler';
 import { sanitizeImports } from '@/lib/blocks/custom/gap-filler';
+import { quickSyntaxCheck } from '@/lib/blocks/validate';
 import type { ProductSpecification } from '@/lib/mvp-templates/types';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 /**
  * /api/generate-code
@@ -168,6 +170,9 @@ async function getGitHubUsername(token: string): Promise<string | null> {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { spec, github_repo, auto_deploy } = body;
@@ -224,9 +229,30 @@ export async function POST(request: NextRequest) {
     const fileCount = Object.keys(generatedFiles).length;
     console.log(`[generate-code] Produced ${fileCount} files`);
 
+    // ── Pre-deploy validation: catch invoice-template-leak / undeclared vars ──
+    const validationErrors = quickSyntaxCheck(generatedFiles)
+    if (validationErrors.length > 0) {
+      console.error(`[generate-code] Validation failed (${validationErrors.length} errors):`)
+      for (const e of validationErrors.slice(0, 10)) {
+        console.error(`  ${e.file}${e.line ? `:${e.line}` : ''} — ${e.message}`)
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Generated project failed pre-deploy validation',
+          validation_errors: validationErrors.slice(0, 20),
+          files_count: fileCount,
+          ...assemblyMeta,
+        },
+        { status: 422 }
+      )
+    }
+
     let github_url: string | undefined;
     let files_pushed = 0;
     let vercel_url: string | undefined;
+
+    console.log(`[generate-code] deploy gate: github_repo=${!!github_repo}, githubToken=${!!githubToken}, auto_deploy=${!!auto_deploy}, vercelToken=${!!vercelToken}`)
 
     // Push to GitHub if requested
     if (github_repo && githubToken) {
@@ -240,6 +266,11 @@ export async function POST(request: NextRequest) {
 
         console.log(`[generate-code] Pushing to GitHub: ${username}/${repoName}`);
         const pushResult = await addFilesToGitHub(githubToken, username, repoName, generatedFiles);
+        console.log('[generate-code] GitHub push result:', JSON.stringify({
+          success: pushResult.success,
+          filesCreated: pushResult.filesCreated,
+          errors: pushResult.errors.slice(0, 5),
+        }, null, 2))
 
         if (pushResult.success) {
           github_url = `https://github.com/${username}/${repoName}`;
@@ -253,14 +284,25 @@ export async function POST(request: NextRequest) {
           try {
             const { deployFromGitHub } = await import('@/lib/vercel');
             const deployResult = await deployFromGitHub(vercelToken, repoName, `${username}/${repoName}`);
-            if (deployResult.success) {
+            console.log('[generate-code] Vercel deploy result:', JSON.stringify(deployResult, null, 2))
+            // Use the actual deploymentUrl (real build URL) — fallback to projectUrl (alias, may 404 until first build succeeds)
+            if (deployResult.success && deployResult.deploymentUrl) {
+              vercel_url = deployResult.deploymentUrl;
+            } else if (deployResult.success && deployResult.projectUrl) {
               vercel_url = deployResult.projectUrl;
+              console.warn('[generate-code] Using projectUrl as vercel_url — alias may 404 until first successful build')
             }
           } catch (deployError) {
             console.error('[generate-code] Vercel deploy error:', deployError);
           }
+        } else if (auto_deploy && !vercelToken) {
+          console.warn('[generate-code] auto_deploy requested but vercelToken missing — connect Vercel via OAuth')
         }
+      } else {
+        console.warn('[generate-code] getGitHubUsername returned null — token may be invalid or expired')
       }
+    } else if (github_repo && !githubToken) {
+      console.warn('[generate-code] github_repo provided but no github_token cookie — user must connect GitHub via OAuth first')
     }
 
     return NextResponse.json({

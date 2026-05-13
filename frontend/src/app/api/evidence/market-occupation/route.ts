@@ -11,6 +11,7 @@ import {
   calcMarketSaturation,
 } from '@/lib/evidence-calculations';
 import { analyzeDesign } from '@/lib/design-analyzer';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -190,6 +191,9 @@ function crossValidateComplaints(
  */
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { query, context } = body;

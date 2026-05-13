@@ -3,6 +3,7 @@ import { kv } from '@vercel/kv';
 import fs from 'fs';
 import path from 'path';
 import type { Trend } from '@/types/trend';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 export type { Trend };
 
@@ -274,6 +275,9 @@ function normalizeCategory(category: string): string {
 
 // GET - Read trends
 export async function GET() {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const data = await getTrendsData();
     return NextResponse.json(data);
@@ -285,6 +289,9 @@ export async function GET() {
 
 // POST - Save new trends (merges with existing, no duplicates)
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const newTrends: Trend[] = Array.isArray(body) ? body : [body];
@@ -341,6 +348,9 @@ export async function POST(request: NextRequest) {
 
 // PUT - Replace all trends (used by enrichment pipeline)
 export async function PUT(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { trends, lastUpdated } = body;
@@ -372,6 +382,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Remove trends
 export async function DELETE(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(request.url);
     const trendId = searchParams.get('id');

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -26,6 +27,9 @@ interface EnrichmentResult {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { title, category, growth_rate, source_query, source_growth } = await request.json();
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const RESPONSES_FILE = path.join(process.cwd(), 'data', 'survey-responses.json');
 
@@ -41,6 +42,9 @@ export async function OPTIONS() {
 
 // POST — save a survey response (public, no auth)
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { survey_id, token, answers } = body;
@@ -94,6 +98,9 @@ export async function POST(request: NextRequest) {
 
 // GET — get responses + aggregated stats for a survey
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(request.url);
     const surveyId = searchParams.get('survey_id');

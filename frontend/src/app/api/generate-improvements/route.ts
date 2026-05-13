@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAIJson, isAIConfigured } from '@/lib/ai';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 interface GenerateImprovementsRequest {
   trend_title: string;
@@ -11,6 +12,9 @@ interface GenerateImprovementsRequest {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body: GenerateImprovementsRequest = await request.json();
 

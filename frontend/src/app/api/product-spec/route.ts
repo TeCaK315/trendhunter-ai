@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAgent, parseJSONResponse, formatErrorForUser, type OpenAIError } from '@/lib/openai';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
+import { getServerSupabase } from '@/lib/supabase';
+import { getAuthUser } from '@/lib/auth-helpers';
 
 /**
  * /api/product-spec
@@ -20,6 +22,7 @@ import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } fro
  */
 
 interface ProductSpecRequest {
+  trend_id?: string;
   trend: {
     title: string;
     category?: string;
@@ -468,6 +471,157 @@ REMINDER: ALL values must be in ENGLISH ONLY. Any non-ASCII characters will caus
   "mvp_complexity": "simple|medium|complex"
 }`;
 
+// ─── Strategy Data Reader ───
+
+interface StrategyDataForSpec {
+  session_id: string
+  segment: string | null
+  strategy_mode: string | null
+  positioning_angle: string | null
+  barrier_type: string | null
+  client_profile_short: string | null
+  primary_trigger: string | null
+  validation_signal: string | null
+  v1_feature_name: string | null
+  barrier_mechanism: string | null
+  minimum_artifact: string | null
+  estimated_build_cost: number | null
+  channel_type: string | null
+  sale_cycle_fit_days: number | null
+  first_action_today: string | null
+  experiment_kill_switch_date: string | null
+  success_metric_30: string | null
+}
+
+async function getStrategyDataForSpec(
+  trendId: string,
+  userId: string
+): Promise<StrategyDataForSpec | null> {
+  try {
+    const supabase = getServerSupabase()
+
+    const { data: session } = await supabase
+      .from('strategy_sessions')
+      .select('id, context, status')
+      .eq('trend_id', trendId)
+      .eq('user_id', userId)
+      .in('status', ['active', 'completed'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!session) return null
+
+    const { data: decisions } = await supabase
+      .from('block_decisions')
+      .select('block_id, decision, raw_output, translated_output')
+      .eq('session_id', session.id)
+
+    if (!decisions || decisions.length === 0) return null
+
+    console.log('[getStrategyDataForSpec] session:', session.id, 'decisions:', decisions.length)
+    console.log('[getStrategyDataForSpec] sample decision shape:', JSON.stringify({
+      block_id: decisions[0]?.block_id,
+      has_decision: !!decisions[0]?.decision,
+      has_decision_fields: !!(decisions[0]?.decision as any)?.fields,
+      has_raw_output: !!decisions[0]?.raw_output,
+      has_translated_output: !!decisions[0]?.translated_output,
+      translated_specific_keys: Object.keys((decisions[0]?.translated_output as any)?.specific ?? {}),
+    }, null, 2))
+
+    const byBlockFields: Record<string, any> = {}
+    const byBlockRaw: Record<string, any> = {}
+    const byBlockTranslated: Record<string, any> = {}
+    for (const d of decisions) {
+      byBlockFields[d.block_id] = (d.decision as any)?.fields ?? d.decision ?? {}
+      byBlockRaw[d.block_id] = d.raw_output ?? {}
+      byBlockTranslated[d.block_id] = d.translated_output ?? {}
+    }
+
+    // Try chain: decision.fields → raw_output → translated_output.specific
+    const field = (blockId: string, fieldName: string, translatedPath?: string[]): any => {
+      const f = byBlockFields[blockId]?.[fieldName]
+      const fromFields = f?.value !== undefined ? f.value : f
+      if (fromFields !== null && fromFields !== undefined) return fromFields
+      const fromRaw = byBlockRaw[blockId]?.[fieldName]
+      if (fromRaw !== null && fromRaw !== undefined) return fromRaw
+      if (translatedPath) {
+        let cur: any = byBlockTranslated[blockId]?.specific
+        for (const k of translatedPath) {
+          if (cur && typeof cur === 'object' && k in cur) cur = cur[k]
+          else return null
+        }
+        return typeof cur === 'string' || typeof cur === 'number' ? cur : null
+      }
+      return null
+    }
+
+    const ctx = session.context as Record<string, any> | null
+
+    const result = {
+      session_id: session.id,
+      segment: ctx?.segment ?? null,
+      strategy_mode: ctx?.strategy_mode ?? null,
+      positioning_angle: field('S0', 'positioning_angle', ['positioning_quote']),
+      barrier_type: field('S0', 'barrier_type', ['versus_block', 'them', 'name']),
+      client_profile_short: field('S1', 'client_profile_short', ['client_portrait', 'who']),
+      primary_trigger: field('S1', 'primary_trigger', ['primary_trigger']),
+      validation_signal: field('S1', 'validation_signal', ['client_portrait', 'pain_moment']),
+      v1_feature_name: field('S2', 'v1_feature_name', ['core_feature', 'name']),
+      barrier_mechanism: field('S2', 'barrier_mechanism', ['core_feature', 'why_this_one']),
+      minimum_artifact: field('S2', 'minimum_artifact', ['first_build_step']),
+      estimated_build_cost: field('S2', 'estimated_build_cost', ['estimated_cost', 'amount']),
+      channel_type: field('S3', 'channel_type', ['channel', 'human_name']),
+      sale_cycle_fit_days: field('S3', 'sale_cycle_fit_days'),
+      first_action_today: field('S5', 'first_action_today', ['first_action_today', 'what']) as string | null,
+      experiment_kill_switch_date: field('S5', 'experiment_kill_switch_date', ['kill_switch_date']) as string | null,
+      success_metric_30: field('S5', 'success_metric_30', ['milestones', 'day_30', 'success_metric']) as string | null,
+    }
+    console.log('[getStrategyDataForSpec] resolved:', JSON.stringify(result, null, 2))
+    return result
+  } catch (e) {
+    console.error('[product-spec] Strategy data read error:', e)
+    return null
+  }
+}
+
+function buildStrategyPromptSection(s: StrategyDataForSpec): string {
+  return `
+
+## СТРАТЕГИЧЕСКИЙ КОНТЕКСТ (из раздела Стратегия — верифицированные AI данные)
+
+Целевой сегмент: ${s.segment ?? 'не определён'}
+Режим входа: ${s.strategy_mode === 'go_mode' ? 'Уверенный вход' : s.strategy_mode === 'experiment_mode' ? 'Эксперимент (гипотеза)' : s.strategy_mode ?? 'не определён'}
+
+Угол атаки: ${s.positioning_angle ?? 'не определён'}
+Барьер от копирования: ${s.barrier_type ?? 'не определён'}
+
+Первый клиент: ${s.client_profile_short ?? 'не определён'}
+Триггер покупки: ${s.primary_trigger ?? 'не определён'}
+Сигнал валидации: ${s.validation_signal ?? 'не определён'}
+
+Продукт v1: ${s.v1_feature_name ?? 'не определён'}
+Механизм барьера: ${s.barrier_mechanism ?? 'не определён'}
+Минимальный артефакт: ${s.minimum_artifact ?? 'не определён'}
+${s.estimated_build_cost != null ? `Бюджет на разработку: $${s.estimated_build_cost}` : ''}
+
+Канал привлечения: ${s.channel_type ?? 'не определён'}
+${s.sale_cycle_fit_days != null ? `Цикл сделки: ${s.sale_cycle_fit_days} дней` : ''}
+
+${s.first_action_today ? `Первое действие: ${s.first_action_today}` : ''}
+${s.success_metric_30 ? `Метрика успеха (30 дней): ${s.success_metric_30}` : ''}
+${s.experiment_kill_switch_date ? `Kill switch дата: ${s.experiment_kill_switch_date}` : ''}
+
+ИНСТРУКЦИИ ПО ИСПОЛЬЗОВАНИЮ СТРАТЕГИИ:
+- v1_feature_name → главная фича в derived_features[0] (priority: must_have)
+- positioning_angle → основа для value_proposition и our_advantage
+- client_profile_short → основа для user_input.required_fields
+- channel_type → учесть в monetization.reasoning
+- segment: B2C → freemium/pay_per_use; SMB → subscription; ENTERPRISE → subscription + sales
+- minimum_artifact → user_flow первый шаг
+`
+}
+
 // Wrapper для callAgent с обработкой ошибок
 async function runProductSpecAgent(
   systemPrompt: string,
@@ -508,6 +662,22 @@ export async function POST(request: NextRequest) {
 
     console.log(`[product-spec] Starting for trend: ${body.trend.title}`);
     const startTime = Date.now();
+
+    // ── Читаем данные Стратегии если есть trend_id ──
+    let strategyData: StrategyDataForSpec | null = null
+    if (body.trend_id) {
+      try {
+        const user = await getAuthUser()
+        if (user?.id) {
+          strategyData = await getStrategyDataForSpec(body.trend_id, user.id)
+          if (strategyData) {
+            console.log(`[product-spec] Strategy data found: session=${strategyData.session_id}, segment=${strategyData.segment}, mode=${strategyData.strategy_mode}`)
+          }
+        }
+      } catch (e) {
+        console.warn('[product-spec] Could not read strategy data:', e)
+      }
+    }
 
     // Формируем user prompt с полным контекстом
     const userPrompt = `Создай Product Specification для решения следующей боли:
@@ -673,6 +843,7 @@ ${body.differentiation.competitor_weaknesses.map((w, i) =>
   `${i + 1}. ${w.competitor}: "${w.weakness}" → **${w.opportunity}**`
 ).join('\n')}
 ` : ''}
+${strategyData ? buildStrategyPromptSection(strategyData) : ''}
 ---
 
 ## ТВОЯ ЗАДАЧА
@@ -803,6 +974,7 @@ ${body.differentiation?.usp ? 'ВАЖНО: USP уже определён — val
     return NextResponse.json({
       success: true,
       product_spec: productSpec,
+      strategy_session_id: strategyData?.session_id ?? null,
       metadata: {
         total_time_ms: totalTime,
         trend_title: body.trend.title,
@@ -810,6 +982,7 @@ ${body.differentiation?.usp ? 'ВАЖНО: USP уже определён — val
         generation_approach: productSpec.generation_approach,
         mvp_complexity: productSpec.mvp_complexity,
         confidence: productSpec.confidence_score,
+        has_strategy_data: !!strategyData,
       },
       timestamp: new Date().toISOString(),
     });

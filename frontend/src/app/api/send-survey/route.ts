@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const EMAILS_FILE = path.join(process.cwd(), 'data', 'survey-emails.json');
 const DAILY_LIMIT = 100; // Resend free tier
@@ -85,6 +86,9 @@ function isValidEmail(email: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { survey_id, emails, subject, sender_name, trend_title } = body;
@@ -211,6 +215,9 @@ export async function POST(request: NextRequest) {
 
 // GET — get send stats for a survey
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(request.url);
     const surveyId = searchParams.get('survey_id');

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -94,6 +95,9 @@ interface EvidenceInput {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { query, evidenceData, competition } = body as {

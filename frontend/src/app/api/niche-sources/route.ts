@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || '';
@@ -398,6 +399,9 @@ ${sources.youtube.videos.slice(0, 3).map(v => `- "${v.title}" (${v.channel})`).j
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { niche, description, keywords } = body;

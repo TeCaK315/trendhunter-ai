@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -25,6 +26,9 @@ interface ProjectAgent {
 
 // POST /api/projects/agents - Generate specialized agents for a project
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body: GenerateAgentsRequest = await request.json();
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const ANALYTICS_FILE = path.join(process.cwd(), 'data', 'landing-analytics.json');
 
@@ -68,6 +69,9 @@ export async function OPTIONS() {
 
 // POST - Record event
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { landing_id, event_type, metadata } = body;
@@ -141,6 +145,9 @@ export async function POST(request: NextRequest) {
 
 // GET - Get stats for a landing
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(request.url);
     const landingId = searchParams.get('landing_id');
@@ -231,6 +238,9 @@ export async function GET(request: NextRequest) {
 
 // PUT - Register a new landing (called after deploy)
 export async function PUT(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { landing_id, trend_title, landing_url } = body;

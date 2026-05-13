@@ -68,6 +68,154 @@ async function fetchExternalContext(niche: string): Promise<string> {
   }
 }
 
+// ════════════════════════════════════════════════════════════════
+// INTERPRETATION LAYER (Block 7) — финальный summary поверх синтеза
+// ════════════════════════════════════════════════════════════════
+// В отличие от Блоков 1-6, здесь interpretation — это финальный
+// ответ на главный вопрос "стоит ли входить", не замена данных.
+// Кэш 24ч в block_interpretations. Не блокирует основной ответ.
+
+async function generateSynthesisInterpretation(
+  trendId: string,
+  niche: string,
+  synthesisResult: Record<string, any>,
+  supabase: ReturnType<typeof getServerSupabase>,
+  anthropic: Anthropic,
+  forceRegenerate: boolean = false,
+): Promise<void> {
+  // 7.3 — Синтез всегда запускается заново, поэтому при forceRegenerate пропускаем кэш
+  if (!forceRegenerate) {
+    const { data: existing } = await supabase
+      .from('block_interpretations')
+      .select('id, generated_at')
+      .eq('trend_id', trendId)
+      .eq('block_id', 'synthesis')
+      .maybeSingle();
+
+    if (existing && (existing as any).generated_at) {
+      const age = Date.now() - new Date((existing as any).generated_at).getTime();
+      if (age < 24 * 60 * 60 * 1000) return;
+    }
+  }
+
+  const arb = synthesisResult?.arbitrator ?? {};
+  const verdictType = arb?.verdict_type ?? synthesisResult?.verdict_type ?? 'experiment_if';
+  const confidence = arb?.confidence ?? synthesisResult?.confidence ?? 0.5;
+  const verdictCondition = arb?.verdict_condition ?? '';
+  const verdictReasoning = arb?.verdict_reasoning ?? '';
+  const conflictsCount = Array.isArray(synthesisResult?.conflicts) ? synthesisResult.conflicts.length : 0;
+
+  const actions = arb?.priority_actions ?? synthesisResult?.priority_actions ?? [];
+  const topAction = actions[0]?.action ?? '';
+
+  const verdictHuman =
+    verdictType === 'go_if' ? 'войти можно'
+    : verdictType === 'no_go_until' ? 'не входить без изменений'
+    : 'входить с проверкой гипотезы';
+
+  const confidenceHuman =
+    confidence >= 0.75 ? 'данные надёжные'
+    : confidence >= 0.55 ? 'данные частичные'
+    : 'данных немного — нужна проверка';
+
+  const dataSufficiency: 'sufficient' | 'limited' = confidence >= 0.55 ? 'sufficient' : 'limited';
+
+  const systemPrompt = `Ты — советник для предпринимателей.
+Пишешь на русском языке. Кратко, честно, по делу.
+Твои тексты читают люди которые только что получили
+финальный вердикт по нише и решают входить или нет.
+
+ЖЁСТКИЕ ПРАВИЛА:
+- Никогда: confidence как процент, verdict_type как код,
+  experiment_if/go_if/no_go_until как технические коды,
+  "данных недостаточно", conflict_weight, confidence_factors
+- Никогда: повторять bridge_text дословно
+- Тон: честный советник, не продавец`;
+
+  const userPrompt = `Ниша: "${niche}"
+Финальный вердикт: ${verdictHuman}
+Обоснование: ${verdictReasoning}
+Условие для смены вердикта: ${verdictCondition}
+Количество конфликтов: ${conflictsCount}
+Надёжность: ${confidenceHuman}
+Первое действие: ${String(topAction).slice(0, 200)}
+
+Напиши вводное summary для пользователя в формате JSON.
+Это финальный ответ на вопрос "стоит ли входить?".
+
+{
+  "headline": "один чёткий вывод: стоит или нет, и почему (максимум 12 слов)",
+  "main_insight": "2-3 предложения. Суть вердикта. Главное условие. Что нужно проверить.",
+  "key_facts": [
+    "факт 1: вердикт и его обоснование одним предложением",
+    "факт 2: главное условие которое меняет вердикт",
+    "факт 3: первое конкретное действие"
+  ],
+  "decision_impact": "одно предложение: что пользователь должен сделать прямо сейчас"
+}
+
+ПРИМЕРЫ ХОРОШИХ ФАКТОВ:
+- "Входить можно — при условии что онбординг даёт результат за 5 минут"
+- "Главная проверка: 35% конверсии из trial за 90 дней"
+- "Первый шаг: заменить trial на activation-gate за 4-6 недель"
+
+ЗАПРЕЩЕНО:
+- "confidence: 52%" — число уверенности
+- "experiment_if" как технический код
+- "данных недостаточно" — это оговорка, не вывод
+
+Верни ТОЛЬКО валидный JSON, без markdown и без пояснений.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const raw = (response.content[0] as any)?.text ?? '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    if (
+      !parsed.headline ||
+      !parsed.main_insight ||
+      !Array.isArray(parsed.key_facts) ||
+      parsed.key_facts.length !== 3 ||
+      !parsed.decision_impact
+    ) {
+      console.error('[Block7 Interpretation] Invalid structure:', parsed);
+      return;
+    }
+
+    const { error: saveError } = await supabase
+      .from('block_interpretations')
+      .upsert(
+        {
+          trend_id: trendId,
+          block_id: 'synthesis',
+          headline: parsed.headline,
+          main_insight: parsed.main_insight,
+          key_facts: parsed.key_facts,
+          decision_impact: parsed.decision_impact,
+          model_used: 'claude-sonnet-4-6',
+          data_sufficiency: dataSufficiency,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: 'trend_id,block_id' },
+      );
+
+    if (saveError) {
+      console.error('[Block7 Interpretation] Save failed:', saveError);
+      return;
+    }
+    console.log('[Block7 Interpretation] Generated for trend:', trendId);
+  } catch (error) {
+    console.error('[Block7 Interpretation] Failed:', error);
+  }
+}
+
 // —— ВЫЗОВ CLAUDE С ВАЛИДНЫМ JSON БЕЗ СТРИМОВ ——————————————————
 // System промпт требует чистый JSON.
 // Retry до 2 раз если парсинг упал.
@@ -217,6 +365,14 @@ export async function POST(req: NextRequest) {
           block_context: r.block_context,
         }));
 
+        // 7.6 — Реальная ниша из block_context (не "SaaS" из параметров тренда)
+        const b1ctx = blocks.find((b) => b.block_number === 1)?.block_context as Record<string, any> | undefined;
+        const b2ctx = blocks.find((b) => b.block_number === 2)?.block_context as Record<string, any> | undefined;
+        const realNiche = b1ctx?.niche ?? b2ctx?.niche ?? niche;
+        if (realNiche !== niche) {
+          console.log(`[Synthesis] Niche override: "${niche}" → "${realNiche}"`);
+        }
+
         // —— 5. СПИСЫВАЕМ МОНЕТЫ ————————————————————————
         // До запуска агентов — стандарт: нельзя прервать и получить бесплатно
         await supabase
@@ -231,6 +387,48 @@ export async function POST(req: NextRequest) {
           description: `AI Синтез: ${niche}`,
           trend_id,
         });
+
+        // —— 5.5. АКТУАЛИЗАЦИЯ ЧИСЕЛ В BLOCK_CONTEXT БЛОКА 5 ——
+        // Агенты видят block_context каждого блока. Если в Блоке 5 остался
+        // experiment_budget: $168K и cac recommended: SALES_LED $6000 — Скептик
+        // их процитирует. Подменяем на актуальные ПЕРЕД тем как данные уйдут в промпты.
+        const block5 = blocks.find((b) => b.block_number === 5);
+        if (block5?.block_context) {
+          const ctx5 = block5.block_context as Record<string, any>;
+          const cs = ctx5.cac_scenarios as Record<string, any> | undefined;
+
+          // Самый дешёвый CAC канал
+          const cheapest5 = cs ? Math.min(
+            cs.plg?.mid ?? Infinity,
+            cs.community_led?.mid ?? Infinity,
+            cs.seo_led?.mid ?? Infinity,
+          ) : null;
+          const cheapestValid = cheapest5 != null && Number.isFinite(cheapest5) && cheapest5 > 0
+            ? cheapest5 : null;
+
+          // Подменяем experiment_budget на реалистичный
+          if (
+            cheapestValid &&
+            typeof ctx5.experiment_budget === 'number' &&
+            ctx5.experiment_budget > cheapestValid * 15
+          ) {
+            const oldBudget = ctx5.experiment_budget;
+            ctx5.experiment_budget = Math.round(cheapestValid * 3);
+            ctx5.min_signal_budget = ctx5.experiment_budget;
+            ctx5.experiment_budget_label = `$${ctx5.experiment_budget} (минимальный сигнал, 3 клиента)`;
+            console.log(`[Synthesis] Override stale experiment_budget: $${oldBudget} → $${ctx5.experiment_budget}`);
+          }
+
+          // Подменяем recommended на PLG если B2C
+          const marketType = String(ctx5.market_type ?? '').toLowerCase();
+          if (
+            (marketType === 'b2c' || marketType.includes('b2c')) &&
+            cs?.recommended === 'SALES_LED'
+          ) {
+            cs.recommended = 'PLG';
+            console.log('[Synthesis] Override B2C cac_scenarios.recommended: SALES_LED → PLG');
+          }
+        }
 
         // —— 6. CONFLICT DETECTION + ВНЕШНИЙ КОНТЕКСТ ————
         // Параллельно — экономим 3-5 секунд.
@@ -273,7 +471,7 @@ export async function POST(req: NextRequest) {
           ? `${externalContext}\n\n⚠️ FORCE EXPERIMENT: ${forceExperimentDemand}`
           : externalContext;
         const skepticPrompt = buildSkepticPrompt(
-          niche,
+          realNiche,
           blocks,
           conflicts,
           skepticExternalContext,
@@ -293,7 +491,7 @@ export async function POST(req: NextRequest) {
         });
 
         const optimistPrompt = buildOptimistPrompt(
-          niche,
+          realNiche,
           blocks,
           conflicts,
           skepticOutput,
@@ -313,13 +511,32 @@ export async function POST(req: NextRequest) {
         });
 
         const arbitratorPrompt = buildArbitratorPrompt(
-          niche,
+          realNiche,
           blocks,
           conflicts,
           skepticOutput,
           optimistOutput,
         );
         const arbitratorOutput = await callClaude(arbitratorPrompt, "opus");
+
+        // 7.7 — Post-process: заменить устаревший CAC $6000 в verdict_condition
+        const cheapestCACForVerdictFix = (() => {
+          const ctx5 = blocks.find((b) => b.block_number === 5)?.block_context as any;
+          const cs = ctx5?.cac_scenarios;
+          if (!cs) return null;
+          const c = Math.min(cs.plg?.mid ?? Infinity, cs.community_led?.mid ?? Infinity, cs.seo_led?.mid ?? Infinity);
+          return Number.isFinite(c) && c > 0 && c < 500 ? c : null;
+        })();
+        if (cheapestCACForVerdictFix && arbitratorOutput?.verdict_condition) {
+          const before = arbitratorOutput.verdict_condition;
+          arbitratorOutput.verdict_condition = before
+            .replace(/CAC\s*[≤≥<>]?\s*\$\s*6[\s,.]?000/gi, `CAC ≤ $${cheapestCACForVerdictFix * 3}`)
+            .replace(/\$6[\s,.]?000\s*CAC/gi, `$${cheapestCACForVerdictFix * 3} CAC`);
+          if (before !== arbitratorOutput.verdict_condition) {
+            console.log(`[Synthesis] Replaced stale CAC $6000 in verdict_condition → $${cheapestCACForVerdictFix * 3}`);
+          }
+        }
+
         send("arbitrator", { output: arbitratorOutput });
 
         // —— 9.5 STRATEGIC DELTA + SALES ARCHITECT ————————
@@ -336,15 +553,32 @@ export async function POST(req: NextRequest) {
           strategicDelta = calculateStrategicDelta(blocks, arbitratorOutput.verdict_type, arbitratorOutput.confidence);
 
           if (strategicDelta?.show) {
-            const topOpenGap = (b4ctx.gap_map || [])
+            // 7.2 — top_open_gap: fallback на pain_summary из Блока 1 если gap_map пуст
+            const topOpenGapFromMap = (b4ctx.gap_map || [])
               .filter((g: any) => g.status === 'open')
-              .sort((a: any, b: any) => (b.paying_ratio || 0) - (a.paying_ratio || 0))[0]?.pain ?? 'не определена';
+              .sort((a: any, b: any) => (b.paying_ratio || 0) - (a.paying_ratio || 0))[0]?.pain;
+
+            const b1ctx = blocks.find((b) => b.block_number === 1)?.block_context as any || {};
+            const topOpenGap = topOpenGapFromMap
+              ?? b1ctx.pain_type === 'bad_solution'
+                ? `Существующие решения в "${niche}" не закрывают ключевые потребности`
+                : b1ctx.pain_type === 'no_solution'
+                ? `Рынок "${niche}" ищет решение — но пока его нет`
+                : topOpenGapFromMap ?? `Главная боль пользователей в "${niche}"`;
+
+            // 7.1/7.4 — актуальные числа для Sales Architect
+            const cheapestCACForSales = (() => {
+              const cs = b5ctx.cac_scenarios;
+              if (!cs) return null;
+              const c = Math.min(cs.plg?.mid ?? Infinity, cs.community_led?.mid ?? Infinity, cs.seo_led?.mid ?? Infinity);
+              return Number.isFinite(c) && c > 0 ? c : (cs[((cs.recommended || 'seo_led') as string).toLowerCase()]?.mid ?? null);
+            })();
 
             salesText = await runSalesArchitect(claude, {
-              niche,
+              niche: realNiche,
               verdict_type: arbitratorOutput.verdict_type,
               confidence_percent: Math.round(arbitratorOutput.confidence * 100),
-              cac_mid: b5ctx.cac_mid ?? b5ctx.cac_scenarios?.[(b5ctx.cac_scenarios?.recommended || 'seo_led').toLowerCase()]?.mid ?? null,
+              cac_mid: cheapestCACForSales,
               acquisition_type: b4ctx.acquisition_type ?? 'UNKNOWN',
               months_to_first_revenue: b5ctx.months_to_first_revenue ?? 6,
               main_economic_risk: b5ctx.main_economic_risk ?? '',
@@ -366,7 +600,7 @@ export async function POST(req: NextRequest) {
           .upsert({
             trend_id,
             user_id: user.id,
-            niche,
+            niche: realNiche,
             conflicts,
             skeptic: skepticOutput,
             optimist: optimistOutput,
@@ -388,6 +622,22 @@ export async function POST(req: NextRequest) {
           controller.close();
           return;
         }
+
+        // —— 10.5 INTERPRETATION LAYER (фоновая генерация, не блокирует SSE) ——
+        generateSynthesisInterpretation(
+          trend_id,
+          realNiche,
+          {
+            arbitrator: arbitratorOutput,
+            conflicts,
+            bridge_text: arbitratorOutput.bridge_text ?? '',
+          } as Record<string, any>,
+          supabase,
+          claude,
+          true, // 7.3 — forceRegenerate: синтез всегда запускается заново
+        ).catch((err) =>
+          console.error('[Block7 Interpretation] Background error:', err),
+        );
 
         // Финальное событие — фронт знает что всё готово
         send("complete", {

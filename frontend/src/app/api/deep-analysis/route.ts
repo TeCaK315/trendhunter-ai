@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callAgent, parseJSONResponse, formatErrorForUser, type OpenAIError } from '@/lib/openai';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 import { fetchReddit, fetchHackerNews, fetchQuora, fetchStackOverflow } from '@/lib/data-fetchers';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 /**
  * /api/deep-analysis — ПЕРЕРАБОТАННЫЙ v2
@@ -260,6 +261,9 @@ async function runAgent(systemPrompt: string, userPrompt: string): Promise<{ suc
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const clientIP = getClientIP(request);
     const rateLimitResult = checkRateLimit(`analysis:${clientIP}`, RATE_LIMITS.analysis);

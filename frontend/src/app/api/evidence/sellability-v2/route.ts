@@ -56,6 +56,7 @@ function createHaikuClient(): HaikuClient {
     async complete(prompt: string) {
       const response = await claude.messages.create({
         model: 'claude-haiku-4-5-20251001',
+        temperature: 0,
         max_tokens: 800,
         system: 'Respond with valid JSON only, no markdown or explanations.',
         messages: [{ role: 'user', content: prompt }],
@@ -379,6 +380,281 @@ function mapBlock2(bc: any): Block2Input {
   };
 }
 
+// ════════════════════════════════════════════════════════════════
+// INTERPRETATION LAYER (Block 3)
+// ════════════════════════════════════════════════════════════════
+// Фоновая генерация человекочитаемой интерпретации блока.
+// Кэш 24ч в block_interpretations. Не блокирует основной ответ.
+
+async function generateSellabilityInterpretation(
+  trendId: string,
+  niche: string,
+  diagnosis: string,
+  blockContext: Record<string, any>,
+  supabase: ReturnType<typeof getServerSupabase>,
+  anthropic: Anthropic,
+  forceRegenerate: boolean = false,
+): Promise<void> {
+  if (forceRegenerate) {
+    console.log('[Block3 Interpretation] forceRegenerate=true, skipping cache check');
+  } else {
+    // 3.4 — Кэш с проверкой смены архетипа (SALES_LED ↔ SELF_SERVICE)
+    const { data: existing } = await supabase
+      .from('block_interpretations')
+      .select('id, generated_at, headline, decision_impact')
+      .eq('trend_id', trendId)
+      .eq('block_id', 'sellability')
+      .maybeSingle();
+
+    if (existing && (existing as any).generated_at) {
+      const age = Date.now() - new Date((existing as any).generated_at).getTime();
+      const isFresh = age < 24 * 60 * 60 * 1000;
+
+      const currentArchetype = blockContext?.monetization_archetype ?? '';
+      const isSalesLed = currentArchetype === 'SALES_LED' || currentArchetype === 'ENTERPRISE_ONLY';
+      const isSelfService = currentArchetype === 'SELF_SERVICE_SUBSCRIPTION' || currentArchetype === 'FREEMIUM';
+      const cachedText = (((existing as any).headline ?? '') + ((existing as any).decision_impact ?? '')).toLowerCase();
+
+      const archetypeMismatch =
+        (isSalesLed && (cachedText.includes('без продавца') || cachedText.includes('самообслуживание') || cachedText.includes('онлайн покупк')))
+        || (isSelfService && (cachedText.includes('через менеджер') || cachedText.includes('через продавц')));
+
+      if (isFresh && !archetypeMismatch) return;
+      if (archetypeMismatch) {
+        console.log(`[Block3 Interpretation] Archetype changed (${currentArchetype}), headline contradicts — regenerating`);
+      }
+    }
+  }
+
+  // Извлекаем данные из block_context
+  const archetype = blockContext?.monetization_archetype ?? 'unknown';
+  const quality = blockContext?.monetization_quality ?? 'STABLE';
+  const frictionScore = blockContext?.friction_score ?? 'MEDIUM';
+  const billingModel = blockContext?.billing_model ?? 'subscription';
+  const hasFreeTrial = blockContext?.has_free_trial ?? false;
+  const hasFreemium = blockContext?.has_freemium ?? false;
+  const requiresSalesContact = blockContext?.requires_sales_contact ?? false;
+  const entryPriceUsd = blockContext?.entry_price_usd ?? null;
+  const priceTier = blockContext?.price_tier ?? 'unknown';
+  const monetizationConfidence = blockContext?.monetization_confidence ?? 0.5;
+
+  // Риски монетизации (в block_context их нет — берём из raw_data если есть)
+  const monetizationRisks: string[] = Array.isArray(blockContext?.monetization_risks)
+    ? blockContext.monetization_risks.map((r: any) => r?.message).filter(Boolean)
+    : [];
+
+  // 3.2 — Обогащённые конкуренты (с ростом из Блока 2)
+  const enrichedCompetitors: any[] = Array.isArray(blockContext?.enriched_competitor_monetization)
+    ? blockContext.enriched_competitor_monetization
+    : Array.isArray(blockContext?.competitor_monetization)
+    ? blockContext.competitor_monetization
+    : [];
+
+  function archHumanShort(a: string): string {
+    switch (a) {
+      case 'ENTERPRISE_ONLY': return 'продаёт только через менеджеров';
+      case 'SELF_SERVICE_SUBSCRIPTION': return 'самообслуживание онлайн';
+      case 'SALES_LED': return 'через менеджеров';
+      case 'FREEMIUM': return 'бесплатный вход';
+      case 'USAGE_BASED': return 'оплата за использование';
+      default: return 'смешанная модель';
+    }
+  }
+
+  // Детальное описание каждого конкурента
+  const competitorDetails = enrichedCompetitors.slice(0, 4).map((c: any) => {
+    const parts = [
+      archHumanShort(c?.archetype ?? ''),
+      c?.has_trial ? 'есть trial' : 'нет trial',
+      c?.has_freemium ? 'есть бесплатный план' : '',
+      c?.growth_pct != null
+        ? c.growth_direction === 'up' ? `растёт +${c.growth_pct}%`
+          : c.growth_direction === 'stable' ? 'стабильный'
+          : ''
+        : '',
+    ].filter(Boolean).join(', ');
+    return `${c?.name ?? '?'}: ${parts}`;
+  }).join('\n');
+
+  // Самый быстрорастущий конкурент — key signal
+  const fastestGrowing = enrichedCompetitors
+    .filter((c: any) => c?.growth_pct != null && c.growth_direction === 'up')
+    .sort((a: any, b: any) => (b.growth_pct ?? 0) - (a.growth_pct ?? 0))[0] ?? null;
+
+  const fastestGrowingInsight = fastestGrowing
+    ? `Самый быстрорастущий конкурент — ${fastestGrowing.name} (+${fastestGrowing.growth_pct}%): ${
+        fastestGrowing.archetype === 'SELF_SERVICE_SUBSCRIPTION'
+          ? 'работает по модели самообслуживания — рынок принимает онлайн-покупку без менеджера'
+          : fastestGrowing.archetype === 'ENTERPRISE_ONLY'
+          ? 'растёт через корпоративный сегмент с длинным циклом'
+          : 'растёт со смешанной моделью'
+      }`
+    : '';
+
+  // 3.5 — Вторичный архетип (растущий тренд рынка)
+  const secondaryArchetype = blockContext?.monetization_archetype_secondary ?? null;
+  const secondaryArchetypeHuman =
+    secondaryArchetype === 'USAGE_BASED' ? 'оплата за использование (usage-based)'
+    : secondaryArchetype === 'FREEMIUM' ? 'freemium с платными функциями'
+    : secondaryArchetype === 'SELF_SERVICE_SUBSCRIPTION' ? 'самообслуживание онлайн'
+    : null;
+  const marketDirectionSignal = secondaryArchetypeHuman
+    ? `Рынок начинает двигаться к модели "${secondaryArchetypeHuman}" — ранний вход через неё может создать преимущество`
+    : null;
+
+  // 3.6 — Trial/freemium coverage: структурный сигнал
+  const competitorsWithTrial = enrichedCompetitors.filter((c: any) => c?.has_trial === true).length;
+  const competitorsWithFreemium = enrichedCompetitors.filter((c: any) => c?.has_freemium === true).length;
+  const totalCompetitorsCount = enrichedCompetitors.length;
+  const noFreeEntrySignal = totalCompetitorsCount >= 2 && competitorsWithTrial === 0 && competitorsWithFreemium === 0;
+  const trialInsight = noFreeEntrySignal
+    ? `Ни один конкурент не предлагает trial или freemium — рынок продаёт только через менеджеров. Первый игрок с trial создаёт значимую дифференциацию.`
+    : (totalCompetitorsCount >= 2 && (competitorsWithTrial + competitorsWithFreemium) < totalCompetitorsCount && (competitorsWithTrial > 0 || competitorsWithFreemium > 0))
+      ? `${competitorsWithTrial} из ${totalCompetitorsCount} конкурентов предлагают trial — рынок начинает открываться для самообслуживания`
+      : null;
+
+  // Перевод технических терминов в человеческий язык
+  const archetypeHuman =
+    archetype === 'SELF_SERVICE_SUBSCRIPTION' ? 'подписка без продавцов'
+    : archetype === 'ENTERPRISE_ONLY' ? 'продажи через менеджеров'
+    : archetype === 'SALES_LED' ? 'продажи через менеджеров'
+    : archetype === 'FREEMIUM' ? 'бесплатный вход с платными функциями'
+    : archetype === 'USAGE_BASED' ? 'оплата за использование'
+    : 'смешанная модель';
+
+  const qualityHuman =
+    quality === 'SCALABLE' ? 'выручка растёт с масштабом без пропорционального роста затрат'
+    : quality === 'STABLE' ? 'предсказуемая стабильная выручка'
+    : 'нестабильная или разовая выручка';
+
+  const frictionHuman =
+    frictionScore === 'LOW' ? 'низкое — клиент может купить быстро без демо и переговоров'
+    : frictionScore === 'MEDIUM' ? 'среднее — нужен trial или онбординг перед покупкой'
+    : 'высокое — длинный цикл переговоров и согласований';
+
+  // data_sufficiency на основе confidence
+  const dataSufficiency: 'sufficient' | 'limited' = monetizationConfidence >= 0.7 ? 'sufficient' : 'limited';
+
+  const systemPrompt = `Ты — аналитик рынков для предпринимателей.
+Пишешь на русском языке. Твои тексты читают люди которые думают
+войти в новую нишу — они не технари, они бизнесмены.
+
+ЖЁСТКИЕ ПРАВИЛА:
+- Никогда не используй: monetization_archetype, friction_score,
+  SCALABLE, SELF_SERVICE_SUBSCRIPTION, ENTERPRISE_ONLY, SALES_LED,
+  PARTIAL, monetization_confidence, liveness_signal_strength,
+  scalability_multiplier, HIGH_CAC_SENSITIVITY, WINNER_TAKES_ALL
+- Никогда не пиши: "данных недостаточно", "PARTIAL статус",
+  "confidence", "архетип", "вердикт монетизации"
+- Тон: уверенный аналитик который хорошо знает этот рынок`;
+
+  const userPrompt = `Проанализируй монетизацию в нише: "${niche}"
+
+ТЕХНИЧЕСКИЕ ДАННЫЕ (не используй эти термины в тексте):
+- Диагноз: ${diagnosis}
+- Модель монетизации рынка: ${archetypeHuman}
+- Качество выручки: ${qualityHuman}
+- Трение при продаже: ${frictionHuman}
+- Модель оплаты: ${billingModel === 'subscription' ? 'подписка' : billingModel}
+- Есть trial: ${hasFreeTrial ? 'да' : 'нет'}
+- Ценовой сегмент: ${priceTier === 'enterprise' ? 'enterprise (дорогой)' : priceTier === 'smb' ? 'SMB (средний чек)' : priceTier}
+- Достаточность данных: ${dataSufficiency === 'sufficient' ? 'данных достаточно' : 'данных немного — дополни знаниями о рынке'}
+${secondaryArchetypeHuman ? `- Вторичная модель монетизации (растущий тренд): ${secondaryArchetypeHuman}` : ''}
+${trialInsight ? `- Сигнал по trial/freemium: ${trialInsight}` : ''}
+
+ДЕТАЛЬНОЕ СРАВНЕНИЕ КОНКУРЕНТОВ (используй в анализе — называй конкретные имена):
+${competitorDetails || 'данных о конкурентах нет'}
+${fastestGrowingInsight ? `\nКЛЮЧЕВОЙ СИГНАЛ: ${fastestGrowingInsight}` : ''}
+${marketDirectionSignal ? `\nНАПРАВЛЕНИЕ РЫНКА: ${marketDirectionSignal}` : ''}
+
+Риски монетизации: ${monetizationRisks.join('; ') || 'не выявлены'}
+
+${dataSufficiency === 'limited' ? `ВАЖНО: Данных о ценах немного. Дополни анализ знаниями о типичной монетизации "${niche}". Формулируй как конкретный анализ этой ниши.` : ''}
+
+${secondaryArchetypeHuman ? `ВАЖНО: рынок показывает признаки перехода к ${secondaryArchetypeHuman}. Упомяни это в main_insight как стратегическую возможность: входить с этой моделью сейчас значит быть готовым к тому куда рынок движется.` : ''}
+${noFreeEntrySignal ? `ВАЖНО: ни один конкурент не предлагает trial/freemium. Обязательно укажи это как ключевую возможность для дифференциации.` : ''}
+
+Ответь на три вопроса предпринимателя:
+1. Какая модель монетизации работает в этой нише?
+2. Насколько легко продать — какой путь к деньгам?
+3. Кто из конкурентов растёт быстрее и почему — что это говорит о рынке?
+
+Напиши анализ в формате JSON:
+
+{
+  "headline": "одно предложение-диагноз про монетизацию (максимум 12 слов)",
+  "main_insight": "2-3 предложения. Какая модель победила. Назови КОНКРЕТНОГО конкурента который растёт быстрее всех и его модель. Что это означает для нового игрока.",
+  "key_facts": [
+    "факт 1: КОНКРЕТНЫЙ растущий конкурент — название + рост% + его модель продаж",
+    "факт 2: про лёгкость или сложность первой продажи (trial, онбординг, менеджер)",
+    "факт 3: ${secondaryArchetypeHuman ? `про направление рынка — вторичный архетип ${secondaryArchetypeHuman} и что это означает для входа сейчас` : noFreeEntrySignal ? 'про отсутствие trial у всех конкурентов как стратегическую возможность' : 'про главный риск или структурное преимущество для нового игрока'}"
+  ],
+  "decision_impact": "одно-два предложения: какую модель выбрать для старта и почему — используй данные о том кто растёт быстрее"
+}
+
+ПРИМЕРЫ ХОРОШИХ ФАКТОВ (конкретные):
+- "Gumloop растёт на +133% со self-service моделью — рынок принимает онлайн-покупку без менеджера"
+- "У двух крупных конкурентов есть trial, но оба требуют звонка — барьер средний"
+- "Никто из конкурентов не предлагает freemium — вход через бесплатный план создаст дифференциацию"
+
+ПРИМЕРЫ ПЛОХИХ ФАКТОВ (ЗАПРЕЩЕНО):
+- "Архетип: SELF_SERVICE_SUBSCRIPTION" — технический код
+- "Конкурент растёт" — без имени и цифры
+- "friction_score: MEDIUM" — технический код
+- "Рынок чувствителен к CAC" — абстрактный риск без конкретики
+
+Верни ТОЛЬКО валидный JSON, без markdown и без пояснений.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const raw = (response.content[0] as any)?.text ?? '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    if (
+      !parsed.headline ||
+      !parsed.main_insight ||
+      !Array.isArray(parsed.key_facts) ||
+      parsed.key_facts.length !== 3 ||
+      !parsed.decision_impact
+    ) {
+      console.error('[Block3 Interpretation] Invalid structure:', parsed);
+      return;
+    }
+
+    const { error: saveError } = await supabase
+      .from('block_interpretations')
+      .upsert(
+        {
+          trend_id: trendId,
+          block_id: 'sellability',
+          headline: parsed.headline,
+          main_insight: parsed.main_insight,
+          key_facts: parsed.key_facts,
+          decision_impact: parsed.decision_impact,
+          model_used: 'claude-sonnet-4-6',
+          data_sufficiency: dataSufficiency,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: 'trend_id,block_id' },
+      );
+
+    if (saveError) {
+      console.error('[Block3 Interpretation] Save failed:', saveError);
+      return;
+    }
+    console.log('[Block3 Interpretation] Generated for trend:', trendId);
+  } catch (error) {
+    console.error('[Block3 Interpretation] Failed:', error);
+  }
+}
+
 // ─── MAIN ROUTE ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -403,7 +679,7 @@ export async function POST(req: NextRequest) {
       }).then(r => r.ok ? r.json() : null).catch(() => null),
       supabase.from('block_results').select('block_context')
         .eq('trend_id', trend_id).eq('user_id', user.id).eq('block_number', 1).single(),
-      supabase.from('block_results').select('block_context')
+      supabase.from('block_results').select('block_context, raw_data')
         .eq('trend_id', trend_id).eq('user_id', user.id).eq('block_number', 2).single(),
       supabase.from('block_results').select('block_context')
         .eq('trend_id', trend_id).eq('user_id', user.id).eq('block_number', 4).maybeSingle(),
@@ -413,6 +689,12 @@ export async function POST(req: NextRequest) {
     const block1 = mapBlock1(b1Res.data?.block_context);
     const block2 = mapBlock2(b2Res.data?.block_context);
     const block4Context = b4Res.data?.block_context ?? null;
+
+    // 3.1 — competitor_trends из Блока 2 (raw_data) для обогащения конкурентов
+    const competitorTrends: Array<{ name: string; domain: string; growth: number | null; direction: string }> =
+      b2Res.data?.raw_data?.competitor_trends ??
+      b2Res.data?.raw_data?.premium?.competitor_trends ??
+      [];
 
     console.log(`[Block3v2] Context: ${ctx.category_type}, B1 paying: ${block1.paying_ratio}, B2 competitors: ${block2.competitors_found.length}, B4: ${block4Context ? 'loaded' : 'null'}`);
 
@@ -549,15 +831,57 @@ export async function POST(req: NextRequest) {
       monetization_diagnosis: buildDiagnosis(verdict, archetypeResult.primary, quality, frictionScore),
     };
 
+    // 3.1 — Обогащаем competitor_monetization данными о росте из Блока 2
+    const enrichedCompetitorMonetization = result.competitor_monetization.map((comp) => {
+      const trend = competitorTrends.find(
+        (t) =>
+          t.name?.toLowerCase() === comp.name?.toLowerCase() ||
+          (t.domain && comp.name && t.domain.toLowerCase().includes(comp.name.toLowerCase())),
+      );
+      return {
+        ...comp,
+        growth_pct: trend?.growth ?? null,
+        growth_direction: trend?.direction ?? 'unknown',
+      };
+    });
+    // Заменяем оригинальный массив обогащённым — попадёт и в raw_data и в block_context
+    (result as any).enriched_competitor_monetization = enrichedCompetitorMonetization;
+
     console.log(`[Block3v2] Result: ${verdict} / ${archetypeResult.primary} / ${quality} / confidence=${monetizationConfidence.toFixed(2)}`);
 
-    await saveResult(supabase, trend_id, user.id, result);
-
-    const score = result.monetization_verdict === 'CLEAR' ? 8
-      : result.monetization_verdict === 'PARTIAL' ? 5
-      : result.monetization_verdict === 'UNCLEAR' ? 3 : 1;
     const diagnosis = result.monetization_verdict === 'CLEAR' ? 'green'
       : result.monetization_verdict === 'PARTIAL' ? 'yellow' : 'red';
+
+    // Информативный score: варьируется внутри диагноза
+    const score = (() => {
+      let s = diagnosis === 'green' ? 7 : diagnosis === 'yellow' ? 4 : 2;
+      if (frictionScore === 'LOW') s += 1;
+      if (result.has_free_trial) s += 0.5;
+      if (result.has_freemium) s += 0.5;
+      if (quality === 'SCALABLE') s += 1;
+      if ((result.scalability_multiplier ?? 1) >= 3) s += 0.5;
+      if (!result.requires_sales_contact) s += 0.5;
+      if (frictionScore === 'HIGH') s -= 1.5;
+      if (consistency.falsePositiveMarket) s -= 2;
+      if (result.monetization_verdict === 'PARTIAL' && monetizationConfidence < 0.5) s -= 1;
+      return Math.max(1, Math.min(10, Math.round(s)));
+    })();
+
+    await saveResult(supabase, trend_id, user.id, result, score);
+
+    // ── Interpretation Layer (фоновая генерация, не блокирует ответ) ──
+    generateSellabilityInterpretation(
+      trend_id,
+      niche,
+      diagnosis,
+      result as unknown as Record<string, any>,
+      supabase,
+      claude,
+      true,
+    ).catch((err) =>
+      console.error('[Block3 Interpretation] Background error:', err),
+    );
+
     return NextResponse.json({ success: true, public: { ...result, score, diagnosis, pain_type: block1.pain_type }, has_premium: true });
   } catch (error: any) {
     console.error('[Block3v2] Error:', error.message);
@@ -565,7 +889,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function saveResult(supabase: any, trendId: string, userId: string, result: Block3Output) {
+async function saveResult(supabase: any, trendId: string, userId: string, result: Block3Output, computedScore?: number) {
   const { error } = await supabase.from('block_results').upsert({
     trend_id: trendId,
     user_id: userId,
@@ -573,7 +897,7 @@ async function saveResult(supabase: any, trendId: string, userId: string, result
     block_type: 'sellability_v2',
     diagnosis: result.monetization_verdict === 'CLEAR' ? 'green'
       : result.monetization_verdict === 'PARTIAL' ? 'yellow' : 'red',
-    score: verdictToScore(result.monetization_verdict),
+    score: computedScore ?? verdictToScore(result.monetization_verdict),
     conflict_weight: result.monetization_verdict === 'NONE' ? 3
       : result.monetization_verdict === 'UNCLEAR' ? 2 : 1,
     key_factors: [
@@ -599,6 +923,8 @@ async function saveResult(supabase: any, trendId: string, userId: string, result
       false_positive_market: result.false_positive_market,
       liveness_signal_strength: result.liveness_signal_strength,
       competitor_monetization: result.competitor_monetization,
+      // 3.1 — обогащённые данные конкурентов (с growth_pct из Блока 2)
+      enriched_competitor_monetization: (result as any).enriched_competitor_monetization ?? null,
     },
     raw_data: result,
     intelligence_output: null,

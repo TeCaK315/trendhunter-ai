@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
 import { calcInvestmentHotness, calcTotalFunding, calcFundingTrend, parseFundingAmount } from '@/lib/evidence-calculations';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -582,6 +583,9 @@ function getVCWebsite(vcName: string): string {
 // getDefaultAnalysis removed — replaced by analyzeVentureLandscapeWithFormulas
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     // Rate limiting - uses external APIs
     const clientIP = getClientIP(request);
@@ -671,6 +675,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('query');
 

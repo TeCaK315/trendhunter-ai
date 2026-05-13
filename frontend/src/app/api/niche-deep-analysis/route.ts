@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAgent, parseJSONResponse, formatErrorForUser, type OpenAIError } from '@/lib/openai';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 interface NicheDeepAnalysisRequest {
   niche: string;
@@ -264,6 +265,9 @@ ${sources.youtube.videos.slice(0, 3).map(v => `- "${v.title}" (${v.channel})`).j
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body: NicheDeepAnalysisRequest = await request.json();
 

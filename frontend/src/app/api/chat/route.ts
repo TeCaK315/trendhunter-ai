@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callOpenAI, formatErrorForUser, type OpenAIMessage } from '@/lib/openai';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 // Типы специализированных агентов
 type AgentType = 'general' | 'developer' | 'marketing' | 'sales' | 'designer';
@@ -205,6 +206,9 @@ ${KNOWLEDGE_BASE}`
 };
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     // Rate limiting for chat
     const clientIP = getClientIP(request);

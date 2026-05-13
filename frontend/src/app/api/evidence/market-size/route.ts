@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { callOpenAI, parseJSONResponse } from '@/lib/openai';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const FMP_API_KEY = process.env.FMP_API_KEY || ''; // Financial Modeling Prep (optional)
@@ -466,6 +467,9 @@ async function getCompetitorMetrics(
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { competitors = [], existing_pricing = {} } = body;

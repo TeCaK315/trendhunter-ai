@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -255,6 +256,9 @@ async function generateCustomTheme(input: ThemeRequest): Promise<GeneratedTheme>
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { style, project_name, target_audience } = body;
@@ -290,6 +294,9 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint для получения списка предустановленных тем
 export async function GET() {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   return NextResponse.json({
     success: true,
     presets: Object.entries(presetThemes).map(([key, theme]) => ({

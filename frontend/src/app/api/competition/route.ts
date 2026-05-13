@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calcBlueOceanScore, calcMarketSaturation, calcRiskLevel } from '@/lib/evidence-calculations';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -287,6 +288,9 @@ ${contextSection}
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json();
     const { query, trend_title, context } = body;
@@ -359,6 +363,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('query');
 

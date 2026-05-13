@@ -133,6 +133,7 @@ interface CompetitionBlockContext {
   top_competitor: string;
   competitor_count: number;
   has_strategic_gap: boolean;
+  has_execution_gap?: boolean; // 4.8
   top_gap_category: ComplaintCategory | null;
   top_competitor_size: "micro" | "small" | "medium" | "large" | null;
   top_competitor_g2_reviews: number | null;
@@ -273,31 +274,45 @@ async function estimateCompetitorSize(
     }
   }
 
-  // Итоговая оценка через иерархию
+  // 4.2 — Приоритет linkedin_employees (самый надёжный), потом g2_reviews.
+  // Раньше g2_reviews стоял первым, из-за чего Kissflow (500 LinkedIn, 591 G2)
+  // получал estimate "small" через 591*7 = 4137 < 5000.
   let userEstimate = 0;
   let confidence: CompetitorSize["confidence"] = "low";
 
+  if (raw.linkedin_employees) {
+    // LinkedIn employees — самый надёжный proxy
+    userEstimate = raw.linkedin_employees;
+    confidence = "medium";
+    // Прямой маппинг по количеству сотрудников
+    const estimate: CompetitorSize["estimate"] =
+      raw.linkedin_employees >= 5000 ? "large"
+      : raw.linkedin_employees >= 200 ? "medium"
+      : raw.linkedin_employees >= 20 ? "small"
+      : "micro";
+    return { estimate, confidence, primary_proxy, proxies_used, raw };
+  }
+
   if (raw.g2_reviews) {
-    userEstimate = raw.g2_reviews * 7;
+    userEstimate = raw.g2_reviews;
     confidence = raw.g2_reviews >= 10 ? "high" : "medium";
-  } else if (raw.linkedin_employees) {
-    userEstimate = raw.linkedin_employees * 100;
-    confidence = "low";
   } else if (raw.mrr_mentioned) {
     userEstimate = raw.mrr_mentioned / 50;
     confidence = "medium";
   }
 
+  // G2/MRR fallback — пороги по числу отзывов, не по userEstimate*7
   const estimate: CompetitorSize["estimate"] =
-    userEstimate === 0
-      ? "micro"
-      : userEstimate < 500
-        ? "micro"
-        : userEstimate < 5000
-          ? "small"
-          : userEstimate < 50000
-            ? "medium"
-            : "large";
+    raw.g2_reviews
+      ? (raw.g2_reviews >= 2000 ? "large"
+        : raw.g2_reviews >= 300 ? "medium"
+        : raw.g2_reviews >= 50 ? "small"
+        : "micro")
+      : (userEstimate <= 0 ? "micro"
+        : userEstimate < 500 ? "micro"
+        : userEstimate < 5000 ? "small"
+        : userEstimate < 50000 ? "medium"
+        : "large");
 
   return {
     estimate,
@@ -448,6 +463,7 @@ async function classifyComplaints(
   try {
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
+      temperature: 0,
       max_tokens: 800,
       system: "Отвечай только валидным JSON без markdown и пояснений.",
       messages: [
@@ -632,6 +648,65 @@ async function collectLayer2(
       classifyComplaints(reviewsPerCompetitor[idx], competitor.domain, niche),
     ),
   );
+
+  // 4.1 — Enrichment: для конкурентов с пустыми жалобами — дополнительные целевые запросы.
+  // Добавляем G2 "what do you dislike" + Reddit frustrations.
+  for (let idx = 0; idx < layer1.competitors.length; idx++) {
+    const relevant = classifiedPerCompetitor[idx].filter(c => c.category !== 'irrelevant' && c.is_relevant);
+    if (relevant.length > 0) continue; // уже есть жалобы
+
+    const comp = layer1.competitors[idx];
+    // Пропускаем enrichment для медиа-доменов (если они просочились)
+    const compDomainLower = (comp.domain ?? '').toLowerCase().replace(/^www\./, '');
+    if (['forbes.com', 'pcmag.com', 'housingwire.com', 'g2.com', 'capterra.com', 'wikipedia.org'].some((m) => compDomainLower === m || compDomainLower.endsWith('.' + m))) {
+      console.log(`[Block4] Skipping enrichment for media domain: ${comp.domain}`);
+      continue;
+    }
+    // 4.7 — Поиск по имени И по домену (ManageEngine может быть на G2 как "manageengine")
+    const domainKey = comp.domain.replace('www.', '').split('.')[0];
+    const searchTerms = [...new Set([comp.name, domainKey].filter(Boolean))];
+
+    // Крупные конкуренты (1000+ G2 reviews) — больше результатов
+    const isLarge = comp.size?.estimate === 'large' || (comp.size?.raw?.g2_reviews ?? 0) > 500;
+    const numResults = isLarge ? '12' : '8';
+
+    console.log(`[Block4] Enriching complaints for ${comp.name} (domain=${domainKey}, large=${isLarge}, terms=${searchTerms.join('+')})`);
+
+    const enrichmentQueries = searchTerms.flatMap((term) => [
+      `site:g2.com "${term}" "what do you dislike"`,
+      `site:g2.com "${term}" reviews pros-and-cons`,
+    ]).concat([
+      `site:reddit.com "${comp.name}" problem OR issue OR frustrated OR "switched from"`,
+      `site:capterra.com "${comp.name}" "what could be improved" OR "cons"`,
+    ]).slice(0, 5); // макс 5 запросов на конкурента
+
+    const enrichResults = await Promise.all(
+      enrichmentQueries.map((q) =>
+        fetchSerpAPI('google', { q, gl: 'us', num: numResults }, serpApiKey),
+      ),
+    );
+
+    const extraReviews: { text: string; source: string }[] = [];
+    for (const res of enrichResults) {
+      for (const r of (res?.organic_results ?? [])) {
+        if (r.snippet && r.snippet.length >= 40) {
+          extraReviews.push({
+            text: r.snippet,
+            source: r.link?.includes('g2.com') ? 'g2'
+              : r.link?.includes('capterra.com') ? 'capterra'
+              : r.link?.includes('reddit.com') ? 'reddit'
+              : 'g2',
+          });
+        }
+      }
+    }
+
+    if (extraReviews.length > 0) {
+      console.log(`[Block4] Enrichment found ${extraReviews.length} extra reviews for ${comp.name}`);
+      const extraClassified = await classifyComplaints(extraReviews.slice(0, 15), comp.domain, niche);
+      classifiedPerCompetitor[idx] = [...classifiedPerCompetitor[idx], ...extraClassified];
+    }
+  }
 
   await Promise.all(
     layer1.competitors.map(async (competitor, idx) => {
@@ -930,19 +1005,23 @@ function makeCompetitionDiagnosis(
     };
   }
 
-  // Ветка 2: Недостаточно данных
-  if (layer2.classification_details.total_reviews_analyzed < 5) {
+  // 4.8 — Ветка 2 пропускается если есть execution/strategic gaps
+  // (enrichment мог найти жалобы даже при < 5 total_reviews)
+  if (
+    layer2.classification_details.total_reviews_analyzed < 5 &&
+    !layer2.has_strategic_gap &&
+    layer2.execution_gaps.length === 0
+  ) {
     return {
       diagnosis: "yellow",
       score: 4,
       conflict_weight: 2,
       reason: "insufficient_data",
       key_factors: [
-        `Найдено ${layer1.total_found} конкурентов`,
-        "Недостаточно отзывов для gap анализа (<5)",
-        "Рекомендуется ручное исследование конкурентов",
+        `Найдено ${layer1.total_found} конкурентов на рынке`,
+        `Лидер рынка: ${layer1.competitors[0]?.domain ?? 'не определён'}`,
       ],
-      key_metric: `${layer1.total_found} конкурентов, данных недостаточно`,
+      key_metric: `${layer1.total_found} конкурентов в нише`,
       gap_type: "none",
     };
   }
@@ -998,6 +1077,235 @@ function makeCompetitionDiagnosis(
     key_metric: `${layer1.total_found} конкурентов без gap`,
     gap_type: "none",
   };
+}
+
+// ════════════════════════════════════════════════════════════════
+// INTERPRETATION LAYER (Block 4)
+// ════════════════════════════════════════════════════════════════
+// Фоновая генерация человекочитаемой интерпретации блока.
+// Кэш 24ч в block_interpretations. Не блокирует основной ответ.
+
+async function generateCompetitionInterpretation(
+  trendId: string,
+  niche: string,
+  diagnosis: string,
+  blockContext: Record<string, any>,
+  rawData: Record<string, any>,
+  supabase: ReturnType<typeof getServerSupabase>,
+  anthropic: Anthropic,
+): Promise<void> {
+  // 4.9 — Кэш с проверкой смены top_competitor
+  const { data: existing } = await supabase
+    .from("block_interpretations")
+    .select("id, generated_at, headline, main_insight")
+    .eq("trend_id", trendId)
+    .eq("block_id", "competition")
+    .maybeSingle();
+
+  if (existing && (existing as any).generated_at) {
+    const age = Date.now() - new Date((existing as any).generated_at).getTime();
+    const isFresh = age < 24 * 60 * 60 * 1000;
+
+    // Проверяем что top_competitor не сменился
+    const topName = String(blockContext?.top_competitor ?? '')
+      .replace('.com', '').replace('www.', '').toLowerCase();
+    const cachedText = (((existing as any).headline ?? '') + ((existing as any).main_insight ?? '')).toLowerCase();
+    const competitorChanged = topName.length > 2 && !cachedText.includes(topName);
+
+    if (isFresh && !competitorChanged) return;
+    if (competitorChanged) {
+      console.log(`[Block4 Interpretation] Top competitor changed to ${topName} — regenerating`);
+    }
+  }
+
+  // Извлекаем данные
+  const competitorCount = blockContext?.competitor_count ?? 0;
+  const topCompetitor = blockContext?.top_competitor ?? null;
+  const topCompetitorSize = blockContext?.top_competitor_size ?? "unknown";
+  const topCompetitorG2 = blockContext?.top_competitor_g2_reviews ?? 0;
+  const hasStrategicGap = blockContext?.has_strategic_gap ?? false;
+  const topGapCategory = blockContext?.top_gap_category ?? null;
+  const entryPoint = blockContext?.entry_point ?? null;
+
+  // Конкуренты из raw_data
+  const competitors: any[] =
+    rawData?.layers?.layer1?.competitors ?? rawData?.competitors ?? [];
+
+  // Есть ли реальные жалобы
+  const hasRealComplaints = competitors.some(
+    (c: any) => Array.isArray(c?.top_complaints) && c.top_complaints.length > 0,
+  );
+  const totalReviewsAnalyzed =
+    rawData?.layers?.layer2?.classification_details?.total_reviews_analyzed ?? 0;
+
+  // Размер конкурента в человеческом языке
+  const sizeHuman = (size: string) =>
+    size === "large" ? "крупный (10 000+ клиентов)"
+    : size === "medium" ? "средний (500–10 000 клиентов)"
+    : size === "small" ? "небольшой (до 500 клиентов)"
+    : size === "micro" ? "маленький (стартап)"
+    : "неизвестного размера";
+
+  // Positioning vectors из layer3 как альтернатива entry_point
+  const positioningVectors: string[] =
+    rawData?.layers?.layer3?.positioning_vectors ??
+    rawData?.premium?.layers?.layer3?.positioning_vectors ?? [];
+
+  // 4.3 — Реальные цитаты из жалоб клиентов
+  const categoryHumanMap: Record<string, string> = {
+    support: 'поддержка', pricing_model: 'цены', missing_feature: 'функциональность',
+    ui_ux: 'интерфейс', performance: 'производительность', onboarding: 'онбординг',
+    data_migration: 'миграция', integrations: 'интеграции',
+  };
+  const allComplaints = competitors.flatMap((comp: any) =>
+    (comp.top_complaints ?? []).map((c: any) => ({
+      competitor: comp.name ?? comp.domain ?? '?',
+      category: c.category ?? 'unknown',
+      categoryRu: categoryHumanMap[c.category] ?? c.category ?? 'другое',
+      count: c.count ?? 1,
+      quote: c.sample_quote ?? '',
+    })),
+  );
+  const topComplaints = allComplaints
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+  const complaintsForPrompt = topComplaints
+    .map((c) => `${c.competitor} (${c.categoryRu}): "${c.quote}"`)
+    .join('\n');
+
+  // Execution gaps с reasoning
+  const executionGaps: any[] = rawData?.layers?.layer2?.execution_gaps ?? [];
+  const executionGapsForPrompt = executionGaps.slice(0, 2)
+    .map((g: any) => `${g.competitor_domain}: ${g.reasoning ?? g.complaint_category ?? ''}`)
+    .join('\n');
+
+  // data_sufficiency
+  const dataSufficiency: "sufficient" | "limited" =
+    hasRealComplaints && totalReviewsAnalyzed >= 5 ? "sufficient" : "limited";
+
+  const systemPrompt = `Ты — аналитик рынков для предпринимателей.
+Пишешь на русском языке. Твои тексты читают люди которые думают
+войти в новую нишу — они не технари, они бизнесмены.
+
+ЖЁСТКИЕ ПРАВИЛА:
+- Никогда не используй: gap_type, has_strategic_gap, execution_gaps,
+  strategic_gaps, top_gap_category, g2_reviews как технический термин,
+  primary_proxy, proxies_used, classification_details,
+  total_reviews_analyzed
+- Никогда не пиши: "данных недостаточно для gap анализа",
+  "рекомендуется ручное исследование", "отзывов меньше 5"
+- Тон: уверенный аналитик который хорошо знает этот рынок`;
+
+  const userPrompt = `Проанализируй конкурентную ситуацию в нише: "${niche}"
+
+ТЕХНИЧЕСКИЕ ДАННЫЕ (не используй эти термины в тексте):
+- Диагноз: ${diagnosis}
+- Найдено конкурентов: ${competitorCount}
+- Главный конкурент: ${topCompetitor ?? "не определён"}
+- Размер: ${sizeHuman(topCompetitorSize)}
+- Отзывов на G2: ${topCompetitorG2 > 0 ? Number(topCompetitorG2).toLocaleString() : 'мало данных'}
+- Есть ли реальный gap: ${hasRealComplaints ? 'да — жалобы найдены' : 'нет'}
+- Достаточность данных: ${dataSufficiency === "sufficient" ? "жалобы найдены — анализ на реальных данных" : "жалоб мало — дополни знаниями о рынке"}
+
+${complaintsForPrompt ? `РЕАЛЬНЫЕ ЖАЛОБЫ КЛИЕНТОВ (используй в анализе — это настоящие слова):
+${complaintsForPrompt}` : ''}
+
+${executionGapsForPrompt ? `ОПЕРАЦИОННЫЕ СЛАБОСТИ:
+${executionGapsForPrompt}` : ''}
+
+${positioningVectors.length > 0 ? `КОНКРЕТНЫЕ УГЛЫ ВХОДА (используй в key_facts[2] — это реальные данные):
+${positioningVectors.slice(0, 3).map((v: string, i: number) => `${i + 1}. ${v}`).join('\n')}` : 'Углы входа: не определены'}
+
+${(() => {
+  const gt = blockContext?.gap_type ?? 'none';
+  if (gt === 'execution') return 'ВАЖНО для decision_impact: gap операционный — конкурент МОЖЕТ его закрыть. У тебя окно 6-18 месяцев. decision_impact должен отражать срочность.';
+  if (gt === 'strategic') return 'ВАЖНО для decision_impact: gap стратегический — конкурент структурно не может закрыть без разрушения модели. Окно долгосрочное.';
+  return '';
+})()}
+
+${dataSufficiency === "limited" ? `ВАЖНО: Реальных жалоб мало. Проанализируй конкурентов на основе:
+1. Размера и позиционирования — крупные медленно реагируют на нишевые нужды
+2. Знаний о типичных слабостях таких продуктов в нише "${niche}"
+Формулируй как конкретный анализ, не как общие советы.` : ""}
+
+Ответь на три вопроса предпринимателя:
+1. Кто главный конкурент и в чём его конкретная слабость?
+2. Есть ли реальное место для нового игрока?
+3. Как конкретно войти — первый шаг?
+
+Напиши анализ в формате JSON:
+
+{
+  "headline": "одно предложение-диагноз про конкуренцию (максимум 12 слов)",
+  "main_insight": "2-3 предложения. Назови главного конкурента и его конкретную слабость СЛОВАМИ ЕГО КЛИЕНТОВ если есть цитаты выше. Есть ли место для нового игрока.",
+  "key_facts": [
+    "факт 1: конкретная жалоба на главного конкурента — близко к реальной цитате если есть",
+    "факт 2: про количество и размер конкурентов — кто большой, кто маленький",
+    "факт 3: КОНКРЕТНЫЙ угол входа из списка выше — не абстрактный совет, а первое действие с деталями"
+  ],
+  "decision_impact": "одно-два предложения: через что входить и почему именно так, а не иначе"
+}
+
+ПРИМЕРЫ ХОРОШИХ ФАКТОВ (конкретные):
+- "Kissflow не отвечает на негативные отзывы — клиенты пишут 'prohibitive pricing' и не получают ответа"
+- "6 конкурентов: два крупных (Kissflow, ManageEngine) и четыре маленьких стартапа"
+- "Первый шаг: ответить на каждый негативный отзыв Kissflow на G2 с предложением попробовать альтернативу"
+
+ПРИМЕРЫ ПЛОХИХ ФАКТОВ (ЗАПРЕЩЕНО):
+- "gap_type: execution" — технический код
+- "Есть слабость конкурента" — без имени и конкретики
+- "Рекомендуется ручное исследование" — так не пишем
+
+Верни ТОЛЬКО валидный JSON, без markdown и без пояснений.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 800,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const raw = (response.content[0] as any)?.text ?? "";
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+
+    if (
+      !parsed.headline ||
+      !parsed.main_insight ||
+      !Array.isArray(parsed.key_facts) ||
+      parsed.key_facts.length !== 3 ||
+      !parsed.decision_impact
+    ) {
+      console.error("[Block4 Interpretation] Invalid structure:", parsed);
+      return;
+    }
+
+    const { error: saveError } = await supabase
+      .from("block_interpretations")
+      .upsert(
+        {
+          trend_id: trendId,
+          block_id: "competition",
+          headline: parsed.headline,
+          main_insight: parsed.main_insight,
+          key_facts: parsed.key_facts,
+          decision_impact: parsed.decision_impact,
+          model_used: "claude-sonnet-4-6",
+          data_sufficiency: dataSufficiency,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: "trend_id,block_id" },
+      );
+
+    if (saveError) {
+      console.error("[Block4 Interpretation] Save failed:", saveError);
+      return;
+    }
+    console.log("[Block4 Interpretation] Generated for trend:", trendId);
+  } catch (error) {
+    console.error("[Block4 Interpretation] Failed:", error);
+  }
 }
 
 // ——————————————————————————————————————————————————————————————
@@ -1059,8 +1367,26 @@ export async function POST(req: NextRequest) {
     const block2_context = block2Result.data.block_context;
     const block3_context = block3Result.data?.block_context || null;
 
-    const competitors: CompetitorSignal[] =
-      block2_context.competitors_found || [];
+    // Фильтруем медиа-домены (Forbes, PCMag, etc.) — могут прийти из кэшированного Block 2
+    const rawCompetitors: CompetitorSignal[] = block2_context.competitors_found || [];
+    const competitors = rawCompetitors.filter((c) => {
+      const d = (c.domain ?? '').toLowerCase().replace(/^www\./, '');
+      // Общие медиа-домены которые не продукты
+      const mediaPatterns = [
+        'forbes.com', 'pcmag.com', 'housingwire.com', 'inman.com',
+        'businessinsider.com', 'techcrunch.com', 'cnet.com', 'zdnet.com',
+        'wsj.com', 'bloomberg.com', 'wired.com', 'theverge.com',
+        'techradar.com', 'tomsguide.com', 'clutch.co', 'goodfirms.co',
+        'investopedia.com', 'nerdwallet.com', 'entrepreneur.com',
+        'g2.com', 'capterra.com', 'getapp.com', 'softwareadvice.com',
+        'trustradius.com', 'wikipedia.org', 'youtube.com', 'reddit.com',
+      ];
+      return !mediaPatterns.some((m) => d === m || d.endsWith('.' + m));
+    });
+    if (rawCompetitors.length !== competitors.length) {
+      const filtered = rawCompetitors.filter((c) => !competitors.includes(c)).map((c) => c.domain);
+      console.log(`[Block4] Filtered media domains from competitors: ${filtered.join(', ')}`);
+    }
 
     if (competitors.length === 0) {
       console.log(
@@ -1093,14 +1419,28 @@ export async function POST(req: NextRequest) {
       top_competitor: topCompetitor?.domain || "unknown",
       competitor_count: layer1.total_found,
       has_strategic_gap: layer2.has_strategic_gap,
+      has_execution_gap: layer2.execution_gaps.length > 0, // 4.8
       top_gap_category: layer2.top_gap_category,
       top_competitor_size: topCompetitor?.size.estimate || null,
       top_competitor_g2_reviews: topCompetitor?.size.raw.g2_reviews || null,
     };
 
+    // Информативный score: варьируется внутри диагноза
+    const computedCompScore = (() => {
+      let s = diagnosisResult.diagnosis === 'green' ? 7 : diagnosisResult.diagnosis === 'yellow' ? 4 : 2;
+      if (layer2.has_strategic_gap) s += 2;
+      if (layer2.execution_gaps.length > 0 && !layer2.has_strategic_gap) s += 1;
+      if (layer2.classification_details.total_reviews_analyzed >= 10) s += 0.5;
+      if (layer1.total_found >= 3 && layer1.total_found <= 8) s += 0.5;
+      if (layer1.total_found === 0) s -= 1;
+      if (layer1.total_found > 20) s -= 1;
+      if (diagnosisResult.gap_type === 'none' && layer2.execution_gaps.length === 0) s -= 1;
+      return Math.max(1, Math.min(10, Math.round(s)));
+    })();
+
     const output: CompetitionBlockOutput = {
       diagnosis: diagnosisResult.diagnosis,
-      score: diagnosisResult.score,
+      score: computedCompScore,
       conflict_weight: diagnosisResult.conflict_weight,
       key_factors: diagnosisResult.key_factors,
       key_metric: diagnosisResult.key_metric,
@@ -1136,6 +1476,19 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'trend_id,user_id,block_number' });
 
     if (dbError) throw new Error(`Supabase error: ${dbError.message}`);
+
+    // ── Interpretation Layer (фоновая генерация, не блокирует ответ) ──
+    generateCompetitionInterpretation(
+      trend_id,
+      niche,
+      output.diagnosis,
+      output.block_context as Record<string, any>,
+      { layers: output.layers } as Record<string, any>,
+      supabase,
+      claude,
+    ).catch((err) =>
+      console.error("[Block4 Interpretation] Background error:", err),
+    );
 
     console.log("[Block4] Competition diagnosis:", {
       diagnosis: output.diagnosis,

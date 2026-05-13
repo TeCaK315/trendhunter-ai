@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 // Маппинг категорий UI → категории scan-trends
 const CATEGORY_MAP: Record<string, string[]> = {
@@ -15,6 +16,9 @@ const CATEGORY_MAP: Record<string, string[]> = {
 };
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json().catch(() => ({}));
     const category = body.category || 'random';

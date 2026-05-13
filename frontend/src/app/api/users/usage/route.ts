@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 // POST - Record usage (ideas generated, projects created, etc.)
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   if (!isSupabaseConfigured()) {
     return NextResponse.json({
       success: false,
@@ -113,6 +117,9 @@ export async function POST(request: NextRequest) {
 
 // GET - Get user's usage for today
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   if (!isSupabaseConfigured()) {
     return NextResponse.json({
       success: false,

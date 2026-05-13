@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callOpenAI, type OpenAIMessage } from '@/lib/openai';
 import { checkRateLimit, getClientIP, RATE_LIMITS, createRateLimitResponse } from '@/lib/rateLimit';
+import { getAuthUser } from '@/lib/auth-helpers'
 
 interface TranslateRequest {
   content: Record<string, unknown>;
@@ -18,6 +19,9 @@ function getCacheKey(content: Record<string, unknown>, targetLang: string): stri
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     // Rate limiting
     const clientIP = getClientIP(request);
@@ -203,6 +207,9 @@ Example output for English: {"title": "AI Analyzer", "items": [{"name": "Optimis
 
 // Batch перевод для нескольких объектов
 export async function PUT(request: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     // Rate limiting (batch uses same limit as single)
     const clientIP = getClientIP(request);
