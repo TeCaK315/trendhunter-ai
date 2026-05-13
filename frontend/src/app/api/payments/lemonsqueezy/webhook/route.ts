@@ -77,19 +77,29 @@ export async function POST(req: NextRequest) {
   const currentBalance = creditsRow?.balance ?? 0
   const newBalance = currentBalance + credits
 
-  await supabase
+  const { error: updateError } = await supabase
     .from('user_credits')
-    .upsert({ user_id: userId, balance: newBalance })
+    .update({ balance: newBalance, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
 
+  if (updateError) {
+    console.error('[LS Webhook] Balance update failed:', updateError)
+    return NextResponse.json({ error: 'Balance update failed', details: updateError.message }, { status: 500 })
+  }
+
   // Записываем транзакцию
-  await supabase.from('credit_transactions').insert({
+  const { error: txError } = await supabase.from('credit_transactions').insert({
     user_id: userId,
     amount: credits,
     type: 'purchase',
     description: `lemonsqueezy_order_${orderId}`,
   })
 
-  console.log(`[LS Webhook] Credited ${credits} to user ${userId.slice(0,8)}`)
-  return NextResponse.json({ received: true, credits_added: credits })
+  if (txError) {
+    console.error('[LS Webhook] Transaction insert failed:', txError)
+    // Не возвращаем 500 — баланс уже обновился, транзакция это audit-trail
+  }
+
+  console.log(`[LS Webhook] Credited ${credits} to user ${userId.slice(0,8)} (balance: ${newBalance})`)
+  return NextResponse.json({ received: true, credits_added: credits, new_balance: newBalance })
 }
