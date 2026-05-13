@@ -10,6 +10,21 @@ const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
   const {data: blocks, error} = await sb.from('block_results').select('*').eq('trend_id', tid).order('block_number');
   if (error) { console.error(error); process.exit(1); }
   const {data: synth} = await sb.from('synthesis_results').select('*').eq('trend_id', tid).maybeSingle();
+  const {data: interps} = await sb.from('block_interpretations').select('*').eq('trend_id', tid);
+
+  // map block_id → interpretation
+  const interpByBlockId = {};
+  for (const i of (interps || [])) interpByBlockId[i.block_id] = i;
+
+  // map block_number → block_id used in interpretations
+  const blockIdMap = {
+    1: 'problem',
+    2: 'demand',
+    3: 'sellability',
+    4: 'competition',
+    5: 'economics',
+    6: 'blind_spots',
+  };
 
   const niche = blocks[0]?.block_context?.niche || tid;
   const titles = {
@@ -21,6 +36,26 @@ const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
     6: '🕳️ Блок 6 — Слепые пятна (Blind Spots v2)',
   };
 
+  function renderInterpretation(p, interp) {
+    if (!interp) return;
+    p('### 💬 Что это значит (Interpretation Layer)');
+    p('');
+    p('> **' + interp.headline + '**');
+    p('');
+    p(interp.main_insight);
+    p('');
+    if (Array.isArray(interp.key_facts) && interp.key_facts.length) {
+      for (const fact of interp.key_facts) p('- ◆ ' + fact);
+      p('');
+    }
+    if (interp.decision_impact) {
+      p('**Что это значит для тебя:** ' + interp.decision_impact);
+      p('');
+    }
+    p('_Сгенерировано: ' + (interp.model_used || 'unknown') + ' · ' + new Date(interp.generated_at).toISOString().slice(0,10) + ' · качество данных: ' + (interp.data_sufficiency || '—') + '_');
+    p('');
+  }
+
   const lines = [];
   const p = (s='') => lines.push(s);
 
@@ -28,10 +63,32 @@ const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
   p('');
   p('**Trend ID:** `' + tid + '`');
   p('**Дата выгрузки:** ' + new Date().toISOString().slice(0,10));
-  p('**Источник данных:** Supabase `block_results` + `synthesis_results`');
+  p('**Источник данных:** Supabase `block_results` + `synthesis_results` + `block_interpretations`');
   p('');
   p('---');
   p('');
+
+  // ── ГЛАВНЫЙ ВЕРДИКТ из synthesis interpretation, в самом начале ──
+  if (interpByBlockId.synthesis) {
+    const i = interpByBlockId.synthesis;
+    p('## 🎯 Главный вердикт');
+    p('');
+    p('> **' + i.headline + '**');
+    p('');
+    p(i.main_insight);
+    p('');
+    if (Array.isArray(i.key_facts)) {
+      for (const fact of i.key_facts) p('- ◆ ' + fact);
+      p('');
+    }
+    if (i.decision_impact) {
+      p('**Что делать сейчас:** ' + i.decision_impact);
+      p('');
+    }
+    p('---');
+    p('');
+  }
+
   p('## Сводка по блокам');
   p('');
   p('| # | Блок | Диагноз | Score | Conflict | Ключевая метрика |');
@@ -55,6 +112,8 @@ const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
     p('');
     p(`**Diagnosis:** \`${b.diagnosis}\` &nbsp;&nbsp; **Score:** ${b.score} &nbsp;&nbsp; **Conflict weight:** ${b.conflict_weight}`);
     p('');
+    // Interpretation Layer первым делом — главный человеческий вывод
+    renderInterpretation(p, interpByBlockId[blockIdMap[b.block_number]]);
     if (b.key_metric) { p('**Ключевая метрика:** ' + b.key_metric); p(''); }
     if (Array.isArray(b.key_factors) && b.key_factors.length) {
       p('**Ключевые факторы:**');
@@ -87,9 +146,11 @@ const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
 
   p('## 🧠 Блок 7 — AI Синтез (Optimist / Skeptic / Arbitrator)');
   p('');
+  renderInterpretation(p, interpByBlockId.synthesis);
   if (synth) {
-    p(`**Verdict:** \`${synth.verdict || '—'}\``);
-    p(`**Confidence:** ${synth.confidence ?? '—'}%`);
+    const arb = synth.arbitrator || {};
+    p(`**Verdict type:** \`${arb.verdict_type || synth.verdict || '—'}\``);
+    p(`**Confidence:** ${arb.confidence != null ? Math.round(arb.confidence * 100) + '%' : (synth.confidence ?? '—')}`);
     p('');
     p('<details><summary>📦 Полный synthesis_results</summary>');
     p('');
@@ -109,7 +170,7 @@ const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
   p('_Документ сгенерирован автоматически из Supabase. Все данные — снимок на момент выгрузки._');
   p('');
 
-  const outPath = path.join('docs', 'TREND_ANALYSIS_1775666689411-1.md');
+  const outPath = path.join('docs', `TREND_ANALYSIS_${tid.replace(/^trend-/, '')}.md`);
   fs.mkdirSync('docs', {recursive: true});
   fs.writeFileSync(outPath, lines.join('\n'), 'utf8');
   console.log('OK', outPath, lines.length, 'lines,', lines.join('\n').length, 'chars');

@@ -4,7 +4,7 @@ import React from 'react';
 
 type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'monitoring' | 'research' | 'business' | 'project';
 type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics' | 'tech';
-type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'survey' | 'gtm' | 'report' | 'differentiation';
+type ActionPlanSubTab = 'free' | 's0' | 's1' | 's2' | 's3' | 's5' | 'summary' | 'calculator' | 'scenarios' | 'survey' | 'gtm' | 'report' | 'differentiation';
 type BusinessSubTab = 'venture' | 'leads';
 
 interface DashboardSidebarProps {
@@ -78,7 +78,13 @@ export default function DashboardSidebar({
       label: language === 'ru' ? 'Стратегия' : 'Strategy',
       icon: '📋',
       subItems: [
-        { id: 'plan', label: language === 'ru' ? 'План' : 'Plan', icon: '📋' },
+        { id: 'free', label: language === 'ru' ? 'Оценка шансов' : 'Free assessment', icon: '🆓' },
+        { id: 's0', label: language === 'ru' ? 'Угол атаки' : 'Angle', icon: '🎯' },
+        { id: 's1', label: language === 'ru' ? 'Первый клиент' : 'First client', icon: '👤' },
+        { id: 's2', label: language === 'ru' ? 'Продукт v1' : 'Product v1', icon: '⚙️' },
+        { id: 's3', label: language === 'ru' ? 'Первые 10 клиентов' : 'First 10', icon: '🚀' },
+        { id: 's5', label: language === 'ru' ? 'Путь к деньгам' : 'Revenue path', icon: '💰' },
+        { id: 'summary', label: language === 'ru' ? 'Сводная карта' : 'Summary card', icon: '📊' },
         { id: 'differentiation', label: language === 'ru' ? 'Дифференциация' : 'Differentiation', icon: '🎯' },
         { id: 'calculator', label: language === 'ru' ? 'Калькулятор' : 'Calculator', icon: '🧮' },
         { id: 'scenarios', label: language === 'ru' ? 'Сценарии' : 'Scenarios', icon: '🔀' },

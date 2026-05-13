@@ -4,7 +4,7 @@ export default function generate(_ctx: BlockContext): BlockResult {
   return {
     'tsconfig.json': JSON.stringify({
       compilerOptions: {
-        target: 'es5',
+        target: 'es2017',
         lib: ['dom', 'dom.iterable', 'esnext'],
         allowJs: true,
         skipLibCheck: true,

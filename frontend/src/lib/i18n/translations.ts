@@ -7,6 +7,12 @@ export interface Translations {
     nicheResearch: string;
     favorites: string;
     projects: string;
+    lk: string;
+    lkHome: string;
+    lkResearch: string;
+    lkStrategies: string;
+    lkRoadmap: string;
+    lkProjects: string;
     collapse: string;
     sectionDiscover: string;
     sectionWorkspace: string;
@@ -523,6 +529,12 @@ export const translations: Record<Language, Translations> = {
       nicheResearch: 'Исследование ниши',
       favorites: 'Избранное',
       projects: 'Проекты',
+      lk: 'ЛК',
+      lkHome: 'Главная',
+      lkResearch: 'Исследования',
+      lkStrategies: 'Стратегии',
+      lkRoadmap: 'Роадмап Pro',
+      lkProjects: 'Проекты',
       collapse: 'Свернуть',
       sectionDiscover: 'Обзор',
       sectionWorkspace: 'Рабочее пространство',
@@ -1000,6 +1012,12 @@ export const translations: Record<Language, Translations> = {
       nicheResearch: 'Niche Research',
       favorites: 'Favorites',
       projects: 'Projects',
+      lk: 'Account',
+      lkHome: 'Home',
+      lkResearch: 'Research',
+      lkStrategies: 'Strategies',
+      lkRoadmap: 'Roadmap Pro',
+      lkProjects: 'Projects',
       collapse: 'Collapse',
       sectionDiscover: 'Discover',
       sectionWorkspace: 'Workspace',

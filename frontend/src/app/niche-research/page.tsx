@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getItem, setItem } from '@/lib/storage';
 import ProductSpecPreview from '@/components/ProductSpecPreview';
@@ -144,12 +145,75 @@ export default function NicheResearchPage() {
   const [productSpecLoading, setProductSpecLoading] = useState(false);
   const [productSpecError, setProductSpecError] = useState('');
 
-  // Auto-save to favorites when analysis is complete
+  // Pipeline launch state
+  const [launchingPipeline, setLaunchingPipeline] = useState(false);
+  const [savedResearchId, setSavedResearchId] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Auto-save to favorites + Supabase when analysis is complete
   useEffect(() => {
     if (deepAnalysis && !savedToFavorites) {
       saveToFavorites();
+      // Также сохраняем в Supabase для постоянной истории
+      void (async () => {
+        try {
+          const res = await fetch('/api/niche-research/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              niche,
+              description,
+              analysis: deepAnalysis,
+              sources,
+            }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.id) setSavedResearchId(json.id);
+        } catch (e) {
+          console.warn('[niche-research] supabase save failed:', e);
+        }
+      })();
     }
   }, [deepAnalysis]);
+
+  const handleLaunchFullPipeline = async () => {
+    if (!deepAnalysis || launchingPipeline) return;
+    setLaunchingPipeline(true);
+    try {
+      let researchId = savedResearchId;
+      if (!researchId) {
+        const saveRes = await fetch('/api/niche-research/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ niche, description, analysis: deepAnalysis, sources }),
+        });
+        const saveJson = await saveRes.json().catch(() => ({}));
+        researchId = saveJson.id ?? null;
+        if (researchId) setSavedResearchId(researchId);
+      }
+
+      const convertRes = await fetch('/api/niche-research/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          research_id: researchId,
+          niche,
+          description,
+          analysis: deepAnalysis,
+        }),
+      });
+      const convertJson = await convertRes.json().catch(() => ({}));
+      if (convertJson.trend_id) {
+        router.push(`/trends/${encodeURIComponent(convertJson.trend_id)}`);
+      } else {
+        console.error('[launch-pipeline] no trend_id returned:', convertJson);
+        setLaunchingPipeline(false);
+      }
+    } catch (e) {
+      console.error('[launch-pipeline]', e);
+      setLaunchingPipeline(false);
+    }
+  };
 
   const saveToFavorites = () => {
     if (!deepAnalysis || savedToFavorites) return;
@@ -936,6 +1000,44 @@ export default function NicheResearchPage() {
                       {t.nicheResearch.productSpecHint}
                     </p>
                   )}
+                </div>
+
+                {/* Запустить полный анализ TrendHunter */}
+                <div
+                  style={{
+                    marginTop: 24,
+                    padding: '20px 24px',
+                    background: 'rgba(93,202,165,0.06)',
+                    border: '0.5px solid rgba(93,202,165,0.2)',
+                    borderRadius: 14,
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 500, color: '#F5F5F4', marginBottom: 8 }}>
+                    Запустить полный анализ TrendHunter
+                  </div>
+                  <div style={{ fontSize: 13, color: '#A3A3A1', marginBottom: 16, lineHeight: 1.6 }}>
+                    Сохранить нишу в систему и запустить Evidence → Стратегия → Роадмап по полному пайплайну.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLaunchFullPipeline}
+                    disabled={launchingPipeline}
+                    style={{
+                      padding: '10px 20px',
+                      background: launchingPipeline
+                        ? 'rgba(93,202,165,0.2)'
+                        : 'linear-gradient(135deg,#1D9E75,#0F6E56)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 10,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      cursor: launchingPipeline ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {launchingPipeline ? 'Сохраняем нишу...' : 'Запустить полный анализ →'}
+                  </button>
                 </div>
 
                 {/* Analysis Metadata */}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import type { BlockInterpretation } from '@/types/analysis';
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -90,6 +91,7 @@ interface Props {
   data: RealProblemData | null;
   loading?: boolean;
   error?: string;
+  trendId?: string;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -118,6 +120,74 @@ const CUSTOM_STYLES = `
   transition:border-color .2s,transform .15s;
 }
 .pb-card:hover{border-color:#243C55;transform:translateY(-1px)}
+
+.interpretation-layer{
+  background:linear-gradient(180deg,#0F1A26 0%,#0D1620 100%);
+  border:1px solid #243C55;
+  border-radius:14px;
+  padding:24px 26px;
+  position:relative;
+  overflow:hidden;
+}
+.interpretation-layer::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent);
+  background-size:200%;animation:pb-shimmer 5s linear infinite;
+}
+.interpretation-headline{
+  font-size:20px;line-height:1.35;font-weight:800;color:#E8F2FF;
+  margin:0 0 12px 0;letter-spacing:-0.01em;
+}
+.interpretation-insight{
+  font-size:13.5px;line-height:1.6;color:#A8C0D8;
+  margin:0 0 18px 0;
+}
+.key-facts{
+  display:flex;flex-direction:column;gap:8px;
+  padding:14px 16px;
+  background:rgba(0,238,154,0.03);
+  border:1px solid rgba(0,238,154,0.10);
+  border-radius:10px;
+  margin-bottom:16px;
+}
+.key-fact{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:12.5px;line-height:1.5;color:#C8DCED;
+}
+.key-fact-primary{
+  padding-bottom:10px;margin-bottom:2px;
+  border-bottom:1px solid rgba(0,238,154,0.12);
+}
+.key-fact-primary .fact-text{
+  font-size:14px;color:#E8F2FF;font-weight:500;line-height:1.55;
+}
+.key-fact .fact-text{font-size:12.5px;color:#C8DCED;}
+.fact-marker{color:#00EE9A;font-size:10px;line-height:1.6;flex-shrink:0;margin-top:2px;}
+.key-fact-primary .fact-marker{color:#00EE9A;font-size:12px;}
+.decision-impact{
+  border-top:1px solid #1A2E42;
+  padding-top:14px;
+}
+.decision-impact .impact-label{
+  display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;
+  color:#3E6480;font-weight:700;margin-bottom:6px;
+}
+.decision-impact p{
+  font-size:13px;line-height:1.55;color:#E8F2FF;margin:0;font-weight:500;
+}
+.interpretation-skeleton{
+  background:#0D1620;border:1px solid #1A2E42;border-radius:14px;
+  padding:24px 26px;display:flex;flex-direction:column;gap:12px;
+}
+.skeleton-line{
+  height:14px;border-radius:6px;
+  background:linear-gradient(90deg,#1A2E42 0%,#243C55 50%,#1A2E42 100%);
+  background-size:200% 100%;
+  animation:pb-shimmer 1.6s linear infinite;
+}
+.skeleton-line.w-3\\/4{width:75%}
+.skeleton-line.w-full{width:100%}
+.skeleton-line.w-5\\/6{width:83%}
 `;
 
 let stylesInjected = false;
@@ -185,10 +255,25 @@ function IntelligenceLoadingIndicator({ show }: { show: boolean }) {
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════
 
-export default function RealProblemBlock({ data, loading, error }: Props) {
+export default function RealProblemBlock({ data, loading, error, trendId }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [interpretation, setInterpretation] = useState<BlockInterpretation | null>(null);
+  const [interpretationLoading, setInterpretationLoading] = useState(true);
 
   useEffect(() => { injectStyles(); }, []);
+
+  // Загружаем интерпретацию один раз когда данные блока готовы
+  useEffect(() => {
+    if (!trendId || !data) return;
+    let cancelled = false;
+    setInterpretationLoading(true);
+    fetch(`/api/interpretations/problem?trend_id=${encodeURIComponent(trendId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => { if (!cancelled) setInterpretation(json); })
+      .catch(() => { if (!cancelled) setInterpretation(null); })
+      .finally(() => { if (!cancelled) setInterpretationLoading(false); });
+    return () => { cancelled = true; };
+  }, [trendId, data]);
 
   if (loading) {
     return (
@@ -211,7 +296,6 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
   const diag = diagLabel(diagnosis);
   const score = data.verdict.value;
   const distribution = data._distribution || data.current_solutions.pain_distribution || {};
-  const weightedScore = data.who_hurts.weighted_score || 0;
   const payingRatio = data.willingness_to_pay.paying_ratio || 0;
   const payingScore = data.willingness_to_pay.paying_score || 0;
   const ctx = data.willingness_to_pay.context || 'mixed';
@@ -240,9 +324,6 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
   const payingLabel = payingScore >= 60 ? 'STRONG' : payingScore >= 35 ? 'MIXED' : 'WEAK';
   const payingColor = payingScore >= 60 ? C.cyan : payingScore >= 35 ? C.amber : C.red;
 
-  // Confidence label
-  const confLabel = data._block_context?.data_quality?.classification_confidence?.toUpperCase() || (weightedScore >= 60 ? 'HIGH' : weightedScore >= 30 ? 'MEDIUM' : 'LOW');
-
   return (
     <div className="space-y-3">
 
@@ -264,6 +345,32 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
           )}
         </div>
       </div>
+
+      {/* ═══ INTERPRETATION LAYER ═══ */}
+      {!interpretationLoading && interpretation ? (
+        <div className="interpretation-layer pb-fade" style={{ animationDelay: '.03s' }}>
+          <h2 className="interpretation-headline">{interpretation.headline}</h2>
+          <p className="interpretation-insight">{interpretation.main_insight}</p>
+          <div className="key-facts">
+            {interpretation.key_facts.map((fact, i) => (
+              <div key={i} className={`key-fact${i === 0 ? ' key-fact-primary' : ''}`}>
+                <span className="fact-marker">◆</span>
+                <span className="fact-text">{fact}</span>
+              </div>
+            ))}
+          </div>
+          <div className="decision-impact">
+            <span className="impact-label">Что это значит для тебя:</span>
+            <p>{interpretation.decision_impact}</p>
+          </div>
+        </div>
+      ) : interpretationLoading ? (
+        <div className="interpretation-skeleton pb-fade">
+          <div className="skeleton-line w-3/4" />
+          <div className="skeleton-line w-full" />
+          <div className="skeleton-line w-5/6" />
+        </div>
+      ) : null}
 
       {/* ═══ VERDICT HERO ═══ */}
       <div className="pb-card relative overflow-hidden pb-fade" style={{ animationDelay: '.05s' }}>
@@ -332,14 +439,14 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,238,154,.08)', border: '1px solid rgba(0,238,154,.12)' }}>
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="2" y="10" width="3" height="7" rx="1.5" fill={C.green}/><rect x="7.5" y="6.5" width="3" height="10.5" rx="1.5" fill={C.green} opacity=".65"/><rect x="13" y="2" width="3" height="15" rx="1.5" fill={C.green} opacity=".38"/></svg>
               </div>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,238,154,.08)', color: C.green, border: '1px solid rgba(0,238,154,.15)' }}>{confLabel}</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,238,154,.08)', color: C.green, border: '1px solid rgba(0,238,154,.15)' }}>СИГНАЛ</span>
             </div>
             <div className="text-2xl font-extrabold leading-none" style={{ color: C.green }}>
-              {Math.round(weightedScore)}<span className="text-xs" style={{ color: C.t3 }}>/100</span>
+              {data.who_hurts.total_complaints}
             </div>
-            <div className="text-[8px] uppercase tracking-wider mt-0.5 mb-2" style={{ color: C.t3 }}>Взвешенный сигнал</div>
+            <div className="text-[8px] uppercase tracking-wider mt-0.5 mb-2" style={{ color: C.t3 }}>Жалоб найдено</div>
             <div className="h-0.5 rounded-full overflow-hidden mb-2" style={{ background: C.b1 }}>
-              <div className="h-full rounded-full pb-bar-anim" style={{ width: `${Math.min(100, weightedScore)}%`, background: C.green }} />
+              <div className="h-full rounded-full pb-bar-anim" style={{ width: `${Math.min(100, data.who_hurts.total_complaints * 2)}%`, background: C.green }} />
             </div>
             <div className="border-t pt-2 space-y-1" style={{ borderColor: C.b1 }}>
               {allSources.slice(0, 7).map((s, i) => (
@@ -414,10 +521,6 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
             <div className="border-t pt-2 space-y-1" style={{ borderColor: C.b1 }}>
               <div className="flex items-start gap-1.5 text-[10px]">
                 <div className="w-1 h-1 rounded-full mt-1 shrink-0" style={{ background: C.cyan }} />
-                <span style={{ color: C.t2 }}>Score: {payingScore}</span>
-              </div>
-              <div className="flex items-start gap-1.5 text-[10px]">
-                <div className="w-1 h-1 rounded-full mt-1 shrink-0" style={{ background: C.cyan }} />
                 <span style={{ color: C.t2 }}>{ctx.toUpperCase()} · {ctx === 'b2b' ? 'длинный цикл продажи' : ctx === 'b2c' ? 'решение за дни' : 'смешанная аудитория'}</span>
               </div>
             </div>
@@ -458,16 +561,13 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
       {clusters.length > 0 && (
         <div className="pb-card p-4 pb-fade" style={{ animationDelay: '.26s' }}>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold" style={{ color: C.t2 }}>Подтверждённые кластеры боли</span>
+            <span className="text-xs font-bold" style={{ color: C.t2 }}>Главные жалобы пользователей</span>
             <div className="flex-1 h-px" style={{ background: C.b1 }} />
           </div>
           <div className="divide-y" style={{ borderColor: C.b1 }}>
             {clusters.map((cluster, i) => {
               const enriched = intel?.clusters_enriched?.[i];
-              const isHigh = cluster.confidence === 'high';
-              const confColor = isHigh ? C.green : cluster.confidence === 'medium' ? C.amber : C.t3;
-              const confBg = isHigh ? 'rgba(0,238,154,.08)' : cluster.confidence === 'medium' ? 'rgba(255,168,38,.08)' : 'rgba(62,100,128,.08)';
-              const confBorder = isHigh ? 'rgba(0,238,154,.15)' : cluster.confidence === 'medium' ? 'rgba(255,168,38,.15)' : 'rgba(62,100,128,.15)';
+              const confColor = cluster.confidence === 'high' ? C.green : cluster.confidence === 'medium' ? C.amber : C.t3;
 
               // Find matching complaint for quote
               const quote = data.who_hurts.complaints.find(c => c.pain_category === cluster.category);
@@ -480,9 +580,6 @@ export default function RealProblemBlock({ data, loading, error }: Props) {
                   {/* Header */}
                   <div className="flex items-center gap-2 flex-wrap mb-2">
                     <span className="text-xs font-bold" style={{ color: C.t1 }}>{enriched?.cluster_name || cluster.pain_summary}</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: confBg, color: confColor, border: `1px solid ${confBorder}` }}>
-                      {cluster.confidence.toUpperCase()} · {cluster.source_count} ист.
-                    </span>
                     <span className="ml-auto text-[10px] font-mono" style={{ color: C.t3 }}>{cluster.mention_count} упоминаний</span>
                   </div>
 

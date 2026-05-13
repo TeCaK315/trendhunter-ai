@@ -361,19 +361,61 @@ interface CACScenario { low: number; mid: number; high: number; }
 interface CACResult { plg: CACScenario | null; seo_led: CACScenario | null; community_led: CACScenario | null; sales_led: CACScenario | null; recommended: AcquisitionType; cac_spread_flag: boolean; }
 
 export function calculateCACScenarios(input: Block5Input): CACResult {
-  const im = input.commercial_intent_ratio > 0.6 ? 0.8 : input.commercial_intent_ratio > 0.3 ? 1.0 : 1.5;
-  const sm = input.market_type === 'B2B' ? (input.avg_switching_cost === 'HIGH' ? 1.3 : input.avg_switching_cost === 'LOW' ? 0.8 : 1.0) : 1.0;
-  const slm = (input.acquisition_type === 'SALES_LED' && input.avg_switching_cost === 'LOW') ? 1.3 : 1.0;
-  const nem = (t: AcquisitionType, p: number | null) => t === 'PLG' ? 1.2 : t === 'SEO_LED' ? 1.5 : t === 'COMMUNITY_LED' ? 1.8 : t === 'SALES_LED' ? ((p ?? 0) > 500 ? 3.0 : 2.0) : 1.5;
-  const mk = (bl: number, bm: number, bh: number, t: AcquisitionType): CACScenario => ({ low: Math.round(bl*nem(t,input.price_range_median)*im*sm*slm), mid: Math.round(bm*nem(t,input.price_range_median)*im*sm*slm), high: Math.round(bh*nem(t,input.price_range_median)*im*sm*slm) });
+  // ── Niche-dependent CAC: базируется на среднем чеке продукта, не на константах ──
+  // Эмпирика: PLG CAC ≈ 2–3× MRR, SEO ≈ 4–5× MRR, Sales-led ≈ 40-80% ACV
+  // Fallback цена с учётом market_type (B2C ≠ enterprise $500)
+  const monthlyPrice = input.price_range_median ?? (() => {
+    const mt = input.market_type;
+    const pt = input.price_model; // proxy for tier context
+    if (mt === 'B2C') return 20;          // B2C default — budget
+    if (mt === 'B2B') return pt === 'subscription' ? 150 : 80;
+    return 40;                            // mixed default
+  })();
 
-  // [Impl #2] Only explicit price > $500 = mismatch. null price = unknown, not forced.
+  // Мультипликаторы из контекста ниши
+  const intentMult = input.commercial_intent_ratio > 0.6 ? 0.8 : input.commercial_intent_ratio > 0.3 ? 1.0 : 1.5;
+  const switchingMult = input.market_type === 'B2B' ? (input.avg_switching_cost === 'HIGH' ? 1.3 : input.avg_switching_cost === 'LOW' ? 0.8 : 1.0) : 1.0;
+  const frictionMult = input.friction_score === 'LOW' ? 0.8 : input.friction_score === 'HIGH' ? 1.4 : 1.0;
+
+  // Коэффициент конкурентности (больше конкурентов → дороже привлечение)
+  const competitorCount = (input.gap_map ?? []).length;
+  const competitionMult = competitorCount > 20 ? 2.0 : competitorCount > 10 ? 1.5 : competitorCount > 5 ? 1.2 : 1.0;
+
+  // Сегмент (B2B/B2C)
+  const segmentMult = input.market_type === 'B2C' ? 1.0 : input.market_type === 'B2B' ? 2.0 : 1.5;
+
+  // PLG CAC: monthlyPrice × 2.5 × friction × competition × intent
+  // + ceiling по market_type чтобы B2C не получал CAC $1500
+  const plgCeiling = input.market_type === 'B2C' ? 500 : input.market_type === 'B2B' ? 8000 : 2000;
+  const plgBase = Math.min(
+    plgCeiling,
+    Math.round(monthlyPrice * 2.5 * frictionMult * competitionMult * intentMult),
+  );
+
+  // SEO CAC: PLG × 2 (нужен контент, SEO, время)
+  const seoBase = Math.round(plgBase * 2.0);
+
+  // Community CAC: PLG × 0.9 (органика, дешевле но медленнее)
+  const communityBase = Math.round(plgBase * 0.9);
+
+  // Sales-led CAC: зависит от сегмента и ACV
+  const acv = monthlyPrice * 12;
+  const salesBase = Math.round(acv * (input.market_type === 'B2C' ? 0.4 : input.market_type === 'B2B' ? 0.8 : 0.6) * competitionMult * switchingMult);
+
+  // Диапазоны: low = mid × 0.5, high = mid × 2
+  const range = (mid: number, minFloor: number): CACScenario => ({
+    low: Math.round(Math.max(minFloor * 0.5, mid * 0.5)),
+    mid: Math.max(minFloor, mid),
+    high: Math.round(Math.max(minFloor * 2, mid * 2.0)),
+  });
+
+  // [Impl #2] Only explicit price > $500 = mismatch for PLG
   const isEPM = input.price_range_median !== null && input.price_range_median > 500 && input.acquisition_type === 'PLG';
-  const plg = isEPM ? null : mk(80, 150, 300, 'PLG');
-  const seo_led = mk(150, 300, 600, 'SEO_LED');
-  const community_led = mk(50, 120, 200, 'COMMUNITY_LED');
-  const sb = (input.price_range_median ?? 0) > 500 ? {low:1500,mid:2500,high:4000} : {low:500,mid:900,high:1200};
-  const sales_led = mk(sb.low, sb.mid, sb.high, 'SALES_LED');
+  const plg = isEPM ? null : range(plgBase, 30);
+  const seo_led = range(seoBase, 80);
+  const community_led = range(communityBase, 25);
+  const sales_led = range(salesBase, 200);
+
   const recommended: AcquisitionType = isEPM ? 'SALES_LED' : input.acquisition_type === 'UNKNOWN' ? 'SEO_LED' : input.acquisition_type;
   const avail = [plg, seo_led, community_led, sales_led].filter(Boolean) as CACScenario[];
   const spread = avail.length >= 2 && Math.max(...avail.map(s=>s.high)) / Math.min(...avail.map(s=>s.low)) > 5;

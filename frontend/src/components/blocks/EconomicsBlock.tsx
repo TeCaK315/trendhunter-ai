@@ -1,9 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import RevenueRangeBar from './RevenueRangeBar';
 import FlowingConnector from './FlowingConnector';
 import MetricTooltip from '../MetricTooltip';
+import type { BlockInterpretation } from '@/types/analysis';
+
+const CAC_CHANNELS: Array<{ key: 'plg' | 'community_led' | 'seo_led' | 'sales_led'; name: string }> = [
+  { key: 'plg', name: 'Через продукт (самообслуживание)' },
+  { key: 'community_led', name: 'Через сообщество' },
+  { key: 'seo_led', name: 'Через SEO / контент' },
+  { key: 'sales_led', name: 'Через продавцов' },
+];
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -42,12 +50,27 @@ interface Props {
   loading?: boolean;
   error?: string;
   trendTitle?: string;
+  trendId?: string;
 }
 
 // ── Component ────────────────────────────────────────────────
 
-export default function EconomicsBlock({ data, loading, error, trendTitle }: Props) {
+export default function EconomicsBlock({ data, loading, error, trendTitle, trendId }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [interpretation, setInterpretation] = useState<BlockInterpretation | null>(null);
+  const [interpretationLoading, setInterpretationLoading] = useState(true);
+
+  useEffect(() => {
+    if (!trendId || !data) return;
+    let cancelled = false;
+    setInterpretationLoading(true);
+    fetch(`/api/interpretations/economics?trend_id=${encodeURIComponent(trendId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => { if (!cancelled) setInterpretation(json); })
+      .catch(() => { if (!cancelled) setInterpretation(null); })
+      .finally(() => { if (!cancelled) setInterpretationLoading(false); });
+    return () => { cancelled = true; };
+  }, [trendId, data]);
 
   if (loading || !data) {
     return (
@@ -77,8 +100,25 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
   const mHigh = data.monthly_revenue_high ?? data.monthly_revenue?.high ?? (revHigh / 12);
 
   const confidence = (data.confidence || data.economics_confidence || 'medium').toLowerCase();
+  const isLowConfidence = confidence === 'low' || (data.revenue_confidence ?? '').toString().toLowerCase() === 'low';
   const dataQuality = data.data_quality_score ?? 5;
   const viability = data.revenue_viability ?? (diag === 'green' ? 'viable' : diag === 'yellow' ? 'marginal' : 'not_viable');
+
+  // P0 5.2/5.6: реалистичные бюджеты + список каналов CAC
+  const cacScenarios = data.cac_scenarios ?? null;
+  const minSignalBudget = data.min_signal_budget ?? null;
+  const standardExperimentBudget = data.standard_experiment_budget ?? null;
+  const cheapestCacKey: 'plg' | 'community_led' | 'seo_led' | null = (() => {
+    if (!cacScenarios) return null;
+    const candidates: Array<['plg' | 'community_led' | 'seo_led', number]> = [
+      ['plg', cacScenarios.plg?.mid ?? Infinity],
+      ['community_led', cacScenarios.community_led?.mid ?? Infinity],
+      ['seo_led', cacScenarios.seo_led?.mid ?? Infinity],
+    ];
+    const finite = candidates.filter(([, v]) => Number.isFinite(v) && v > 0);
+    if (!finite.length) return null;
+    return finite.reduce((best, cur) => (cur[1] < best[1] ? cur : best))[0];
+  })();
 
   const cacRaw = data.cac_estimate ?? 0;
   const cacBest = data.cac_best as { mid: number; channel: string } | null | undefined;
@@ -94,7 +134,15 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
   const method2 = data.method2 ?? data.methods?.method_2 ?? null;
   const method3 = data.method3 ?? data.methods?.method_3 ?? null;
 
-  const keyFactors = data.key_factors ?? [];
+  // Фильтруем forbidden технические key_factors которые приходят из роута:
+  // "Качество: HIGH", "Confidence: LOW", "CAC mid: $X", "Revenue: $X/год"
+  const keyFactors: string[] = (data.key_factors ?? []).filter((f: string) =>
+    !/^Качество:\s/.test(f) &&
+    !/^Confidence:\s/i.test(f) &&
+    !/^CAC mid:\s/.test(f) &&
+    !/^Revenue:\s/.test(f) &&
+    !/^Payback:\s/.test(f),
+  );
   const keyMetric = data.key_metric ?? '';
   const intel = data.intelligence_output ?? null;
 
@@ -104,6 +152,47 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
 
   return (
     <div className="space-y-3">
+      {/* ═══ INTERPRETATION LAYER ═══ */}
+      <style jsx>{`
+        @keyframes eb-shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+        .eb-interp { background: linear-gradient(180deg,#0F1A26 0%,#0D1620 100%); border:1px solid #243C55; border-radius:14px; padding:24px 26px; position:relative; overflow:hidden; }
+        .eb-interp::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent); background-size:200%; animation:eb-shimmer 5s linear infinite; }
+        .eb-interp h2 { font-size:20px; line-height:1.35; font-weight:800; color:#E8F2FF; margin:0 0 12px 0; letter-spacing:-0.01em; }
+        .eb-interp .insight { font-size:13.5px; line-height:1.6; color:#A8C0D8; margin:0 0 18px 0; }
+        .eb-interp .facts { display:flex; flex-direction:column; gap:8px; padding:14px 16px; background:rgba(0,238,154,0.03); border:1px solid rgba(0,238,154,0.10); border-radius:10px; margin-bottom:16px; }
+        .eb-interp .fact { display:flex; align-items:flex-start; gap:10px; font-size:12.5px; line-height:1.5; color:#C8DCED; }
+        .eb-interp .marker { color:#00EE9A; font-size:10px; line-height:1.6; flex-shrink:0; margin-top:2px; }
+        .eb-interp .impact { border-top:1px solid #1A2E42; padding-top:14px; }
+        .eb-interp .impact-label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#3E6480; font-weight:700; margin-bottom:6px; }
+        .eb-interp .impact p { font-size:13px; line-height:1.55; color:#E8F2FF; margin:0; font-weight:500; }
+        .eb-skel { background:#0D1620; border:1px solid #1A2E42; border-radius:14px; padding:24px 26px; display:flex; flex-direction:column; gap:12px; }
+        .eb-skel-line { height:14px; border-radius:6px; background:linear-gradient(90deg,#1A2E42 0%,#243C55 50%,#1A2E42 100%); background-size:200% 100%; animation:eb-shimmer 1.6s linear infinite; }
+      `}</style>
+      {!interpretationLoading && interpretation ? (
+        <div className="eb-interp">
+          <h2>{interpretation.headline}</h2>
+          <p className="insight">{interpretation.main_insight}</p>
+          <div className="facts">
+            {interpretation.key_facts.map((fact, i) => (
+              <div key={i} className="fact">
+                <span className="marker">◆</span>
+                <span>{fact}</span>
+              </div>
+            ))}
+          </div>
+          <div className="impact">
+            <span className="impact-label">Что это значит для тебя:</span>
+            <p>{interpretation.decision_impact}</p>
+          </div>
+        </div>
+      ) : interpretationLoading ? (
+        <div className="eb-skel">
+          <div className="eb-skel-line" style={{ width: '75%' }} />
+          <div className="eb-skel-line" style={{ width: '100%' }} />
+          <div className="eb-skel-line" style={{ width: '83%' }} />
+        </div>
+      ) : null}
+
       {/* ═══ C2 — VERDICT HERO ═══ */}
       <div className="bg-[#0C1520] border border-[#1A2E42] rounded-2xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[2px]"
@@ -117,28 +206,30 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
             </span>
 
             <h2 className="text-2xl font-extrabold leading-tight text-white mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
-              {revHigh > 0 ? <>До <span style={{ color: dc.hex }}>{formatMoney(revHigh)}</span> в год — реалистичный сценарий</> : keyMetric || 'Экономика проанализирована'}
+              {isLowConfidence
+                ? (revHigh > 0
+                    ? <>Потенциал <span style={{ color: dc.hex }}>{formatMoney(revLow)} — {formatMoney(revHigh)}</span> в год</>
+                    : (keyMetric || 'Экономика проанализирована'))
+                : (revHigh > 0
+                    ? <>До <span style={{ color: dc.hex }}>{formatMoney(revHigh)}</span> в год — реалистичный сценарий</>
+                    : (keyMetric || 'Экономика проанализирована'))}
             </h2>
             <p className="text-[13px] text-[#7AAAC8] mb-2">
-              {confidence !== 'low' && revMid > 0
-                ? `Три независимых метода. ${confidence.toUpperCase()} confidence. ${monthsToRevenue > 0 ? `${monthsToRevenue.toFixed(1)} мес до первых денег.` : ''}`
-                : keyMetric || 'Данные ограничены.'}
+              {isLowConfidence
+                ? 'Оценка ориентировочная — данных о ценах конкурентов немного. Точнее скажут первые клиенты.'
+                : (revMid > 0
+                    ? `Три независимых метода расчёта.${monthsToRevenue > 0 ? ` ${monthsToRevenue.toFixed(1)} мес до первых денег.` : ''}`
+                    : (keyMetric || 'Экономика проанализирована.'))}
             </p>
             <p className="text-[11px] text-[#3E6480] italic mb-3">
-              Блок 4 определил gap · Блок 5 считает: сколько на этом можно заработать?
+              Блок 4 определил конкурентов · Блок 5 считает: сколько на этом можно заработать?
             </p>
 
             <div className="space-y-1.5">
-              {revMid > 0 && (
+              {!isLowConfidence && revMid > 0 && (
                 <div className="flex items-start gap-2 text-[12.5px]">
                   <span className={`w-[18px] h-[18px] rounded-[5px] flex items-center justify-center text-[10px] font-extrabold shrink-0 mt-0.5 ${dc.dim} ${dc.text}`}>✓</span>
-                  <span className="text-[#7AAAC8]"><b className="text-white">Revenue Range {formatMoney(revLow)} — {formatMoney(revHigh)}/год</b> · {confidence.toUpperCase()} confidence</span>
-                </div>
-              )}
-              {cac > 0 && (
-                <div className="flex items-start gap-2 text-[12.5px]">
-                  <span className={`w-[18px] h-[18px] rounded-[5px] flex items-center justify-center text-[10px] font-extrabold shrink-0 mt-0.5 ${dc.dim} ${dc.text}`}>✓</span>
-                  <span className="text-[#7AAAC8]"><b className="text-white">CAC estimate ${Math.round(cac)}</b> · {cacSource}</span>
+                  <span className="text-[#7AAAC8]"><b className="text-white">Реалистичный диапазон {formatMoney(revLow)} — {formatMoney(revHigh)}/год</b></span>
                 </div>
               )}
               {monthsToRevenue > 0 && (
@@ -161,7 +252,9 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
               <div className={`h-full rounded-[3px]`} style={{ background: `linear-gradient(90deg, ${dc.hex}, #00D4FF)`, width: `${score * 10}%`, animation: 'barIn 1s 0.6s ease both' }} />
             </div>
             <div className="text-[11px] text-[#3E6480] text-right mt-1 font-mono">{Math.round(score * 10)}%</div>
-            <div className="text-[10px] text-[#3E6480] mt-2 pt-2 border-t border-[#1A2E42]">{viability} · data_quality {dataQuality}/10</div>
+            <div className="text-[10px] text-[#3E6480] mt-2 pt-2 border-t border-[#1A2E42]">
+              {viability === 'viable' ? 'жизнеспособная' : viability === 'marginal' ? 'маржинальная' : 'не работает'}
+            </div>
           </div>
         </div>
       </div>
@@ -170,14 +263,31 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
 
       {/* ═══ C3 — THREE STAT CARDS ═══ */}
       <div className="grid grid-cols-3 gap-3">
-        {/* Card A: Revenue Mid */}
+        {/* Card A: Revenue */}
         <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-5 relative overflow-hidden" style={{ borderLeft: '3px solid #00F0A0' }}>
           <div className="absolute top-0 left-0 right-0 h-[70px] pointer-events-none opacity-55" style={{ background: 'radial-gradient(ellipse at 50% -10%, rgba(0,240,160,0.15), transparent 70%)' }} />
-          <div className="text-[9px] text-[#3E6480] uppercase tracking-wider mb-1" style={{ fontFamily: 'Syne, sans-serif' }}>REVENUE MID</div>
-          <div className="text-[40px] font-extrabold text-emerald-400 leading-none" style={{ fontFamily: 'Syne, sans-serif', animation: 'numIn 0.8s 0.25s ease both', opacity: 0 }}>
-            {formatMoney(revMid)}
-          </div>
-          <div className="text-[11px] text-[#3E6480] mb-3">/год · реалистичный</div>
+          <div className="text-[9px] text-[#3E6480] uppercase tracking-wider mb-1" style={{ fontFamily: 'Syne, sans-serif' }}>ПОТЕНЦИАЛ ВЫРУЧКИ</div>
+          {isLowConfidence ? (
+            <>
+              <div className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded bg-amber-400/10 text-amber-400 border border-amber-400/20 mb-2">
+                ⚠ Ориентировочная оценка
+              </div>
+              <div className="text-[26px] font-extrabold text-emerald-400 leading-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
+                {formatMoney(revLow)} — {formatMoney(revHigh)}
+              </div>
+              <div className="text-[11px] text-[#3E6480] mb-2">/год · диапазон</div>
+              <p className="text-[10px] text-[#7AAAC8] leading-snug mb-3">
+                Данных о ценах конкурентов немного — точнее покажут первые клиенты.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="text-[40px] font-extrabold text-emerald-400 leading-none" style={{ fontFamily: 'Syne, sans-serif', animation: 'numIn 0.8s 0.25s ease both', opacity: 0 }}>
+                {formatMoney(revMid)}
+              </div>
+              <div className="text-[11px] text-[#3E6480] mb-3">/год · реалистичный</div>
+            </>
+          )}
 
           {/* Mini revenue bars */}
           <div className="space-y-1.5">
@@ -197,31 +307,67 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
           </div>
         </div>
 
-        {/* Card B: CAC */}
+        {/* Card B: CAC channels */}
         <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-5 relative overflow-hidden" style={{ borderTop: '2px solid #FFB340' }}>
           <div className="absolute top-0 left-0 right-0 h-[70px] pointer-events-none opacity-55" style={{ background: 'radial-gradient(ellipse at 50% -10%, rgba(255,179,64,0.14), transparent 70%)' }} />
-          <div className="text-[9px] text-[#3E6480] uppercase tracking-wider mb-1" style={{ fontFamily: 'Syne, sans-serif' }}>СТОИМОСТЬ ПРИВЛЕЧЕНИЯ<MetricTooltip term="CAC" value={cac} /></div>
-          <div className="text-[40px] font-extrabold text-amber-400 leading-none" style={{ fontFamily: 'Syne, sans-serif', animation: 'numIn 0.8s 0.35s ease both', opacity: 0 }}>
-            {cac > 0 ? `$${Math.round(cac)}` : '—'}
+          <div className="text-[9px] text-[#3E6480] uppercase tracking-wider mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
+            СТОИМОСТЬ ПРИВЛЕЧЕНИЯ КЛИЕНТА<MetricTooltip term="CAC" value={cac} />
           </div>
-          <div className="text-[9px] text-[#3E6480] uppercase tracking-wider mt-1 mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>CAC · {cacZone}</div>
-
-          {cac > 0 && (
-            <>
-              <div className="bg-[#111D2A] rounded-lg px-2.5 py-2 text-[11px] font-mono text-amber-400 mb-2">
-                CAC ${Math.round(cac)} · {cacSource}
+          {cacScenarios ? (
+            <div className="space-y-1.5">
+              {CAC_CHANNELS.filter((ch) => cacScenarios[ch.key]?.mid != null).map((ch) => {
+                const isCheapest = ch.key === cheapestCacKey;
+                return (
+                  <div
+                    key={ch.key}
+                    className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-[11px] ${
+                      isCheapest
+                        ? 'bg-emerald-400/8 border border-emerald-400/25'
+                        : 'bg-[#111D2A] border border-[#1A2E42]'
+                    }`}
+                  >
+                    <span className={isCheapest ? 'text-emerald-400 font-semibold' : 'text-[#7AAAC8]'}>
+                      {ch.name}
+                    </span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className={`font-mono font-bold ${isCheapest ? 'text-emerald-400' : 'text-[#7AAAC8]'}`}>
+                        ${Math.round(cacScenarios[ch.key].mid)}
+                      </span>
+                      {isCheapest && (
+                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-400/15 text-emerald-400 uppercase tracking-wider">
+                          рекомендуем
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-[40px] font-extrabold text-amber-400 leading-none" style={{ fontFamily: 'Syne, sans-serif' }}>
+              {cac > 0 ? `$${Math.round(cac)}` : '—'}
+            </div>
+          )}
+          {(minSignalBudget || standardExperimentBudget) && (
+            <div className="mt-3 pt-3 border-t border-[#1A2E42]">
+              <div className="text-[9px] text-[#3E6480] uppercase tracking-wider mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
+                Бюджет на проверку
               </div>
-              {cacIsAlternative && (
-                <div className="text-[10px] text-[#3E6480] mb-1.5">
-                  Рекомендованный ({data.cac_source}): ${Math.round(cacRaw)} — показан лучший канал
-                </div>
-              )}
-              {revMid > 0 && (
-                <div className="text-[11px] text-[#7AAAC8]">
-                  Revenue / CAC = <span className="text-emerald-400 font-bold">{Math.round(revMid / cac / 12)}× monthly</span>
-                </div>
-              )}
-            </>
+              <div className="space-y-1.5 text-[11px]">
+                {minSignalBudget != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#7AAAC8]">Первый сигнал · 3 клиента</span>
+                    <span className="font-mono font-bold text-emerald-400">${Number(minSignalBudget).toLocaleString()}</span>
+                  </div>
+                )}
+                {standardExperimentBudget != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#7AAAC8]">Полный тест · 10 клиентов</span>
+                    <span className="font-mono font-bold text-cyan-400">${Number(standardExperimentBudget).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
@@ -263,6 +409,54 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
         />
       )}
 
+      {/* ═══ C4.3 — METHOD DISAGREEMENT ═══ */}
+      {data?.revenue_method_agreement === false && data?.method_a_result != null && data?.method_b_result != null && (
+        <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-4" style={{ borderLeft: '3px solid #FFB340' }}>
+          <div className="text-[10px] text-amber-400 uppercase tracking-wider mb-2" style={{ fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em' }}>
+            ⚡ Два расчёта дают разные результаты
+          </div>
+          <div className="flex items-center gap-3 mb-2 text-[12px]">
+            <span className="text-[#7AAAC8]">По конкурентам: <strong className="text-white">{formatMoney(data.method_a_result)}</strong></span>
+            <span className="text-[#3E6480]">vs</span>
+            <span className="text-[#7AAAC8]">По спросу: <strong className="text-white">{formatMoney(data.method_b_result)}</strong></span>
+          </div>
+          <p className="text-[11px] text-[#3E6480] m-0">Реальный потенциал покажут первые продажи</p>
+        </div>
+      )}
+
+      {/* ═══ C4.5 — GROWTH TIMELINE ═══ */}
+      {data?.cumulative_timeline && (data.cumulative_timeline.month_24_monthly_revenue > 0 || data.cumulative_timeline.month_36_monthly_revenue > 0) && (
+        <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-4">
+          <div className="text-[10px] text-[#3E6480] uppercase tracking-wider mb-3" style={{ fontFamily: 'Syne, sans-serif' }}>
+            Динамика роста
+          </div>
+          <div className="flex gap-6">
+            {data.cumulative_timeline.month_first_revenue != null && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-[#3E6480]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>Месяц 1</span>
+                <span className="text-[15px] font-semibold text-amber-400">первые деньги</span>
+              </div>
+            )}
+            {data.cumulative_timeline.month_24_monthly_revenue > 0 && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-[#3E6480]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>Год 2</span>
+                <span className="text-[15px] font-semibold text-amber-400">
+                  ${Math.round(data.cumulative_timeline.month_24_monthly_revenue / 1000)}K/мес
+                </span>
+              </div>
+            )}
+            {data.cumulative_timeline.month_36_monthly_revenue > 0 && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-[#3E6480]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>Год 3</span>
+                <span className="text-[15px] font-semibold text-emerald-400">
+                  ${Math.round(data.cumulative_timeline.month_36_monthly_revenue / 1000)}K/мес
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <FlowingConnector />
 
       {/* ═══ C5 — METHOD CARDS ═══ */}
@@ -290,7 +484,7 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
                 ))}
               </div>
               <div className="text-[12px] font-bold text-emerald-400 mt-2 pt-2 border-t border-[#1A2E42]" style={{ fontFamily: 'Syne, sans-serif' }}>
-                → {formatMoney(revMid)}/год · {(method1.confidence || confidence).toUpperCase()} conf
+                → {formatMoney(revMid)}/год
               </div>
             </>
           ) : (
@@ -309,18 +503,15 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 text-[11px] text-[#7AAAC8]">
                   <span className="text-emerald-400 text-[11px]">✓</span>
-                  commercial_intent {method2.commercial_intent_ratio?.toFixed(2) ?? '—'}
+                  Запросы с намерением купить: {Math.round((method2.commercial_intent_ratio ?? 0) * 100)}%
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-[#7AAAC8]">
                   <span className="text-emerald-400 text-[11px]">✓</span>
-                  declining_signal: {method2.has_declining_signal ? <span className="text-amber-400">⚠ да</span> : '✓ нет'}
+                  Спрос {method2.has_declining_signal ? <span className="text-amber-400">падает ⚠</span> : 'не падает'}
                 </div>
                 {method2.reasoning && (
                   <div className="text-[11px] text-[#3E6480] mt-1">{method2.reasoning.slice(0, 80)}</div>
                 )}
-              </div>
-              <div className="text-[12px] font-bold text-amber-400 mt-2 pt-2 border-t border-[#1A2E42]" style={{ fontFamily: 'Syne, sans-serif' }}>
-                → confidence: {confidence.toUpperCase()}
               </div>
             </>
           ) : (
@@ -337,17 +528,11 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
           {method3 ? (
             <>
               <div className="bg-[#111D2A] rounded-lg px-3 py-2 text-[12px] font-mono text-cyan-400 text-center mb-2">
-                {method3.sale_cycle_days ?? '?'} дней → {method3.months_to_first_revenue?.toFixed(1) ?? monthsToRevenue.toFixed(1)} мес
+                {method3.sale_cycle_days ?? '?'} дней цикл → {method3.months_to_first_revenue?.toFixed(1) ?? monthsToRevenue.toFixed(1)} мес
               </div>
-              <div className="space-y-1 text-[11px] text-[#7AAAC8]">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-cyan-400">◆</span>
-                  budget: {method3.budget_exists ? <span className="text-cyan-400">true ✓</span> : 'false'}
-                </div>
-                {method3.reasoning && <div className="text-[#3E6480] mt-1">{method3.reasoning.slice(0, 80)}</div>}
-              </div>
+              {method3.reasoning && <div className="text-[11px] text-[#3E6480] mt-1">{method3.reasoning.slice(0, 80)}</div>}
               <div className="text-[12px] font-bold text-cyan-400 mt-2 pt-2 border-t border-[#1A2E42]" style={{ fontFamily: 'Syne, sans-serif' }}>
-                → {monthsToRevenue.toFixed(1)} мес · {(method3.confidence || 'medium').toLowerCase()} conf
+                → {monthsToRevenue.toFixed(1)} мес до первой выручки
               </div>
             </>
           ) : (
@@ -391,10 +576,12 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
           </p>
 
           <div className="flex flex-wrap items-center gap-1 mb-2.5">
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-400/5 border border-emerald-400/20 text-emerald-400 font-mono">{formatMoney(revMid)}/год</span>
-            <span className="text-[#243A52] text-[12px]">→</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#0C1520] border border-[#1A2E42] text-[#3E6480] font-mono">CAC ${Math.round(cac)}</span>
-            <span className="text-[#243A52] text-[12px]">→</span>
+            {!isLowConfidence && revMid > 0 && (
+              <>
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-400/5 border border-emerald-400/20 text-emerald-400 font-mono">{formatMoney(revMid)}/год</span>
+                <span className="text-[#243A52] text-[12px]">→</span>
+              </>
+            )}
             <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-400/5 border border-cyan-400/20 text-cyan-400 font-mono">AI Синтез</span>
           </div>
         </div>
@@ -404,15 +591,7 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
           <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-5" style={{ animation: 'fadeUp 0.4s ease both' }}>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[10px] text-[#3E6480] uppercase tracking-wider" style={{ fontFamily: 'Syne, sans-serif' }}>Intelligence Layer · Аналитический контекст</span>
-              {intel.narrative_mode && (
-                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border ${
-                  intel.narrative_mode === 'HIGH_CONFIDENCE_GREEN' ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20'
-                  : intel.narrative_mode === 'LOW_CONFIDENCE_RED' ? 'bg-red-400/10 text-red-400 border-red-400/20'
-                  : 'bg-amber-400/10 text-amber-400 border-amber-400/20'
-                }`}>
-                  {intel.narrative_mode === 'HIGH_CONFIDENCE_GREEN' ? 'HIGH' : intel.narrative_mode === 'LOW_CONFIDENCE_RED' ? 'LOW' : 'MEDIUM'}
-                </span>
-              )}
+              {/* narrative_mode (HIGH/MEDIUM/LOW) badge скрыт — технический код */}
             </div>
 
             {intel.narrative_economics && (
@@ -422,19 +601,19 @@ export default function EconomicsBlock({ data, loading, error, trendTitle }: Pro
             <div className="border-t border-[#1A2E42] pt-3 space-y-3">
               {intel.revenue_quality_explanation && (
                 <div>
-                  <div className="text-[10px] text-[#3E6480] font-mono mb-1">revenue_quality:</div>
+                  <div className="text-[10px] text-[#3E6480] uppercase tracking-wider mb-1">Качество выручки</div>
                   <p className="text-[12px] text-[#7AAAC8]">{intel.revenue_quality_explanation}</p>
                 </div>
               )}
               {intel.experiment_budget_explanation && (
                 <div>
-                  <div className="text-[10px] text-[#3E6480] font-mono mb-1">experiment_budget:</div>
+                  <div className="text-[10px] text-[#3E6480] uppercase tracking-wider mb-1">Бюджет на проверку</div>
                   <p className="text-[12px] text-[#7AAAC8]">{intel.experiment_budget_explanation}</p>
                 </div>
               )}
               {intel.payback_explanation && (
                 <div>
-                  <div className="text-[10px] text-[#3E6480] font-mono mb-1">payback:</div>
+                  <div className="text-[10px] text-[#3E6480] uppercase tracking-wider mb-1">Окупаемость клиента</div>
                   <p className="text-[12px] text-[#7AAAC8]">{intel.payback_explanation}</p>
                 </div>
               )}

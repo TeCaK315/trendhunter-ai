@@ -1,9 +1,32 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import UpstreamConfidenceDots from './UpstreamConfidenceDots';
 import SpotTypeLegend from './SpotTypeLegend';
 import LockedSpotsCard from './LockedSpotsCard';
+import type { BlockInterpretation } from '@/types/analysis';
+
+/* ─── HUMAN LABELS for technical codes (6.1) ─── */
+
+function spotTypeLabel(type: string): string {
+  switch ((type || '').toUpperCase()) {
+    case 'STRUCTURAL':    return 'Структурная проблема';
+    case 'CONTRADICTION': return 'Противоречие в данных';
+    case 'BEHAVIORAL':    return 'Поведенческий паттерн';
+    case 'TIMING':        return 'Фактор времени';
+    case 'UNKNOWN':       return 'Неожиданный сигнал';
+    default:              return 'Слепое пятно';
+  }
+}
+
+function impactLabel(impact: string): string {
+  switch ((impact || '').toUpperCase()) {
+    case 'HIGH':   return 'Высокий риск';
+    case 'MEDIUM': return 'Средний риск';
+    case 'LOW':    return 'Низкий риск';
+    default:       return 'Риск';
+  }
+}
 
 /* ─── TYPES ─── */
 
@@ -18,6 +41,7 @@ interface NormalizedSpot {
   data_signals?: string[];
   confidence?: string;
   depends_on_blocks?: number[];
+  action?: string;  // 6.2 — конкретное действие, генерируется в роуте
 }
 
 interface NormalizedData {
@@ -79,6 +103,7 @@ function normalizeData(raw: any): NormalizedData | null {
       data_signals: s.data_signals || [],
       confidence: s.confidence || undefined,
       depends_on_blocks: s.depends_on_blocks || [],
+      action: s.action || undefined,
     }));
 
     const diag = (src.diagnosis || 'YELLOW').toUpperCase();
@@ -213,14 +238,29 @@ interface Props {
   data: any;
   loading?: boolean;
   error?: string;
+  trendId?: string;
 }
 
 /* ─── COMPONENT ─── */
 
-export default function BlindSpotsBlock({ data, loading, error }: Props) {
+export default function BlindSpotsBlock({ data, loading, error, trendId }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [interpretation, setInterpretation] = useState<BlockInterpretation | null>(null);
+  const [interpretationLoading, setInterpretationLoading] = useState(true);
 
   const normalized = useMemo(() => normalizeData(data), [data]);
+
+  useEffect(() => {
+    if (!trendId || !data) return;
+    let cancelled = false;
+    setInterpretationLoading(true);
+    fetch(`/api/interpretations/blind-spots?trend_id=${encodeURIComponent(trendId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => { if (!cancelled) setInterpretation(json); })
+      .catch(() => { if (!cancelled) setInterpretation(null); })
+      .finally(() => { if (!cancelled) setInterpretationLoading(false); });
+    return () => { cancelled = true; };
+  }, [trendId, data]);
 
   // ── Loading ──
   if (loading) {
@@ -386,7 +426,7 @@ export default function BlindSpotsBlock({ data, loading, error }: Props) {
               <Signal
                 icon="\u25C8"
                 iconClass="amber"
-                text={<><strong>Impact {freeSpot.impact}</strong> {'\u00B7'} {TYPE_LABELS[freeSpot.type] || freeSpot.type}</>}
+                text={<><strong>{impactLabel(freeSpot.impact)}</strong> {'\u00B7'} {spotTypeLabel(freeSpot.type)}</>}
               />
             )}
             {d.spots_count === 0 && (
@@ -452,6 +492,53 @@ export default function BlindSpotsBlock({ data, loading, error }: Props) {
 
       {/* Connector */}
       <Connector />
+
+      {/* ── INTERPRETATION LAYER (вводный summary перед пятнами) ── */}
+      <style jsx>{`
+        @keyframes bs-shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+        .bs-interp { background: linear-gradient(180deg,#0F1A26 0%,#0D1620 100%); border:1px solid #243C55; border-radius:14px; padding:24px 26px; position:relative; overflow:hidden; margin: 0 20px; }
+        .bs-interp::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent); background-size:200%; animation:bs-shimmer 5s linear infinite; }
+        .bs-interp h2 { font-size:20px; line-height:1.35; font-weight:800; color:#E8F2FF; margin:0 0 12px 0; letter-spacing:-0.01em; }
+        .bs-interp .insight { font-size:13.5px; line-height:1.6; color:#A8C0D8; margin:0 0 18px 0; }
+        .bs-interp .facts { display:flex; flex-direction:column; gap:8px; padding:14px 16px; background:rgba(0,238,154,0.03); border:1px solid rgba(0,238,154,0.10); border-radius:10px; margin-bottom:16px; }
+        .bs-interp .fact { display:flex; align-items:flex-start; gap:10px; font-size:12.5px; line-height:1.5; color:#C8DCED; }
+        .bs-interp .marker { color:#00EE9A; font-size:10px; line-height:1.6; flex-shrink:0; margin-top:2px; }
+        .bs-interp .impact { border-top:1px solid #1A2E42; padding-top:14px; }
+        .bs-interp .impact-label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#3E6480; font-weight:700; margin-bottom:6px; }
+        .bs-interp .impact p { font-size:13px; line-height:1.55; color:#E8F2FF; margin:0; font-weight:500; }
+        .bs-skel { background:#0D1620; border:1px solid #1A2E42; border-radius:14px; padding:24px 26px; display:flex; flex-direction:column; gap:12px; margin: 0 20px; }
+        .bs-skel-line { height:14px; border-radius:6px; background:linear-gradient(90deg,#1A2E42 0%,#243C55 50%,#1A2E42 100%); background-size:200% 100%; animation:bs-shimmer 1.6s linear infinite; }
+      `}</style>
+      {!interpretationLoading && interpretation ? (
+        <>
+          <div className="bs-interp">
+            <h2>{interpretation.headline}</h2>
+            <p className="insight">{interpretation.main_insight}</p>
+            <div className="facts">
+              {interpretation.key_facts.map((fact, i) => (
+                <div key={i} className="fact">
+                  <span className="marker">◆</span>
+                  <span>{fact}</span>
+                </div>
+              ))}
+            </div>
+            <div className="impact">
+              <span className="impact-label">Для твоего решения:</span>
+              <p>{interpretation.decision_impact}</p>
+            </div>
+          </div>
+          <Connector />
+        </>
+      ) : interpretationLoading ? (
+        <>
+          <div className="bs-skel">
+            <div className="bs-skel-line" style={{ width: '75%' }} />
+            <div className="bs-skel-line" style={{ width: '100%' }} />
+            <div className="bs-skel-line" style={{ width: '83%' }} />
+          </div>
+          <Connector />
+        </>
+      ) : null}
 
       {/* ── 3. SPOT CARDS ── */}
       {d.spots.length > 0 && (
@@ -580,32 +667,20 @@ export default function BlindSpotsBlock({ data, loading, error }: Props) {
           </div>
           <p className="text-[13px] mb-4" style={{ color: '#8AADC8', lineHeight: 1.7 }}>
             {d.spots_count > 0
-              ? `${d.spots_count} слепых ${d.spots_count === 1 ? 'пятно' : 'пятен'}. ${freeSpot ? `${TYPE_LABELS[freeSpot.type] || freeSpot.type} — ${freeSpot.impact} impact.` : ''}`
+              ? `${d.spots_count} слепых ${d.spots_count === 1 ? 'пятно' : 'пятен'}. ${freeSpot ? `${spotTypeLabel(freeSpot.type)} — ${impactLabel(freeSpot.impact).toLowerCase()}.` : ''}`
               : 'Явных слепых пятен не обнаружено. Рынок выглядит стабильно.'}
           </p>
 
           {/* Flow pills */}
           {freeSpot && (
             <div className="flex flex-wrap gap-1.5 items-center mb-3.5">
-              <FlowPill color="amber">{TYPE_LABELS[freeSpot.type] || freeSpot.type}</FlowPill>
+              <FlowPill color="amber">{spotTypeLabel(freeSpot.type)}</FlowPill>
               <span className="text-xs" style={{ color: '#2A3A50' }}>{'\u2192'}</span>
-              <FlowPill color="amber">{freeSpot.impact} impact</FlowPill>
+              <FlowPill color="amber">{impactLabel(freeSpot.impact)}</FlowPill>
               <span className="text-xs" style={{ color: '#2A3A50' }}>{'\u2192'}</span>
               <FlowPill color="cyan">AI Синтез</FlowPill>
             </div>
           )}
-
-          {/* Instructions */}
-          <div className="flex flex-col gap-1.5">
-            <InstrLine>
-              {'\u2192'} В Синтезе: <strong style={{ color: '#00F0A0' }}>blind_spots_impact {d.blind_spots_impact}</strong>
-            </InstrLine>
-            {d.has_revenue_multiplier && (
-              <InstrLine>
-                {'\u2192'} В Синтезе: <strong style={{ color: '#00F0A0' }}>has_revenue_multiplier</strong> — уверенность растёт
-              </InstrLine>
-            )}
-          </div>
         </div>
 
         {/* Monetization */}
@@ -747,9 +822,9 @@ function SpotCard({
     >
       {/* Header pills */}
       <div className="flex items-center gap-2 mb-3.5 flex-wrap">
-        <Pill color="cyan">{spot.type}</Pill>
+        <Pill color="cyan">{spotTypeLabel(spot.type)}</Pill>
         {isFree && <Pill color="green">БЕСПЛАТНО</Pill>}
-        <Pill color="green">{spot.impact} impact</Pill>
+        <Pill color="green">{impactLabel(spot.impact)}</Pill>
         <span className="ml-auto font-mono text-xs" style={{ color: '#4A6080' }}>
           Пятно #{spot.index + 1}
         </span>
@@ -757,24 +832,45 @@ function SpotCard({
 
       {/* Title */}
       <div
-        className="font-bold mb-1"
+        className="font-bold mb-3.5"
         style={{ fontSize: '22px', fontWeight: 800, color: '#E2EBF4', letterSpacing: '-0.3px' }}
       >
         {spot.title}
-      </div>
-
-      {/* Type line */}
-      <div className="font-mono text-[11px] mb-3.5" style={{ color: '#4A6080' }}>
-        <span style={{ color: '#00D4FF' }}>{spot.type}</span>
-        <em style={{ color: '#00F0A0', fontStyle: 'normal', marginLeft: '6px' }}>
-          {'\u00B7'} {spot.impact} impact
-        </em>
       </div>
 
       {/* Insight text */}
       <p className="text-sm mb-5" style={{ lineHeight: 1.7, color: '#A8BDD0' }}>
         {spot.insight}
       </p>
+
+      {/* 6.2 — Что делать с этим знанием */}
+      {spot.action && (
+        <div
+          className="mb-5"
+          style={{
+            padding: '12px 16px',
+            background: 'rgba(0, 240, 160, 0.05)',
+            borderLeft: '3px solid #00F0A0',
+            borderRadius: '0 8px 8px 0',
+          }}
+        >
+          <div
+            className="font-mono mb-1.5"
+            style={{
+              fontSize: '11px',
+              color: '#00F0A0',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}
+          >
+            → Что делать:
+          </div>
+          <p style={{ fontSize: '13px', color: '#A8BDD0', lineHeight: 1.6, margin: 0 }}>
+            {spot.action}
+          </p>
+        </div>
+      )}
 
       {/* Data signals */}
       {spot.data_signals && spot.data_signals.length > 0 && (
@@ -800,12 +896,11 @@ function SpotCard({
         overallConfidence={overallConfidence}
       />
 
-      {/* Depends on */}
+      {/* Depends on — на основе блоков */}
       {spot.depends_on_blocks && spot.depends_on_blocks.length > 0 && (
         <div className="flex items-center gap-2 mt-2.5 font-mono text-[11px]">
-          <span style={{ color: '#2A3A50' }}>depends_on</span>
           <span style={{ color: '#4A6080' }}>
-            Данные: {spot.depends_on_blocks.map((b) => `Block ${b}`).join(' + ')}
+            На основе данных блоков {spot.depends_on_blocks.join(', ')}
           </span>
         </div>
       )}

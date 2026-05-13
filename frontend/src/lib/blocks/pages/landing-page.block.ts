@@ -79,7 +79,7 @@ export default function generate(ctx: BlockContext): BlockResult {
     plans = [
       { name: 'Starter', price: 0, features: ['Limited access', 'Basic features'] },
       existing,
-      { name: 'Business', price: (existing.price || 19) * 3, features: [...(existing.features || []), 'Priority support', 'API access', 'Team collaboration'] },
+      { name: 'Business', price: (existing.price || 19) * 3, features: Array.from(new Set([...(existing.features || []), 'API access', 'Team collaboration', 'Dedicated support'])) },
     ];
   }
   const plansJson = JSON.stringify(plans, null, 2);
@@ -283,39 +283,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════ SOCIAL PROOF / STATS BAR ═══════════ */}
-      <section className="relative z-10 py-6 px-6">
-        <div
-          className="max-w-4xl mx-auto rounded-2xl p-6 md:p-8 flex flex-wrap items-center justify-center gap-8 md:gap-16"
-          style={{
-            background: '${t.surface1}',
-            border: '1px solid ${t.primary}10',
-            boxShadow: '${t.shadowMd}',
-            backdropFilter: 'blur(12px)',
-          }}
-        >
-          <div className="text-center">
-            <div className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ color: '${t.primary}' }}>
-              <AnimatedNumber target={500} suffix="+" />
-            </div>
-            <div className="text-xs mt-1 uppercase tracking-wider font-medium" style={{ color: '${t.text50}' }}>{t('landing.activeUsers')}</div>
-          </div>
-          <div className="hidden md:block w-px h-10" style={{ background: '${t.primary}15' }} />
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1.5">
-              {[0,1,2,3,4].map(i => <Star key={i} className="w-5 h-5 fill-current" style={{ color: '#facc15' }} />)}
-            </div>
-            <div className="text-xs mt-2 uppercase tracking-wider font-medium" style={{ color: '${t.text50}' }}>4.9/5 {t('landing.rating')}</div>
-          </div>
-          <div className="hidden md:block w-px h-10" style={{ background: '${t.primary}15' }} />
-          <div className="text-center">
-            <div className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ color: '${t.accent}' }}>
-              <AnimatedNumber target={10} suffix="x" />
-            </div>
-            <div className="text-xs mt-1 uppercase tracking-wider font-medium" style={{ color: '${t.text50}' }}>{t('landing.fasterResults')}</div>
-          </div>
-        </div>
-      </section>
+      {/* Social proof / stats bar removed — hardcoded numbers undermine trust on day-1 launch.
+          Add back when real metrics exist (e.g. via product_spec.metrics.active_users). */}
 
 ${hasPainQuotes ? `      {/* ═══════════ PROBLEM — glassmorphism quotes ═══════════ */}
       <section className="py-24 md:py-32 px-6">

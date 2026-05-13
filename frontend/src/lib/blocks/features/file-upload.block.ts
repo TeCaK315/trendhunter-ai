@@ -11,18 +11,67 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, File, Image, Loader2 } from 'lucide-react';
 
 interface FileUploadProps {
+  // Callbacks (any of these names supported)
   onUpload?: (url: string, file: File) => void;
+  onFileSelect?: (file: File) => void;
+  onChange?: (file: File) => void;
+  onFile?: (file: File) => void;
+  // Accept / file types
   accept?: string;
+  acceptedTypes?: string;
+  fileTypes?: string;
+  allowedTypes?: string[];
+  // Size limits (any of these supported)
   maxSizeMB?: number;
+  maxSize?: number;     // bytes
+  maxFileSize?: number; // bytes
+  // External state
+  disabled?: boolean;
+  loading?: boolean;
+  isLoading?: boolean;
+  isUploading?: boolean;
+  // UI labels (accepted, currently informational)
+  description?: string;
+  label?: string;
+  placeholder?: string;
+  className?: string;
+  // Storage hints
   bucket?: string;
+  folder?: string;
+  path?: string;
 }
 
 export default function FileUpload({
   onUpload,
-  accept = 'image/*,.pdf,.csv,.xlsx',
-  maxSizeMB = 10,
+  onFileSelect,
+  onChange,
+  onFile,
+  accept,
+  acceptedTypes,
+  fileTypes,
+  allowedTypes,
+  maxSizeMB,
+  maxSize,
+  maxFileSize,
+  disabled,
+  loading,
+  isLoading,
+  isUploading,
+  description: _description,
+  label: _label,
+  placeholder: _placeholder,
+  className,
   bucket = 'uploads',
+  folder: _folder,
+  path: _path,
 }: FileUploadProps) {
+  const effectiveAccept =
+    accept ?? acceptedTypes ?? fileTypes ?? (allowedTypes && allowedTypes.length > 0 ? allowedTypes.join(',') : undefined) ?? 'image/*,.pdf,.csv,.xlsx';
+  const sizeBytes = maxSize ?? maxFileSize;
+  const effectiveMaxMB = maxSizeMB ?? (sizeBytes ? Math.round(sizeBytes / (1024 * 1024)) : 10);
+  const isDisabled = !!(disabled || loading || isLoading || isUploading);
+  // Suppress unused-var warnings for accepted-but-informational props
+  void _description; void _label; void _placeholder; void _folder; void _path;
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -43,10 +92,16 @@ export default function FileUpload({
   const processFile = async (file: File) => {
     setError(null);
 
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      setError(\`File too large. Max size: \${maxSizeMB}MB\`);
+    if (file.size > effectiveMaxMB * 1024 * 1024) {
+      setError(\`File too large. Max size: \${effectiveMaxMB}MB\`);
       return;
     }
+    if (isDisabled) return;
+
+    // Notify gap-filler consumers (any of these names supported)
+    onFileSelect?.(file);
+    onChange?.(file);
+    onFile?.(file);
 
     // Preview for images
     if (file.type.startsWith('image/')) {
@@ -108,7 +163,7 @@ export default function FileUpload({
   };
 
   return (
-    <div className="w-full">
+    <div className={\`w-full \${className ?? ''}\`}>
       <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -126,7 +181,7 @@ export default function FileUpload({
         <input
           ref={inputRef}
           type="file"
-          accept={accept}
+          accept={effectiveAccept}
           onChange={handleChange}
           className="hidden"
         />
@@ -167,7 +222,7 @@ export default function FileUpload({
               Drop file here or click to upload
             </p>
             <p className="text-sm" style={{ color: '${t.text50}' }}>
-              Max {maxSizeMB}MB
+              Max {effectiveMaxMB}MB
             </p>
           </div>
         )}

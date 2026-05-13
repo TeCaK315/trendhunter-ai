@@ -9,9 +9,10 @@ import OnboardingTour, { resetOnboardingTour } from '@/components/OnboardingTour
 
 interface NavItemConfig {
   href: string;
-  labelKey: 'home' | 'nicheResearch' | 'favorites' | 'projects';
+  labelKey: 'home' | 'nicheResearch' | 'favorites' | 'projects' | 'lk';
   icon: React.ReactNode;
   tourId?: string;
+  subItems?: Array<{ href: string; labelKey: 'lkHome' | 'lkResearch' | 'lkStrategies' | 'lkRoadmap' | 'lkProjects' }>;
 }
 
 // Get links from environment variables (only show if configured)
@@ -66,14 +67,21 @@ export default function Sidebar() {
       ),
     },
     {
-      href: '/projects',
-      labelKey: 'projects',
-      tourId: 'nav-projects',
+      href: '/lk',
+      labelKey: 'lk',
+      tourId: 'nav-lk',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          <circle cx="12" cy="8" r="4" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 21c0-4.418 3.582-8 8-8s8 3.582 8 8" />
         </svg>
       ),
+      subItems: [
+        { href: '/lk', labelKey: 'lkHome' },
+        { href: '/lk/research', labelKey: 'lkResearch' },
+        { href: '/lk/roadmap', labelKey: 'lkRoadmap' },
+        { href: '/lk/projects', labelKey: 'lkProjects' },
+      ],
     },
   ];
 
@@ -151,27 +159,50 @@ export default function Sidebar() {
         <div className="space-y-1">
           {workspaceItems.map((item) => {
             const active = isActive(item.href);
+            const hasSubItems = !!item.subItems && item.subItems.length > 0;
+            const expanded = hasSubItems && !collapsed && (active || pathname.startsWith(item.href));
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-tour={item.tourId}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
-                  active
-                    ? 'bg-indigo-500/10 text-white'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                }`}
-              >
-                {active && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-r-full" />
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  data-tour={item.tourId}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+                    active
+                      ? 'bg-indigo-500/10 text-white'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                  }`}
+                >
+                  {active && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-r-full" />
+                  )}
+                  <span className={`flex-shrink-0 ${active ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`}>
+                    {item.icon}
+                  </span>
+                  {!collapsed && (
+                    <span className="font-medium text-sm">{t.nav[item.labelKey]}</span>
+                  )}
+                </Link>
+                {expanded && item.subItems && (
+                  <div className="ml-9 mt-1 mb-1 space-y-0.5 border-l border-zinc-800/60 pl-3">
+                    {item.subItems.map((sub) => {
+                      const subActive = pathname === sub.href;
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
+                            subActive
+                              ? 'text-white bg-indigo-500/10'
+                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/40'
+                          }`}
+                        >
+                          {t.nav[sub.labelKey]}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 )}
-                <span className={`flex-shrink-0 ${active ? 'text-indigo-400' : 'group-hover:text-indigo-400'}`}>
-                  {item.icon}
-                </span>
-                {!collapsed && (
-                  <span className="font-medium text-sm">{t.nav[item.labelKey]}</span>
-                )}
-              </Link>
+              </div>
             );
           })}
         </div>

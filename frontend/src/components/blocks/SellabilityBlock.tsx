@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PriceRangeBar from './PriceRangeBar';
 import DealCycleTimeline from './DealCycleTimeline';
 import FlowingConnector from './FlowingConnector';
+import type { BlockInterpretation } from '@/types/analysis';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ interface Props {
   loading?: boolean;
   error?: string;
   trendTitle?: string;
+  trendId?: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -114,13 +116,12 @@ function normalizeData(raw: any): SellabilityBlockData {
       : d.monetization_verdict === 'PARTIAL' ? 5
       : d.monetization_verdict === 'UNCLEAR' ? 3 : 1,
     key_metric: d.monetization_diagnosis,
-    key_factors: [
-      `Архетип: ${d.monetization_archetype}`,
-      `Качество: ${d.monetization_quality}`,
-      `Трение: ${d.friction_score}`,
-      `Данные: ${(d.competitor_monetization || []).filter((c: any) => c.price_usd).length} pricing pages · ${Math.round((d.monetization_confidence ?? 0) * 100)}% уверенность`,
-    ],
+    // key_factors намеренно пустой — заменяется Interpretation Layer.
+    // Технические коды (Архетип/Качество/Трение/Confidence) убраны из UI.
+    key_factors: [],
     _raw_diagnosis: diag,
+    // 3.3 — используем enriched_competitor_monetization если есть (с growth_pct из Блока 2)
+    _enriched_competitors: d.enriched_competitor_monetization || d.competitor_monetization || [],
     average_ticket: {
       competitor_prices: (d.competitor_monetization || []).map((c: any) => ({
         competitor: c.name,
@@ -156,9 +157,23 @@ function normalizeData(raw: any): SellabilityBlockData {
   };
 }
 
-export default function SellabilityBlock({ data, loading, error, trendTitle }: Props) {
+export default function SellabilityBlock({ data, loading, error, trendTitle, trendId }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [revenueCount, setRevenueCount] = useState(0);
+  const [interpretation, setInterpretation] = useState<BlockInterpretation | null>(null);
+  const [interpretationLoading, setInterpretationLoading] = useState(true);
+
+  useEffect(() => {
+    if (!trendId || !data) return;
+    let cancelled = false;
+    setInterpretationLoading(true);
+    fetch(`/api/interpretations/sellability?trend_id=${encodeURIComponent(trendId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => { if (!cancelled) setInterpretation(json); })
+      .catch(() => { if (!cancelled) setInterpretation(null); })
+      .finally(() => { if (!cancelled) setInterpretationLoading(false); });
+    return () => { cancelled = true; };
+  }, [trendId, data]);
 
   const normalized = data ? normalizeData(data) : null;
   const revenueDays = normalized?.path_to_money?.time_to_first_revenue_days ?? 0;
@@ -222,6 +237,47 @@ export default function SellabilityBlock({ data, loading, error, trendTitle }: P
 
   return (
     <div className="space-y-3">
+      {/* ═══ INTERPRETATION LAYER ═══ */}
+      <style jsx>{`
+        @keyframes sb-shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+        .sb-interp { background: linear-gradient(180deg,#0F1A26 0%,#0D1620 100%); border:1px solid #243C55; border-radius:14px; padding:24px 26px; position:relative; overflow:hidden; }
+        .sb-interp::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent); background-size:200%; animation:sb-shimmer 5s linear infinite; }
+        .sb-interp h2 { font-size:20px; line-height:1.35; font-weight:800; color:#E8F2FF; margin:0 0 12px 0; letter-spacing:-0.01em; }
+        .sb-interp .insight { font-size:13.5px; line-height:1.6; color:#A8C0D8; margin:0 0 18px 0; }
+        .sb-interp .facts { display:flex; flex-direction:column; gap:8px; padding:14px 16px; background:rgba(0,238,154,0.03); border:1px solid rgba(0,238,154,0.10); border-radius:10px; margin-bottom:16px; }
+        .sb-interp .fact { display:flex; align-items:flex-start; gap:10px; font-size:12.5px; line-height:1.5; color:#C8DCED; }
+        .sb-interp .marker { color:#00EE9A; font-size:10px; line-height:1.6; flex-shrink:0; margin-top:2px; }
+        .sb-interp .impact { border-top:1px solid #1A2E42; padding-top:14px; }
+        .sb-interp .impact-label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#3E6480; font-weight:700; margin-bottom:6px; }
+        .sb-interp .impact p { font-size:13px; line-height:1.55; color:#E8F2FF; margin:0; font-weight:500; }
+        .sb-skel { background:#0D1620; border:1px solid #1A2E42; border-radius:14px; padding:24px 26px; display:flex; flex-direction:column; gap:12px; }
+        .sb-skel-line { height:14px; border-radius:6px; background:linear-gradient(90deg,#1A2E42 0%,#243C55 50%,#1A2E42 100%); background-size:200% 100%; animation:sb-shimmer 1.6s linear infinite; }
+      `}</style>
+      {!interpretationLoading && interpretation ? (
+        <div className="sb-interp">
+          <h2>{interpretation.headline}</h2>
+          <p className="insight">{interpretation.main_insight}</p>
+          <div className="facts">
+            {interpretation.key_facts.map((fact, i) => (
+              <div key={i} className="fact">
+                <span className="marker">◆</span>
+                <span>{fact}</span>
+              </div>
+            ))}
+          </div>
+          <div className="impact">
+            <span className="impact-label">Что это значит для тебя:</span>
+            <p>{interpretation.decision_impact}</p>
+          </div>
+        </div>
+      ) : interpretationLoading ? (
+        <div className="sb-skel">
+          <div className="sb-skel-line" style={{ width: '75%' }} />
+          <div className="sb-skel-line" style={{ width: '100%' }} />
+          <div className="sb-skel-line" style={{ width: '83%' }} />
+        </div>
+      ) : null}
+
       {/* ═══ C2 — VERDICT HERO ═══ */}
       <div className="bg-[#0C1520] border border-[#1A2E42] rounded-2xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[2px]"
@@ -300,16 +356,68 @@ export default function SellabilityBlock({ data, loading, error, trendTitle }: P
               threshold={at.psychological_threshold}
             />
           )}
-          <div className="space-y-0.5 text-[10px] text-[#3E6480]">
-            {at?.competitor_prices?.slice(0, 3).map((cp, i) => (
-              <div key={i}>{cp.competitor}: <span className={cp.price.startsWith('$') ? 'text-[#7AAAC8]' : 'text-[#3E6480] italic'}>{cp.price}</span></div>
-            ))}
+          {/* 3.3 — Конкуренты с моделью + trial/freemium + рост */}
+          <div className="space-y-1.5 mt-2">
+            {((d._enriched_competitors as any[]) || at?.competitor_prices || []).slice(0, 4).map((c: any, i: number) => {
+              const name = c.name ?? c.competitor ?? '?';
+              const modelLabel =
+                c.archetype === 'ENTERPRISE_ONLY' ? 'через менеджеров'
+                : c.archetype === 'SELF_SERVICE_SUBSCRIPTION' ? 'самообслуживание'
+                : c.archetype === 'FREEMIUM' ? 'freemium'
+                : c.archetype === 'SALES_LED' ? 'через менеджеров'
+                : c.price ?? '';
+              const growthLabel =
+                c.growth_direction === 'up' && c.growth_pct != null ? `↑ +${c.growth_pct}%`
+                : c.growth_direction === 'stable' ? '→'
+                : null;
+              return (
+                <div key={i} className="flex items-center gap-2 text-[11px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: 4 }}>
+                  <span className="text-[#E8F0F7] font-medium" style={{ minWidth: 80 }}>{name}</span>
+                  <span className="text-[#4A6580] flex-1 truncate">{modelLabel}</span>
+                  {c.has_trial && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,240,160,0.1)', color: '#00F0A0', border: '1px solid rgba(0,240,160,0.2)' }}>trial</span>
+                  )}
+                  {c.has_freemium && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,179,237,0.1)', color: '#63B3ED', border: '1px solid rgba(99,179,237,0.2)' }}>free</span>
+                  )}
+                  {growthLabel && (
+                    <span className="text-[10px] ml-auto shrink-0" style={{ color: c.growth_direction === 'up' ? '#00F0A0' : '#4A6580' }}>
+                      {growthLabel}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {(at?.competitor_prices?.length ?? 0) > 0 && at?.competitor_prices?.every(cp => !cp.price.startsWith('$')) && (
             <p className="text-[11px] text-[#3E6480] italic mt-2">
               Цены не найдены публично — возможно Enterprise модель или закрытое ценообразование
             </p>
           )}
+          {/* 3.6 — Trial/freemium coverage signal */}
+          {(() => {
+            const comps = (d._enriched_competitors as any[]) || [];
+            if (comps.length < 2) return null;
+            const withTrial = comps.filter((c: any) => c?.has_trial === true).length;
+            const withFreemium = comps.filter((c: any) => c?.has_freemium === true).length;
+            const noFree = withTrial === 0 && withFreemium === 0;
+            if (noFree) {
+              return (
+                <div className="flex items-start gap-2 mt-3 pt-3 text-[11px] leading-snug" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: '#00F0A0' }}>
+                  <span className="shrink-0">💡</span>
+                  <span>Никто из конкурентов не предлагает trial — первый кто добавит, получит дифференциацию</span>
+                </div>
+              );
+            }
+            if (withTrial + withFreemium < comps.length && (withTrial > 0 || withFreemium > 0)) {
+              return (
+                <div className="text-[10px] mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: '#4A6580' }}>
+                  {withTrial} из {comps.length} конкурентов предлагают trial
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
 
         {/* Card C: Sale Cycle */}

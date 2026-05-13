@@ -585,7 +585,7 @@ export default function OverviewDashboard({
         {/* 72h Action Plan */}
         <div
           className="bg-zinc-900/50 border border-emerald-500/20 rounded-xl p-5 flex flex-col gap-3 cursor-pointer transition-all hover:-translate-y-0.5 hover:border-emerald-500/30 bg-gradient-to-b from-emerald-500/[0.03] to-transparent"
-          onClick={() => onNavigate('action-plan', 'plan')}
+          onClick={() => onNavigate('action-plan', 's0')}
         >
           <div className="text-xl">🎯</div>
           <div className="text-[15px] font-bold text-white leading-snug">

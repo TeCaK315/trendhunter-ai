@@ -1,9 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SplitBar from './SplitBar';
 import AdSquares from './AdSquares';
 import DemandMap from './DemandMap';
+import type { BlockInterpretation } from '@/types/analysis';
+
+// Растущий запрос → человеческий язык
+// volume может прийти как число (250) или строка ("+250%") — нормализуем
+function formatRisingQuery(query: string, volume?: number | string | null): string {
+  const raw = volume == null ? '' : String(volume).replace('%', '').replace('+', '');
+  const pct = parseInt(raw, 10);
+  if (Number.isNaN(pct) || pct <= 0) return `"${query}" — растёт`;
+  const multiplier = (pct / 100 + 1).toFixed(1);
+  return `"${query}" вырос в ${multiplier} раза за год`;
+}
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -128,6 +139,7 @@ interface Props {
   data: DemandBlockData | null;
   loading?: boolean;
   error?: string;
+  trendId?: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -201,8 +213,22 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 // ── Component ────────────────────────────────────────────────
 
-export default function DemandBlock({ data, loading, error }: Props) {
+export default function DemandBlock({ data, loading, error, trendId }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [interpretation, setInterpretation] = useState<BlockInterpretation | null>(null);
+  const [interpretationLoading, setInterpretationLoading] = useState(true);
+
+  useEffect(() => {
+    if (!trendId || !data) return;
+    let cancelled = false;
+    setInterpretationLoading(true);
+    fetch(`/api/interpretations/demand?trend_id=${encodeURIComponent(trendId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => { if (!cancelled) setInterpretation(json); })
+      .catch(() => { if (!cancelled) setInterpretation(null); })
+      .finally(() => { if (!cancelled) setInterpretationLoading(false); });
+    return () => { cancelled = true; };
+  }, [trendId, data]);
 
   // Loading skeleton
   if (loading || !data) {
@@ -286,6 +312,47 @@ export default function DemandBlock({ data, loading, error }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* ═══ INTERPRETATION LAYER ═══ */}
+      <style jsx>{`
+        @keyframes db-shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+        .db-interp { background: linear-gradient(180deg,#0F1A26 0%,#0D1620 100%); border:1px solid #243C55; border-radius:14px; padding:24px 26px; position:relative; overflow:hidden; }
+        .db-interp::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent); background-size:200%; animation:db-shimmer 5s linear infinite; }
+        .db-interp h2 { font-size:20px; line-height:1.35; font-weight:800; color:#E8F2FF; margin:0 0 12px 0; letter-spacing:-0.01em; }
+        .db-interp .insight { font-size:13.5px; line-height:1.6; color:#A8C0D8; margin:0 0 18px 0; }
+        .db-interp .facts { display:flex; flex-direction:column; gap:8px; padding:14px 16px; background:rgba(0,238,154,0.03); border:1px solid rgba(0,238,154,0.10); border-radius:10px; margin-bottom:16px; }
+        .db-interp .fact { display:flex; align-items:flex-start; gap:10px; font-size:12.5px; line-height:1.5; color:#C8DCED; }
+        .db-interp .marker { color:#00EE9A; font-size:10px; line-height:1.6; flex-shrink:0; margin-top:2px; }
+        .db-interp .impact { border-top:1px solid #1A2E42; padding-top:14px; }
+        .db-interp .impact-label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#3E6480; font-weight:700; margin-bottom:6px; }
+        .db-interp .impact p { font-size:13px; line-height:1.55; color:#E8F2FF; margin:0; font-weight:500; }
+        .db-skel { background:#0D1620; border:1px solid #1A2E42; border-radius:14px; padding:24px 26px; display:flex; flex-direction:column; gap:12px; }
+        .db-skel-line { height:14px; border-radius:6px; background:linear-gradient(90deg,#1A2E42 0%,#243C55 50%,#1A2E42 100%); background-size:200% 100%; animation:db-shimmer 1.6s linear infinite; }
+      `}</style>
+      {!interpretationLoading && interpretation ? (
+        <div className="db-interp">
+          <h2>{interpretation.headline}</h2>
+          <p className="insight">{interpretation.main_insight}</p>
+          <div className="facts">
+            {interpretation.key_facts.map((fact, i) => (
+              <div key={i} className="fact">
+                <span className="marker">◆</span>
+                <span>{fact}</span>
+              </div>
+            ))}
+          </div>
+          <div className="impact">
+            <span className="impact-label">Что это значит для тебя:</span>
+            <p>{interpretation.decision_impact}</p>
+          </div>
+        </div>
+      ) : interpretationLoading ? (
+        <div className="db-skel">
+          <div className="db-skel-line" style={{ width: '75%' }} />
+          <div className="db-skel-line" style={{ width: '100%' }} />
+          <div className="db-skel-line" style={{ width: '83%' }} />
+        </div>
+      ) : null}
+
       {/* ═══ C1 — HERO ═══ */}
       <div className="bg-[#0C1520] border border-[#1A2E42] rounded-2xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-40" />
@@ -378,17 +445,7 @@ export default function DemandBlock({ data, loading, error }: Props) {
 
       {/* ═══ C3b — Momentum cards ═══ */}
       {(data.growth_3m != null || data.growth_5y != null) && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-4 text-center">
-            <SectionHeader>Индекс спроса</SectionHeader>
-            <div className="text-3xl font-extrabold text-emerald-400" style={{ fontFamily: 'Syne, sans-serif' }}>
-              {rawDemandIndex <= 100 ? rawDemandIndex : demandIndex}
-            </div>
-            <div className="text-[10px] text-[#3E6480] mt-0.5">
-              из 100
-            </div>
-          </div>
-
+        <div className="grid grid-cols-2 gap-3">
           <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-4 text-center">
             <SectionHeader>3 месяца</SectionHeader>
             <div className={`text-3xl font-extrabold ${(data.growth_3m ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`} style={{ fontFamily: 'Syne, sans-serif' }}>
@@ -519,10 +576,10 @@ export default function DemandBlock({ data, loading, error }: Props) {
           {risingKeywords.length > 0 ? (
             <div className="space-y-1.5">
               {risingKeywords.slice(0, 5).map((kw, i) => (
-                <div key={i} className="flex items-center gap-2 text-[12px]">
-                  <span className="text-cyan-400 text-[10px] font-bold shrink-0">↑</span>
-                  <span className="text-[#EAF2FF] flex-1 truncate">{kw.query}</span>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                <div key={i} className="flex items-start gap-2 text-[12px]">
+                  <span className="text-cyan-400 text-[10px] font-bold shrink-0 mt-0.5">↑</span>
+                  <span className="text-[#EAF2FF] flex-1">{formatRisingQuery(kw.query, kw.volume)}</span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                     kw.intent === 'commercial'
                       ? 'bg-emerald-400/10 text-emerald-400'
                       : kw.intent === 'informational'
@@ -800,12 +857,6 @@ export default function DemandBlock({ data, loading, error }: Props) {
               <span className="w-[5px] h-[5px] rounded-full bg-cyan-400 shrink-0" />
               SerpAPI SERP — {competitors.length} конкурентов
             </div>
-            {dq && (
-              <div className="flex items-center gap-2 text-[11px] text-[#7AAAC8]">
-                <span className={`w-[5px] h-[5px] rounded-full shrink-0 ${confidenceDot(dq.classification_confidence ?? 'low')}`} />
-                Haiku classification — {dq.classified_successfully ?? 0} из {dq.total_keywords ?? 0}
-              </div>
-            )}
           </div>
         )}
       </div>

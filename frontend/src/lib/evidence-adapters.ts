@@ -264,10 +264,11 @@ export function adaptDemandData(raw: any): any {
       trends_3m: trends3m,
       growth_comparison: {
         value: growthNum,
-        formula: raw.key_metric || `Demand index: ${demandIndex}`,
+        formula: raw.key_metric || `Спрос ${growthRate === 'growing' ? 'растёт' : growthRate === 'declining' ? 'падает' : 'стабильный'}`,
         confidence: conf,
       },
       growth_rate: growthRate,
+      // demand_index — внутреннее поле для расчётов и DemandMap, не показываем как число пользователю
       demand_index: demandIndex,
       error: null,
     },

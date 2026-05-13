@@ -625,7 +625,7 @@ export const BLOCKS_MANIFEST: BlockManifestEntry[] = [
     description: 'Multi-step wizard/quiz component with progress bar',
     depends_on: ['auth/supabase-client', 'ui/dashboard-layout'],
     project_types: 'all',
-    feature_triggers: ['quiz', 'questionnaire', 'wizard', 'survey', 'step-by-step', 'assessment', 'test', 'onboarding', 'опросник', 'тест', 'анкета'],
+    feature_triggers: ['quiz', 'questionnaire', 'wizard', 'survey', 'step-by-step', 'assessment', 'test', 'onboarding', 'опросник', 'тест', 'анкета', 'setup', 'integration', 'connect', 'configure', 'automation', 'workflow', 'guided', 'quick setup', 'configuration'],
     tech_triggers: [],
     produces_files: ['src/components/InteractiveWizard.tsx', 'src/app/dashboard/wizard/page.tsx'],
     requires_env: [],

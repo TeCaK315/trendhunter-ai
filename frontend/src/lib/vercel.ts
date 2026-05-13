@@ -175,6 +175,32 @@ export async function deployFromGitHub(
       return { success: false, error: projectResult.error };
     }
 
+    // Шаг 1.5: Отключаем Deployment Protection чтобы сгенерированный сайт
+    // был сразу публичным (иначе пользователь не сможет показать клиентам).
+    if (projectResult.projectId) {
+      try {
+        const protectionRes = await fetch(`${VERCEL_API_URL}/v9/projects/${projectResult.projectId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ssoProtection: null,
+            passwordProtection: null,
+          }),
+        });
+        if (!protectionRes.ok) {
+          const err = await protectionRes.json().catch(() => ({}));
+          console.warn(`[vercel] Could not disable deployment protection (${protectionRes.status}):`, err);
+        } else {
+          console.log('[vercel] Deployment protection disabled — site is public')
+        }
+      } catch (e) {
+        console.warn('[vercel] Disable protection error (non-critical):', e);
+      }
+    }
+
     // Шаг 2: Даём Vercel время на настройку Git-интеграции
     await new Promise(resolve => setTimeout(resolve, 2000));
 

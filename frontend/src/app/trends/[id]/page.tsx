@@ -28,6 +28,9 @@ import { adaptBlockData } from '@/lib/evidence-adapters';
 import PremiumOverlay from '@/components/PremiumOverlay';
 import EvidenceBadge from '@/components/EvidenceBadge';
 import ActionPlanBlock from '@/components/blocks/ActionPlanBlock';
+import StrategyBlockPage from '@/components/strategy/StrategyBlockPage';
+import StrategyFreeTab from '@/components/strategy/StrategyFreeTab';
+import SummaryCardPage from '@/components/strategy/SummaryCardPage';
 import FinancialCalculator from '@/components/blocks/FinancialCalculator';
 import ExecutiveSummary from '@/components/blocks/ExecutiveSummary';
 import ScenarioComparison from '@/components/blocks/ScenarioComparison';
@@ -114,7 +117,7 @@ type FlowStep = 'overview' | 'evidence' | 'action-plan' | 'monitoring' | 'resear
 
 // Подразделы внутри каждого шага
 type BusinessSubTab = 'venture' | 'leads';
-type ActionPlanSubTab = 'plan' | 'calculator' | 'scenarios' | 'survey' | 'gtm' | 'report' | 'differentiation';
+type ActionPlanSubTab = 'free' | 's0' | 's1' | 's2' | 's3' | 's5' | 'summary' | 'calculator' | 'scenarios' | 'survey' | 'gtm' | 'report' | 'differentiation';
 type EvidenceSubTab = 'analysis' | 'problem' | 'demand' | 'sellability' | 'occupation' | 'economics' | 'tech';
 
 interface PotentialCompany {
@@ -283,7 +286,20 @@ export default function TrendPage() {
   const [collectingSources, setCollectingSources] = useState(false);
   const [currentStep, setCurrentStep] = useState<FlowStep>('overview');
   const [businessSubTab, setBusinessSubTab] = useState<BusinessSubTab>('venture');
-  const [actionPlanSubTab, setActionPlanSubTab] = useState<ActionPlanSubTab>('plan');
+  const [actionPlanSubTab, setActionPlanSubTab] = useState<ActionPlanSubTab>(() => {
+    if (typeof window === 'undefined') return 'free';
+    try {
+      const pathId = window.location.pathname.split('/').pop();
+      if (pathId) {
+        const raw = window.localStorage.getItem(`strategy_${pathId}`);
+        if (raw) {
+          const st = JSON.parse(raw);
+          if (st?.sessionId) return 's0';
+        }
+      }
+    } catch {}
+    return 'free';
+  });
   const [evidenceSubTab, setEvidenceSubTab] = useState<EvidenceSubTab>('problem'); // Default to first Evidence tab
   const [isFavorite, setIsFavorite] = useState(false);
   const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
@@ -935,6 +951,23 @@ export default function TrendPage() {
       .catch(() => setCoinBalance(0));
   }, []);
 
+  // === Реактивное обновление баланса после любого списания ===
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ balance?: number }>).detail;
+      if (detail && typeof detail.balance === 'number') {
+        setCoinBalance(detail.balance);
+      } else {
+        fetch('/api/credits/balance')
+          .then(r => r.json())
+          .then(d => setCoinBalance(d.balance ?? 0))
+          .catch(() => {});
+      }
+    };
+    window.addEventListener('credits:updated', handler);
+    return () => window.removeEventListener('credits:updated', handler);
+  }, []);
+
   // === Сохранение данных в localStorage при изменении ===
   useEffect(() => { if (analysis) saveToCache('analysis', analysis); }, [analysis, saveToCache]);
   useEffect(() => { if (Object.keys(evidenceData).length > 0) saveToCache('evidenceData', evidenceData); }, [evidenceData, saveToCache]);
@@ -1244,6 +1277,17 @@ export default function TrendPage() {
           } catch { /* ignore */ }
         }
 
+        // Fallback: custom trend created via /niche-research → convert
+        if (!foundTrend && trendId.endsWith('-custom')) {
+          try {
+            const customRes = await fetch(`/api/trends/custom?trend_id=${encodeURIComponent(trendId)}`);
+            if (customRes.ok) {
+              const customJson = await customRes.json();
+              if (customJson.trend) foundTrend = customJson.trend as Trend;
+            }
+          } catch { /* ignore */ }
+        }
+
         if (foundTrend) {
           setTrend(foundTrend);
           // Re-save to API so it persists on server side too
@@ -1474,7 +1518,7 @@ export default function TrendPage() {
           const adapted = adaptBlockData(block, data.public);
           adapted._has_premium = !!data.has_premium;
           adapted._is_unlocked = !!unlockedBlocks[block];
-          adapted._raw_public = data.public; // сохраняем для мержа при unlock
+          try { adapted._raw_public = structuredClone(data.public); } catch { adapted._raw_public = JSON.parse(JSON.stringify(data.public)); }
           setEvidenceData(prev => ({ ...prev, [block]: adapted }));
 
           // Intelligence Layer — вызываем Sonnet анализ после Block 1 и Block 2
@@ -1843,6 +1887,7 @@ export default function TrendPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          trend_id: trendId,
           trend: {
             title: trend.title,
             category: trend.category,
@@ -1850,9 +1895,9 @@ export default function TrendPage() {
           },
           analysis: context.analysis,
           competition: context.competition,
-          design_analysis: designAnalysis, // Pass design data from background analysis
-          evidence, // NEW: Pass Evidence data for contextual feature extraction
-          differentiation: differentiationData || null, // Differentiation strategy (USP, Blue Ocean, positioning)
+          design_analysis: designAnalysis,
+          evidence,
+          differentiation: differentiationData || null,
         }),
       });
 
@@ -2597,7 +2642,13 @@ export default function TrendPage() {
           {currentStep === 'action-plan' && (
             <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-800/50 overflow-x-auto scrollbar-hide">
               {[
-                { id: 'plan', label: language === 'ru' ? 'План' : 'Plan', icon: '📋' },
+                { id: 'free', label: language === 'ru' ? 'Оценка' : 'Free', icon: '🆓' },
+                { id: 's0', label: language === 'ru' ? 'S0 · Угол' : 'S0 · Angle', icon: '🎯' },
+                { id: 's1', label: language === 'ru' ? 'S1 · Клиент' : 'S1 · Client', icon: '👤' },
+                { id: 's2', label: language === 'ru' ? 'S2 · v1' : 'S2 · v1', icon: '⚙️' },
+                { id: 's3', label: language === 'ru' ? 'S3 · 10' : 'S3 · 10', icon: '🚀' },
+                { id: 's5', label: language === 'ru' ? 'S5 · Деньги' : 'S5 · Revenue', icon: '💰' },
+                { id: 'summary', label: language === 'ru' ? 'Сводная' : 'Summary', icon: '📊' },
                 { id: 'differentiation', label: language === 'ru' ? 'Диф.' : 'Diff.', icon: '🎯' },
                 { id: 'calculator', label: language === 'ru' ? 'Калк.' : 'Calc.', icon: '🧮' },
                 { id: 'scenarios', label: language === 'ru' ? 'Сцен.' : 'Scen.', icon: '🔀' },
@@ -2752,6 +2803,7 @@ export default function TrendPage() {
                     data={evidenceData.problem}
                     loading={evidenceLoading.problem}
                     error={evidenceErrors.problem}
+                    trendId={trendId}
                   />
                 </PremiumOverlay>
               )}
@@ -2767,6 +2819,7 @@ export default function TrendPage() {
                     data={evidenceData.demand}
                     loading={evidenceLoading.demand}
                     error={evidenceErrors.demand}
+                    trendId={trendId}
                   />
                 </PremiumOverlay>
               )}
@@ -2783,6 +2836,7 @@ export default function TrendPage() {
                     loading={evidenceLoading.sellability}
                     error={evidenceErrors.sellability}
                     trendTitle={trend?.title}
+                    trendId={trendId}
                   />
                 </PremiumOverlay>
               )}
@@ -2798,6 +2852,7 @@ export default function TrendPage() {
                     data={evidenceData.occupation}
                     loading={evidenceLoading.occupation}
                     error={evidenceErrors.occupation}
+                    trendId={trendId}
                   />
                 </PremiumOverlay>
               )}
@@ -2813,6 +2868,7 @@ export default function TrendPage() {
                     data={evidenceData.economics}
                     loading={evidenceLoading.economics}
                     error={evidenceErrors.economics}
+                    trendId={trendId}
                   />
                 </PremiumOverlay>
               )}
@@ -2821,6 +2877,7 @@ export default function TrendPage() {
                   data={evidenceData.tech}
                   loading={evidenceLoading.tech}
                   error={evidenceErrors.tech}
+                  trendId={trendId}
                 />
               )}
 
@@ -2872,76 +2929,31 @@ export default function TrendPage() {
           {/* Action Plan Content */}
           {currentStep === 'action-plan' && (
             <div className="space-y-6">
-              {/* Strategy sub-tab */}
-              {actionPlanSubTab === 'plan' && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-bold text-white">
-                        {language === 'ru' ? 'План действий' : 'Action Plan'}
-                      </h2>
-                      <p className="text-zinc-400 text-sm mt-1">
-                        {language === 'ru'
-                          ? 'Стратегия на основе собранных Evidence данных. Все рекомендации подкреплены источниками.'
-                          : 'Strategy based on collected Evidence data. All recommendations backed by sources.'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => generateActionPlan()}
-                      disabled={actionPlanLoading}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      {actionPlanLoading && (
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      )}
-                      {actionPlanData
-                        ? (language === 'ru' ? 'Обновить план' : 'Refresh Plan')
-                        : (language === 'ru' ? 'Сгенерировать план' : 'Generate Plan')}
-                    </button>
-                  </div>
+              {/* Strategy — Free assessment */}
+              {actionPlanSubTab === 'free' && (
+                <StrategyFreeTab
+                  trendId={trendId}
+                  onSessionReady={() => setActionPlanSubTab('s0')}
+                />
+              )}
 
-                  {/* Evidence readiness indicator */}
-                  {!actionPlanData && !actionPlanLoading && (
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                      <p className="text-sm text-zinc-400 mb-3">
-                        {language === 'ru' ? 'Собранные Evidence данные:' : 'Collected Evidence data:'}
-                      </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        {[
-                          { key: 'problem', label: language === 'ru' ? 'Проблема' : 'Problem', icon: '🎯' },
-                          { key: 'demand', label: language === 'ru' ? 'Спрос' : 'Demand', icon: '📈' },
-                          { key: 'sellability', label: language === 'ru' ? 'Продажи' : 'Sales', icon: '💳' },
-                          { key: 'occupation', label: language === 'ru' ? 'Рынок' : 'Market', icon: '🏟️' },
-                          { key: 'economics', label: language === 'ru' ? 'Экономика' : 'Economics', icon: '📊' },
-                        ].map((block) => (
-                          <div
-                            key={block.key}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                              evidenceData[block.key]
-                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                                : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/50'
-                            }`}
-                          >
-                            <span>{block.icon}</span>
-                            <span>{block.label}</span>
-                            {evidenceData[block.key] && <span className="ml-auto">✓</span>}
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-3">
-                        {language === 'ru'
-                          ? 'Минимум 2 блока для генерации плана. Чем больше данных — тем точнее рекомендации.'
-                          : 'Minimum 2 blocks needed. More data = better recommendations.'}
-                      </p>
-                    </div>
-                  )}
+              {/* Strategy blocks */}
+              {(['s0', 's1', 's2', 's3', 's5'] as const).includes(actionPlanSubTab as 's0') && (
+                <StrategyBlockPage
+                  key={actionPlanSubTab}
+                  blockId={actionPlanSubTab.toUpperCase() as 'S0' | 'S1' | 'S2' | 'S3' | 'S5'}
+                  trendId={trendId}
+                  nicheTitle={trend?.title || ''}
+                  onNavigateSubTab={(sub) => setActionPlanSubTab(sub as ActionPlanSubTab)}
+                />
+              )}
 
-                  <ActionPlanBlock
-                    data={actionPlanData}
-                    loading={actionPlanLoading}
-                    error={actionPlanError}
-                  />
-                </>
+              {/* Strategy — Summary card */}
+              {actionPlanSubTab === 'summary' && (
+                <SummaryCardPage
+                  trendId={trendId}
+                  onNavigateSubTab={(sub) => setActionPlanSubTab(sub as ActionPlanSubTab)}
+                />
               )}
 
               {/* Differentiation sub-tab */}
@@ -3088,7 +3100,7 @@ export default function TrendPage() {
                 if (subTab) {
                   if (['problem', 'demand', 'sellability', 'occupation', 'economics', 'tech', 'analysis'].includes(subTab)) {
                     setEvidenceSubTab(subTab as EvidenceSubTab);
-                  } else if (['plan', 'differentiation', 'calculator', 'scenarios', 'survey', 'gtm', 'landing', 'report'].includes(subTab)) {
+                  } else if (['free', 's0', 's1', 's2', 's3', 's5', 'summary', 'differentiation', 'calculator', 'scenarios', 'survey', 'gtm', 'landing', 'report'].includes(subTab)) {
                     setActionPlanSubTab(subTab as ActionPlanSubTab);
                   }
                 }

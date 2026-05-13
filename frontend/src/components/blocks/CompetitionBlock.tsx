@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CompetitorSizeCircle from './CompetitorSizeCircle';
 import GapBar from './GapBar';
 import FlowingConnector from './FlowingConnector';
+import type { BlockInterpretation } from '@/types/analysis';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -51,6 +52,16 @@ interface Props {
   data: CompetitionBlockData | null;
   loading?: boolean;
   error?: string;
+  trendId?: string;
+}
+
+// Размер конкурента в человеческом языке
+function sizeHumanLabel(s?: string): string {
+  if (s === 'large') return 'крупный игрок';
+  if (s === 'medium') return 'средний игрок';
+  if (s === 'small') return 'небольшой игрок';
+  if (s === 'micro') return 'стартап';
+  return 'игрок неизвестного размера';
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -102,8 +113,22 @@ function sizeBarColor(s: string) {
 
 // ── Component ────────────────────────────────────────────────
 
-export default function CompetitionBlock({ data, loading, error }: Props) {
+export default function CompetitionBlock({ data, loading, error, trendId }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [interpretation, setInterpretation] = useState<BlockInterpretation | null>(null);
+  const [interpretationLoading, setInterpretationLoading] = useState(true);
+
+  useEffect(() => {
+    if (!trendId || !data) return;
+    let cancelled = false;
+    setInterpretationLoading(true);
+    fetch(`/api/interpretations/competition?trend_id=${encodeURIComponent(trendId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => { if (!cancelled) setInterpretation(json); })
+      .catch(() => { if (!cancelled) setInterpretation(null); })
+      .finally(() => { if (!cancelled) setInterpretationLoading(false); });
+    return () => { cancelled = true; };
+  }, [trendId, data]);
 
   if (loading || !data) {
     return (
@@ -157,13 +182,30 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
   const positioningVectors = bc.positioning_vectors || data.positioning_vectors || [];
   const entryPoint = bc.entry_point || '';
   const entryPointReasoning = bc.entry_point_reasoning || data.layers?.layer3?.entry_point_reasoning || '';
-  const strategicGapSummary = bc.strategic_gap_summary || data.layers?.layer3?.strategic_gap_summary || '';
 
-  const signals: string[] = data.key_factors ?? [];
+  // P0 — есть ли реальные данные для gap анализа?
+  // Если нет, entry_point будет LLM-выдумка — скрываем и показываем positioning_vectors
+  const hasRealGapData = (
+    gapType !== 'none' ||
+    hasStrategicGap === true ||
+    competitors.some((c: any) => Array.isArray(c?.top_complaints) && c.top_complaints.length > 0) ||
+    strategicGaps.length > 0 ||
+    executionGaps.length > 0
+  );
+
+  // Фильтрация технических key_factors которые не должны видеть пользователи
+  const filteredKeyFactors: string[] = (data.key_factors ?? []).filter(
+    (f: string) =>
+      !f.includes('Недостаточно отзывов') &&
+      !f.includes('Рекомендуется ручное') &&
+      !f.includes('<5'),
+  );
+
+  const signals: string[] = [...filteredKeyFactors];
   if (signals.length === 0) {
-    signals.push(`${gapTypeLabel(gapType)} · ${bc.top_gap_category || '—'}`);
+    if (hasRealGapData) signals.push(`${gapTypeLabel(gapType)} · ${bc.top_gap_category || '—'}`);
     signals.push(`${competitorCount} конкурентов · лидер: ${bc.top_competitor || '—'}`);
-    if (entryPoint) signals.push(entryPoint.slice(0, 80));
+    if (hasRealGapData && entryPoint) signals.push(entryPoint.slice(0, 80));
   }
 
   const conclusion = diag === 'green' ? intel?.conclusion_green
@@ -172,6 +214,47 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* ═══ INTERPRETATION LAYER ═══ */}
+      <style jsx>{`
+        @keyframes cb-shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+        .cb-interp { background: linear-gradient(180deg,#0F1A26 0%,#0D1620 100%); border:1px solid #243C55; border-radius:14px; padding:24px 26px; position:relative; overflow:hidden; }
+        .cb-interp::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent); background-size:200%; animation:cb-shimmer 5s linear infinite; }
+        .cb-interp h2 { font-size:20px; line-height:1.35; font-weight:800; color:#E8F2FF; margin:0 0 12px 0; letter-spacing:-0.01em; }
+        .cb-interp .insight { font-size:13.5px; line-height:1.6; color:#A8C0D8; margin:0 0 18px 0; }
+        .cb-interp .facts { display:flex; flex-direction:column; gap:8px; padding:14px 16px; background:rgba(0,238,154,0.03); border:1px solid rgba(0,238,154,0.10); border-radius:10px; margin-bottom:16px; }
+        .cb-interp .fact { display:flex; align-items:flex-start; gap:10px; font-size:12.5px; line-height:1.5; color:#C8DCED; }
+        .cb-interp .marker { color:#00EE9A; font-size:10px; line-height:1.6; flex-shrink:0; margin-top:2px; }
+        .cb-interp .impact { border-top:1px solid #1A2E42; padding-top:14px; }
+        .cb-interp .impact-label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#3E6480; font-weight:700; margin-bottom:6px; }
+        .cb-interp .impact p { font-size:13px; line-height:1.55; color:#E8F2FF; margin:0; font-weight:500; }
+        .cb-skel { background:#0D1620; border:1px solid #1A2E42; border-radius:14px; padding:24px 26px; display:flex; flex-direction:column; gap:12px; }
+        .cb-skel-line { height:14px; border-radius:6px; background:linear-gradient(90deg,#1A2E42 0%,#243C55 50%,#1A2E42 100%); background-size:200% 100%; animation:cb-shimmer 1.6s linear infinite; }
+      `}</style>
+      {!interpretationLoading && interpretation ? (
+        <div className="cb-interp">
+          <h2>{interpretation.headline}</h2>
+          <p className="insight">{interpretation.main_insight}</p>
+          <div className="facts">
+            {interpretation.key_facts.map((fact, i) => (
+              <div key={i} className="fact">
+                <span className="marker">◆</span>
+                <span>{fact}</span>
+              </div>
+            ))}
+          </div>
+          <div className="impact">
+            <span className="impact-label">Что это значит для тебя:</span>
+            <p>{interpretation.decision_impact}</p>
+          </div>
+        </div>
+      ) : interpretationLoading ? (
+        <div className="cb-skel">
+          <div className="cb-skel-line" style={{ width: '75%' }} />
+          <div className="cb-skel-line" style={{ width: '100%' }} />
+          <div className="cb-skel-line" style={{ width: '83%' }} />
+        </div>
+      ) : null}
+
       {/* ═══ C2 — VERDICT HERO ═══ */}
       <div className="bg-[#0C1520] border border-[#1A2E42] rounded-2xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[2px]"
@@ -185,9 +268,11 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
                 <span className={`w-[7px] h-[7px] rounded-full ${dc.bg}`} style={diag === 'green' ? { animation: 'pulse 2s infinite' } : undefined} />
                 {diagnosisPill(diag)} · Конкуренция
               </span>
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${gapTypeColor(gapType)}`}>
-                {gapTypeLabel(gapType)}
-              </span>
+              {hasRealGapData && (
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${gapTypeColor(gapType)}`}>
+                  {gapTypeLabel(gapType)}
+                </span>
+              )}
             </div>
 
             {/* Headline */}
@@ -235,15 +320,28 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
       <div className="grid grid-cols-3 gap-3">
         {/* Card A: Gap Type */}
         <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-4">
-          <SectionHeader>Тип gap</SectionHeader>
-          <div className={`text-3xl font-extrabold mb-2 ${gapType === 'strategic' ? 'text-emerald-400' : gapType === 'execution' ? 'text-amber-400' : 'text-red-400'}`} style={{ fontFamily: 'Syne, sans-serif' }}>
-            {gapType === 'strategic' ? 'Strategic' : gapType === 'execution' ? 'Execution' : 'None'}
-          </div>
-          <div className="space-y-1 text-[11px] text-[#7AAAC8]">
-            <div>{bc.top_gap_category || '—'}</div>
-            <div>{hasStrategicGap ? 'Конкурент не исправит: арх. долг' : 'Конкурент может исправить'}</div>
-            {hasStrategicGap && <div className="text-emerald-400">Окно входа: открыто сейчас</div>}
-          </div>
+          <SectionHeader>{hasRealGapData ? 'Слабость конкурента' : 'Анализ конкурентов'}</SectionHeader>
+          {hasRealGapData ? (
+            <>
+              <div className={`text-3xl font-extrabold mb-2 ${gapType === 'strategic' ? 'text-emerald-400' : 'text-amber-400'}`} style={{ fontFamily: 'Syne, sans-serif' }}>
+                {gapType === 'strategic' ? 'Стратегическая' : 'Исполнения'}
+              </div>
+              <div className="space-y-1 text-[11px] text-[#7AAAC8]">
+                <div>{bc.top_gap_category || '—'}</div>
+                <div>{hasStrategicGap ? 'Конкурент не исправит: архитектурный долг' : 'Конкурент может исправить — окно ограничено'}</div>
+                {hasStrategicGap && <div className="text-emerald-400">Окно входа: открыто сейчас</div>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-extrabold text-[#7AAAC8] mb-2 leading-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
+                По позициям
+              </div>
+              <div className="text-[11px] text-[#7AAAC8] leading-snug">
+                Реальных жалоб для разбора слабостей пока недостаточно. Смотри углы входа справа.
+              </div>
+            </>
+          )}
         </div>
 
         {/* Card B: Competitors */}
@@ -273,12 +371,18 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
           </div>
         </div>
 
-        {/* Card C: Entry Point */}
+        {/* Card C: Entry Point — показываем только если есть реальные gap данные */}
         <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-4">
-          <SectionHeader>Точка входа</SectionHeader>
-          <p className="text-[13px] text-white font-semibold mb-2 line-clamp-2">
-            {entryPoint.slice(0, 60) || 'Не определена'}
-          </p>
+          <SectionHeader>{hasRealGapData ? 'Точка входа' : 'Возможные углы входа'}</SectionHeader>
+          {hasRealGapData ? (
+            <p className="text-[13px] text-white font-semibold mb-2 line-clamp-2">
+              {entryPoint.slice(0, 60) || 'Не определена'}
+            </p>
+          ) : (
+            <p className="text-[11px] text-[#7AAAC8] mb-2 leading-snug">
+              Анализ на основе позиционирования конкурентов.
+            </p>
+          )}
           {positioningVectors.length > 0 && (
             <div className="space-y-1">
               {positioningVectors.slice(0, 3).map((pv: string, i: number) => {
@@ -338,7 +442,6 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
           <div className="space-y-3">
             {competitors.slice(0, 3).map((c: any, i: number) => {
               const size = c.size?.estimate || 'small';
-              const g2 = c.size?.raw?.g2_reviews || 0;
               const complaints = c.top_complaints || [];
               const compGapType = complaints.length > 0 ? (hasStrategicGap ? 'strategic' : 'execution') : 'none';
 
@@ -352,13 +455,15 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
                         <span className="text-[10px] text-[#3E6480] font-mono">{c.domain}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {g2 > 0 && <span className="text-[9px] text-[#3E6480]">{g2.toLocaleString()} G2 reviews</span>}
-                        <span className="text-[9px] text-[#3E6480]">{c.primary_segment || ''}</span>
+                        <span className="text-[9px] text-[#3E6480]">{sizeHumanLabel(size)}</span>
+                        {c.primary_segment && <span className="text-[9px] text-[#3E6480]">· {c.primary_segment}</span>}
                       </div>
                     </div>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded border shrink-0 ${gapTypeColor(compGapType)}`}>
-                      {compGapType === 'none' ? 'NO GAP' : compGapType.toUpperCase()}
-                    </span>
+                    {compGapType !== 'none' && (
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border shrink-0 ${gapTypeColor(compGapType)}`}>
+                        {compGapType === 'strategic' ? 'СЛАБОСТЬ АРХ.' : 'СЛАБОСТЬ ИСП.'}
+                      </span>
+                    )}
                   </div>
 
                   {/* Complaint categories */}
@@ -389,22 +494,14 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
 
       <FlowingConnector />
 
-      {/* ═══ C6 — ENTRY POINT CARD ═══ */}
-      {(entryPointReasoning || strategicGapSummary) && (
+      {/* ═══ C6 — ENTRY POINT CARD (только при реальных gap данных) ═══ */}
+      {hasRealGapData && entryPointReasoning && (
         <div className="bg-[#0C1520] border border-[#1A2E42] rounded-xl p-4 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-[2px]"
             style={{ background: 'linear-gradient(90deg, transparent, #00D4FF, transparent)', backgroundSize: '200% 100%', animation: 'shimmer 4s linear infinite' }} />
 
           <SectionHeader>Точка входа</SectionHeader>
-          {entryPointReasoning && (
-            <p className="text-[12px] text-[#EAF2FF] leading-relaxed mb-3">{entryPointReasoning}</p>
-          )}
-          {strategicGapSummary && (
-            <div className="bg-[#111D2A] border border-[#1A2E42] rounded-lg p-3 mt-2">
-              <div className="text-[9px] text-[#3E6480] uppercase tracking-wider mb-1 font-mono">strategic_gap_summary:</div>
-              <p className="text-[11px] text-[#7AAAC8] font-mono leading-relaxed">{strategicGapSummary}</p>
-            </div>
-          )}
+          <p className="text-[12px] text-[#EAF2FF] leading-relaxed mb-3">{entryPointReasoning}</p>
         </div>
       )}
 
@@ -422,12 +519,14 @@ export default function CompetitionBlock({ data, loading, error }: Props) {
 
           {/* Flow chain */}
           <div className="flex flex-wrap gap-1.5 mb-3">
-            <span className={`text-[9px] px-2 py-0.5 rounded-full border ${gapTypeColor(gapType)}`}>
-              {gapType}
-            </span>
+            {hasRealGapData && (
+              <span className={`text-[9px] px-2 py-0.5 rounded-full border ${gapTypeColor(gapType)}`}>
+                {gapTypeLabel(gapType)}
+              </span>
+            )}
             {hasStrategicGap && (
               <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#1A2E42] text-[#7AAAC8] border border-[#243A52]">
-                арх. долг
+                архитектурный долг
               </span>
             )}
             <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#1A2E42] text-[#7AAAC8] border border-[#243A52]">

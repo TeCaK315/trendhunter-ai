@@ -2,6 +2,63 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import RadarChart from './RadarChart';
+import type { BlockInterpretation } from '@/types/analysis';
+
+// 7.1 — описание уверенности словами вместо процента
+function confidenceLabel(confidence: number, ru: boolean): string {
+  if (ru) {
+    if (confidence >= 0.75) return 'на основе надёжных данных';
+    if (confidence >= 0.55) return 'на основе частичных данных';
+    if (confidence >= 0.40) return 'на основе ограниченных данных';
+    return 'предварительная оценка';
+  }
+  if (confidence >= 0.75) return 'based on reliable data';
+  if (confidence >= 0.55) return 'based on partial data';
+  if (confidence >= 0.40) return 'based on limited data';
+  return 'preliminary estimate';
+}
+
+// 7.3 — очистка priority actions от технических утечек
+function cleanActionText(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/\(индекс \d+\)/gi, '')
+    .replace(/индекс \d+/gi, '')
+    .replace(/\(confidence[^)]*\)/gi, '')
+    .replace(/\(revenue_confidence[^)]*\)/gi, '')
+    .replace(/\(данных недостаточно\)/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// FIX 1 — gap_driver source: технический код → человеческое название
+function gapDriverSourceLabel(source: string): string {
+  switch (source) {
+    case 'block1':            return 'Проблема';
+    case 'block1_fallback':   return 'Проблема';
+    case 'block2':            return 'Спрос';
+    case 'block3':            return 'Монетизация';
+    case 'block4':            return 'Конкуренция';
+    case 'block4_fallback':   return 'Конкуренция';
+    case 'block4_generic':    return '';
+    case 'block4_switching':  return 'Конкуренция';
+    case 'block5':            return 'Экономика';
+    case 'block6':            return 'Слепые пятна';
+    case 'generic':           return '';
+    default:                  return '';
+  }
+}
+
+// 7.2 — fallback bridge text если приходит пустой
+function buildBridgeFallback(verdictType: string | undefined): string {
+  if (verdictType === 'go_if') {
+    return 'Данные указывают на реальную возможность. Вопрос не в том входить ли — а в том как войти чтобы не потерять преимущество.';
+  }
+  if (verdictType === 'no_go_until') {
+    return 'Данные показывают путь — но не стандартный. Прямой вход не работает, нестандартный может.';
+  }
+  return 'Данные указывают на разрыв между типичным входом в эту нишу и тем что возможно при правильном использовании выявленных точек.';
+}
 
 // ─── TYPES ─────────────────────────────────────────────────
 
@@ -216,9 +273,35 @@ export default function SynthesisPanel({
   const [radarBlocks, setRadarBlocks] = useState<RadarBlock[]>([]);
   const [typewriterEnabled, setTypewriterEnabled] = useState(false);
   const [showFactors, setShowFactors] = useState(false);
+  const [interpretation, setInterpretation] = useState<BlockInterpretation | null>(null);
+  const [interpretationLoading, setInterpretationLoading] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
 
   const ru = language === 'ru';
+
+  // 7.5 — загружаем interpretation summary
+  // Зависит от наличия result, потому что роут пишет интерпретацию ПОСЛЕ upsert synthesis_results
+  useEffect(() => {
+    if (!trendId || !result) return;
+    let cancelled = false;
+    setInterpretationLoading(true);
+
+    const tryLoad = (delay: number) => {
+      setTimeout(() => {
+        if (cancelled) return;
+        fetch(`/api/interpretations/synthesis?trend_id=${encodeURIComponent(trendId)}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((json) => { if (!cancelled) setInterpretation(json); })
+          .catch(() => { if (!cancelled) setInterpretation(null); })
+          .finally(() => { if (!cancelled) setInterpretationLoading(false); });
+      }, delay);
+    };
+
+    // Сразу проверяем кэш — если синтез уже был, интерпретация тоже есть.
+    // Если только что закончился — даём фоновой генерации фору.
+    tryLoad(0);
+    return () => { cancelled = true; };
+  }, [trendId, result]);
 
   // ─── LOAD CACHED RESULTS ──────────────────────────────
   useEffect(() => {
@@ -272,8 +355,11 @@ export default function SynthesisPanel({
         const d = evidenceData[key];
         if (d) {
           // Extract score — round to 1 decimal, prefer integer score over verdict.value float
+          // Fallback: derive from diagnosis if score missing (Block 6 didn't include score in response before)
+          const diagScore = (d._raw_diagnosis || d.diagnosis || '').toLowerCase();
           const rawScore = typeof d.score === 'number' ? d.score
             : typeof d.verdict?.value === 'number' ? d.verdict.value
+            : diagScore === 'green' ? 8 : diagScore === 'yellow' ? 5 : diagScore === 'red' ? 3
             : 0;
           built.push({
             block_number: blockNums[i],
@@ -701,7 +787,10 @@ export default function SynthesisPanel({
   const verdict = result.arbitrator;
   const vc = getVerdictConfig(verdict?.verdict_type);
   const confidencePercent = Math.round((verdict?.confidence ?? 0) * 100);
-  const bridgeText = verdict?.bridge_text || '';
+  // 7.2 — Bridge text всегда показывается. Если пустой — fallback по типу вердикта.
+  const bridgeText = (verdict?.bridge_text && verdict.bridge_text.trim())
+    || ((result as any)?.bridge_text && String((result as any).bridge_text).trim())
+    || buildBridgeFallback(verdict?.verdict_type);
 
   return (
     <div className="relative" style={{ background: '#060A0E' }}>
@@ -843,15 +932,14 @@ export default function SynthesisPanel({
                   </span>
                 </div>
 
-                {/* Confidence number */}
-                <div className="flex items-end gap-2 mb-5">
-                  <span className="text-5xl font-black" style={{ color: vc.color, fontFamily: 'JetBrains Mono, monospace' }}>
-                    {confidencePercent}
-                  </span>
-                  <span className="text-lg font-medium mb-2" style={{ color: `${vc.color}80` }}>%</span>
-                  <span className="text-xs mb-2 ml-2" style={{ color: '#556677', fontFamily: 'JetBrains Mono, monospace' }}>
-                    {ru ? 'уверенность' : 'confidence'}
-                  </span>
+                {/* 7.1 — Confidence label (без процента) */}
+                <div className="mb-5">
+                  <p className="text-sm" style={{ color: `${vc.color}E0`, fontFamily: 'Inter, sans-serif' }}>
+                    {ru ? 'Вердикт ' : 'Verdict '}
+                    <span style={{ color: vc.color, fontWeight: 600 }}>
+                      {confidenceLabel(verdict?.confidence ?? 0, ru)}
+                    </span>
+                  </p>
                 </div>
 
                 {/* Confidence bar: full gradient red -> amber -> green */}
@@ -899,12 +987,10 @@ export default function SynthesisPanel({
                   </div>
                 )}
 
-                {/* Bridge text */}
-                {bridgeText && (
-                  <p className="text-sm leading-relaxed" style={{ color: '#AABBCC', animation: 'bridgeSlide 0.6s 0.3s ease-out both' }}>
-                    {bridgeText}
-                  </p>
-                )}
+                {/* Bridge text — всегда показывается (7.2) */}
+                <p className="text-sm leading-relaxed" style={{ color: '#AABBCC', animation: 'bridgeSlide 0.6s 0.3s ease-out both' }}>
+                  {bridgeText}
+                </p>
 
                 {/* Confidence factors — collapsed by default */}
                 {verdict.confidence_factors && verdict.confidence_factors.length > 0 && (
@@ -935,6 +1021,39 @@ export default function SynthesisPanel({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── INTERPRETATION SUMMARY (после вердикта, перед детальным анализом) ── */}
+        <style jsx>{`
+          @keyframes sy-shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+          .sy-interp { background: linear-gradient(180deg,#0F1A26 0%,#0D1620 100%); border:1px solid #243C55; border-radius:14px; padding:24px 26px; position:relative; overflow:hidden; }
+          .sy-interp::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#00EE9A,#00CFFF,#00EE9A,transparent); background-size:200%; animation:sy-shimmer 5s linear infinite; }
+          .sy-interp h2 { font-size:20px; line-height:1.35; font-weight:800; color:#E8F2FF; margin:0 0 12px 0; letter-spacing:-0.01em; }
+          .sy-interp .insight { font-size:13.5px; line-height:1.6; color:#A8C0D8; margin:0 0 18px 0; }
+          .sy-interp .facts { display:flex; flex-direction:column; gap:8px; padding:14px 16px; background:rgba(0,238,154,0.03); border:1px solid rgba(0,238,154,0.10); border-radius:10px; margin-bottom:16px; }
+          .sy-interp .fact { display:flex; align-items:flex-start; gap:10px; font-size:12.5px; line-height:1.5; color:#C8DCED; }
+          .sy-interp .marker { color:#00EE9A; font-size:10px; line-height:1.6; flex-shrink:0; margin-top:2px; }
+          .sy-interp .impact { border-top:1px solid #1A2E42; padding-top:14px; }
+          .sy-interp .impact-label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:#3E6480; font-weight:700; margin-bottom:6px; }
+          .sy-interp .impact p { font-size:13px; line-height:1.55; color:#E8F2FF; margin:0; font-weight:500; }
+        `}</style>
+        {verdict && !interpretationLoading && interpretation && (
+          <div className="sy-interp" style={{ animation: 'cardIn 0.5s 0.4s ease-out both' }}>
+            <h2>{interpretation.headline}</h2>
+            <p className="insight">{interpretation.main_insight}</p>
+            <div className="facts">
+              {interpretation.key_facts.map((fact, i) => (
+                <div key={i} className="fact">
+                  <span className="marker">◆</span>
+                  <span>{fact}</span>
+                </div>
+              ))}
+            </div>
+            <div className="impact">
+              <span className="impact-label">{ru ? 'Что делать сейчас:' : 'What to do now:'}</span>
+              <p>{interpretation.decision_impact}</p>
             </div>
           </div>
         )}
@@ -1009,11 +1128,11 @@ export default function SynthesisPanel({
                     {ru ? 'КЛЮЧЕВОЕ УСЛОВИЕ' : 'KEY CONDITION'}
                   </span>
                 </div>
-                <p className="text-sm font-medium text-white mb-1">{verdict.priority_actions[0].action}</p>
+                <p className="text-sm font-medium text-white mb-1">{cleanActionText(verdict.priority_actions[0].action)}</p>
                 <div className="flex gap-3 text-xs" style={{ color: '#556677', fontFamily: 'JetBrains Mono, monospace' }}>
                   <span>{verdict.priority_actions[0].timeline}</span>
                   {verdict.priority_actions[0].addresses && (
-                    <span style={{ color: '#00F0A080' }}>{verdict.priority_actions[0].addresses}</span>
+                    <span style={{ color: '#00F0A080' }}>{cleanActionText(verdict.priority_actions[0].addresses)}</span>
                   )}
                 </div>
               </div>
@@ -1034,9 +1153,9 @@ export default function SynthesisPanel({
                       </span>
                       <span className="text-[10px]" style={{ color: '#556677', fontFamily: 'JetBrains Mono, monospace' }}>{action.timeline}</span>
                     </div>
-                    <p className="text-xs text-white leading-relaxed">{action.action}</p>
+                    <p className="text-xs text-white leading-relaxed">{cleanActionText(action.action)}</p>
                     {action.addresses && (
-                      <p className="text-[10px] mt-2" style={{ color: '#00F0A060', fontFamily: 'JetBrains Mono, monospace' }}>{action.addresses}</p>
+                      <p className="text-[10px] mt-2" style={{ color: '#00F0A060', fontFamily: 'JetBrains Mono, monospace' }}>{cleanActionText(action.addresses)}</p>
                     )}
                   </div>
                 ))}
@@ -1150,19 +1269,31 @@ export default function SynthesisPanel({
                 <p className="text-[10px] uppercase tracking-wider" style={{ color: '#556677', fontFamily: 'JetBrains Mono, monospace' }}>
                   {ru ? 'Драйверы разрыва' : 'Gap Drivers'}
                 </p>
-                {strategicDelta.gap_drivers.map((driver, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 p-3 rounded-lg"
-                    style={{ background: 'rgba(18,70,240,0.04)', border: '1px solid rgba(18,70,240,0.1)', animation: `driverIn 0.4s ${0.4 + i * 0.15}s ease-out both` }}
-                  >
-                    <span className="text-xs mt-0.5" style={{ color: '#4D7FFF', fontFamily: 'JetBrains Mono, monospace' }}>{i + 1}</span>
-                    <div>
-                      <p className="text-xs text-white">{driver.title}</p>
-                      <p className="text-[10px] mt-1" style={{ color: '#334455', fontFamily: 'JetBrains Mono, monospace' }}>{driver.source}</p>
+                {strategicDelta.gap_drivers.map((driver: any, i: number) => {
+                  // FIX 1 — поддержка обоих форматов (объект или строка) + человеческий source
+                  const title = typeof driver === 'string'
+                    ? driver
+                    : (driver?.title ?? String(driver));
+                  const sourceRaw = typeof driver === 'object' ? (driver?.source ?? '') : '';
+                  const sourceLabel = gapDriverSourceLabel(sourceRaw);
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 p-3 rounded-lg"
+                      style={{ background: 'rgba(18,70,240,0.04)', border: '1px solid rgba(18,70,240,0.1)', animation: `driverIn 0.4s ${0.4 + i * 0.15}s ease-out both` }}
+                    >
+                      <span className="text-xs mt-0.5" style={{ color: '#4D7FFF', fontFamily: 'JetBrains Mono, monospace' }}>◆</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white leading-relaxed">{title}</p>
+                        {sourceLabel && (
+                          <p className="text-[9px] mt-1 uppercase tracking-wider" style={{ color: '#556677', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em' }}>
+                            {sourceLabel}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

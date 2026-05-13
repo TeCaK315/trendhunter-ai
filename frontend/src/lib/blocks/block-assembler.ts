@@ -5,7 +5,7 @@
  * Selects blocks, resolves dependencies, executes in order, fills gaps with Claude.
  */
 
-import type { BlockContext, BlockFunction, BlockResult, ProjectType, DesignSystem, ContentProfile } from './types';
+import type { BlockContext, BlockFunction, BlockResult, ProjectType, ProjectStyle, DesignSystem, ContentProfile } from './types';
 import type { ProductSpecification } from '../mvp-templates/types';
 import { BLOCKS_MANIFEST, getBlock } from './blocks-manifest';
 import { DEFAULT_DESIGN, escapeJsx } from './design-injector';
@@ -286,6 +286,8 @@ export async function assembleProject(input: AssemblyInput): Promise<AssemblyOut
 
   // Step 1: Build context
   const projectType = input.project_type || inferProjectType(product_spec);
+  const projectStyle = inferProjectStyle(product_spec);
+  console.log(`[assembler] project_type=${projectType}, project_style=${projectStyle}`);
   const design: DesignSystem = product_spec.design_system || DEFAULT_DESIGN;
 
   // ── Sanitize helper: strip non-ASCII, collapse whitespace, fallback ──
@@ -331,6 +333,7 @@ export async function assembleProject(input: AssemblyInput): Promise<AssemblyOut
     project_slug: project_name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'),
     project_description: cappedValueProp,
     project_type: projectType,
+    project_style: projectStyle,
     design,
     derived_features: product_spec.derived_features || [],
     supabase: {
@@ -496,6 +499,33 @@ function inferProjectType(spec: ProductSpecification): ProjectType {
   return 'saas';
 }
 
+function inferProjectStyle(spec: ProductSpecification): ProjectStyle {
+  const text = [
+    spec.user_output?.value_proposition ?? '',
+    spec.user_output?.primary_output ?? '',
+    spec.magic_location?.description ?? '',
+    ...(spec.derived_features ?? []).map((f) => `${f.feature_name} ${f.solution}`),
+  ].join(' ').toLowerCase()
+
+  // form-tool: документы, счета, PDF, отчёты
+  if (['invoice', 'receipt', 'quote', 'bill', 'document', 'pdf'].some((k) => text.includes(k))) {
+    return 'form-tool'
+  }
+  // wizard: настройка, интеграция, автоматизация, пошаговая конфигурация
+  if (
+    ['setup', 'integration', 'connect', 'configure', 'automat', 'workflow',
+     'onboard', 'wizard', 'step-by-step', 'guided'].some((k) => text.includes(k))
+  ) {
+    return 'wizard'
+  }
+  // catalog: поиск/библиотека/маркетплейс
+  if (['catalog', 'library', 'search', 'browse', 'marketplace', 'directory'].some((k) => text.includes(k))) {
+    return 'catalog'
+  }
+  // dashboard: мониторинг/аналитика — fallback по умолчанию
+  return 'dashboard'
+}
+
 function selectBlocks(ctx: BlockContext): string[] {
   const selected = new Set<string>();
 
@@ -560,6 +590,19 @@ function selectBlocks(ctx: BlockContext): string[] {
     // Core API always
     const coreAPIs = ['api/error-handler', 'api/analyze', 'api/send-email'];
     if (coreAPIs.includes(block.id)) shouldInclude = true;
+
+    // Project style overrides — wizard / form-tool / dashboard get different feature mix
+    const FORM_TOOL_ONLY = ['feature/invoice-generator', 'feature/pdf-export', 'feature/financial-calculator']
+    if (ctx.project_style === 'wizard') {
+      if (block.id === 'feature/interactive-wizard') shouldInclude = true
+      if (FORM_TOOL_ONLY.includes(block.id)) shouldInclude = false
+    } else if (ctx.project_style === 'form-tool') {
+      if (block.id === 'feature/interactive-wizard') shouldInclude = false
+      if (block.id === 'feature/invoice-generator') shouldInclude = true
+    } else if (ctx.project_style === 'dashboard') {
+      if (block.id === 'feature/interactive-wizard') shouldInclude = false
+      if (FORM_TOOL_ONLY.includes(block.id)) shouldInclude = false
+    }
 
     if (shouldInclude) {
       selected.add(block.id);

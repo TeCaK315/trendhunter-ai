@@ -293,6 +293,52 @@ export function generateAnomalies(data: BlocksData): Anomaly[] {
     });
   }
 
+  // Паттерн 9 — Маленький объём рынка (мало поисковых запросов)
+  if (data.search_volume < 500 && data.demand_strength !== 'STRONG') {
+    anomalies.push({
+      id: 'small_market_volume',
+      type: 'STRUCTURAL' as BlindSpotType,
+      signal: 'low_search_volume',
+      expected: 'Для устойчивого SaaS нужен поисковый трафик',
+      reality: `Объём поиска ${data.search_volume.toLocaleString()}/мес — физический потолок трафика`,
+      impact_vector: ['revenue', 'strategy'],
+      confidence: 0.6,
+    });
+  }
+
+  // Паттерн 10 — CAC не окупается (payback not_viable)
+  if (
+    data.payback_months !== null &&
+    data.payback_months !== undefined &&
+    data.cac_mid !== null &&
+    data.monthly_revenue_mid !== null &&
+    data.monthly_revenue_mid > 0 &&
+    data.cac_mid > data.monthly_revenue_mid * 24 // CAC > 24 месяцев LTV
+  ) {
+    anomalies.push({
+      id: 'payback_mismatch',
+      type: 'CONTRADICTION' as BlindSpotType,
+      signal: 'cac_exceeds_ltv',
+      expected: 'CAC должен окупаться за 12-18 месяцев',
+      reality: `CAC $${data.cac_mid} при MRR $${Math.round(data.monthly_revenue_mid)} — окупаемость ${data.payback_months ?? '>24'} мес`,
+      impact_vector: ['cac', 'revenue'],
+      confidence: data.economics_confidence === 'LOW' ? 0.65 : 0.8,
+    });
+  }
+
+  // Паттерн 11 — Спрос падает (declining signal)
+  if (data.demand_strength === 'DECLINING' || data.demand_strength === 'LOW') {
+    anomalies.push({
+      id: 'demand_declining',
+      type: 'TIMING' as BlindSpotType,
+      signal: 'declining_demand',
+      expected: 'Входить в растущий или стабильный рынок',
+      reality: `Спрос ${data.demand_strength === 'DECLINING' ? 'снижается — рынок сжимается' : 'слабый — органического трафика мало'}`,
+      impact_vector: ['revenue', 'strategy'],
+      confidence: data.demand_strength === 'DECLINING' ? 0.85 : 0.6,
+    });
+  }
+
   return anomalies;
 }
 
@@ -322,6 +368,10 @@ function estimateRevenueImpact(a: Anomaly): number {
     high_intent_low_payment: 0.70,
     high_demand_low_competition: 0.60,
     sales_led_expensive_alternative_exists: 0.75,
+    // New patterns 9-11
+    low_search_volume: 0.70,
+    cac_exceeds_ltv: 0.85,
+    declining_demand: 0.80,
   };
   // [Impl #3] Warn для неизвестных сигналов
   if (!(a.signal in signals)) {
@@ -336,6 +386,7 @@ function estimateCACImpact(a: Anomaly): number {
     high_intent_low_payment: 0.70,
     go_but_expensive_entry: 0.75,
     sales_led_expensive_alternative_exists: 0.85,
+    cac_exceeds_ltv: 0.90,
   };
   return signals[a.signal] ?? 0.4;
 }
@@ -348,6 +399,8 @@ function estimateStrategyImpact(a: Anomaly): number {
     high_cac_low_lockin: 0.70,
     high_intent_low_payment: 0.65,
     sales_led_expensive_alternative_exists: 0.80,
+    low_search_volume: 0.75,
+    declining_demand: 0.85,
   };
   return signals[a.signal] ?? 0.4;
 }
@@ -362,6 +415,9 @@ function estimateContradictionLevel(a: Anomaly): number {
     high_intent_low_payment: 0.70,
     go_but_expensive_entry: 0.65,
     sales_led_expensive_alternative_exists: 0.80,
+    cac_exceeds_ltv: 0.90,
+    low_search_volume: 0.70,
+    declining_demand: 0.80,
   };
   return levels[a.signal] ?? 0.5;
 }
@@ -385,6 +441,9 @@ function estimateAlternativePaths(signal: string): number {
     saturated_small_market: 0.60,
     go_but_expensive_entry: 0.55,
     sales_led_expensive_alternative_exists: 0.85,
+    low_search_volume: 0.50,
+    cac_exceeds_ltv: 0.70,
+    declining_demand: 0.55,
   };
   return paths[signal] ?? 0.4;
 }
@@ -399,6 +458,9 @@ function estimateExecutionFeasibility(signal: string): number {
     saturated_small_market: 0.55,
     go_but_expensive_entry: 0.50,
     sales_led_expensive_alternative_exists: 0.80,
+    low_search_volume: 0.45,
+    cac_exceeds_ltv: 0.60,
+    declining_demand: 0.50,
   };
   return feasibility[signal] ?? 0.5;
 }
@@ -413,6 +475,9 @@ function estimateStrategyShift(signal: string): number {
     high_paying_low_quality: 0.70,
     go_but_expensive_entry: 0.65,
     sales_led_expensive_alternative_exists: 0.85,
+    low_search_volume: 0.65,
+    cac_exceeds_ltv: 0.80,
+    declining_demand: 0.90,
   };
   return shift[signal] ?? 0.5;
 }
@@ -422,8 +487,9 @@ function estimateStrategyShift(signal: string): number {
 export function clusterAnomalies(anomalies: Anomaly[]): Cluster[] {
   const themes: Record<string, string[]> = {
     churn_retention: ['subscription_high_churn', 'high_cac_low_lockin'],
-    demand_conversion: ['high_intent_low_payment', 'high_demand_low_competition'],
-    economics: ['high_paying_low_quality', 'go_but_expensive_entry', 'saturated_small_market', 'sales_led_expensive_alternative_exists'],
+    demand_conversion: ['high_intent_low_payment', 'high_demand_low_competition', 'declining_demand'],
+    economics: ['high_paying_low_quality', 'go_but_expensive_entry', 'saturated_small_market', 'sales_led_expensive_alternative_exists', 'cac_exceeds_ltv'],
+    market_structure: ['low_search_volume'],
   };
 
   const clusters: Cluster[] = [];
@@ -610,9 +676,9 @@ export function applyTiming(clusters: Cluster[], trends: TrendData): Cluster[] {
 // ─── STEP 7: KILL SWITCHES ───────────────────────────────────
 
 export function applyKillSwitches(clusters: Cluster[]): Cluster[] {
-  // [Arch #6] Адаптивные пороги: при малом количестве кластеров снижаем требования
-  const threshold_strategy = clusters.length <= 2 ? 0.2 : 0.3;
-  const threshold_action = clusters.length <= 2 ? 0.3 : 0.4;
+  // [Arch #6] Адаптивные пороги: снижены чтобы пропускать 2-4 пятна вместо 1-2
+  const threshold_strategy = clusters.length <= 3 ? 0.15 : 0.25;
+  const threshold_action = clusters.length <= 3 ? 0.2 : 0.3;
 
   return clusters.filter(cluster => {
     const mainAnomaly = cluster.signals[0];
@@ -625,7 +691,13 @@ export function applyKillSwitches(clusters: Cluster[]): Cluster[] {
 
 // ─── STEP 8: SELECT TOP 3 ────────────────────────────────────
 
-export function selectTop3(clusters: Cluster[]): Cluster[] {
+export function selectTop3(clusters: Cluster[], dataQualityConfidence?: string): Cluster[] {
+  // Dynamic max: 2-4 пятна в зависимости от качества данных
+  const maxSpots =
+    dataQualityConfidence === 'high' ? 4
+    : dataQualityConfidence === 'medium' ? 3
+    : 2;
+
   const sorted = [...clusters].sort((a, b) => b.score - a.score);
   const selected: Cluster[] = [];
   const typeCounts = new Map<BlindSpotType, number>();
@@ -637,7 +709,7 @@ export function selectTop3(clusters: Cluster[]): Cluster[] {
     selected.push(cluster);
     typeCounts.set(cluster.type, count + 1);
 
-    if (selected.length === 3) break;
+    if (selected.length >= maxSpots) break;
   }
 
   return selected;
@@ -788,7 +860,7 @@ export async function runBlock6Pipeline(data: BlocksData, trends?: TrendData): P
     return { mode: 'unknown', unknown_output: buildUnknownOutput(data) };
   }
 
-  const top3 = selectTop3(clusters);
+  const top3 = selectTop3(clusters, data.economics_confidence);
 
   return buildLLMPayload(top3, data);
 }
@@ -832,6 +904,17 @@ incentive_misalignment — у кого какие стимулы и почему
 behavior_gap — разрыв между тем что люди говорят и что делают
 market_structure — как устроен рынок структурно (кто контролирует, кто платит)
 
+ВАЖНО: эти четыре названия — ВНУТРЕННИЕ метки для типа рассуждения.
+НИКОГДА не пиши их в тексте инсайта!
+Запрещено в тексте: "behavior_gap", "incentive_misalignment",
+"CAC_spread", "conversion_gap", "paying_ratio", "unit_economics",
+"churn_rate", "LTV", "ARR", "MRR".
+Вместо них используй русские описания:
+- "разрыв между намерением и действием" вместо behavior_gap
+- "интересы покупателя и продавца не совпадают" вместо incentive_misalignment
+- "экономика одной сделки" вместо unit_economics
+- "отток клиентов" вместо churn_rate
+
 ПРАВИЛО 5 — ACTION ВСЕГДА С TRADE-OFF:
 Не "сделай X".
 А "если делаешь X — ты жертвуешь Y ради Z, и главный риск — W".
@@ -849,15 +932,22 @@ market_structure — как устроен рынок структурно (кт
 [ACTION] — одно предложение с trade-off и риском
 
 ПОЗИЦИЯ insight_position:
-1_doubt: Hook создаёт сомнение. Заканчивается открытым вопросом. Не давай ответ.
+1_doubt: Hook создаёт сомнение. Вопрос допустим внутри текста для обострения, но ФИНАЛЬНАЯ фраза — вывод или условие ("Если X — то Y"), не вопрос.
 2_mechanism: Hook намекает на скрытую системную причину. Объясняй глубоко.
 3_strategic_turn: Hook решительный. Заканчивается action с trade-off.
+
+ПРАВИЛО ПРО ФИНАЛ ИНСАЙТА:
+Последний абзац ВСЕГДА заканчивается выводом, утверждением или конкретным условием.
+ЗАПРЕЩЕНО заканчивать на риторическом вопросе ("...почему это происходит?", "...кто пробовал?", "...готов ли ты?").
+Вопрос внутри текста — ок. Вопрос как финальная фраза — запрещён.
+РАЗРЕШЁННЫЕ финалы: конкретный вывод, ультиматумное условие ("Если X — то Y"), конкретный риск с числами.
 
 САМОПРОВЕРКА перед выводом:
 1. Все цифры есть в supporting_data? Если нет — убрать.
 2. Есть trade-off в action? Если нет — добавить.
 3. Есть конкретный риск? Если нет — добавить.
 4. Текст читается только про эту нишу? Если нет — переписать.
+5. Последнее предложение — утверждение (не вопрос)? Если вопрос — переписать как вывод.
 `.trim();
 
 // ─── HAIKU VALIDATION PROMPT ─────────────────────────────────

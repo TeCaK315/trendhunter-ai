@@ -280,10 +280,11 @@ function buildGapDrivers(
     });
   }
 
-  // Driver 3: Слепое пятно
+  // Driver 3: Слепое пятно (7.8 — cleanup trailing punctuation)
   if (blindSpotsCount > 0 && firstSpotTeaser) {
+    const cleanTeaser = firstSpotTeaser.replace(/[,\s—–\-]+$/u, '').trim();
     drivers.push({
-      title: firstSpotTeaser,
+      title: cleanTeaser || firstSpotTeaser,
       source: 'block6',
     });
   } else {

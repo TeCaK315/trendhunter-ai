@@ -98,10 +98,12 @@ function getNextDocNumber(): string {
             />
           </div>`;
 
-  // ─── Build page based on form archetype ───
+  // ─── Build page based on form archetype (project_style overrides formType) ───
   let pageContent: string;
 
-  if (cp.formType === 'sender-recipient') {
+  if (ctx.project_style === 'wizard') {
+    pageContent = buildWizardPage(ctx, projectName);
+  } else if (cp.formType === 'sender-recipient') {
     pageContent = buildSenderRecipientPage(ctx, t, cp, spec, projectName, requiredFields, statusEntries, storageKeys, docNumberFn, headerJsx, submitActions, notesSection, inputClasses);
   } else if (cp.formType === 'single-input') {
     pageContent = buildSingleInputPage(ctx, t, cp, spec, projectName, statusEntries, storageKeys, docNumberFn, headerJsx, submitActions, notesSection, inputClasses);
@@ -112,6 +114,73 @@ function getNextDocNumber(): string {
   return {
     'src/app/dashboard/create/page.tsx': pageContent,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ARCHETYPE 0: wizard (Setup, Integration, Configure)
+// Полностью самостоятельный шаблон — НЕ использует общий headerJsx
+// (тот содержит editMode/docNumber из invoice/form архетипов).
+// ═══════════════════════════════════════════════════════════════
+function buildWizardPage(ctx: BlockContext, projectName: string): string {
+  const flowSteps = ctx.product_spec?.user_flow?.steps ?? []
+  const steps = flowSteps.length >= 2
+    ? flowSteps.slice(0, 8).map((s, i) => ({
+        title: escapeJsx(s.action || `Step ${i + 1}`),
+        description: escapeJsx(s.user_sees || ''),
+      }))
+    : [
+        { title: 'Connect your account', description: 'Authorize the integration' },
+        { title: 'Choose what to automate', description: 'Pick triggers and actions' },
+        { title: 'Test the flow', description: 'Run a test event end-to-end' },
+      ]
+  const stepsLiteral = JSON.stringify(steps, null, 2)
+  const safeProjectName = projectName.replace(/'/g, '')
+
+  return `'use client';
+
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import InteractiveWizard from '@/components/InteractiveWizard';
+
+const STEPS = ${stepsLiteral};
+
+export default function CreatePage() {
+  const router = useRouter();
+
+  function handleComplete(answers: Record<string, string>) {
+    try {
+      const id = '${safeProjectName}_' + Date.now();
+      const payload = { id, answers, created_at: new Date().toISOString() };
+      const HISTORY_KEY = '${safeProjectName}_history';
+      const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      list.unshift(payload);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 100)));
+      router.push('/dashboard/history');
+    } catch {
+      router.push('/dashboard');
+    }
+  }
+
+  return (
+    <div className="min-h-screen p-6 md:p-10">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 rounded-xl transition-all hover:bg-white/[0.06]">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold">Create</h1>
+            <p className="text-xs mt-0.5 opacity-60">Step-by-step setup</p>
+          </div>
+        </div>
+
+        <InteractiveWizard steps={STEPS} onComplete={handleComplete} />
+      </div>
+    </div>
+  );
+}
+`
 }
 
 

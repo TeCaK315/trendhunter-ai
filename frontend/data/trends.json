@@ -1,6 +1,43 @@
 {
   "trends": [
     {
+      "id": "trend-1777420634719-custom",
+      "title": "Fitness Tracking App",
+      "category": "Technology",
+      "popularity_score": 85,
+      "growth_rate": 0,
+      "why_trending": "Mobile app for tracking workouts and nutrition",
+      "source": "niche_research",
+      "source_query": "Fitness Tracking App",
+      "first_detected_at": "2026-04-28T23:57:14.805766+00:00",
+      "data_confidence": "ai_generated",
+      "growth_rate_source": "ai_estimated",
+      "status": "custom"
+    },
+    {
+      "id": "trend-1775841019590-2",
+      "title": "CRM-система для риелторов",
+      "category": "SaaS",
+      "popularity_score": 85,
+      "growth_rate": 850,
+      "why_trending": "Спрос на CRM-системы для риелторов вырос на 850% за год — риелторы активно ищут инструменты для управления клиентами и сделками.",
+      "source": "Google Trends",
+      "status": "active",
+      "first_detected_at": "2026-04-10T17:10:19.590Z",
+      "source_query": "best crm software for realtors",
+      "source_growth": "+850%",
+      "product_format": "SaaS",
+      "target_audience": "риелторы и агентства недвижимости",
+      "user_outcome": "упрощение управления клиентами и сделками",
+      "was_topic_transformed": false,
+      "signal_type": "breakout",
+      "relevant_subreddits": [
+        "realestate",
+        "realestateinvesting",
+        "realtors"
+      ]
+    },
+    {
       "id": "trend-1775666689411-1",
       "title": "Сервисы автоматизации рабочих процессов",
       "category": "SaaS",
@@ -1385,5 +1422,5 @@
       "enriched_at": "2026-03-13T17:34:53.864Z"
     }
   ],
-  "lastUpdated": "2026-04-08T16:46:01.063Z"
+  "lastUpdated": "2026-05-12T12:03:08.819Z"
 }

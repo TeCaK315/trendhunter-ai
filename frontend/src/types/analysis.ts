@@ -54,6 +54,21 @@ export interface OptimistOutput {
   }>;
 }
 
+// Interpretation Layer — человекочитаемая интерпретация одного блока.
+// Генерируется фоном после основного pipeline и сохраняется в block_interpretations.
+export interface BlockInterpretation {
+  id: string;
+  trend_id: string;
+  block_id: string;
+  headline: string;
+  main_insight: string;
+  key_facts: string[]; // ровно 3 элемента
+  decision_impact: string;
+  generated_at: string;
+  model_used?: string;
+  data_sufficiency?: "sufficient" | "limited";
+}
+
 export interface ArbitratorOutput {
   verdict_type: "go_if" | "no_go_until" | "experiment_if";
   verdict_condition: string;

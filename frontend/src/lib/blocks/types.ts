@@ -61,12 +61,15 @@ export interface ContentProfile {
 
 // ─── Block Context ───
 
+export type ProjectStyle = 'wizard' | 'dashboard' | 'catalog' | 'form-tool';
+
 export interface BlockContext {
   // Project identity
   project_name: string;
   project_slug: string;
   project_description: string;
   project_type: ProjectType;
+  project_style: ProjectStyle;
 
   // Design (always present)
   design: DesignSystem;

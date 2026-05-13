@@ -207,7 +207,7 @@ export async function changeSubscription(
             product_data: { name: newPlan },
             unit_amount: targetPlan.price * 100,
             recurring: { interval: 'month' },
-          },
+          } as any,
         },
       ],
       proration_behavior: 'create_prorations',
@@ -224,7 +224,7 @@ export async function changeSubscription(
             product_data: { name: newPlan },
             unit_amount: targetPlan.price * 100,
             recurring: { interval: 'month' },
-          },
+          } as any,
         },
       ],
     });
