@@ -18,13 +18,6 @@ export async function POST(req: NextRequest) {
   if (!pkg) return NextResponse.json({ error: 'Invalid variant' }, { status: 400 })
 
   // Генерируем checkout URL через Lemon Squeezy API
-  console.log('[LS Checkout DEBUG]', {
-    hasApiKey: !!process.env.LEMONSQUEEZY_API_KEY,
-    apiKeyPrefix: process.env.LEMONSQUEEZY_API_KEY?.slice(0, 8),
-    storeId: process.env.LS_STORE_ID,
-    variantId: variant_id,
-  })
-
   const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
     method: 'POST',
     headers: {
@@ -64,10 +57,6 @@ export async function POST(req: NextRequest) {
   })
 
   const data = await response.json()
-  console.log('[LS Checkout RESPONSE]', {
-    status: response.status,
-    data: JSON.stringify(data).slice(0, 300)
-  })
   const checkoutUrl = data?.data?.attributes?.url
 
   if (!checkoutUrl) {
