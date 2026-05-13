@@ -6,9 +6,9 @@
 import { Research } from '@/lib/strategy/data-contract'
 import { buildS1Prompt } from '@/lib/strategy/prompts/s1'
 import { extractS1Decision, buildFromDecisions } from '@/lib/strategy/block-decision'
-import { createStrategyRoute, maxDuration as _maxDuration } from '@/lib/strategy/route-builder'
+import { createStrategyRoute } from '@/lib/strategy/route-builder'
 
-export const maxDuration = _maxDuration
+export const maxDuration = 300
 
 export const POST = createStrategyRoute({
   block_id: 'S1',

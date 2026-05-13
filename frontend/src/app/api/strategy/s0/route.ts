@@ -6,10 +6,10 @@
 import { Research } from '@/lib/strategy/data-contract'
 import { buildS0Prompt } from '@/lib/strategy/prompts/s0'
 import { extractS0Decision } from '@/lib/strategy/block-decision'
-import { createStrategyRoute, maxDuration as _maxDuration } from '@/lib/strategy/route-builder'
+import { createStrategyRoute } from '@/lib/strategy/route-builder'
 
 // Vercel Pro: 300s для SSE
-export const maxDuration = _maxDuration
+export const maxDuration = 300
 
 export const POST = createStrategyRoute({
   block_id: 'S0',
